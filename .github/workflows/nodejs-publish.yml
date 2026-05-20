@@ -1,0 +1,70 @@
+name: Publish @loxtep/sdk to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 0.1.0). Leave empty to use package.json version.'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (publish --dry-run only)'
+        required: false
+        type: boolean
+        default: false
+      tag:
+        description: 'npm dist-tag (e.g. latest, beta, next)'
+        required: false
+        type: string
+        default: 'latest'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: nodejs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set version (if provided)
+        if: inputs.version != ''
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Publish (dry run)
+        if: inputs.dry_run == true
+        run: npm publish --dry-run --tag ${{ inputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish
+        if: inputs.dry_run != true
+        run: npm publish --provenance --access public --tag ${{ inputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

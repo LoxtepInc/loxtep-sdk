@@ -1,0 +1,85 @@
+{
+  "name": "@loxtep/sdk",
+  "version": "0.1.2",
+  "description": "Loxtep SDK for Node.js - data products, flows, projects, queues",
+  "author": "Loxtep <engineering@loxtep.io>",
+  "homepage": "https://loxtep.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/loxtepinc/loxtep-sdk.git",
+    "directory": "nodejs"
+  },
+  "bugs": {
+    "url": "https://github.com/loxtepinc/loxtep-sdk/issues"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "import": "./dist/errors/index.js",
+      "default": "./dist/errors/index.js"
+    }
+  },
+  "bin": {
+    "loxtep": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "jest --config jest.config.cjs",
+    "lint": "eslint src --ext .ts",
+    "generate:api-types": "tsx scripts/generate-api-types.ts",
+    "docs": "typedoc"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "loxtep",
+    "sdk",
+    "data-mesh",
+    "streaming",
+    "data-products",
+    "event-streaming"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-cloudformation": "^3.1047.0",
+    "@aws-sdk/client-dynamodb": "^3.1047.0",
+    "@aws-sdk/client-firehose": "^3.1047.0",
+    "@aws-sdk/client-kinesis": "^3.1047.0",
+    "@aws-sdk/client-s3": "^3.1047.0",
+    "@aws-sdk/credential-providers": "^3.1047.0",
+    "@smithy/protocol-http": "^5.4.3",
+    "@smithy/signature-v4": "^5.4.3",
+    "leo-sdk": "7.1.12"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "fast-check": "^4.8.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.9",
+    "tsx": "^4.22.0",
+    "typedoc": "^0.28.19",
+    "typescript": "^6.0.3",
+    "zod": "^4.4.3",
+    "zod-to-ts": "^2.0.0"
+  }
+}
