@@ -1,0 +1,13 @@
+[package]
+name = "leo-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "rstreams/Leo SDK for Rust — bus config, load queue, read events, checkpoint, write (placeholder until full implementation)"
+license = "Apache-2.0"
+repository = "https://github.com/loxtepinc/loxtep"
+readme = "README.md"
+
+[dependencies]
+# Placeholder; future: aws-sdk-dynamodb, aws-sdk-kinesis, aws-sdk-s3, serde, tokio, etc.
+
+[lib]

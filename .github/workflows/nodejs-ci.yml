@@ -1,0 +1,43 @@
+name: Node.js SDK CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['nodejs/**', 'shared/**']
+  pull_request:
+    branches: [main]
+    paths: ['nodejs/**', 'shared/**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+    defaults:
+      run:
+        working-directory: nodejs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm run test
