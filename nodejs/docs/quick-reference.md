@@ -43,13 +43,14 @@ client = LoxtepClient(
 
 ## Writing Events
 
+**Recommended: use `data_products.get_writer('name')`** — the SDK resolves
+queue, bot_id, and stream bus config automatically from deployment metadata.
+
 ### Node.js
 
 ```typescript
-const writer = await client.flows.get_writer('<flow_id>', {
-  bot_id: 'my-bot',
-  output_queue_name: 'raw-events',
-});
+// Resolve by name — no manual queue/bot/stream config needed
+const writer = await client.data_products.get_writer('my-data-product');
 
 writer.write({ id: 'evt-1', payload: { key: 'value' } });
 writer.write({ id: 'evt-2', payload: { key: 'value' } });
@@ -60,48 +61,64 @@ await writer.close(); // flushes all buffered events
 ### Python
 
 ```python
-writer = client.flows.get_writer("<flow_id>", {
-    "bot_id": "my-bot",
-    "output_queue_name": "raw-events",
-})
+# Resolve by name — no manual queue/bot/stream config needed
+writer = await client.data_products.get_writer("my-data-product")
 
 writer.write({"id": "evt-1", "payload": {"key": "value"}})
 writer.write({"id": "evt-2", "payload": {"key": "value"}})
 
-writer.close()  # flushes all buffered events
+await writer.close()  # flushes all buffered events
+```
+
+### Lower-level escape hatch (explicit control)
+
+```typescript
+// Only use when you need manual bot_id/queue control
+const writer = client.flows.get_writer('<flow_id>', {
+  bot_id: 'my-bot',
+  output_queue_name: 'raw-events',
+});
+writer.write({ id: 'evt-1', payload: { key: 'value' } });
+await writer.close();
 ```
 
 ---
 
 ## Reading Events
 
+**Recommended: use `data_products.get_reader('name')`** — resolves everything
+automatically.
+
 ### Node.js
+
+```typescript
+const reader = await client.data_products.get_reader('my-data-product');
+
+for await (const event of reader) {
+  console.log(event);
+}
+```
+
+### Python
+
+```python
+reader = await client.data_products.get_reader("my-data-product")
+
+for event in reader:
+    print(event)
+```
+
+### Lower-level escape hatch (explicit control)
 
 ```typescript
 const reader = await client.queues.open_reader({
   bot_id: 'my-reader',
   queue_name: 'raw-events',
 });
-
 for await (const event of reader.read()) {
   console.log(event);
 }
-
 reader.close();
-```
-
-### Python
-
-```python
-reader = client.queues.open_reader({
-    "bot_id": "my-reader",
-    "queue_name": "raw-events",
-})
-
-for event in reader.read():
-    print(event)
-
-reader.close()
 ```
 
 ---
@@ -208,14 +225,17 @@ connector = client.connectors.get("<connector_id>")
 | Task | Node.js | Python |
 |------|---------|--------|
 | **Init client** | `new LoxtepClient(options)` | `LoxtepClient(**options)` |
-| **Write events** | `client.flows.get_writer(flow_id, opts)` → `writer.write(evt)` → `writer.close()` | Same API |
-| **Read events** | `client.queues.open_reader({ bot_id, queue_name })` → `reader.read()` → `reader.close()` | Same API |
+| **Write events** | `await client.data_products.get_writer('name')` → `writer.write(evt)` → `writer.close()` | Same API |
+| **Read events** | `await client.data_products.get_reader('name')` → `for await (const e of reader)` | Same API |
+| **Write (low-level)** | `client.flows.get_writer(flow_id, { bot_id, output_queue_name })` | Same API |
+| **Read (low-level)** | `client.queues.open_reader({ bot_id, queue_name })` → `reader.read()` | Same API |
 | **Stream live** | `client.data_products.stream(id, opts)` | Same API |
 | **Replay history** | `client.data_products.replay(id, opts)` | Same API |
 | **List data products** | `client.data_products.list()` | Same API |
 | **Get data product** | `client.data_products.get(id)` | Same API |
 | **List flows** | `client.flows.list()` | Same API |
 | **Get connector** | `client.connectors.get(id)` | Same API |
+| **Invalidate cache** | `client.data_products.invalidate_cache('name')` | Same API |
 
 ---
 
