@@ -5,6 +5,8 @@ export type { MetricsSurface } from './loxtep-client.js';
 export type { RateLimitInfo } from '../http/client.js';
 export type {
   DataProduct,
+  DataProductKind,
+  DataProductCreateInput,
   DataProductsListFilters,
   DataProductGetOptions,
   DataProductsListResponse,
@@ -19,6 +21,9 @@ export type {
   SearchResultItem,
   GlossaryTermValue,
   DataProductLexicon,
+  UsageMapNode,
+  UsageMapEdge,
+  UsageMapResponse,
 } from './data-products-types.js';
 export type {
   QueueMetadata,
