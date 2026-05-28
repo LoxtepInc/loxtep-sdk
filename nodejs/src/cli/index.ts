@@ -218,14 +218,15 @@ async function main(): Promise<void> {
       } else if (sub === 'create') {
         const name = getArg('--name');
         const domainId = getArg('--domain-id');
+        const kind = getArg('--kind') as 'source' | 'consumer' | undefined;
         const description = getArg('--description');
-        if (!name || !domainId) {
+        if (!name || !domainId || !kind || !['source', 'consumer'].includes(kind)) {
           console.error(
-            'Usage: loxtep data-products create --name <name> --domain-id <uuid> [--description <text>]'
+            'Usage: loxtep data-products create --name <name> --domain-id <uuid> --kind <source|consumer> [--description <text>]'
           );
           process.exitCode = 1;
         } else {
-          await runDataProductsCreate({ name, domain_id: domainId, description });
+          await runDataProductsCreate({ name, domain_id: domainId, kind, description });
         }
       } else {
         console.error(

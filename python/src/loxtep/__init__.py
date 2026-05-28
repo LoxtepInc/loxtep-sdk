@@ -16,6 +16,13 @@ from .errors import (
     parse_http_error,
 )
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
+from .models import (
+    DataProduct,
+    DataProductKind,
+    UsageMap,
+    UsageMapEdge,
+    UsageMapNode,
+)
 
 __all__ = [
     "AsyncLoxtepClient",
@@ -31,4 +38,9 @@ __all__ = [
     "LoxtepHttpClient",
     "AsyncLoxtepHttpClient",
     "RateLimitInfo",
+    "DataProduct",
+    "DataProductKind",
+    "UsageMap",
+    "UsageMapEdge",
+    "UsageMapNode",
 ]

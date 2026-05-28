@@ -1,10 +1,13 @@
 """
-Data products API. get, list, search, query, list_tables, stream, replay.
+Data products API. get, list, create, search, query, list_tables, stream, replay, get_usage_map.
 """
+
+from __future__ import annotations
 
 from typing import Any, AsyncIterator, Iterator, Optional
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
+from .models import DataProductKind, UsageMap, UsageMapEdge, UsageMapNode
 
 
 def _query_string(params: dict[str, Any]) -> str:
@@ -37,6 +40,7 @@ class DataProductsApi:
         page_size: int = 100,
         domain_id: Optional[str] = None,
         status: Optional[str] = None,
+        kind: Optional[DataProductKind] = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
     ) -> dict[str, Any]:
@@ -45,9 +49,53 @@ class DataProductsApi:
             params["domain_id"] = domain_id
         if status is not None:
             params["status"] = status
+        if kind is not None:
+            params["kind"] = kind
         qs = _query_string(params)
         res = self._http.get(f"/dataproducts{qs}")
         return res.get("data", res) if isinstance(res, dict) else res
+
+    def create_data_product(
+        self,
+        *,
+        name: str,
+        kind: DataProductKind,
+        description: str = "",
+        domain: str = "",
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Create a new data product. `kind` is required.
+
+        Args:
+            name: Human-readable name for the data product.
+            kind: Must be 'source' or 'consumer'.
+            description: Optional description.
+            domain: Optional domain ID.
+            **kwargs: Additional fields to include in the request body.
+
+        Returns:
+            The created data product payload from the API.
+
+        Raises:
+            ValidationError: If kind is missing or invalid (HTTP 400 INVALID_KIND from API).
+        """
+        body: dict[str, Any] = {"name": name, "kind": kind, "description": description, "domain": domain, **kwargs}
+        res = self._http.post("/dataproducts", body)
+        return res.get("data", res) if isinstance(res, dict) else res
+
+    def get_usage_map(self) -> tuple[list[UsageMapNode], list[UsageMapEdge]]:
+        """Fetch the Data Product Usage Map showing source→consumer relationships.
+
+        Returns:
+            A tuple of (nodes, edges) where nodes are UsageMapNode instances
+            and edges are UsageMapEdge instances.
+        """
+        res = self._http.get("/dataproducts/usage-map")
+        data = res.get("data", res) if isinstance(res, dict) else res
+        if not isinstance(data, dict):
+            return ([], [])
+        usage_map = UsageMap.model_validate(data)
+        return (usage_map.nodes, usage_map.edges)
 
     def search(
         self,
@@ -147,6 +195,7 @@ class AsyncDataProductsApi:
         page_size: int = 100,
         domain_id: Optional[str] = None,
         status: Optional[str] = None,
+        kind: Optional[DataProductKind] = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
     ) -> dict[str, Any]:
@@ -155,9 +204,53 @@ class AsyncDataProductsApi:
             params["domain_id"] = domain_id
         if status is not None:
             params["status"] = status
+        if kind is not None:
+            params["kind"] = kind
         qs = _query_string(params)
         res = await self._http.get(f"/dataproducts{qs}")
         return res.get("data", res) if isinstance(res, dict) else res
+
+    async def create_data_product(
+        self,
+        *,
+        name: str,
+        kind: DataProductKind,
+        description: str = "",
+        domain: str = "",
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Create a new data product. `kind` is required.
+
+        Args:
+            name: Human-readable name for the data product.
+            kind: Must be 'source' or 'consumer'.
+            description: Optional description.
+            domain: Optional domain ID.
+            **kwargs: Additional fields to include in the request body.
+
+        Returns:
+            The created data product payload from the API.
+
+        Raises:
+            ValidationError: If kind is missing or invalid (HTTP 400 INVALID_KIND from API).
+        """
+        body: dict[str, Any] = {"name": name, "kind": kind, "description": description, "domain": domain, **kwargs}
+        res = await self._http.post("/dataproducts", body)
+        return res.get("data", res) if isinstance(res, dict) else res
+
+    async def get_usage_map(self) -> tuple[list[UsageMapNode], list[UsageMapEdge]]:
+        """Fetch the Data Product Usage Map showing source→consumer relationships.
+
+        Returns:
+            A tuple of (nodes, edges) where nodes are UsageMapNode instances
+            and edges are UsageMapEdge instances.
+        """
+        res = await self._http.get("/dataproducts/usage-map")
+        data = res.get("data", res) if isinstance(res, dict) else res
+        if not isinstance(data, dict):
+            return ([], [])
+        usage_map = UsageMap.model_validate(data)
+        return (usage_map.nodes, usage_map.edges)
 
     async def search(
         self,

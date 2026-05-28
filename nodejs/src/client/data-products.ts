@@ -19,6 +19,7 @@ import type {
   DataProductListTablesResult,
   DataProductLexicon,
   DataProductCreateInput,
+  UsageMapResponse,
 } from './data-products-types.js';
 import type { QueueMetadata, ReaderCheckpoint } from './queue-types.js';
 import type { FlowWriter } from './flow-types.js';
@@ -176,6 +177,7 @@ export function createDataProductsApi(
   get_queue_info: (id: string) => Promise<QueueMetadata>;
   get_reader_checkpoint: (id: string, bot_id: string) => Promise<ReaderCheckpoint>;
   create: (body: DataProductCreateInput) => Promise<DataProduct>;
+  getUsageMap: () => Promise<UsageMapResponse>;
   stream: (id: string, options?: DataProductStreamOptions) => AsyncIterable<StreamEvent>;
   replay: (id: string, options?: DataProductReplayOptions) => AsyncIterable<StreamEvent>;
   get_writer: (idOrName: string, options?: DataProductWriterOptions) => Promise<FlowWriter>;
@@ -224,6 +226,7 @@ export function createDataProductsApi(
       };
       if (filters?.domain_id) params.domain_id = filters.domain_id;
       if (filters?.status) params.status = filters.status;
+      if (filters?.kind) params.kind = filters.kind;
       if (filters?.classification) params.classification = filters.classification;
       if (filters?.owner_user_id) params.owner_user_id = filters.owner_user_id;
       if (filters?.search) params.search = filters.search;
@@ -309,6 +312,22 @@ export function createDataProductsApi(
       const data = (res as { data?: DataProduct }).data;
       if (!data) throw new Error('Invalid create data product response');
       return data;
+    },
+
+    /**
+     * Get the data product usage map showing how source DPs feed into consumer DPs.
+     * Returns nodes (each with id, kind, name, fanout) and edges (source→target with projection_spec_id).
+     * Scoped to the caller's organization.
+     */
+    async getUsageMap(): Promise<UsageMapResponse> {
+      const res = await http.get<{ success?: true; data?: UsageMapResponse; nodes?: UsageMapResponse['nodes']; edges?: UsageMapResponse['edges'] }>(
+        '/dataproducts/usage-map'
+      );
+      const payload = (res as { data?: UsageMapResponse }).data ?? res;
+      return {
+        nodes: (payload as UsageMapResponse).nodes ?? [],
+        edges: (payload as UsageMapResponse).edges ?? [],
+      };
     },
 
     async *stream(id: string, options?: DataProductStreamOptions): AsyncIterable<StreamEvent> {

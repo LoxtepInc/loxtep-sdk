@@ -2,6 +2,9 @@
  * Data product (backend: data product) API types. All snake_case per backend conventions.
  */
 
+/** Discriminator chosen at creation time. Drives section routing and chrome. */
+export type DataProductKind = 'source' | 'consumer';
+
 /** Pagination metadata from list APIs. */
 export interface PaginationMeta {
   page: number;
@@ -18,6 +21,7 @@ export interface DataProductsListFilters {
   page_size?: number;
   domain_id?: string;
   status?: 'draft' | 'active' | 'deprecated' | 'archived';
+  kind?: DataProductKind;
   classification?: string;
   owner_user_id?: string;
   search?: string;
@@ -34,6 +38,7 @@ export interface DataProduct {
   project_id?: string;
   name: string;
   description: string;
+  kind: DataProductKind;
   status: string;
   owner: { user_id: string; team?: string };
   schema?: Record<string, unknown>;
@@ -151,6 +156,7 @@ export interface StreamEvent {
 export interface DataProductCreateInput {
   name?: string;
   description?: string;
+  kind: DataProductKind;
   domain_id?: string;
   owner_user_id?: string;
   owner_team?: string;
@@ -190,4 +196,26 @@ export interface DataProductTableInfo {
 /** Result of data_products.list_tables(id). Backend: GET /dataproducts/:id/tables. */
 export interface DataProductListTablesResult {
   items: DataProductTableInfo[];
+}
+
+/** A node in the data product usage map (source→consumer graph). */
+export interface UsageMapNode {
+  id: string;
+  kind: DataProductKind;
+  name: string;
+  /** Number of distinct consumer DPs this source feeds (0 for consumer nodes). */
+  fanout: number;
+}
+
+/** A directed edge in the data product usage map (source→consumer). */
+export interface UsageMapEdge {
+  source: string;
+  target: string;
+  projection_spec_id: string;
+}
+
+/** Response from data_products.getUsageMap(). */
+export interface UsageMapResponse {
+  nodes: UsageMapNode[];
+  edges: UsageMapEdge[];
 }
