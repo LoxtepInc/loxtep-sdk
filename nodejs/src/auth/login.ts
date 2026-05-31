@@ -204,8 +204,14 @@ export async function refresh(
     error?: string;
   };
   if (!res.ok) {
-    const msg = json?.error ?? res.statusText;
-    throw new Error(String(msg));
+    const rawErr = json?.error;
+    const msg =
+      typeof rawErr === 'string'
+        ? rawErr
+        : rawErr && typeof rawErr === 'object' && 'message' in rawErr
+          ? String((rawErr as { message?: unknown }).message)
+          : res.statusText;
+    throw new Error(msg);
   }
   const payload = json.success && json.data && typeof json.data === 'object' ? json.data : json;
   if (!payload?.access_token) throw new Error('Invalid refresh response');
