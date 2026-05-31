@@ -35,6 +35,9 @@ importers:
       '@smithy/signature-v4':
         specifier: ^5.4.3
         version: 5.4.3
+      '@smithy/types':
+        specifier: ^4.14.2
+        version: 4.14.2
       leo-sdk:
         specifier: 7.1.12
         version: 7.1.12(@aws-sdk/client-cloudformation@3.1049.0)(@aws-sdk/client-dynamodb@3.1049.0)(@aws-sdk/client-firehose@3.1049.0)(@aws-sdk/client-kinesis@3.1049.0)(@aws-sdk/client-lambda@3.1049.0)(@aws-sdk/client-s3@3.1049.0)(@aws-sdk/client-secrets-manager@3.1049.0)(@aws-sdk/client-sts@3.1049.0)(@aws-sdk/credential-providers@3.1049.0)(@aws-sdk/lib-dynamodb@3.1049.0(@aws-sdk/client-dynamodb@3.1049.0))(@aws-sdk/lib-storage@3.1049.0(@aws-sdk/client-s3@3.1049.0))

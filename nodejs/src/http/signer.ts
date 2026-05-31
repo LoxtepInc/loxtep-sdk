@@ -1,7 +1,7 @@
 import { SignatureV4 } from '@smithy/signature-v4';
 import { Sha256 } from '@aws-crypto/sha256-js';
 import { HttpRequest } from '@smithy/protocol-http';
-import type { AwsCredentialIdentity } from '@aws-sdk/types';
+import type { AwsCredentialIdentity } from '@smithy/types';
 
 const SERVICE = 'execute-api';
 

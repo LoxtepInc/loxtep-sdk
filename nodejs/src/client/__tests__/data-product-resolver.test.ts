@@ -113,7 +113,7 @@ describe('DataProductResolver — resolve by UUID', () => {
     await resolver.resolve('09fa202b-1234-5678-9abc-def012345678');
 
     // Should call stream-config with the instance_id from deployment_bindings
-    expect(getCalls[1]).toBe('/instances/9c5a188a-aaaa-bbbb-cccc-dddddddddddd/stream-config');
+    expect(getCalls[1]).toBe('/organizations/instances/9c5a188a-aaaa-bbbb-cccc-dddddddddddd/stream-config');
   });
 });
 

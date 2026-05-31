@@ -137,6 +137,42 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
         accessKeyId: 'cli',
         secretAccessKey: 'cli',
       };
+
+  // Check if STS credentials are expired and proactively refresh
+  if (fileCreds?.aws_credentials?.expiration) {
+    const expMs = new Date(fileCreds.aws_credentials.expiration).getTime();
+    if (expMs < Date.now()) {
+      // STS expired — trigger a refresh to get fresh credentials
+      const authCtxForRefresh = await createCliAuthContext(options);
+      if (authCtxForRefresh) {
+        const refreshed = await authCtxForRefresh.refresh_auth();
+        if (refreshed) {
+          // Re-read credentials file to pick up any new aws_credentials from refresh
+          const refreshedCreds = await readCredentials(credsPath);
+          if (refreshedCreds?.aws_credentials) {
+            const exp2 = new Date(refreshedCreds.aws_credentials.expiration || 0).getTime();
+            if (exp2 > Date.now()) {
+              Object.assign(cliSigv4, {
+                accessKeyId: refreshedCreds.aws_credentials.access_key_id,
+                secretAccessKey: refreshedCreds.aws_credentials.secret_access_key,
+                sessionToken: refreshedCreds.aws_credentials.session_token,
+              });
+            }
+          }
+        }
+      }
+      // If still expired after refresh, warn but continue (API calls may still work via JWT)
+      const stillExpired =
+        cliSigv4.accessKeyId === fileCreds.aws_credentials.access_key_id &&
+        expMs < Date.now();
+      if (stillExpired) {
+        console.error(
+          '[loxtep] AWS credentials expired and refresh did not return new ones. ' +
+            'Stream bus writes will fail. Run `npx loxtep login` to get fresh credentials.'
+        );
+      }
+    }
+  }
   const authCtx = await createCliAuthContext({
     ...options,
     on_after_refresh: r => {
