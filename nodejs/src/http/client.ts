@@ -1,5 +1,5 @@
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
-import type { AwsCredentialIdentity } from '@aws-sdk/types';
+import type { AwsCredentialIdentity } from '@smithy/types';
 import { buildPlatformRequestUrl } from '../config/platform-request-url.js';
 import { signRequest } from './signer.js';
 import { parseHttpError } from '../errors/parse-http.js';

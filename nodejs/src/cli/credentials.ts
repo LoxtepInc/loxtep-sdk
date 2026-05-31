@@ -32,7 +32,7 @@ export async function readCredentials(filePath?: string): Promise<CliCredentials
   const path = filePath ?? getCredentialsPath();
   if (!existsSync(path)) return null;
   try {
-    const raw = await readFile(path, 'utf-8');
+    const raw = String(await readFile(path, 'utf-8'));
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (typeof parsed?.access_token !== 'string') return null;
     const aws = parsed.aws_credentials;

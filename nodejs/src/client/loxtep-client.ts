@@ -1,4 +1,4 @@
-import type { AwsCredentialIdentity } from '@aws-sdk/types';
+import type { AwsCredentialIdentity } from '@smithy/types';
 import type { LoxtepClientOptions } from './types.js';
 import { LoxtepHttpClient, type RateLimitInfo } from '../http/client.js';
 import { extendClientBaseUrl } from '../config/api-path.js';
@@ -229,11 +229,11 @@ export class LoxtepClient {
       }
     }
 
-    // Priority 3: Resolve from instance record via GET /instances/{id}/stream-config
+    // Priority 3: Resolve from instance record via GET /organizations/instances/{id}/stream-config
     if (this.instance_id) {
       try {
         const streamConfigRes = await this._http.get<{ success: true; data: Record<string, string> }>(
-          `/instances/${encodeURIComponent(this.instance_id)}/stream-config`
+          `/organizations/instances/${encodeURIComponent(this.instance_id)}/stream-config`
         );
         if (streamConfigRes?.data && typeof streamConfigRes.data === 'object') {
           const resolved = resolveStreamsConfiguration(

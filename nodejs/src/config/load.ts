@@ -41,7 +41,7 @@ async function readStreamsFromRstreamsFileAsync(): Promise<
   const p = process.env[ENV_RSTREAMS_CONFIG_FILE]?.trim();
   if (!p || !existsSync(p)) return undefined;
   try {
-    const raw = await readFile(p, 'utf-8');
+    const raw = String(await readFile(p, 'utf-8'));
     return parseStreamsPartial(JSON.parse(raw) as unknown);
   } catch {
     return undefined;
@@ -58,7 +58,7 @@ export async function loadConfig(filePath?: string): Promise<LoxtepConfig> {
 
   if (existsSync(path)) {
     try {
-      const raw = await readFile(path, 'utf-8');
+      const raw = String(await readFile(path, 'utf-8'));
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       if (typeof parsed === 'object' && parsed !== null) {
         fileConfig = {

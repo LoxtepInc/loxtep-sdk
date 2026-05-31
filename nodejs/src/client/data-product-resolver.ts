@@ -197,11 +197,30 @@ export class DataProductResolver {
 
   /**
    * Extract and validate runtime bindings from a data product record.
+   * Falls back to deriving bindings from storage.rstreams_queue when
+   * deployment_bindings is not yet populated (pre-existing deployments).
    * Throws StreamingError if the data product has not been deployed.
    */
   private extractRuntimeBindings(dp: DataProduct): ResolvedDataProduct {
     const bindings = dp.deployment_bindings;
-    if (!bindings?.queue_name || !bindings?.bot_id || !bindings?.instance_id) {
+    if (bindings?.queue_name && bindings?.bot_id && bindings?.instance_id) {
+      return {
+        data_product_id: dp.data_product_id,
+        name: dp.name,
+        queue_name: bindings.queue_name,
+        bot_id: bindings.bot_id,
+        instance_id: bindings.instance_id,
+        workflow_id: (dp as DataProduct & { workflow_id?: string }).workflow_id ?? '',
+        deployment_id: bindings.deployment_id,
+      };
+    }
+
+    // Fallback: derive from storage.rstreams_queue for data products deployed before
+    // deployment_bindings was introduced.
+    const storage = dp.storage as Record<string, unknown> | undefined;
+    const queueName = storage?.rstreams_queue as string | undefined;
+
+    if (!queueName) {
       throw new StreamingError(
         `Data product '${dp.name}' (${dp.data_product_id}) is not deployed. Deploy the workflow first.`,
         {
@@ -214,25 +233,81 @@ export class DataProductResolver {
       );
     }
 
+    // Derive instance_id from partial bindings or metadata
+    const metadata = dp.metadata as Record<string, unknown> | undefined;
+    const instanceId =
+      bindings?.instance_id ||
+      (metadata?.instance_id as string | undefined) ||
+      this.clientInstanceId;
+
+    if (!instanceId) {
+      throw new StreamingError(
+        `Data product '${dp.name}' (${dp.data_product_id}) has a queue binding but no instance_id. ` +
+          `Set instance_id in LoxtepClient options or redeploy the workflow.`,
+        {
+          details: {
+            data_product_id: dp.data_product_id,
+            name: dp.name,
+            queue_name: queueName,
+            hint: "Set instance_id in LoxtepClient options, or redeploy the workflow to populate deployment_bindings.",
+          },
+        }
+      );
+    }
+
+    // Use a synthetic bot_id when not available from bindings
+    const botId = bindings?.bot_id || `writer-${dp.data_product_id}`;
+
     return {
       data_product_id: dp.data_product_id,
       name: dp.name,
-      queue_name: bindings.queue_name,
-      bot_id: bindings.bot_id,
-      instance_id: bindings.instance_id,
+      queue_name: queueName,
+      bot_id: botId,
+      instance_id: instanceId,
       workflow_id: (dp as DataProduct & { workflow_id?: string }).workflow_id ?? '',
-      deployment_id: bindings.deployment_id,
+      deployment_id: bindings?.deployment_id ?? '',
     };
   }
 
   /**
    * Resolve stream bus configuration from the instance record.
-   * Calls GET /instances/{id}/stream-config.
+   * Tries GET /organizations/instances/{id}/stream-config first, then falls back to
+   * GET /observe/stream-config (accessible with standard developer tokens).
    */
   private async resolveStreamConfig(instanceId: string): Promise<ResolvedStreamConfig> {
-    const res = await this.http.get<{ success: true; data: ResolvedStreamConfig }>(
-      `/instances/${encodeURIComponent(instanceId)}/stream-config`
+    // Primary: organizations microservice stream-config endpoint
+    try {
+      const res = await this.http.get<{ success: true; data: ResolvedStreamConfig }>(
+        `/organizations/instances/${encodeURIComponent(instanceId)}/stream-config`
+      );
+      if (res?.data && typeof res.data === 'object' && 'LeoEvent' in res.data) {
+        return res.data;
+      }
+    } catch {
+      // Fall through to observe endpoint
+    }
+
+    // Fallback: observe stream-config endpoint (proxied, accessible to developer-role tokens)
+    try {
+      const res = await this.http.get<{ success: true; data: ResolvedStreamConfig }>(
+        `/observe/stream-config`
+      );
+      if (res?.data && typeof res.data === 'object' && 'LeoEvent' in res.data) {
+        return res.data;
+      }
+    } catch {
+      // Fall through to error
+    }
+
+    throw new StreamingError(
+      `Unable to resolve stream configuration for instance '${instanceId}'. ` +
+        `Ensure the instance is provisioned and you have access to the stream-config endpoint.`,
+      {
+        details: {
+          instance_id: instanceId,
+          hint: 'Check that your token has instances:read permission, or configure streams directly in LoxtepClient options.',
+        },
+      }
     );
-    return res.data;
   }
 }
