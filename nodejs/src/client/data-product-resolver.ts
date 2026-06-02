@@ -255,8 +255,25 @@ export class DataProductResolver {
       );
     }
 
-    // Use a synthetic bot_id when not available from bindings
-    const botId = bindings?.bot_id || `writer-${dp.data_product_id}`;
+    // Require bot_id from bindings — a synthetic bot_id won't match the instance
+    // namespace filter in the stats Lambda, making writes invisible in Observe.
+    // If bot_id is missing, the workflow needs to be redeployed.
+    const botId = bindings?.bot_id;
+    if (!botId) {
+      throw new StreamingError(
+        `Data product '${dp.name}' (${dp.data_product_id}) is missing deployment_bindings.bot_id. ` +
+          `Redeploy the workflow to populate deployment_bindings.`,
+        {
+          details: {
+            data_product_id: dp.data_product_id,
+            name: dp.name,
+            queue_name: queueName,
+            instance_id: instanceId,
+            hint: "Use 'deploy_workflow' or 'deploy_project' to redeploy. The deployment will populate the correct bot_id for SDK writes.",
+          },
+        }
+      );
+    }
 
     return {
       data_product_id: dp.data_product_id,
