@@ -36,7 +36,9 @@ export interface LoxtepConfig {
 }
 
 export const DEFAULT_CONFIG: LoxtepConfig = {
-  api_url: '',
+  // Default to the public production API so a fresh install can `loxtep login` with zero config.
+  // Override via LOXTEP_API_URL env or `loxtep config set api_url <url>` (e.g. for dev/staging).
+  api_url: 'https://api.loxtep.io',
   auth_path_prefix: undefined,
   api_path_prefix: undefined,
   organization_id: undefined,
