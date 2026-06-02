@@ -139,6 +139,11 @@ export async function login(
   const json = (await res.json()) as {
     success?: boolean;
     mfaRequired?: boolean;
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    expires_at?: string;
+    aws_credentials?: AwsCredentialsSnake;
     data?: {
       access_token?: string;
       refresh_token?: string;
@@ -154,7 +159,9 @@ export async function login(
     const msg = getLoginErrorMessage(json, res);
     throw new Error(String(msg));
   }
-  const payload = json?.data;
+  // Accept both response shapes: tokens flat at top level (what /app/auth/login
+  // returns) or nested under `data`. Mirrors refresh()'s dual-shape handling.
+  const payload = json.success && json.data && typeof json.data === 'object' ? json.data : json;
   if (!payload?.access_token) throw new Error('Invalid login response');
   return {
     access_token: payload.access_token,
