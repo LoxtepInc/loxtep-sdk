@@ -1,6 +1,6 @@
 import * as readline from 'node:readline';
-import { spawnSync } from 'node:child_process';
 import { login as authLogin, LoginMfaRequiredError } from '../../auth/login.js';
+import { browserLogin } from '../../auth/browser-login.js';
 import { loadConfig } from '../../config/load.js';
 import { getCredentialsPath, writeCredentials } from '../credentials.js';
 
@@ -14,8 +14,8 @@ export interface LoginOptions {
   mfa_code?: string;
   organization_id?: string;
   /**
-   * Same flow as `npx @loxtep/customer-mcp-server login`: browser + localhost callback.
-   * Use when password login cannot complete (e.g. SSO-only) or for parity with MCP.
+   * Browser OAuth login: opens browser to the Loxtep app login page with a localhost callback.
+   * This is the default when no email/password is provided.
    */
   browser?: boolean;
   /** For tests: inject fetch to mock API. */
@@ -26,6 +26,8 @@ export interface LoginOptions {
   credentialsPath?: string;
   /** Override config auth first path segment (default: `app` when omitted in config). */
   auth_path_prefix?: string;
+  /** Don't auto-open browser — just print the URL. */
+  no_open?: boolean;
 }
 
 /** Prompt for a single line (e.g. email or password). */
@@ -50,38 +52,53 @@ function parseOptionalMfaInput(raw: string): string | undefined {
 }
 
 /**
- * Run login: prompt for email, password, and (optional) authenticator code, then a single POST /auth/login.
+ * Run login: by default opens a browser for OAuth login. Use --email/--password for headless/CI environments.
  */
 export async function runLogin(options: LoginOptions = {}): Promise<void> {
-  if (options.browser) {
+  // Default to browser login when no email/password provided
+  const useBrowser = options.browser === true || (!options.email && !options.password && options.browser !== false);
+
+  if (useBrowser) {
     const config = await loadConfig(options.configFilePath);
     const credentialsPath = options.credentialsPath ?? getCredentialsPath();
-    console.log(
-      'Browser login: running `npx @loxtep/customer-mcp-server login` (no email/password prompts here).'
-    );
-    const r = spawnSync('npx', ['-y', '@loxtep/customer-mcp-server', 'login'], {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        LOXTEP_TOKEN_FILE: credentialsPath,
-        ...(config.api_url ? { LOXTEP_API_BASE_URL: config.api_url } : {}),
-      },
-    });
-    if (r.error) {
-      console.error('Could not run browser login:', r.error.message);
+
+    // Determine app URL from config or default
+    const apiUrl = (config.api_url || '').replace(/\/$/, '');
+    let appUrl: string;
+    if (apiUrl.includes('apidev.')) {
+      appUrl = apiUrl.replace('apidev.', 'appdev.');
+    } else if (apiUrl.includes('api.')) {
+      appUrl = apiUrl.replace('api.', 'app.');
+    } else {
+      appUrl = 'https://app.loxtep.io';
+    }
+
+    try {
+      const result = await browserLogin({
+        app_url: appUrl,
+        api_url: apiUrl || undefined,
+        no_open: options.no_open,
+      });
+      await writeCredentials(
+        {
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+          expires_at: result.expires_at,
+          api_base_url: apiUrl || undefined,
+          aws_credentials: result.aws_credentials,
+        },
+        credentialsPath
+      );
+      console.log(`\nLogged in successfully. Tokens saved to ${credentialsPath}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Login failed:', msg);
       process.exitCode = 1;
-      return;
     }
-    if (r.status !== 0) {
-      process.exitCode = r.status ?? 1;
-      return;
-    }
-    console.log(
-      `Browser login completed. Tokens are in ${credentialsPath} (shared with the customer MCP server).`
-    );
     return;
   }
 
+  // Email/password login (for CI/headless environments)
   const config = await loadConfig(options.configFilePath);
   const apiUrl = config.api_url;
   if (!apiUrl) {
@@ -138,7 +155,7 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Login failed:', msg);
       if (/forbidden|403/i.test(msg)) {
-        console.error('Hint: for MCP-style browser login, run: npx loxtep login --browser');
+        console.error('Hint: try browser login with: npx loxtep login --browser');
       }
     }
     process.exitCode = 1;

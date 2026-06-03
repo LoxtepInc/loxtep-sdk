@@ -1,6 +1,6 @@
 {
   "name": "@loxtep/sdk",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Loxtep SDK for Node.js - data products, flows, projects, queues",
   "author": "Loxtep <engineering@loxtep.io>",
   "homepage": "https://loxtep.io",

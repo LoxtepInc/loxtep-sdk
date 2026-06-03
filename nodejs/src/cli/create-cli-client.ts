@@ -221,7 +221,7 @@ export async function requireCliClient(options: CreateCliClientOptions = {}): Pr
   const r = await createCliClient(options);
   if (!r) {
     console.error(
-      'Missing api_url or access token. Set LOXTEP_API_URL / LOXTEP_AUTH_TOKEN, or run: loxtep config set api_url <url> ; loxtep login | npx @loxtep/customer-mcp-server login'
+      'Missing api_url or access token. Run: npx loxtep login'
     );
     process.exit(1);
     return r as never;
