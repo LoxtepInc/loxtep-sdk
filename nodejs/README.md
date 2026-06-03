@@ -69,9 +69,14 @@ credentials for SigV4 on both REST and the bus.
      bot_id: 'your-bot-id',
      output_queue_name: 'your-ingest-queue',
    });
-   writer.write({ id: 'e1', payload: { name: 'Alice' } });
+   writer.write({ customer_id: '123', name: 'Alice', email: 'alice@example.com' });
+   writer.write({ customer_id: '456', name: 'Bob', email: 'bob@example.com' });
    await writer.close();
    ```
+
+   The `write()` method accepts your raw business object — the SDK handles
+   batching and delivery to the stream bus automatically. No event envelope
+   or metadata wrapper is needed.
 
 5. **Stream config from the platform (optional)** — after login,
    `await client.observe.stream_config()` returns stream resource names
@@ -142,8 +147,8 @@ re-resolution on the next call.
 
 `client.flows.get_writer(flow_id)` returns a **FlowWriter** with:
 
-- **`write(event)`** – enqueues an event. Batching is transparent: you do not
-  control batch size or flush timing.
+- **`write(event)`** – enqueues a raw business object. Batching is transparent:
+  you do not control batch size or flush timing.
 - **`close()`** – flushes any buffered events and guarantees delivery (or
   attempts to). Always call `close()` when done writing.
 
@@ -151,11 +156,12 @@ Example:
 
 ```ts
 const writer = client.flows.get_writer(flowId, { bot_id: 'your-bot-id' });
-writer.write({ id: 'e1', payload: { name: 'Alice' } });
-writer.write({ id: 'e2', payload: { name: 'Bob' } });
+writer.write({ customer_id: '123', name: 'Alice', email: 'alice@example.com' });
+writer.write({ customer_id: '456', name: 'Bob', email: 'bob@example.com' });
 await writer.close();
 ```
 
+Pass your raw business objects — no envelope, no `id`/`payload` wrapper needed.
 Buffered events flush on `close()` via the stream data plane to the resolved
 output queue.
 
