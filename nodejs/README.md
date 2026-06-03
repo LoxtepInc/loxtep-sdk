@@ -19,16 +19,17 @@ credentials for SigV4 on both REST and the bus.
    npm install @loxtep/sdk
    ```
 
-2. **Configure and log in**
+2. **Log in**
 
    ```bash
-   npx loxtep config set api_url https://api.loxtep.com
    npx loxtep login
    ```
 
-   Tokens resolve in this order: **`LOXTEP_AUTH_TOKEN`** →
-   **`~/.loxtep/credentials.json`** (shared with
-   `npx @loxtep/customer-mcp-server login`).
+   A browser window opens — sign in to Loxtep and you're authenticated.
+   Tokens are saved to `~/.loxtep/credentials.json` and refresh automatically.
+
+   > **CI/headless:** Use `npx loxtep login --email you@co.com --password ...`
+   > or set `LOXTEP_AUTH_TOKEN` in your environment.
 
 3. **Create a client, write and read events**
 
@@ -191,8 +192,9 @@ for await (const event of filterStream(
 
 | Command                                              | Description                                                        |
 | ---------------------------------------------------- | ------------------------------------------------------------------ |
-| `login`                                              | Log in with email/password (prompts if not provided)               |
-| `login --browser`                                    | Log in via browser OAuth flow                                      |
+| `login`                                              | Log in via browser OAuth (default) or email/password                |
+| `login --browser`                                    | Explicitly use browser OAuth flow                                  |
+| `login --email <e> --password <p>`                   | Headless login for CI (optional `--mfa-code`)                      |
 | `logout`                                             | Remove stored credentials                                          |
 | `whoami`                                             | Print current user and organization                                |
 | `init`                                               | Setup checklist + doc pointers                                     |
