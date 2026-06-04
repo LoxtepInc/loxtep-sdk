@@ -10,6 +10,7 @@ import type {
   ProjectsListFilters,
   CreateProjectInput,
   UpdateProjectInput,
+  RepositoryBinding,
 } from './projects-types.js';
 import type { ApplyTemplateInput, ApplyTemplateResult } from './templates-types.js';
 
@@ -32,6 +33,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
   update: (project_id: string, body: UpdateProjectInput) => Promise<Project>;
   delete: (project_id: string) => Promise<{ project_id: string; deleted: boolean }>;
   applyTemplate: (project_id: string, body: ApplyTemplateInput) => Promise<ApplyTemplateResult>;
+  repository: (project_id: string) => Promise<RepositoryBinding>;
 } {
   return {
     async list(filters?: ProjectsListFilters): Promise<ProjectsListResponse['data']> {
@@ -83,6 +85,26 @@ export function createProjectsApi(http: LoxtepHttpClient): {
         body
       );
       return res.data;
+    },
+
+    /**
+     * Read-only accessor returning the project's repository binding and last-synced state.
+     * Synchronous read (R18.6 carve-out). Returns empty strings for last_commit_sha
+     * and last_sync_at when no sync has ever completed (R17.12).
+     */
+    async repository(project_id: string): Promise<RepositoryBinding> {
+      const res = await http.get<{ success: true; data: Project }>(
+        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}`
+      );
+      const project = res.data;
+      return {
+        url: project.github_repo_url ?? null,
+        name: project.github_repo_name ?? null,
+        subpath: project.github_repo_path ?? '',
+        branch: project.github_branch ?? 'main',
+        last_commit_sha: project.github_last_commit_sha ?? '',
+        last_sync_at: project.github_last_sync_at ?? '',
+      };
     },
   };
 }

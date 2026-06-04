@@ -1,7 +1,7 @@
 export { LoxtepClient } from './loxtep-client.js';
 export type { LoxtepClientOptions, AuthOptions, MetricsOptions } from './types.js';
 export type { LoxtepStreamRuntime, ConfigurationResources } from '../rstreams/leo-runtime.js';
-export type { MetricsSurface } from './loxtep-client.js';
+export type { MetricsSurface, FromWorkspaceOptions } from './loxtep-client.js';
 export type { RateLimitInfo } from '../http/client.js';
 export type {
   DataProduct,
@@ -70,6 +70,7 @@ export type {
   ProjectsListResponse,
   CreateProjectInput,
   UpdateProjectInput,
+  RepositoryBinding,
 } from './projects-types.js';
 export type {
   TemplateSummary,
@@ -132,6 +133,24 @@ export type {
 } from './connectors-types.js';
 export type { Instance, InstancesListResponse, InstanceDetailResponse } from './instances-types.js';
 export type { Procedure, ProceduresListResponse } from './procedures-types.js';
+export type {
+  Improvement,
+  ImprovementStatus,
+  ImprovementsListFilters,
+  ImprovementsListResponse,
+  ImprovementActionInput,
+  ImprovementActionResponse,
+} from './improvements-types.js';
+export type { ImprovementsApi } from './improvements.js';
+export type {
+  ActivityEntry,
+  ActivityEntryKind,
+  ActivityListFilters,
+  ActivityListResponse,
+  ActivityOutcome,
+  ActivitySource,
+} from './activity-types.js';
+export type { ActivityApi } from './activity.js';
 export type { ProjectVersionMetadata, VersionDiff } from './versions-types.js';
 export type { DataProductWriterOptions, DataProductReaderOptions } from './data-products.js';
 export { DataProductResolver, AmbiguityError } from './data-product-resolver.js';

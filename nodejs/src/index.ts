@@ -11,3 +11,6 @@ export * from './http/index.js';
 export * from './checkpoint/index.js';
 export * from './streaming/index.js';
 export * from './types/index.js';
+export * from './codegen/index.js';
+export * from './skills/index.js';
+export * from './authoring/index.js';

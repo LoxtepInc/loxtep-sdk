@@ -23,10 +23,14 @@ import { createProceduresApi } from './procedures.js';
 import { createDomainsApi } from './domains.js';
 import { createStandardsApi } from './standards.js';
 import { createPromisesApi } from './promises.js';
+import { createImprovementsApi, type ImprovementsApi } from './improvements.js';
+import { createActivityApi, type ActivityApi } from './activity.js';
 import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
 import type { RStreamsSdk } from '../rstreams/leo-runtime.js';
 import { DataProductResolver } from './data-product-resolver.js';
+import { resolveAutoConfig, type ExplicitConfigFields } from '../config/workspace-config.js';
+import { ValidationError } from '../errors/validation.js';
 
 /** Metrics surface: log and get_reporter (optional Loxtep metrics integration). */
 export interface MetricsSurface {
@@ -36,6 +40,31 @@ export interface MetricsSurface {
     tags?: Record<string, string>;
   }) => void | Promise<void>;
   get_reporter: () => unknown | null;
+}
+
+/**
+ * Options for `LoxtepClient.fromWorkspace()`.
+ * Explicit fields take precedence over workspace-resolved values (R13.3).
+ */
+export interface FromWorkspaceOptions {
+  /** Override the working directory for resolving `.loxtep/project.json`. Defaults to `process.cwd()`. */
+  cwd?: string;
+  /** Explicit api_url override (takes precedence over workspace files, but env takes precedence over this). */
+  api_url?: string;
+  /** Explicit project_id override. */
+  project_id?: string;
+  /** Explicit instance_id override. */
+  instance_id?: string;
+  /** Explicit auth token override. */
+  token?: string;
+  /** Optional organization_id. */
+  organization_id?: string;
+  /** Optional fetch implementation (for tests or custom HTTP). */
+  fetch_fn?: typeof fetch;
+  /** Optional AWS region. */
+  region?: string;
+  /** Optional custom debug logger. Defaults to `console.debug`. */
+  debug?: (message: string) => void;
 }
 
 /**
@@ -118,6 +147,12 @@ export class LoxtepClient {
   /** Procedures (process graph): list. */
   readonly procedures: ReturnType<typeof createProceduresApi>;
 
+  /** Improvements (AI Eval self-improvement): list, apply, reject (R8.3–R8.6). */
+  readonly improvements: ImprovementsApi;
+
+  /** Activity & observability: list activity/audit entries (R7.4, R18.5). */
+  readonly activity: ActivityApi;
+
   /** Metrics: log, get_reporter (stub until metrics wiring is added). */
   readonly metrics: MetricsSurface;
 
@@ -193,6 +228,8 @@ export class LoxtepClient {
     this.connectors = createConnectorsApi(this._http);
     this.instances = createInstancesApi(this._http);
     this.procedures = createProceduresApi(this._http);
+    this.improvements = createImprovementsApi(this._http);
+    this.activity = createActivityApi(this._http);
     this.domains = createDomainsApi(this._http);
     this.standards = createStandardsApi(this._http);
     this.data_contracts = createPromisesApi(this._http);
@@ -202,6 +239,83 @@ export class LoxtepClient {
   /** Update SigV4 credentials used by the HTTP layer (e.g. CLI after refresh returns STS). */
   set_aws_credentials(credentials: AwsCredentialIdentity | null): void {
     this._http.setAwsCredentials(credentials);
+  }
+
+  /**
+   * Construct a `LoxtepClient` from workspace context files (R13.1, R13.4).
+   *
+   * Resolution precedence: env vars > explicit options > `.loxtep/project.json` + `~/.loxtep/credentials.json`.
+   *
+   * Checks for required workspace files only when called. If a required file is
+   * missing, throws a `ValidationError` naming the missing file (R13.4).
+   *
+   * Emits a debug log naming which configuration files were resolved (R13.2).
+   *
+   * @param options - Optional overrides and configuration.
+   * @returns A configured `LoxtepClient` instance.
+   * @throws {ValidationError} when a required workspace file is absent.
+   */
+  static fromWorkspace(options: FromWorkspaceOptions = {}): LoxtepClient {
+    const debugLog = options.debug ?? console.debug;
+    const explicit: ExplicitConfigFields = {
+      api_url: options.api_url,
+      project_id: options.project_id,
+      instance_id: options.instance_id,
+      token: options.token,
+    };
+
+    const resolved = resolveAutoConfig(explicit, options.cwd);
+
+    // R13.2: Emit debug log naming resolved files
+    if (resolved.resolvedFiles.length > 0) {
+      debugLog(
+        `[loxtep] Auto-config resolved from: ${resolved.resolvedFiles.join(', ')}`
+      );
+    } else {
+      debugLog('[loxtep] Auto-config: no workspace configuration files found');
+    }
+
+    // R13.4: Check required files — api_url and token must be resolvable
+    // If api_url is not resolved from any source, check which file is missing
+    if (!resolved.api_url) {
+      // Determine which file would have provided api_url
+      const missingProjectFile = resolved.missingFiles.find(f => f.includes('project.json'));
+      if (missingProjectFile) {
+        throw new ValidationError(
+          `Cannot auto-configure: required file is missing: ${missingProjectFile}`,
+          [{ field: 'api_url', message: `File not found: ${missingProjectFile}` }]
+        );
+      }
+      throw new ValidationError(
+        'Cannot auto-configure: api_url could not be resolved from workspace files, environment, or explicit config',
+        [{ field: 'api_url', message: 'No api_url available' }]
+      );
+    }
+
+    if (!resolved.token) {
+      // Token comes from credentials.json
+      const missingCredFile = resolved.missingFiles.find(f => f.includes('credentials.json'));
+      if (missingCredFile) {
+        throw new ValidationError(
+          `Cannot auto-configure: required file is missing: ${missingCredFile}`,
+          [{ field: 'token', message: `File not found: ${missingCredFile}` }]
+        );
+      }
+      throw new ValidationError(
+        'Cannot auto-configure: auth token could not be resolved from workspace files, environment, or explicit config',
+        [{ field: 'token', message: 'No auth token available' }]
+      );
+    }
+
+    return new LoxtepClient({
+      api_url: resolved.api_url,
+      auth: { type: 'jwt', token: resolved.token },
+      project_id: resolved.project_id,
+      instance_id: resolved.instance_id,
+      organization_id: options.organization_id,
+      region: options.region,
+      fetch_fn: options.fetch_fn,
+    });
   }
 
   /**
