@@ -2,21 +2,23 @@
 /**
  * Loxtep CLI entry point.
  * Usage: loxtep <command> [options]
- * Commands: login, logout, whoami, init, config, bus, data-products, queue, flows, workflows, observe, connections, domains, standards, data-contracts
+ * Commands: login, logout, whoami, init, attach, config, bus, data-products, queue, flows, workflows, observe, connections, domains, standards, data-contracts
  */
 
 import { runLogin } from './commands/login.js';
 import { runLogout } from './commands/logout.js';
 import { runWhoami } from './commands/whoami.js';
+import { runAttach } from './commands/attach-cmd.js';
 import {
   runConfigList,
   runConfigPaths,
   runConfigSet,
   runConfigExportFromDataProduct,
   runConfigExportFromConnector,
-  runInit,
 } from './commands/config-cmd.js';
+import { runInitCommand } from './commands/init-cmd.js';
 import { runBusLogin } from './commands/bus-cmd.js';
+import { createCliClient } from './create-cli-client.js';
 import {
   runDataProductsList,
   runDataProductsGet,
@@ -38,6 +40,15 @@ import {
 import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
 import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
 import { runDataContractsList, runDataContractsGet } from './commands/data-contracts-cmd.js';
+import { runGenerate } from './commands/generate-cmd.js';
+import { runTest } from './commands/test-cmd.js';
+import { runDeploy } from './commands/deploy-cmd.js';
+import {
+  runImprovementsListCommand,
+  runImprovementsApplyCommand,
+  runImprovementsRejectCommand,
+} from './commands/improvements-cmd.js';
+import { runActivityListCommand } from './commands/activity-cmd.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -53,10 +64,14 @@ function printHelp(): void {
 Usage: loxtep <command> [options]
 
 Commands:
-  login              Log in (email, password, then optional 6-digit TOTP in one request). Use --mfa-code for scripts. Or login --browser
+  login              Log in (opens browser by default). Use --console for terminal email/password/TOTP login.
   logout             Remove stored credentials
   whoami             Print current user and organization
   init               Print setup checklist (config + auth + docs pointers)
+  attach [--instance <id>]  Link project to an Instance (writes instance_id + api_url)
+  generate           Generate typed workspace context artifact (.loxtep/generated/index.ts)
+  test <module> --event <file>  Execute a workflow module locally with a sample event (prints action trace)
+  deploy             Compile and deploy workflow modules to the attached Instance
   config list        Show current config (api_url, organization_id, project_id, instance_id)
   config paths       Show resolved URLs for auth and a full matrix of LoxtepClient SDK paths → gateway URLs
   config set <k> <v> Set config key (api_url | auth_path_prefix | api_path_prefix | organization_id | …)
@@ -86,11 +101,15 @@ Commands:
   standards get <id>  Get standard by id
   data-contracts list      List data contracts
   data-contracts get <id>  Get data contract by id
+  improvements list [--status <s>] [--workflow <name>]  List improvements
+  improvements apply <id>  Apply proposed change to workflow module file
+  improvements reject <id> Reject an improvement
+  activity list [--source <s>] [--actor <a>] [--resource-type <t>] [--from <date>] [--to <date>]  List activity/audit entries
 
 Examples:
   loxtep login
-  loxtep login --email you@ex.com --password '…' --mfa-code 123456
-  loxtep login --browser
+  loxtep login --console
+  loxtep login --console --email you@ex.com --password '…' --mfa-code 123456
   loxtep whoami
   loxtep data-products list
   loxtep flows list --project-id <project-id>
@@ -124,7 +143,7 @@ async function main(): Promise<void> {
       const mfaIdx = args.indexOf('--mfa-code');
       const orgIdx = args.indexOf('--organization-id');
       await runLogin({
-        browser: args.includes('--browser'),
+        console: args.includes('--console'),
         email: emailIdx >= 0 ? args[emailIdx + 1] : undefined,
         password: passwordIdx >= 0 ? args[passwordIdx + 1] : undefined,
         mfa_code: mfaIdx >= 0 ? args[mfaIdx + 1] : undefined,
@@ -138,9 +157,60 @@ async function main(): Promise<void> {
     case 'whoami':
       await runWhoami();
       break;
-    case 'init':
-      await runInit();
+    case 'init': {
+      const templateIdx = args.indexOf('--template');
+      const templateSlug = templateIdx >= 0 ? args[templateIdx + 1] : undefined;
+      const createRepoIdx = args.indexOf('--create-repo');
+      const createRepo = createRepoIdx >= 0 ? (args[createRepoIdx + 1] || true) : undefined;
+      const fromRepoIdx = args.indexOf('--from-repo');
+      const fromRepo = fromRepoIdx >= 0 ? args[fromRepoIdx + 1] : undefined;
+      const nameIdx = args.indexOf('--name');
+      const name = nameIdx >= 0 ? args[nameIdx + 1] : undefined;
+
+      // Attempt to get an authenticated client (don't fail if not logged in)
+      const clientResult = await createCliClient().catch(() => null);
+      const client = clientResult?.client ?? null;
+
+      const result = await runInitCommand({
+        cwd: process.cwd(),
+        templateSlug,
+        createRepo,
+        fromRepo,
+        name,
+        client,
+      });
+
+      for (const line of result.stdout) console.log(line);
+      for (const line of result.stderr) console.error(line);
+      if (result.exitCode !== 0) process.exitCode = result.exitCode;
       break;
+    }
+    case 'generate':
+      await runGenerate();
+      break;
+    case 'test':
+      await runTest();
+      break;
+    case 'deploy':
+      await runDeploy();
+      break;
+    case 'attach': {
+      const { requireCliClient } = await import('./create-cli-client.js');
+      const authResult = await requireCliClient();
+      const attachResult = await runAttach(authResult.client, {
+        instanceId: getArg('--instance'),
+      });
+      if (attachResult.stdout.length > 0) {
+        attachResult.stdout.forEach(line => console.log(line));
+      }
+      if (attachResult.stderr.length > 0) {
+        attachResult.stderr.forEach(line => console.error(line));
+      }
+      if (attachResult.exitCode !== 0) {
+        process.exitCode = attachResult.exitCode;
+      }
+      break;
+    }
     case 'bus':
       if (sub === 'login') {
         await runBusLogin();
@@ -422,6 +492,69 @@ async function main(): Promise<void> {
         process.exitCode = 1;
       }
       break;
+    case 'improvements': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      if (sub === 'list') {
+        const statusFilter = getArg('--status');
+        const workflowFilter = getArg('--workflow');
+        const result = await runImprovementsListCommand(authResult.client, {
+          status: statusFilter,
+          workflow_name: workflowFilter,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'apply' && args[2]) {
+        const result = await runImprovementsApplyCommand(authResult.client, args[2]);
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'reject' && args[2]) {
+        const result = await runImprovementsRejectCommand(authResult.client, args[2]);
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep improvements list [--status proposed|applied|rejected] [--workflow <name>]\n' +
+          '       loxtep improvements apply <id>\n' +
+          '       loxtep improvements reject <id>'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'activity': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      if (sub === 'list') {
+        const sourceFilter = getArg('--source');
+        const actorFilter = getArg('--actor');
+        const resourceTypeFilter = getArg('--resource-type');
+        const fromFilter = getArg('--from');
+        const toFilter = getArg('--to');
+        const limitStr = getArg('--limit');
+        const limit = limitStr != null ? parseInt(limitStr, 10) : undefined;
+        const result = await runActivityListCommand(authResult.client, {
+          source: sourceFilter,
+          actor: actorFilter,
+          resource_type: resourceTypeFilter,
+          from: fromFilter,
+          to: toFilter,
+          limit: limit != null && !Number.isNaN(limit) ? limit : undefined,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep activity list [--source cli|sdk|mcp|ui] [--actor <id>] [--resource-type <type>] [--from <date>] [--to <date>] [--limit <n>]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
     default:
       console.error(`Unknown command: ${command}`);
       printHelp();

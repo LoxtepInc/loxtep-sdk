@@ -1,6 +1,6 @@
 {
   "name": "@loxtep/sdk",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Loxtep SDK for Node.js - data products, flows, projects, queues",
   "author": "Loxtep <engineering@loxtep.io>",
   "homepage": "https://loxtep.io",
@@ -78,17 +78,19 @@
     "@smithy/protocol-http": "^5.4.3",
     "@smithy/signature-v4": "^5.4.3",
     "@smithy/types": "^4.14.2",
-    "leo-sdk": "7.1.12"
+    "js-yaml": "4.1.0",
+    "leo-sdk": "7.1.12",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "@types/js-yaml": "4.0.9",
     "fast-check": "^4.8.0",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.9",
     "tsx": "^4.22.0",
     "typedoc": "^0.28.19",
     "typescript": "^6.0.3",
-    "zod": "^4.4.3",
     "zod-to-ts": "^2.0.0"
   }
 }

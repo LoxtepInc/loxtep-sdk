@@ -19,10 +19,36 @@ export interface Project {
   github_repo_url?: string;
   github_repo_name?: string;
   github_repo_path?: string;
+  /** Branch from the API response (mapped from db `github_repo_branch`). */
+  github_branch?: string;
+  /** SHA of the last successfully synced commit (null/undefined when never synced). */
+  github_last_commit_sha?: string | null;
+  /** UTC timestamp of the last successful sync (null/undefined when never synced). */
+  github_last_sync_at?: string | null;
   customer_role_arn?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Repository binding projection returned by `client.projects.repository(projectId)`.
+ * Read-only accessor (synchronous read, R18.6 carve-out).
+ * Returns the five binding fields plus last-synced state from the project record.
+ */
+export interface RepositoryBinding {
+  /** GitHub repository URL (e.g. "https://github.com/org/repo"). */
+  url: string | null;
+  /** Repository name (e.g. "org/repo"). */
+  name: string | null;
+  /** Subpath within the repository (empty string when the whole repo is the bundle). */
+  subpath: string;
+  /** Branch (defaults to "main" on the platform). */
+  branch: string;
+  /** SHA of the last successfully synced commit (empty string when never synced). */
+  last_commit_sha: string;
+  /** UTC timestamp of the last successful sync (empty string when never synced). */
+  last_sync_at: string;
 }
 
 /** List projects response. */

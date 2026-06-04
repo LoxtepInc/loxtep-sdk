@@ -103,4 +103,124 @@ describe('createProjectsApi', () => {
     expect(capturedPath).toBe('/workflows/projects/p1');
     expect(result).toEqual({ project_id: 'p1', deleted: true });
   });
+
+  describe('repository', () => {
+    it('returns binding fields from a fully-bound project with sync history', async () => {
+      const project = {
+        project_id: 'p1',
+        organization_id: 'org1',
+        name: 'P1',
+        status: 'active' as const,
+        is_active: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        github_repo_url: 'https://github.com/acme/orders-mesh',
+        github_repo_name: 'acme/orders-mesh',
+        github_repo_path: 'packages/data',
+        github_branch: 'develop',
+        github_last_commit_sha: 'abc123def456',
+        github_last_sync_at: '2025-06-01T12:00:00Z',
+      };
+      const http = {
+        get: async () => ({ success: true as const, data: project }),
+      } as unknown as LoxtepHttpClient;
+
+      const api = createProjectsApi(http);
+      const result = await api.repository('p1');
+
+      expect(result).toEqual({
+        url: 'https://github.com/acme/orders-mesh',
+        name: 'acme/orders-mesh',
+        subpath: 'packages/data',
+        branch: 'develop',
+        last_commit_sha: 'abc123def456',
+        last_sync_at: '2025-06-01T12:00:00Z',
+      });
+    });
+
+    it('returns empty last-synced values when project has never been synced', async () => {
+      const project = {
+        project_id: 'p1',
+        organization_id: 'org1',
+        name: 'P1',
+        status: 'active' as const,
+        is_active: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        github_repo_url: 'https://github.com/acme/orders-mesh',
+        github_repo_name: 'acme/orders-mesh',
+        github_repo_path: '',
+        github_branch: 'main',
+        github_last_commit_sha: null,
+        github_last_sync_at: null,
+      };
+      const http = {
+        get: async () => ({ success: true as const, data: project }),
+      } as unknown as LoxtepHttpClient;
+
+      const api = createProjectsApi(http);
+      const result = await api.repository('p1');
+
+      expect(result).toEqual({
+        url: 'https://github.com/acme/orders-mesh',
+        name: 'acme/orders-mesh',
+        subpath: '',
+        branch: 'main',
+        last_commit_sha: '',
+        last_sync_at: '',
+      });
+    });
+
+    it('returns null url/name and empty subpath/branch defaults when project is unbound', async () => {
+      const project = {
+        project_id: 'p1',
+        organization_id: 'org1',
+        name: 'P1',
+        status: 'active' as const,
+        is_active: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        // No github_* fields
+      };
+      const http = {
+        get: async () => ({ success: true as const, data: project }),
+      } as unknown as LoxtepHttpClient;
+
+      const api = createProjectsApi(http);
+      const result = await api.repository('p1');
+
+      expect(result).toEqual({
+        url: null,
+        name: null,
+        subpath: '',
+        branch: 'main',
+        last_commit_sha: '',
+        last_sync_at: '',
+      });
+    });
+
+    it('calls GET /workflows/projects/:id to fetch the project record', async () => {
+      let capturedPath: string | null = null;
+      const project = {
+        project_id: 'proj-xyz',
+        organization_id: 'org1',
+        name: 'P1',
+        status: 'active' as const,
+        is_active: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      };
+      const http = {
+        get: async (path: string) => {
+          capturedPath = path;
+          return { success: true as const, data: project };
+        },
+      } as unknown as LoxtepHttpClient;
+
+      const api = createProjectsApi(http);
+      await api.repository('proj-xyz');
+
+      expect(capturedPath).toBe('/workflows/projects/proj-xyz');
+    });
+  });
 });

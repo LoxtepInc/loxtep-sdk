@@ -16,3 +16,11 @@ export {
   SDK_EXAMPLE_PATHS,
   type ResolvedSdkApiPaths,
 } from './resolve-sdk-urls.js';
+export {
+  loadWorkspaceConfig,
+  resolveAutoConfig,
+  type WorkspaceResolvedFields,
+  type WorkspaceConfigResult,
+  type ExplicitConfigFields,
+  type AutoConfigResult,
+} from './workspace-config.js';

@@ -14,10 +14,10 @@ export interface LoginOptions {
   mfa_code?: string;
   organization_id?: string;
   /**
-   * Browser OAuth login: opens browser to the Loxtep app login page with a localhost callback.
-   * This is the default when no email/password is provided.
+   * Force console/terminal login (email + password + optional TOTP prompts).
+   * Use for CI/headless environments or when browser is unavailable.
    */
-  browser?: boolean;
+  console?: boolean;
   /** For tests: inject fetch to mock API. */
   fetchFn?: typeof fetch;
   /** For tests: config file path (default: env/file). */
@@ -52,11 +52,11 @@ function parseOptionalMfaInput(raw: string): string | undefined {
 }
 
 /**
- * Run login: by default opens a browser for OAuth login. Use --email/--password for headless/CI environments.
+ * Run login: by default opens a browser for OAuth login. Use --console or --email/--password for headless/CI environments.
  */
 export async function runLogin(options: LoginOptions = {}): Promise<void> {
-  // Default to browser login when no email/password provided
-  const useBrowser = options.browser === true || (!options.email && !options.password && options.browser !== false);
+  // Default to browser login unless --console or --email/--password forces console mode
+  const useBrowser = !options.console && !options.email && !options.password;
 
   if (useBrowser) {
     const config = await loadConfig(options.configFilePath);
@@ -155,7 +155,7 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Login failed:', msg);
       if (/forbidden|403/i.test(msg)) {
-        console.error('Hint: try browser login with: npx loxtep login --browser');
+        console.error('Hint: try browser login with: npx loxtep login');
       }
     }
     process.exitCode = 1;

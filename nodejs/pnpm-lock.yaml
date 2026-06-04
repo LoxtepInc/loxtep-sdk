@@ -41,13 +41,22 @@ importers:
       '@smithy/types':
         specifier: ^4.14.2
         version: 4.14.2
+      js-yaml:
+        specifier: 4.1.0
+        version: 4.1.0
       leo-sdk:
         specifier: 7.1.12
         version: 7.1.12(@aws-sdk/client-cloudformation@3.1049.0)(@aws-sdk/client-dynamodb@3.1049.0)(@aws-sdk/client-firehose@3.1049.0)(@aws-sdk/client-kinesis@3.1049.0)(@aws-sdk/client-lambda@3.1049.0)(@aws-sdk/client-s3@3.1049.0)(@aws-sdk/client-secrets-manager@3.1049.0)(@aws-sdk/client-sts@3.1049.0)(@aws-sdk/credential-providers@3.1049.0)(@aws-sdk/lib-dynamodb@3.1049.0(@aws-sdk/client-dynamodb@3.1049.0))(@aws-sdk/lib-storage@3.1049.0(@aws-sdk/client-s3@3.1049.0))
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/js-yaml':
+        specifier: 4.0.9
+        version: 4.0.9
       fast-check:
         specifier: ^4.8.0
         version: 4.8.0
@@ -66,9 +75,6 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
       zod-to-ts:
         specifier: ^2.0.0
         version: 2.0.0(typescript@6.0.3)(zod@4.4.3)
@@ -824,6 +830,9 @@ packages:
   '@types/jest@30.0.0':
     resolution: {integrity: sha512-XTYugzhuwqWjws0CVz8QpM36+T+Dz5mTEBKhNs/esGLnCIlGdRy+Dq78NRjd7ls7r8BC8ZRMOrKlkO1hU0JOwA==}
 
+  '@types/js-yaml@4.0.9':
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
+
   '@types/node@14.18.63':
     resolution: {integrity: sha512-fAtCfv4jJg+ExtXhvCkCqUKZ+4ok/JQk01qDKhL5BDDoS3AxKXhV5/MAVUZyQnSEd2GT92fkgZl0pz0Q0AzcIQ==}
 
@@ -1509,6 +1518,10 @@ packages:
 
   js-yaml@3.14.2:
     resolution: {integrity: sha512-PMSmkqxr106Xa156c2M265Z+FTrPl+oxd/rgOQy2tijQeK5TxQ43psO1ZCwhVOSdnn+RzkzlRz/eY4BgJBYVpg==}
+    hasBin: true
+
+  js-yaml@4.1.0:
+    resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
     hasBin: true
 
   jsesc@3.1.0:
@@ -3212,6 +3225,8 @@ snapshots:
       expect: 30.4.1
       pretty-format: 30.4.1
 
+  '@types/js-yaml@4.0.9': {}
+
   '@types/node@14.18.63': {}
 
   '@types/node@25.9.0':
@@ -4065,6 +4080,10 @@ snapshots:
     dependencies:
       argparse: 1.0.10
       esprima: 4.0.1
+
+  js-yaml@4.1.0:
+    dependencies:
+      argparse: 2.0.1
 
   jsesc@3.1.0: {}
 
