@@ -249,3 +249,144 @@ loxtep queue info <data-product-id>
 loxtep data-products query <data-product-id> "SELECT * FROM t LIMIT 10"
 loxtep metrics rate-limits
 ```
+
+## Module exports
+
+The SDK also ships standalone modules for configuration, authentication,
+code generation, skill scoping, and workflow authoring. Import them directly
+from the relevant subpath.
+
+### `config` module
+
+```typescript
+import { loadConfig, loadConfigSync, saveConfig } from '@loxtep/sdk/config';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `loadConfig` | function | Load config from env vars and optional file (async). Precedence: env > file > defaults |
+| `loadConfigSync` | function | Synchronous variant of `loadConfig` using `readFileSync` |
+| `saveConfig` | function | Persist config (api_url, org/project/instance IDs) to file. No secrets written to disk |
+| `parseStreamsPartial` | function | Extract a partial bus config from unknown JSON, keeping only valid stream resource keys |
+| `getConfigDir` | function | Return the default config directory path (`~/.loxtep`) |
+| `getDefaultConfigPath` | function | Return the default config file path (`~/.loxtep/config.json`) |
+| `buildAuthServiceUrl` | function | Build the full URL for auth endpoints (`/auth/login`, `/auth/refresh`) with path prefix |
+| `extendClientBaseUrl` | function | Extend `api_url` with a microservice path segment, avoiding duplication |
+| `buildPlatformRequestUrl` | function | Build a full request URL for the shared control-plane host, handling microservice routing |
+| `resolveAutoConfig` | function | Resolve configuration with full precedence: env > explicit > workspace files |
+
+### `auth` module
+
+```typescript
+import { login, refresh, browserLogin, TokenManager } from '@loxtep/sdk/auth';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `decodeJwtPayload` | function | Decode JWT payload to read `exp` (expiry) without verification. Client-side only |
+| `login` | function | Authenticate with email/password via `POST /auth/login`. Returns access + refresh tokens |
+| `refresh` | function | Refresh an access token via `POST /auth/refresh` |
+| `browserLogin` | function | Run OAuth 2.1 browser-based login flow with a localhost callback server |
+| `TokenManager` | class | In-memory token manager with auto-refresh support. No tokens persisted to disk |
+| `LoginMfaRequiredError` | class | Error thrown when login returns 403 and the user must supply a TOTP code |
+
+### `codegen` module
+
+```typescript
+import { loadWorkspaceContext, deriveKey, normalizeContext, emitArtifact, writeArtifact, computeCounts } from '@loxtep/sdk/codegen';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `loadWorkspaceContext` | function | Fetch all workspace resources from the control plane and assemble a `WorkspaceContext` |
+| `deriveKey` | function | Derive a deterministic, valid TypeScript identifier key from a resource name |
+| `normalizeContext` | function | Transform raw `WorkspaceContext` into canonical `NormalizedContext` with stable keys and id-sorted ordering |
+| `emitArtifact` | function | Render a `NormalizedContext` into a complete TypeScript source string with `as const` exports |
+| `writeArtifact` | function | Atomic file write of the generated artifact; returns per-resource-type counts |
+| `computeCounts` | function | Compute per-resource-type counts from a `NormalizedContext` |
+
+### `skills` module
+
+```typescript
+import { checkScope, parseSkillYaml, loadSkillsFromDirectory } from '@loxtep/sdk/skills';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `checkScope` | function | Fail-closed scope decision: check whether an operation on a resource is permitted by a skill |
+| `checkScopeByName` | function | Resolve a skill by name from a map and check scope in one step |
+| `parseSkillYaml` | function | Parse a YAML string into a validated `SkillDefinition` |
+| `loadSkillFromFile` | function | Load a single skill definition from a `.yaml` file path |
+| `loadSkillsFromDirectory` | function | Load all skill definitions from a `.loxtep/skills/` directory |
+| `validateSkillReferences` | function | Validate all skill resource references against the loaded `WorkspaceContext` |
+| `formatSkillValidationErrors` | function | Format skill validation errors into human-readable messages |
+| `SkillDefinitionSchema` | object | Zod schema for validating skill definition YAML structure |
+
+### `authoring` module
+
+```typescript
+import { defineDataWorkflow, on, createToolbox, agent } from '@loxtep/sdk/authoring';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `defineDataWorkflow` | function | Validate and return a `DataWorkflowModule` spec. Throws `ValidationError` on invalid input |
+| `on` | object | Trigger builders: `queueEvent`, `connectorEvent`, `schedule`, `webhook` |
+| `createToolbox` | function | Create a deterministic typed platform-call toolbox (no model in the loop) |
+| `agent` | function | Agentic operation entry point with scope enforcement and action trace |
+| `validateAgentOptions` | function | Validate agent options (prompt length, skills references) against available skills |
+| `computeReachableScope` | function | Compute the union of all resource scopes from supplied skill definitions |
+| `enforceAgentScope` | function | Check whether a resource access is within the merged scope of the agent's skills |
+| `createScopeGuardedToolbox` | function | Create a scope-guarded proxy that enforces scope and records traces before every call |
+| `compileModule` | function | Pure compiler: lower a `DataWorkflowModule` into `GraphPatchOp[]` for deployment |
+| `computeRemovalSet` | function | Compute workflows present on instance but absent from project modules (for cleanup) |
+| `ActionTrace` | class | Mutable action trace recorder with monotonically increasing sequence numbers |
+| `AgentScopeError` | class | Error thrown when an agentic operation is blocked due to a scope violation |
+| `ToolboxOperationError` | class | Error thrown when a toolbox operation fails (network, validation, or platform error) |
+
+### `http` module
+
+```typescript
+import { signRequest, LoxtepHttpClient } from '@loxtep/sdk/http';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `signRequest` | function | Sign an HTTP request with AWS SigV4 for API Gateway (`execute-api`). Returns headers including `Authorization` and `x-amz-*` |
+| `LoxtepHttpClient` | class | HTTP client that signs requests with AWS SigV4 and attaches JWT. Provides `get`, `post`, `put`, `delete` helpers with retry on 5xx/network errors and typed Loxtep errors on 4xx |
+
+### `checkpoint` module
+
+```typescript
+import { createMemoryCheckpointStore } from '@loxtep/sdk/checkpoint';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `createMemoryCheckpointStore` | function | Create an in-memory checkpoint store for stream/replay resume. Suitable for tests or single-process use |
+
+### Error classes
+
+```typescript
+import { AuthorizationError, ConflictError, ValidationError, DefinitionValidationError, SchemaValidationError, CheckpointError, parseHttpError } from '@loxtep/sdk/errors';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `AuthorizationError` | class | 403 — Insufficient permissions |
+| `ConflictError` | class | 409 — Resource already exists or version conflict |
+| `ValidationError` | class | 400 — Invalid input with optional `field_errors` array |
+| `DefinitionValidationError` | class | 400 — Payload doesn't match data product definition (schema validation failures) |
+| `SchemaValidationError` | class | Alias for `DefinitionValidationError` (backend terminology) |
+| `CheckpointError` | class | 500 — Failed to save or load a stream checkpoint |
+| `parseHttpError` | function | Map an HTTP status code and response body to the appropriate typed Loxtep error class |
+
+### `DataProductResolver` class
+
+```typescript
+import { DataProductResolver } from '@loxtep/sdk/client';
+```
+
+| Export | Type | Description |
+| --- | --- | --- |
+| `DataProductResolver` | class | Resolves a data product name or UUID into full runtime configuration (queue name, bot_id, stream bus resources). Caches results in memory. Used internally by `client.data_products.get_writer`/`get_reader` |
