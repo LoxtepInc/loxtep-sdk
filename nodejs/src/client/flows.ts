@@ -18,23 +18,11 @@ import type {
 import type { DefinitionValidationErrorEntry } from '../errors/types.js';
 import { DefinitionValidationError } from '../errors/validation.js';
 import { StreamingError } from '../errors/streaming.js';
-import { putPayloadsToQueue } from '../rstreams/event-bridge.js';
+import { createQueueWriter } from '../rstreams/event-bridge.js';
+import type { WriteOptions } from './queue-types.js';
 import { resolveIngestionQueueName } from './flow-queue-resolve.js';
 
 const WORKFLOWS_API_BASE = '/workflows/workflows';
-
-/** Default batch size for FlowWriter flush operations. */
-const DEFAULT_BATCH_SIZE = 100;
-/** Default flush interval in milliseconds. */
-const DEFAULT_FLUSH_INTERVAL_MS = 5000;
-/** Default maximum retry attempts for transient write failures. */
-const DEFAULT_MAX_RETRIES = 3;
-
-/**
- * Exponential backoff delays (in ms) for retry attempts.
- * Attempt 1: 0ms, Attempt 2: 1000ms, Attempt 3: 2000ms.
- */
-const BACKOFF_DELAYS_MS = [0, 1000, 2000];
 
 export interface FlowsApiDeps {
   /** Stream runtime; required for get_writer().close() */
@@ -163,67 +151,6 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Flush a single batch to the stream bus with retry and exponential backoff.
- * Retries transient errors up to `maxRetries` attempts.
- * Fails immediately on non-transient errors.
- * Throws StreamingError after all retries are exhausted.
- */
-async function flushBatchWithRetry(
-  rsdk: RStreamsSdk,
-  botId: string,
-  queueName: string,
-  batch: unknown[],
-  maxRetries: number,
-  sleepFn: (ms: number) => Promise<void> = sleep
-): Promise<void> {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      // Apply backoff delay before retry (first attempt has 0ms delay)
-      const delay = BACKOFF_DELAYS_MS[attempt] ?? (attempt * 1000);
-      await sleepFn(delay);
-
-      await putPayloadsToQueue(rsdk, botId, queueName, batch);
-      return; // Success
-    } catch (err) {
-      lastError = err;
-
-      // Non-transient errors fail immediately — no retry
-      if (!isTransientError(err)) {
-        throw new StreamingError(
-          `Failed to write events: ${err instanceof Error ? err.message : String(err)}`,
-          {
-            details: {
-              attempt: attempt + 1,
-              transient: false,
-              bot_id: botId,
-              queue_name: queueName,
-              batch_size: batch.length,
-            },
-          }
-        );
-      }
-      // Transient error — continue to next retry attempt
-    }
-  }
-
-  // All retries exhausted
-  throw new StreamingError(
-    `Failed to write events after ${maxRetries} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
-    {
-      details: {
-        attempts: maxRetries,
-        transient: true,
-        bot_id: botId,
-        queue_name: queueName,
-        batch_size: batch.length,
-      },
-    }
-  );
-}
-
-/**
  * Create the flows API surface (list, get with nodes, create, get_writer).
  */
 export function createFlowsApi(
@@ -233,7 +160,7 @@ export function createFlowsApi(
   list: (filters: FlowsListFilters) => Promise<FlowsListResponse['data']>;
   get: (id: string) => Promise<FlowWithNodes>;
   create: (input: FlowCreateInput) => Promise<Flow>;
-  get_writer: (flow_id: string, options?: GetWriterOptions) => FlowWriter;
+  get_writer: (flow_id: string, options?: GetWriterOptions) => Promise<FlowWriter>;
 } {
   return {
     async list(filters: FlowsListFilters): Promise<FlowsListResponse['data']> {
@@ -272,23 +199,78 @@ export function createFlowsApi(
       return res.data;
     },
 
-    get_writer(flow_id: string, options?: GetWriterOptions): FlowWriter {
-      const buffer: unknown[] = [];
-      const validate = options?.validate_definition === true && options?.definition;
-      const onError = options?.on_validation_error ?? 'reject';
-      const batchSize = options?.batch_size ?? DEFAULT_BATCH_SIZE;
-      const maxRetries = options?.max_retries ?? DEFAULT_MAX_RETRIES;
-      let closed = false;
-
-      return {
-        write(event: unknown): void {
-          if (closed) {
-            throw new StreamingError(
-              'Cannot write to a closed FlowWriter. Create a new writer via flows.get_writer().',
-              { details: { flow_id } }
-            );
+    async get_writer(flow_id: string, options?: GetWriterOptions): Promise<FlowWriter> {
+      // Resolve the stream runtime, source bot, and destination queue up front; the rstreams `load`
+      // stream (created inside createQueueWriter) owns buffering, batching, backoff, and checkpointing.
+      const rsdk = deps?.rsdk ?? (await deps?.get_rsdk?.());
+      if (!rsdk) {
+        throw new StreamingError(
+          'Stream bus configuration missing. Set LEO_* environment variables or add `streams` to ~/.loxtep/config.json. ' +
+            'Pass `streams` in LoxtepClientOptions, or ensure your instance stream environment is configured.',
+          {
+            details: {
+              flow_id,
+              hint: 'Run `loxtep init` to configure stream bus, or set LEO_* env vars from your instance.',
+            },
           }
-          if (validate && options?.definition) {
+        );
+      }
+
+      const botId = options?.bot_id;
+      if (!botId) {
+        throw new StreamingError(
+          'flows.get_writer requires bot_id in options (stream writer identity on the bus).',
+          { details: { flow_id } }
+        );
+      }
+
+      let queueName = options?.output_queue_name;
+      if (!queueName && options?.environment_prefix && options?.project_id) {
+        const flowRes = await http.get<{ success: true; data: Flow } | Flow>(
+          `${WORKFLOWS_API_BASE}/${encodeURIComponent(flow_id)}`
+        );
+        const flowData =
+          flowRes && typeof flowRes === 'object' && 'data' in flowRes
+            ? (flowRes as { data: Flow }).data
+            : (flowRes as Flow);
+        let nodes: FlowNode[] = [];
+        try {
+          const nodesRes = await http.get<{ success: true; data: { items: FlowNode[] } }>(
+            `${WORKFLOWS_API_BASE}/${encodeURIComponent(flow_id)}/nodes`
+          );
+          const payload = (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
+          nodes = (payload as { items?: FlowNode[] }).items ?? [];
+        } catch {
+          /* ignore */
+        }
+        const flowWithNodes: FlowWithNodes = { ...flowData, nodes };
+        queueName = resolveIngestionQueueName(flowWithNodes, options.environment_prefix);
+      }
+      if (!queueName) {
+        throw new StreamingError(
+          'flows.get_writer requires output_queue_name, or environment_prefix + project_id so the SDK can resolve the ingestion queue from the flow.',
+          { details: { flow_id } }
+        );
+      }
+
+      const writer = createQueueWriter(
+        rsdk,
+        botId,
+        queueName,
+        () =>
+          new StreamingError(
+            'Cannot write to a closed FlowWriter. Create a new writer via flows.get_writer().',
+            { details: { flow_id } }
+          )
+      );
+
+      // Optional per-event definition validation wraps the passthrough writer.
+      const validate = options?.validate_definition === true && !!options?.definition;
+      if (!validate) return writer;
+      const onError = options?.on_validation_error ?? 'reject';
+      return {
+        write(event: unknown, writeOptions?: WriteOptions): void {
+          if (options?.definition) {
             const errors = validateEventAgainstDefinition(event, options.definition);
             if (errors.length > 0) {
               if (onError === 'reject') {
@@ -301,85 +283,12 @@ export function createFlowsApi(
               if (onError === 'warn') {
                 console.warn('[FlowWriter] Definition validation failed:', errors);
               }
-              if (onError === 'skip') {
-                return;
-              }
+              if (onError === 'skip') return;
             }
           }
-          buffer.push(event);
+          writer.write(event, writeOptions);
         },
-        async close(): Promise<void> {
-          if (closed) return;
-          closed = true;
-
-          if (buffer.length === 0) {
-            buffer.length = 0;
-            return;
-          }
-
-          const rsdk = deps?.rsdk ?? (await deps?.get_rsdk?.());
-          if (!rsdk) {
-            buffer.length = 0;
-            throw new StreamingError(
-              'Stream bus configuration missing. Set LEO_* environment variables or add `streams` to ~/.loxtep/config.json. ' +
-              'Pass `streams` in LoxtepClientOptions, or ensure your instance stream environment is configured.',
-              {
-                details: {
-                  flow_id,
-                  hint: 'Run `loxtep init` to configure stream bus, or set LEO_* env vars from your instance.',
-                },
-              }
-            );
-          }
-
-          const botId = options?.bot_id;
-          if (!botId) {
-            buffer.length = 0;
-            throw new StreamingError(
-              'flows.get_writer requires bot_id in options (stream writer identity on the bus).',
-              { details: { flow_id } }
-            );
-          }
-
-          let queueName = options?.output_queue_name;
-          if (!queueName && options?.environment_prefix && options?.project_id) {
-            const flowRes = await http.get<{ success: true; data: Flow } | Flow>(
-              `${WORKFLOWS_API_BASE}/${encodeURIComponent(flow_id)}`
-            );
-            const flowData =
-              flowRes && typeof flowRes === 'object' && 'data' in flowRes
-                ? (flowRes as { data: Flow }).data
-                : (flowRes as Flow);
-            let nodes: FlowNode[] = [];
-            try {
-              const nodesRes = await http.get<{ success: true; data: { items: FlowNode[] } }>(
-                `${WORKFLOWS_API_BASE}/${encodeURIComponent(flow_id)}/nodes`
-              );
-              const payload = (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
-              nodes = (payload as { items?: FlowNode[] }).items ?? [];
-            } catch {
-              /* ignore */
-            }
-            const flowWithNodes: FlowWithNodes = { ...flowData, nodes };
-            queueName = resolveIngestionQueueName(flowWithNodes, options.environment_prefix);
-          }
-          if (!queueName) {
-            buffer.length = 0;
-            throw new StreamingError(
-              'flows.get_writer requires output_queue_name, or environment_prefix + project_id so the SDK can resolve the ingestion queue from the flow.',
-              { details: { flow_id } }
-            );
-          }
-
-          // Drain buffer in batches with retry logic
-          const events = [...buffer];
-          buffer.length = 0;
-
-          for (let i = 0; i < events.length; i += batchSize) {
-            const batch = events.slice(i, i + batchSize);
-            await flushBatchWithRetry(rsdk, botId, queueName, batch, maxRetries);
-          }
-        },
+        close: () => writer.close(),
       };
     },
   };

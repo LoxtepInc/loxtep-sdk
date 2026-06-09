@@ -3,6 +3,8 @@
  * Backend: workflows microservice /workflows/workflows, /workflows/workflows/:id/nodes.
  */
 
+import type { WriteOptions } from './queue-types.js';
+
 /** Pagination metadata from list APIs. */
 export interface FlowPaginationMeta {
   page: number;
@@ -113,8 +115,9 @@ export interface GetWriterOptions {
   max_retries?: number;
 }
 
-/** Writer interface: write(event), close() flushes. Transparent batching. */
+/** Writer interface: write(businessObject[, options]), close() flushes. Transparent batching.
+ *  Pass the business object — the SDK builds the rstreams envelope (source = writer bot_id). */
 export interface FlowWriter {
-  write: (event: unknown) => void | Promise<void>;
+  write: (event: unknown, options?: WriteOptions) => void | Promise<void>;
   close: () => Promise<void>;
 }

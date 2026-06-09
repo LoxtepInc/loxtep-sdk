@@ -3,7 +3,8 @@
  */
 
 import type { RStreamsSdk, ReadEvent } from 'leo-sdk';
-import type { QueueEvent } from '../client/queue-types.js';
+import type { QueueEvent, WriteOptions } from '../client/queue-types.js';
+import type { FlowWriter } from '../client/flow-types.js';
 
 function readEventToQueueEvent<T>(wrapper: ReadEvent<T>): QueueEvent {
   const w = wrapper as ReadEvent<T> & {
@@ -27,17 +28,58 @@ function readEventToQueueEvent<T>(wrapper: ReadEvent<T>): QueueEvent {
   };
 }
 
-export async function putPayloadsToQueue(
+/**
+ * Build the rstreams envelope for a business object. The source bot is set by the writer
+ * (`rsdk.load(botId, …)`), so we deliberately emit NO top-level `id` — in rstreams that is the
+ * SOURCE-BOT identity, and letting a caller's record id land there registers a bogus bot per record
+ * in LeoCron. The business object is always the `payload`.
+ */
+export function toLeoEnvelope(businessObject: unknown, options?: WriteOptions): Record<string, unknown> {
+  const env: Record<string, unknown> = { payload: businessObject };
+  const ts = options?.event_source_timestamp;
+  if (ts != null) {
+    const ms = typeof ts === 'number' ? ts : Date.parse(String(ts));
+    if (!Number.isNaN(ms)) env.event_source_timestamp = ms;
+  }
+  return env;
+}
+
+/** Minimal shape of the rstreams `load` write stream we rely on. */
+interface LeoLoadStream {
+  write(chunk: unknown): boolean;
+  end(cb: (err?: unknown) => void): void;
+}
+
+/**
+ * Thin queue writer over the rstreams `load` stream. The rstreams SDK owns buffering, batching,
+ * backoff, and checkpointing — this wrapper does NOT buffer or retry; it only wraps each business
+ * object into a leo envelope (source = `botId`) and forwards it to `rsdk.load(botId, queueName)`,
+ * then flushes on `close()`. Callers pass the business object to `write()`.
+ */
+export function createQueueWriter(
   rsdk: RStreamsSdk,
   botId: string,
   queueName: string,
-  payloads: unknown[]
-): Promise<void> {
-  if (payloads.length === 0) return;
-  const events = payloads.map(p =>
-    p !== null && typeof p === 'object' && 'payload' in (p as object) ? p : p
-  );
-  await rsdk.putEvents(events as never[], { botId, queue: queueName });
+  closedError: () => Error
+): FlowWriter {
+  const stream = (
+    rsdk as unknown as { load: (b: string, q: string) => LeoLoadStream }
+  ).load(botId, queueName);
+  let closed = false;
+
+  return {
+    write(event: unknown, options?: WriteOptions): void {
+      if (closed) throw closedError();
+      stream.write(toLeoEnvelope(event, options));
+    },
+    async close(): Promise<void> {
+      if (closed) return;
+      closed = true;
+      await new Promise<void>((resolve, reject) =>
+        stream.end(err => (err ? reject(err) : resolve()))
+      );
+    },
+  };
 }
 
 /**
