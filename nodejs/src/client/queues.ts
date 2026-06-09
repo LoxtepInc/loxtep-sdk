@@ -14,7 +14,7 @@ import type {
   QueueEvent,
 } from './queue-types.js';
 import {
-  putPayloadsToQueue,
+  createQueueWriter,
   readQueueBatch,
   type ReadQueueBatchResult,
 } from '../rstreams/event-bridge.js';
@@ -189,18 +189,13 @@ export function createQueuesApi(
           'queues.open_writer requires a configured Loxtep stream bus on LoxtepClient (pass `streams` and instance env, or explicit bus config).'
         );
       }
-      const buffer: unknown[] = [];
-      return {
-        async write(event: unknown): Promise<void> {
-          buffer.push(event);
-        },
-        async close(): Promise<void> {
-          if (buffer.length === 0) return;
-          const events = [...buffer];
-          buffer.length = 0;
-          await putPayloadsToQueue(rsdk, bot_id, queue_name, events);
-        },
-      };
+      // The rstreams `load` stream (inside createQueueWriter) owns buffering/batching/backoff.
+      return createQueueWriter(
+        rsdk,
+        bot_id,
+        queue_name,
+        () => new StreamingError('Cannot write to a closed queue writer.', { details: { queue_name } })
+      );
     },
   };
 }

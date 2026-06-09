@@ -23,7 +23,11 @@ import type {
 } from './data-products-types.js';
 import type { QueueMetadata, ReaderCheckpoint } from './queue-types.js';
 import type { FlowWriter } from './flow-types.js';
-import { readQueueBatch, putPayloadsToQueue, type ReadQueueBatchResult } from '../rstreams/event-bridge.js';
+import {
+  readQueueBatch,
+  createQueueWriter,
+  type ReadQueueBatchResult,
+} from '../rstreams/event-bridge.js';
 import { NotFoundError } from '../errors/resource.js';
 import { AuthorizationError } from '../errors/auth.js';
 import { StreamingError } from '../errors/streaming.js';
@@ -43,88 +47,6 @@ function buildQueryString(params: Record<string, string | number | boolean | und
   }
   const qs = search.toString();
   return qs ? `?${qs}` : '';
-}
-
-/** Default backoff delays (ms) for retry attempts. */
-const BACKOFF_DELAYS_MS = [0, 1000, 2000];
-
-/**
- * Determine whether an error is transient and should be retried.
- * Transient: network errors, timeouts, throttling (429), 5xx responses.
- */
-function isTransientError(err: unknown): boolean {
-  if (err === null || err === undefined) return false;
-  const statusCode =
-    typeof (err as { status_code?: unknown }).status_code === 'number'
-      ? (err as { status_code: number }).status_code
-      : typeof (err as { statusCode?: unknown }).statusCode === 'number'
-        ? (err as { statusCode: number }).statusCode
-        : undefined;
-  if (statusCode !== undefined) {
-    if (statusCode === 429) return true;
-    if (statusCode >= 500 && statusCode < 600) return true;
-    if (statusCode >= 400 && statusCode < 500) return false;
-  }
-  const code =
-    typeof (err as { code?: unknown }).code === 'string'
-      ? (err as { code: string }).code
-      : undefined;
-  if (code) {
-    const transientCodes = new Set([
-      'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'EPIPE',
-      'EAI_AGAIN', 'RATE_LIMIT_EXCEEDED', 'SERVICE_UNAVAILABLE', 'GATEWAY_TIMEOUT',
-    ]);
-    if (transientCodes.has(code)) return true;
-    const nonTransientCodes = new Set([
-      'AUTHENTICATION_ERROR', 'AUTHORIZATION_ERROR', 'VALIDATION_ERROR', 'NOT_FOUND',
-    ]);
-    if (nonTransientCodes.has(code)) return false;
-  }
-  const message =
-    typeof (err as { message?: unknown }).message === 'string'
-      ? (err as { message: string }).message.toLowerCase()
-      : '';
-  if (
-    message.includes('timeout') || message.includes('econnreset') ||
-    message.includes('econnrefused') || message.includes('network') ||
-    message.includes('socket hang up')
-  ) {
-    return true;
-  }
-  return true;
-}
-
-/**
- * Flush a single batch to the stream bus with retry and exponential backoff.
- */
-async function flushBatchWithRetry(
-  rsdk: import('../rstreams/leo-runtime.js').RStreamsSdk,
-  botId: string,
-  queueName: string,
-  batch: unknown[],
-  maxRetries: number
-): Promise<void> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const delay = BACKOFF_DELAYS_MS[attempt] ?? (attempt * 1000);
-      if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
-      await putPayloadsToQueue(rsdk, botId, queueName, batch);
-      return;
-    } catch (err) {
-      lastError = err;
-      if (!isTransientError(err)) {
-        throw new StreamingError(
-          `Failed to write events: ${err instanceof Error ? err.message : String(err)}`,
-          { details: { attempt: attempt + 1, transient: false, bot_id: botId, queue_name: queueName, batch_size: batch.length } }
-        );
-      }
-    }
-  }
-  throw new StreamingError(
-    `Failed to write events after ${maxRetries} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
-    { details: { attempts: maxRetries, transient: true, bot_id: botId, queue_name: queueName, batch_size: batch.length } }
-  );
 }
 
 export interface DataProductsApiDeps {
@@ -521,40 +443,19 @@ export function createDataProductsApi(
       const rsdk = createRStreamsSdk(streamResources);
       const botId = options?.bot_id ?? dataProduct.bot_id;
       const queueName = dataProduct.queue_name;
-      const batchSize = options?.batch_size ?? 100;
-      const maxRetries = options?.max_retries ?? 3;
 
-      const buffer: unknown[] = [];
-      let closed = false;
-
-      return {
-        write(event: unknown): void {
-          if (closed) {
-            throw new StreamingError(
-              'Cannot write to a closed FlowWriter. Create a new writer via data_products.get_writer().',
-              { details: { data_product_id: dataProduct.data_product_id, queue_name: queueName } }
-            );
-          }
-          buffer.push(event);
-        },
-        async close(): Promise<void> {
-          if (closed) return;
-          closed = true;
-
-          if (buffer.length === 0) {
-            buffer.length = 0;
-            return;
-          }
-
-          const events = [...buffer];
-          buffer.length = 0;
-
-          for (let i = 0; i < events.length; i += batchSize) {
-            const batch = events.slice(i, i + batchSize);
-            await flushBatchWithRetry(rsdk, botId, queueName, batch, maxRetries);
-          }
-        },
-      };
+      // The rstreams `load` stream (inside createQueueWriter) owns buffering, batching, backoff,
+      // and checkpointing — the wrapper just forwards business objects to it.
+      return createQueueWriter(
+        rsdk,
+        botId,
+        queueName,
+        () =>
+          new StreamingError(
+            'Cannot write to a closed FlowWriter. Create a new writer via data_products.get_writer().',
+            { details: { data_product_id: dataProduct.data_product_id, queue_name: queueName } }
+          )
+      );
     },
 
     /**

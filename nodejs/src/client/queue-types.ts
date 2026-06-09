@@ -86,8 +86,22 @@ export interface QueueReaderHandle {
   close(): void;
 }
 
-/** Handle returned by queues.open_writer; buffers then flushes via stream `putEvents`. */
+/**
+ * Options for a single writer `write()`. Callers pass the **business object** to `write()`; the SDK
+ * builds the rstreams envelope (source bot = the writer's `bot_id`, `payload` = the business object).
+ * Callers never set the envelope/source themselves.
+ */
+export interface WriteOptions {
+  /**
+   * Source event time for this record. A ms-epoch number, or any `Date.parse`-able string. Sets the
+   * leo envelope's `event_source_timestamp`; if omitted, leo assigns the write time.
+   */
+  event_source_timestamp?: string | number;
+}
+
+/** Handle returned by queues.open_writer; forwards to the rstreams `load` stream (which buffers/flushes). */
 export interface QueueWriterHandle {
-  write(event: unknown): Promise<void>;
+  /** Write a business object (the SDK builds the envelope; source = writer bot_id). */
+  write(event: unknown, options?: WriteOptions): void | Promise<void>;
   close(): Promise<void>;
 }
