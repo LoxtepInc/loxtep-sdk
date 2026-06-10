@@ -226,7 +226,7 @@ Data-mesh projects (repos/workspaces).
 | `list_projects` | organization | — | `domain_id` |
 | `get_project` | organization | `project_id` | — |
 | `create_project` | organization | `name` | `github_action`, `description`, `domain_id` |
-| `update_project` | organization | `project_id` | `name`, `description`, `domain_id`, `github_*` |
+| `update_project` | organization | `project_id` | `name`, `description`, `target_domain_id`, `github_*` |
 | `delete_project` | organization | `project_id` | — |
 
 ```json
