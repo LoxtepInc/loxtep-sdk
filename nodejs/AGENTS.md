@@ -326,7 +326,7 @@ Data products and consumptions. `kind` is `source` (atomic, domain-owned) or
 | `get_data_product_lexicon` | organization | `data_product_id` | — |
 | `get_data_product_sdk_config` | organization | `data_product_id` | — |
 | `list_consumptions` | organization | — | `data_product_id` |
-| `create_consumption` | organization | `data_product_id`, `target` | — |
+| `create_consumption` | organization | `data_product_id`, `endpoint_url` | `headers`, `secret_token`, `filters`, `method` |
 
 ```json
 { "operation": "create_data_product", "project_id": "proj_…", "name": "orders", "kind": "source" }
@@ -337,12 +337,12 @@ Schema definitions.
 
 | Operation | Scope | Required params | Optional params |
 | --- | --- | --- | --- |
-| `create_schema` | organization | `name`, `definition` | `domain_id` |
+| `create_schema` | organization | `data_product_id`, `name`, `version`, `format`, `fields[]`, `definition` | `metadata`, `preview` |
 | `update_schema` | organization | `schema_id`, `definition` | — |
 | `delete_schema` | organization | `schema_id` | — |
 | `get_schema` | organization | `schema_id` | — |
 | `list_schema_versions` | organization | `schema_id` | — |
-| `tag_pii_fields` | organization | `schema_id`, `fields` | — |
+| `tag_pii_fields` | organization | `schema_version_id`, `field_names` | — |
 
 ```json
 { "operation": "get_schema", "schema_id": "sch_…" }
@@ -420,11 +420,11 @@ Ontology, vocabulary, namespace mappings.
 | --- | --- | --- | --- |
 | `list_thesaurus_terms` | organization | — | — |
 | `get_thesaurus_term` | organization | `term_id` | — |
-| `create_thesaurus_term` | organization | `term` | `aliases` |
+| `create_thesaurus_term` | organization | `canonical_key` | `aliases` (array of `{path: string}` objects) |
 | `update_thesaurus_term` | organization | `term_id` | `aliases` |
 | `delete_thesaurus_term` | organization | `term_id` | — |
 | `sync_vocabulary` | organization | `vocabulary` | — |
-| `resolve_canonical_key` | organization | `key` | — |
+| `resolve_canonical_key` | organization | `key_or_alias` | — |
 | `get_ontology_relationships` | organization | `concept_id` | — |
 | `create_ontology_concept` | organization | `name` | — |
 | `create_ontology_relationship` | organization | `from`, `to`, `type` | — |
@@ -435,7 +435,7 @@ Ontology, vocabulary, namespace mappings.
 | `get_namespace_mapping` | organization | `namespace` | — |
 
 ```json
-{ "operation": "resolve_canonical_key", "key": "customer_email" }
+{ "operation": "resolve_canonical_key", "key_or_alias": "customer_email" }
 ```
 
 ### `loxtep_process_intel`
@@ -443,11 +443,11 @@ Process intelligence.
 
 | Operation | Scope | Required params | Optional params |
 | --- | --- | --- | --- |
-| `get_entity_context` | organization | `entity_id` | — |
-| `query_entity_context` | organization | `query` | — |
+| `get_entity_context` | organization | `entity_id`, `entity_type` | — |
+| `query_entity_context` | organization | `entity_id`, `entity_type` | — |
 | `create_entity_context` | organization | `entity_id`, `context` | — |
 | `list_decision_traces` | organization | — | `anchor` |
-| `record_decision_trace` | organization | `trace` | — |
+| `record_decision_trace` | organization | `decision_id`, `procedure_id`, `outcome`, `actor` | `rationale`, `inputs`, `override` |
 
 ```json
 { "operation": "list_decision_traces" }
