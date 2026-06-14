@@ -1,10 +1,11 @@
 """
 Loxtep Python SDK.
-data_products, flows, projects, domains, standards (policies), data_contracts,
+data_products, delivery, flows, projects, domains, standards (policies), data_contracts,
 connections, queues, quality, catalog, schemas.
 """
 
 from .client import AsyncLoxtepClient, LoxtepClient
+from .delivery import AsyncDeliveryApi, DeliveryApi
 from .errors import (
     AuthenticationError,
     AuthorizationError,
@@ -17,8 +18,11 @@ from .errors import (
 )
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
 from .models import (
+    Consumption,
     DataProduct,
     DataProductKind,
+    DeliveryInterface,
+    DeliveryType,
     UsageMap,
     UsageMapEdge,
     UsageMapNode,
@@ -40,6 +44,11 @@ __all__ = [
     "RateLimitInfo",
     "DataProduct",
     "DataProductKind",
+    "DeliveryInterface",
+    "DeliveryType",
+    "Consumption",
+    "DeliveryApi",
+    "AsyncDeliveryApi",
     "UsageMap",
     "UsageMapEdge",
     "UsageMapNode",
