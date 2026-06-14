@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+### Terminology Migration
+
+The SDK now uses "delivery" terminology as the primary interface, replacing the
+overloaded "consumption" vocabulary. This aligns the SDK with the platform UI,
+documentation, and MCP tool names.
+
+**Namespace rename:** `consumptions` → `delivery`
+
+```ts
+// Old (deprecated — still works, logs warning on first use)
+const interfaces = await client.dataProducts.consumptions.list(dpId);
+
+// New (preferred)
+const interfaces = await client.dataProducts.delivery.list(dpId);
+```
+
+**Type rename:** `Consumption` → `DeliveryInterface`
+
+```ts
+// Old (deprecated type alias — still compiles)
+import type { Consumption } from '@loxtep/sdk';
+
+// New (preferred)
+import type { DeliveryInterface } from '@loxtep/sdk';
+```
+
+**New `deliveryType` field on `DeliveryInterface`:**
+
+```ts
+const webhook: DeliveryInterface = {
+  id: 'di_...',
+  deliveryType: 'webhook',
+  endpointUrl: 'https://example.com/hook',
+  method: 'POST',
+  // ...
+};
+```
+
+The old `consumptions` namespace and `Consumption` type remain as deprecated
+aliases and will be removed no sooner than 6 months after this release.
+
+### New features
+
+- **`dataProducts.delivery` namespace** — Primary namespace for managing delivery
+  interfaces with `list()`, `create()`, `update()`, and `delete()` methods.
+- **`DeliveryInterface` type** — Includes a `deliveryType` discriminator field
+  (`'webhook' | 'api_endpoint' | 'export' | 'database_sync' | 'bi_connect' | 'event_stream'`).
+
+### Deprecated
+
+- `dataProducts.consumptions` namespace — Use `dataProducts.delivery` instead.
+  Logs a warning on first access.
+- `Consumption` type — Use `DeliveryInterface` instead. Retained as a type alias.
+
+---
+
 ## [0.2.0] - Unreleased
 
 ### Breaking changes

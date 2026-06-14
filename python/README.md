@@ -2,15 +2,15 @@
 
 Python client for the Loxtep API.
 
-**Available namespaces:** `data_products`, `flows`, `workflows`, `observe`,
-`projects`, `templates`, `connectors`, `instances`, `procedures`,
+**Available namespaces:** `data_products`, `delivery`, `flows`, `workflows`,
+`observe`, `projects`, `templates`, `connectors`, `instances`, `procedures`,
 `connections`, `queues`, `quality`, `catalog`, `discovery`, `schemas`,
 `process_intelligence`. Stubs (limited functionality): `domains`, `standards`,
 `data_contracts`, `metrics`.
 
-> **Not yet available from Node.js SDK:** `thesaurus`, `consumptions`,
-> `config`, `auth`, `codegen`, `skills`, `authoring`, `http`, `checkpoint`
-> modules. Analytics under `data_products` only (no standalone analytics).
+> **Not yet available from Node.js SDK:** `thesaurus`, `config`, `auth`,
+> `codegen`, `skills`, `authoring`, `http`, `checkpoint` modules. Analytics
+> under `data_products` only (no standalone analytics).
 
 ## Install
 
@@ -38,6 +38,13 @@ asset = client.data_products.get("data-product-id")
 items, pagination = client.data_products.list(page=1, page_size=20)
 results = client.data_products.query("data-product-id", "SELECT * FROM t LIMIT 10")
 tables = client.data_products.list_tables("data-product-id")
+
+# Delivery interfaces (how data products deliver data externally)
+interfaces = client.delivery.list("data-product-id")
+client.delivery.create("data-product-id", delivery_type="webhook", endpoint_url="https://example.com/hook", method="POST")
+interface = client.delivery.get("data-product-id", "delivery-id")
+client.delivery.update("data-product-id", "delivery-id", is_active=False)
+client.delivery.delete("data-product-id", "delivery-id")
 
 # Flows (project-scoped)
 flows_data = client.flows.list(project_id="project-id")
@@ -107,6 +114,7 @@ for full API and MCP tool reference.
 | Surface                                                      | Methods                                                                                                                                                                         |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **data_products**                                            | get, list, create_data_product, get_usage_map, search, query, list_tables, get_queue_info, get_reader_checkpoint, stream, replay                                                |
+| **delivery**                                                 | list, get, create, update, delete                                                                                                                                               |
 | **flows**                                                    | list, get, create, get_writer                                                                                                                                                   |
 | **connections**                                              | list, get, create, update, delete, test                                                                                                                                         |
 | **queues**                                                   | get_queue_metadata, get_reader_checkpoint, open_reader, open_writer                                                                                                             |
@@ -205,6 +213,34 @@ All request/response fields use **snake_case** per backend conventions.
 | `get_reader_checkpoint(id, bot_id)` | Get reader checkpoint for a bot |
 | `stream(id, *, start, batch_size)` | Stream events from a data product (sync generator) |
 | `replay(id, *, start, batch_size)` | Replay events from a data product (sync generator) |
+
+### `client.delivery`
+
+Manage delivery interfaces — how data products deliver data to external systems
+(webhooks, API endpoints, exports, database syncs, BI connections, event streams).
+
+| Method | Description |
+| --- | --- |
+| `list(data_product_id, *, page, page_size, status, is_active)` | List delivery interfaces for a data product |
+| `get(data_product_id, delivery_id)` | Get a single delivery interface |
+| `create(data_product_id, delivery_type="webhook", **kwargs)` | Create a new delivery interface |
+| `update(data_product_id, delivery_id, **kwargs)` | Update an existing delivery interface |
+| `delete(data_product_id, delivery_id)` | Delete a delivery interface |
+
+**`DeliveryInterface` model fields:**
+`consumption_id`, `data_product_id`, `organization_id`, `delivery_type`,
+`delivery_method`, `status`, `is_active`, `endpoint_url`, `method`, `name`,
+`description`, `headers`, `filters`, `configuration`, `metadata`,
+`created_at`, `updated_at`.
+
+**`delivery_type` values:** `webhook`, `api_endpoint`, `export`,
+`database_sync`, `bi_connect`, `event_stream`.
+
+> **Terminology Migration:** `client.consumptions` is a deprecated alias for
+> `client.delivery`. It proxies all calls and logs a deprecation warning on
+> first use. The `Consumption` model is a deprecated alias for
+> `DeliveryInterface`. Both will be removed no sooner than 6 months after this
+> release. See `/docs/reference/terminology-changes` for the full mapping.
 
 ### `client.domains` ⚠️ stub
 

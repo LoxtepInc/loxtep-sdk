@@ -3,8 +3,12 @@
 Client for the Loxtep API. Customer-facing surface: **data_products**,
 **flows**, **connections**, **queues**, **quality**, **catalog**, **discovery**,
 **schemas**, **projects**, **domains**, **standards**, **data_contracts**,
-**workflows**, **templates**, **connectors**, **instances**, **consumptions**,
+**workflows**, **templates**, **connectors**, **instances**, **delivery**,
 **thesaurus**, **procedures**, **metrics**.
+
+> **Note:** The `consumptions` namespace is deprecated. Use `delivery` instead.
+> The `consumptions` namespace remains functional but logs a deprecation warning
+> on first use and will be removed in a future major version.
 
 **Node.js 22+** is the supported runtime (`engines` in `package.json`). **Live**
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
@@ -108,7 +112,8 @@ credentials for SigV4 on both REST and the bus.
 - **standards** – list, get
 - **data_contracts** – list, get
 - **thesaurus** – listTerms, resolveCanonicalKey
-- **consumptions** – list, get, create, update, delete
+- **consumptions** – ~~list, get, create, update, delete~~ (deprecated — use `delivery`)
+- **delivery** – list, get, create, update, delete
 - **instances** – list, get, get_stream_config
 - **procedures** – list
 - **metrics** – log, get_reporter
@@ -182,6 +187,41 @@ for await (const event of filterStream(
 )) {
   console.log(event);
 }
+```
+
+## Delivery interfaces
+
+Configure how a data product delivers data to external systems. The `delivery`
+namespace is the primary interface (replaces the deprecated `consumptions`
+namespace).
+
+```ts
+import { LoxtepClient } from '@loxtep/sdk';
+import type { DeliveryInterface, DeliveryCreateInput } from '@loxtep/sdk';
+
+const client = new LoxtepClient({
+  api_url: 'https://api.loxtep.com',
+  auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
+});
+
+// List delivery interfaces for a data product
+const { items, pagination } = await client.delivery.list('dp_abc123');
+
+// Create a webhook delivery interface
+const webhook = await client.delivery.create('dp_abc123', {
+  deliveryType: 'webhook',
+  name: 'Order notifications',
+  endpoint_url: 'https://example.com/webhooks/orders',
+  method: 'POST',
+});
+
+// Update a delivery interface
+await client.delivery.update('dp_abc123', webhook.consumption_id, {
+  is_active: false,
+});
+
+// Delete a delivery interface
+await client.delivery.delete('dp_abc123', webhook.consumption_id);
 ```
 
 ## Documentation
