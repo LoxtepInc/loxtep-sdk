@@ -1,9 +1,11 @@
 """
 Pydantic models for the Loxtep Python SDK.
 
-Typed representations of API resources including DataProduct, UsageMapNode, and UsageMapEdge.
+Typed representations of API resources including DataProduct, DeliveryInterface,
+UsageMapNode, and UsageMapEdge.
 """
 
+import warnings
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -68,3 +70,67 @@ class UsageMap(BaseModel):
 
     nodes: list[UsageMapNode] = Field(default_factory=list, description="Data product nodes")
     edges: list[UsageMapEdge] = Field(default_factory=list, description="Source-to-consumer edges")
+
+
+# ---------------------------------------------------------------------------
+# Delivery Interface
+# ---------------------------------------------------------------------------
+
+DeliveryType = Literal[
+    "webhook",
+    "api_endpoint",
+    "export",
+    "database_sync",
+    "bi_connect",
+    "event_stream",
+]
+"""Discriminator for the delivery pattern used by a delivery interface."""
+
+
+class DeliveryInterface(BaseModel):
+    """A delivery interface record (stored in the `consumptions` table).
+
+    Delivery interfaces define how a data product makes its data available to
+    external systems. Previously called "consumption" — the database table
+    retains the old name for migration safety.
+    """
+
+    consumption_id: str = Field(..., description="Unique identifier for the delivery interface")
+    data_product_id: str = Field(..., description="The data product this interface belongs to")
+    organization_id: str = Field(..., description="Owning organization")
+    delivery_type: DeliveryType = Field(
+        ..., description="The delivery pattern: webhook, api_endpoint, export, database_sync, bi_connect, event_stream"
+    )
+    delivery_method: str = Field(default="", description="Delivery method identifier")
+    status: str = Field(default="active", description="Current status (active, paused, failed, etc.)")
+    is_active: bool = Field(default=True, description="Whether this delivery interface is currently active")
+    endpoint_url: Optional[str] = Field(default=None, description="Target endpoint URL (for webhook/api_endpoint)")
+    method: str = Field(default="POST", description="HTTP method (default POST)")
+    name: Optional[str] = Field(default=None, description="Human-readable name")
+    description: Optional[str] = Field(default=None, description="Description of this delivery interface")
+    headers: dict[str, Any] = Field(default_factory=dict, description="Custom HTTP headers")
+    filters: dict[str, Any] = Field(default_factory=dict, description="Event/data filters")
+    configuration: dict[str, Any] = Field(default_factory=dict, description="Pattern-specific configuration")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    created_at: str = Field(default="", description="ISO timestamp of creation")
+    updated_at: str = Field(default="", description="ISO timestamp of last update")
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+
+def _consumption_deprecated_init(self: "DeliveryInterface", **data: Any) -> None:
+    """Deprecated: Use DeliveryInterface instead."""
+    warnings.warn(
+        "Consumption is deprecated. Use DeliveryInterface instead. "
+        "See /docs/reference/terminology-changes for migration guide.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    DeliveryInterface.__init__(self, **data)
+
+
+# Consumption: deprecated alias for DeliveryInterface.
+# Retained for backward compatibility — will be removed no sooner than 6 months
+# after the delivery namespace ships.
+Consumption = DeliveryInterface
+"""Deprecated alias for DeliveryInterface. Use DeliveryInterface instead."""
