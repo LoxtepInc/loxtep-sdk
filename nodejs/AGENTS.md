@@ -325,8 +325,8 @@ Data products and consumptions. `kind` is `source` (atomic, domain-owned) or
 | `get_data_product` | organization | `data_product_id` | — |
 | `get_data_product_lexicon` | organization | `data_product_id` | — |
 | `get_data_product_sdk_config` | organization | `data_product_id` | — |
-| `list_consumptions` | organization | — | `data_product_id` |
-| `create_consumption` | organization | `data_product_id`, `endpoint_url` | `headers`, `secret_token`, `filters`, `method` |
+| `list_delivery_interfaces` | organization | — | `data_product_id` |
+| `create_delivery_interface` | organization | `data_product_id`, `endpoint_url` | `delivery_type`, `headers`, `secret_token`, `filters`, `method` |
 
 ```json
 { "operation": "create_data_product", "project_id": "proj_…", "name": "orders", "kind": "source" }

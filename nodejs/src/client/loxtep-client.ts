@@ -16,7 +16,6 @@ import { createTemplatesApi } from './templates.js';
 import { createObserveApi } from './observe.js';
 import { createThesaurusApi } from './thesaurus.js';
 import { createProcessIntelligenceApi } from './process-intelligence.js';
-import { createConsumptionsApi } from './consumptions.js';
 import { createDeliveryApi, type DeliveryApi } from './delivery.js';
 import { createConnectorsApi } from './connectors.js';
 import { createInstancesApi } from './instances.js';
@@ -66,31 +65,6 @@ export interface FromWorkspaceOptions {
   region?: string;
   /** Optional custom debug logger. Defaults to `console.debug`. */
   debug?: (message: string) => void;
-}
-
-/**
- * Creates a deprecated proxy around the consumptions API that logs a warning
- * on first use, then delegates all calls to the underlying implementation.
- */
-function createConsumptionsDeprecatedProxy(
-  http: LoxtepHttpClient
-): ReturnType<typeof createConsumptionsApi> {
-  let warned = false;
-  const underlying = createConsumptionsApi(http);
-  const handler: ProxyHandler<ReturnType<typeof createConsumptionsApi>> = {
-    get(target, prop, receiver) {
-      if (!warned && typeof prop === 'string' && prop in target) {
-        warned = true;
-        console.warn(
-          '[loxtep] DEPRECATION: `client.consumptions` is deprecated. ' +
-            'Use `client.delivery` instead. ' +
-            'The `consumptions` namespace will be removed in a future major version.'
-        );
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  };
-  return new Proxy(underlying, handler);
 }
 
 /**
@@ -160,11 +134,6 @@ export class LoxtepClient {
 
   /** Process Intelligence: decisionTraces.list (optional anchor params). LOX-1478. */
   readonly process_intelligence: ReturnType<typeof createProcessIntelligenceApi>;
-
-  /** Consumptions (webhook subscriptions): list, create, get, update, delete. LOX-1481.
-   * @deprecated Use `client.delivery` instead. This namespace will be removed in a future major version.
-   */
-  readonly consumptions: ReturnType<typeof createConsumptionsApi>;
 
   /** Delivery interfaces: list, get, create, update, delete. Primary namespace for configuring how data products deliver data externally. */
   readonly delivery: DeliveryApi;
@@ -255,7 +224,6 @@ export class LoxtepClient {
     this.schemas = createSchemasApi(this._http);
     this.thesaurus = createThesaurusApi(this._http, options.organization_id);
     this.process_intelligence = createProcessIntelligenceApi(this._http);
-    this.consumptions = createConsumptionsDeprecatedProxy(this._http);
     this.delivery = createDeliveryApi(this._http);
     this.connectors = createConnectorsApi(this._http);
     this.instances = createInstancesApi(this._http);

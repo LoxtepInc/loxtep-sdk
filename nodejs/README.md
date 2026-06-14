@@ -6,10 +6,6 @@ Client for the Loxtep API. Customer-facing surface: **data_products**,
 **workflows**, **templates**, **connectors**, **instances**, **delivery**,
 **thesaurus**, **procedures**, **metrics**.
 
-> **Note:** The `consumptions` namespace is deprecated. Use `delivery` instead.
-> The `consumptions` namespace remains functional but logs a deprecation warning
-> on first use and will be removed in a future major version.
-
 **Node.js 22+** is the supported runtime (`engines` in `package.json`). **Live**
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
 resources (`streams` on `LoxtepClient` and instance env from your stack) and AWS
@@ -112,7 +108,6 @@ credentials for SigV4 on both REST and the bus.
 - **standards** – list, get
 - **data_contracts** – list, get
 - **thesaurus** – listTerms, resolveCanonicalKey
-- **consumptions** – ~~list, get, create, update, delete~~ (deprecated — use `delivery`)
 - **delivery** – list, get, create, update, delete
 - **instances** – list, get, get_stream_config
 - **procedures** – list
@@ -191,9 +186,7 @@ for await (const event of filterStream(
 
 ## Delivery interfaces
 
-Configure how a data product delivers data to external systems. The `delivery`
-namespace is the primary interface (replaces the deprecated `consumptions`
-namespace).
+Configure how a data product delivers data to external systems.
 
 ```ts
 import { LoxtepClient } from '@loxtep/sdk';

@@ -236,12 +236,6 @@ Manage delivery interfaces — how data products deliver data to external system
 **`delivery_type` values:** `webhook`, `api_endpoint`, `export`,
 `database_sync`, `bi_connect`, `event_stream`.
 
-> **Terminology Migration:** `client.consumptions` is a deprecated alias for
-> `client.delivery`. It proxies all calls and logs a deprecation warning on
-> first use. The `Consumption` model is a deprecated alias for
-> `DeliveryInterface`. Both will be removed no sooner than 6 months after this
-> release. See `/docs/reference/terminology-changes` for the full mapping.
-
 ### `client.domains` ⚠️ stub
 
 > **Stub — limited functionality.** `domains` is a placeholder with no backend
