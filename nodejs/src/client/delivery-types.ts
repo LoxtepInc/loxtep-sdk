@@ -1,21 +1,36 @@
 /**
- * Consumptions (webhook subscriptions) API types — LOX-1481 / LOX-1510
+ * Delivery Interface types — the primary interface for configuring how data
+ * products deliver data to external systems.
  *
- * @deprecated Use `DeliveryInterface` from `./delivery-types.js` instead.
- * This module is retained for backward compatibility. The `Consumption` type
- * is an alias for the legacy shape; prefer `DeliveryInterface` in new code.
+ * Replaces the "consumptions" terminology. The underlying API endpoints remain
+ * unchanged (`/dataproducts/:data_product_id/consumptions`) for backward
+ * compatibility.
  */
 
 /**
- * @deprecated Use `DeliveryInterface` from `./delivery-types.js` instead.
+ * Discriminator for the type of delivery mechanism configured on a data product.
  */
-export interface Consumption {
+export type DeliveryType =
+  | 'webhook'
+  | 'api_endpoint'
+  | 'export'
+  | 'database_sync'
+  | 'bi_connect'
+  | 'event_stream';
+
+/**
+ * A delivery interface defines how a data product makes its data available
+ * to an external system. Formerly called "Consumption."
+ */
+export interface DeliveryInterface {
   consumption_id: string;
   data_product_id: string;
   organization_id: string;
   created_by: string | null;
   name: string | null;
   description: string | null;
+  /** The type of delivery mechanism. */
+  deliveryType: DeliveryType;
   delivery_method: string;
   status: string;
   is_active: boolean;
@@ -44,17 +59,17 @@ export interface Consumption {
   deleted_at: string | null;
 }
 
-export interface ConsumptionsListParams {
+export interface DeliveryListParams {
   page?: number;
   page_size?: number;
   status?: string;
   is_active?: boolean;
 }
 
-export interface ConsumptionsListResponse {
+export interface DeliveryListResponse {
   success: true;
   data: {
-    items: Consumption[];
+    items: DeliveryInterface[];
     pagination: {
       page: number;
       page_size: number;
@@ -66,7 +81,9 @@ export interface ConsumptionsListResponse {
   };
 }
 
-export interface ConsumptionCreateInput {
+export interface DeliveryCreateInput {
+  /** The type of delivery mechanism to configure. */
+  deliveryType?: DeliveryType;
   name?: string | null;
   description?: string | null;
   delivery_method?: string;
@@ -85,7 +102,7 @@ export interface ConsumptionCreateInput {
   batch_size?: number | null;
 }
 
-export interface ConsumptionUpdateInput extends Partial<ConsumptionCreateInput> {
+export interface DeliveryUpdateInput extends Partial<DeliveryCreateInput> {
   status?: string;
   is_active?: boolean;
 }

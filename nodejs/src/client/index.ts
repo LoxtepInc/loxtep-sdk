@@ -123,6 +123,15 @@ export type {
   ConsumptionUpdateInput,
 } from './consumptions-types.js';
 export type {
+  DeliveryInterface,
+  DeliveryType,
+  DeliveryListParams,
+  DeliveryListResponse,
+  DeliveryCreateInput,
+  DeliveryUpdateInput,
+} from './delivery-types.js';
+export type { DeliveryApi } from './delivery.js';
+export type {
   Connector,
   ConnectorShare,
   ConnectorsListFilters,

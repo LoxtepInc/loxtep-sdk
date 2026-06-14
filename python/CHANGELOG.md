@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+### Terminology Migration
+
+The SDK now uses "delivery" terminology as the primary interface, replacing the
+overloaded "consumption" vocabulary. This aligns the SDK with the platform UI,
+documentation, and MCP tool names.
+
+**Namespace rename:** `consumptions` → `delivery`
+
+```python
+# Old (deprecated — still works, logs warning on first use)
+interfaces = client.data_products.consumptions.list(dp_id)
+
+# New (preferred)
+interfaces = client.data_products.delivery.list(dp_id)
+```
+
+**Type rename:** `Consumption` → `DeliveryInterface`
+
+```python
+# Old (deprecated model alias — still works)
+from loxtep.models import Consumption
+
+# New (preferred)
+from loxtep.models import DeliveryInterface
+```
+
+**New `delivery_type` field on `DeliveryInterface`:**
+
+```python
+webhook = DeliveryInterface(
+    id="di_...",
+    delivery_type="webhook",
+    endpoint_url="https://example.com/hook",
+    method="POST",
+)
+```
+
+The old `consumptions` namespace and `Consumption` model remain as deprecated
+aliases and will be removed no sooner than 6 months after this release.
+
+### New features
+
+- **`data_products.delivery` namespace** — Primary namespace for managing delivery
+  interfaces with `list()`, `create()`, `update()`, and `delete()` methods.
+- **`DeliveryInterface` model** — Includes a `delivery_type` discriminator field
+  (`'webhook' | 'api_endpoint' | 'export' | 'database_sync' | 'bi_connect' | 'event_stream'`).
+
+### Deprecated
+
+- `data_products.consumptions` namespace — Use `data_products.delivery` instead.
+  Logs a warning on first access.
+- `Consumption` model — Use `DeliveryInterface` instead. Retained as a type
+  alias.
+
+---
+
 ## [0.2.0] - Unreleased
 
 ### Breaking changes
