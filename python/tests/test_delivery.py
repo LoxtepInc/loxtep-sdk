@@ -1,13 +1,11 @@
 """Tests for the delivery namespace and DeliveryInterface model."""
 
-import warnings
 from unittest.mock import patch
 
 import pytest
 
 from loxtep import (
     AsyncLoxtepClient,
-    Consumption,
     DeliveryInterface,
     DeliveryType,
     LoxtepClient,
@@ -80,11 +78,6 @@ def test_delivery_interface_allows_extra_fields():
     assert di.model_extra.get("custom_field") == "extra_value"
 
 
-def test_consumption_is_delivery_interface_alias():
-    """Consumption is a direct alias for DeliveryInterface."""
-    assert Consumption is DeliveryInterface
-
-
 # ---------------------------------------------------------------------------
 # Client property tests
 # ---------------------------------------------------------------------------
@@ -97,46 +90,10 @@ def test_sync_client_has_delivery_property():
     client.close()
 
 
-def test_sync_client_consumptions_deprecated_proxy():
-    """LoxtepClient.consumptions proxies to delivery with deprecation warning."""
-    client = LoxtepClient(api_url="https://api.example.com")
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        api = client.consumptions
-        assert len(w) == 1
-        assert issubclass(w[0].category, DeprecationWarning)
-        assert "deprecated" in str(w[0].message).lower()
-    assert api is client.delivery
-    client.close()
-
-
-def test_sync_client_consumptions_warns_only_once():
-    """LoxtepClient.consumptions only warns on first access."""
-    client = LoxtepClient(api_url="https://api.example.com")
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        _ = client.consumptions
-        _ = client.consumptions
-        _ = client.consumptions
-        assert len(w) == 1
-    client.close()
-
-
 def test_async_client_has_delivery_property():
     """AsyncLoxtepClient exposes a delivery property of type AsyncDeliveryApi."""
     client = AsyncLoxtepClient(api_url="https://api.example.com")
     assert isinstance(client.delivery, AsyncDeliveryApi)
-
-
-def test_async_client_consumptions_deprecated_proxy():
-    """AsyncLoxtepClient.consumptions proxies to delivery with deprecation warning."""
-    client = AsyncLoxtepClient(api_url="https://api.example.com")
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        api = client.consumptions
-        assert len(w) == 1
-        assert issubclass(w[0].category, DeprecationWarning)
-    assert api is client.delivery
 
 
 # ---------------------------------------------------------------------------

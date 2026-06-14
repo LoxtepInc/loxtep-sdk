@@ -3,7 +3,6 @@ LoxtepClient (sync) and AsyncLoxtepClient (async).
 Public surface: data_products, delivery, flows, workflows, observe, projects, templates, connectors, instances, procedures, domains, standards, data_contracts, connections, queues, quality, catalog, discovery, schemas, metrics.
 """
 
-import warnings
 from typing import Any, Callable, Optional
 
 from .catalog import AsyncCatalogApi, CatalogApi
@@ -79,7 +78,6 @@ class LoxtepClient:
         self._instances = InstancesApi(self._http)
         self._procedures = ProceduresApi(self._http)
         self._delivery = DeliveryApi(self._http)
-        self._consumptions_warned = False
         self.domains = domains_stub
         self.standards = standards_stub
         self.data_contracts = data_contracts_stub
@@ -111,23 +109,6 @@ class LoxtepClient:
 
         Manage how data products deliver data to external systems.
         """
-        return self._delivery
-
-    @property
-    def consumptions(self) -> DeliveryApi:
-        """Deprecated: Use `client.delivery` instead.
-
-        This property proxies to the delivery namespace and logs a deprecation
-        warning on first use.
-        """
-        if not self._consumptions_warned:
-            warnings.warn(
-                "client.consumptions is deprecated. Use client.delivery instead. "
-                "See /docs/reference/terminology-changes for migration guide.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self._consumptions_warned = True
         return self._delivery
 
     @property
@@ -243,7 +224,6 @@ class AsyncLoxtepClient:
         self._instances = AsyncInstancesApi(self._http)
         self._procedures = AsyncProceduresApi(self._http)
         self._delivery = AsyncDeliveryApi(self._http)
-        self._consumptions_warned = False
         self.domains = domains_stub
         self.standards = standards_stub
         self.data_contracts = data_contracts_stub
@@ -271,23 +251,6 @@ class AsyncLoxtepClient:
 
         Manage how data products deliver data to external systems.
         """
-        return self._delivery
-
-    @property
-    def consumptions(self) -> AsyncDeliveryApi:
-        """Deprecated: Use `client.delivery` instead.
-
-        This property proxies to the delivery namespace and logs a deprecation
-        warning on first use.
-        """
-        if not self._consumptions_warned:
-            warnings.warn(
-                "client.consumptions is deprecated. Use client.delivery instead. "
-                "See /docs/reference/terminology-changes for migration guide.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self._consumptions_warned = True
         return self._delivery
 
     @property

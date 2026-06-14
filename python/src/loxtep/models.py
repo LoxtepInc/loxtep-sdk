@@ -5,7 +5,6 @@ Typed representations of API resources including DataProduct, DeliveryInterface,
 UsageMapNode, and UsageMapEdge.
 """
 
-import warnings
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -116,21 +115,3 @@ class DeliveryInterface(BaseModel):
     updated_at: str = Field(default="", description="ISO timestamp of last update")
 
     model_config = {"populate_by_name": True, "extra": "allow"}
-
-
-def _consumption_deprecated_init(self: "DeliveryInterface", **data: Any) -> None:
-    """Deprecated: Use DeliveryInterface instead."""
-    warnings.warn(
-        "Consumption is deprecated. Use DeliveryInterface instead. "
-        "See /docs/reference/terminology-changes for migration guide.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    DeliveryInterface.__init__(self, **data)
-
-
-# Consumption: deprecated alias for DeliveryInterface.
-# Retained for backward compatibility — will be removed no sooner than 6 months
-# after the delivery namespace ships.
-Consumption = DeliveryInterface
-"""Deprecated alias for DeliveryInterface. Use DeliveryInterface instead."""

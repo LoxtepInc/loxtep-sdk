@@ -17,24 +17,17 @@ documentation, and MCP tool names.
 **Namespace rename:** `consumptions` → `delivery`
 
 ```python
-# Old (deprecated — still works, logs warning on first use)
-interfaces = client.data_products.consumptions.list(dp_id)
-
-# New (preferred)
+# Use the delivery namespace
 interfaces = client.data_products.delivery.list(dp_id)
 ```
 
-**Type rename:** `Consumption` → `DeliveryInterface`
+**Type:** `DeliveryInterface`
 
 ```python
-# Old (deprecated model alias — still works)
-from loxtep.models import Consumption
-
-# New (preferred)
 from loxtep.models import DeliveryInterface
 ```
 
-**New `delivery_type` field on `DeliveryInterface`:**
+**`delivery_type` field on `DeliveryInterface`:**
 
 ```python
 webhook = DeliveryInterface(
@@ -45,8 +38,7 @@ webhook = DeliveryInterface(
 )
 ```
 
-The old `consumptions` namespace and `Consumption` model remain as deprecated
-aliases and will be removed no sooner than 6 months after this release.
+The old `consumptions` namespace and `Consumption` model have been removed.
 
 ### New features
 
@@ -55,12 +47,10 @@ aliases and will be removed no sooner than 6 months after this release.
 - **`DeliveryInterface` model** — Includes a `delivery_type` discriminator field
   (`'webhook' | 'api_endpoint' | 'export' | 'database_sync' | 'bi_connect' | 'event_stream'`).
 
-### Deprecated
+### Removed
 
-- `data_products.consumptions` namespace — Use `data_products.delivery` instead.
-  Logs a warning on first access.
-- `Consumption` model — Use `DeliveryInterface` instead. Retained as a type
-  alias.
+- `data_products.consumptions` namespace — removed. Use `data_products.delivery`.
+- `Consumption` model — removed. Use `DeliveryInterface`.
 
 ---
 

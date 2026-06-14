@@ -17,24 +17,16 @@ documentation, and MCP tool names.
 **Namespace rename:** `consumptions` → `delivery`
 
 ```ts
-// Old (deprecated — still works, logs warning on first use)
-const interfaces = await client.dataProducts.consumptions.list(dpId);
-
-// New (preferred)
 const interfaces = await client.dataProducts.delivery.list(dpId);
 ```
 
-**Type rename:** `Consumption` → `DeliveryInterface`
+**Type:** `DeliveryInterface`
 
 ```ts
-// Old (deprecated type alias — still compiles)
-import type { Consumption } from '@loxtep/sdk';
-
-// New (preferred)
 import type { DeliveryInterface } from '@loxtep/sdk';
 ```
 
-**New `deliveryType` field on `DeliveryInterface`:**
+**`deliveryType` field on `DeliveryInterface`:**
 
 ```ts
 const webhook: DeliveryInterface = {
@@ -46,8 +38,7 @@ const webhook: DeliveryInterface = {
 };
 ```
 
-The old `consumptions` namespace and `Consumption` type remain as deprecated
-aliases and will be removed no sooner than 6 months after this release.
+The old `consumptions` namespace and `Consumption` type have been removed.
 
 ### New features
 
@@ -56,11 +47,10 @@ aliases and will be removed no sooner than 6 months after this release.
 - **`DeliveryInterface` type** — Includes a `deliveryType` discriminator field
   (`'webhook' | 'api_endpoint' | 'export' | 'database_sync' | 'bi_connect' | 'event_stream'`).
 
-### Deprecated
+### Removed
 
-- `dataProducts.consumptions` namespace — Use `dataProducts.delivery` instead.
-  Logs a warning on first access.
-- `Consumption` type — Use `DeliveryInterface` instead. Retained as a type alias.
+- `dataProducts.consumptions` namespace — removed. Use `dataProducts.delivery`.
+- `Consumption` type — removed. Use `DeliveryInterface`.
 
 ---
 

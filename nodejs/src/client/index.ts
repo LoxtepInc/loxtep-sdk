@@ -116,13 +116,6 @@ export type {
   GetEntityContextParams,
 } from './process-intelligence-types.js';
 export type {
-  Consumption,
-  ConsumptionsListParams,
-  ConsumptionsListResponse,
-  ConsumptionCreateInput,
-  ConsumptionUpdateInput,
-} from './consumptions-types.js';
-export type {
   DeliveryInterface,
   DeliveryType,
   DeliveryListParams,

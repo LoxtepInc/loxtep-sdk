@@ -18,7 +18,6 @@ from .errors import (
 )
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
 from .models import (
-    Consumption,
     DataProduct,
     DataProductKind,
     DeliveryInterface,
@@ -46,7 +45,6 @@ __all__ = [
     "DataProductKind",
     "DeliveryInterface",
     "DeliveryType",
-    "Consumption",
     "DeliveryApi",
     "AsyncDeliveryApi",
     "UsageMap",
