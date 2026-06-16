@@ -11,7 +11,24 @@ queue/flow writes use the **Loxtep stream** data plane; configure stream bus
 resources (`streams` on `LoxtepClient` and instance env from your stack) and AWS
 credentials for SigV4 on both REST and the bus.
 
-## Quick start (< 5 min to first stream)
+## Ways to get started
+
+This SDK supports two developer workflows:
+
+| Path | Use case | Entry point |
+|------|----------|-------------|
+| **Programmatic** | Write/read events from application code (microservices, lambdas, scripts) | `LoxtepClient` → `data_products.get_writer` / `get_reader` |
+| **Code-first CLI** | Author workflows as TypeScript, test locally, deploy via CI | `loxtep init → attach → generate → test → deploy` |
+
+There are also two additional paths that don't require this SDK:
+- **Agent-first (MCP)** — drive Loxtep conversationally from Cursor, Kiro, Claude, etc. See [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills).
+- **Web UI** — visual project setup and management at [app.loxtep.io](https://app.loxtep.io).
+
+All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
+
+---
+
+## Quick start — Programmatic (< 5 min to first stream)
 
 1. **Install**
 
@@ -84,6 +101,60 @@ credentials for SigV4 on both REST and the bus.
    `new LoxtepClient({ ...opts, streams: { ...partial } })` with your
    JWT-backed client. Note: `data_products.get_writer` and `get_reader` resolve
    stream config automatically — this is only needed for manual bus access.
+
+---
+
+## Quick start — Code-first CLI (init → deploy)
+
+For developers who author workflows as TypeScript and want the full local-dev-to-production lifecycle:
+
+```bash
+# 1. Install
+npm install @loxtep/sdk
+
+# 2. Authenticate
+npx loxtep login
+
+# 3. Scaffold a project from a template
+npx loxtep init --template shopify-orders
+
+# 4. Bind to a runtime instance
+npx loxtep attach --instance prod
+
+# 5. Generate typed workspace constants
+npx loxtep generate
+
+# 6. Author a workflow (see authoring module docs below)
+
+# 7. Test locally with a sample event
+npx loxtep test orders-enricher --event ./events/order-created.json
+
+# 8. Deploy to the workflow engine
+npx loxtep deploy
+```
+
+The `generate` step produces `.loxtep/generated/index.ts` with typed constants for every data product, connector, domain, and queue in your workspace. Import them in your workflow modules for compile-time safety:
+
+```ts
+import { defineDataWorkflow, on } from '@loxtep/sdk/authoring'
+import { workspace } from './.loxtep/generated'
+
+export default defineDataWorkflow({
+  name: 'orders-enricher',
+  triggers: [on.queueEvent(workspace.queues.orders_raw)],
+  async handler(ctx, event) {
+    await ctx.toolbox.dataProducts.upsert({
+      dataProduct: workspace.dataProducts.orders_enriched,
+      domain: workspace.domains.commerce,
+      record: event,
+    })
+  },
+})
+```
+
+See `loxtep init --help`, `loxtep attach --help`, etc. for all flags. The full CLI reference is in the [CLI reference](#cli-reference) section below.
+
+---
 
 ## API surface
 
@@ -236,7 +307,13 @@ await client.delivery.delete('dp_abc123', webhook.consumption_id);
 | `login --email <e> --password <p>`                   | Headless login for CI (optional `--mfa-code`)                      |
 | `logout`                                             | Remove stored credentials                                          |
 | `whoami`                                             | Print current user and organization                                |
-| `init`                                               | Setup checklist + doc pointers                                     |
+| `init [--template <slug>]`                           | Scaffold project structure, AGENTS.md, and default skill            |
+| `init --create-repo [name]`                          | Scaffold + create a new GitHub repo (private default)              |
+| `init --from-repo <url>`                             | Scaffold + import from an existing repo                            |
+| `attach --instance <name-or-id>`                     | Bind project to a runtime instance                                 |
+| `generate`                                           | Codegen typed workspace constants to `.loxtep/generated/index.ts`  |
+| `test <module> --event <file>`                       | Run a workflow module locally with sample event(s)                  |
+| `deploy`                                             | Compile modules, validate resources, deploy to workflow engine      |
 | `config list`                                        | Show api_url, organization_id, project_id, instance_id             |
 | `config paths`                                       | Show resolved URLs for auth and SDK path matrix                    |
 | `config set <key> <value>`                           | Set api_url \| organization_id \| project_id \| instance_id        |

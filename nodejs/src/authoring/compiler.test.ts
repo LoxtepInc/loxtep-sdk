@@ -9,7 +9,7 @@
 
 import { compileModule, computeRemovalSet } from './compiler';
 import type { CompiledWorkflow, GraphPatchOp, ResourceRef } from './compiler';
-import type { DataWorkflowModule, TriggerSpec } from './types';
+import type { DataWorkflowModule, TriggerSpec, ApprovalNodeSpec, AgentNodeSpec } from './types';
 import type { NormalizedContext, NormalizedResource } from '../codegen/types';
 import { on } from './triggers';
 
@@ -375,5 +375,520 @@ describe('computeRemovalSet (R3.7)', () => {
     expect(result.ops).not.toContainEqual(
       expect.objectContaining({ entity_id: 'wf_keep' }),
     );
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// compileModule — nodes lowering (R9.3, R9.4, R10.1, R10.2)
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('compileModule — nodes lowering', () => {
+  describe('ApprovalNodeSpec', () => {
+    it('emits add_node op with entity_type approvals and config fields', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'review-gate',
+            approvalChannel: 'slack-ops',
+            timeoutHours: 24,
+            upstream: 'handler',
+            approved: 'post-approve',
+          },
+          {
+            kind: 'agent',
+            name: 'post-approve',
+            modelId: 'gpt-4',
+            promptTemplate: 'Process: {{event}}',
+            upstream: 'review-gate',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const addOps = result.ops.filter(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'approvals',
+      );
+      expect(addOps).toHaveLength(1);
+      const addOp = addOps[0];
+      if (addOp.op === 'add_node') {
+        expect(addOp.entity.name).toBe('review-gate');
+        expect(addOp.entity.approval_channel).toBe('slack-ops');
+        expect(addOp.entity.timeout_hours).toBe(24);
+        expect(addOp.entity.approval_node_id).toBe('test-workflow__node_review-gate');
+      }
+    });
+
+    it('emits connect_nodes from resolved upstream to approval node', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'review-gate',
+            approvalChannel: 'slack-ops',
+            timeoutHours: 24,
+            upstream: 'handler',
+            approved: 'post-approve',
+          },
+          {
+            kind: 'agent',
+            name: 'post-approve',
+            modelId: 'gpt-4',
+            promptTemplate: 'Process: {{event}}',
+            upstream: 'review-gate',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const connectOps = result.ops.filter(
+        (op) =>
+          op.op === 'connect_nodes' &&
+          op.to_entity_id === 'test-workflow__node_review-gate',
+      );
+      expect(connectOps).toHaveLength(1);
+      if (connectOps[0].op === 'connect_nodes') {
+        expect(connectOps[0].from_entity_id).toBe('test-workflow__handler');
+      }
+    });
+
+    it('emits connect_nodes_labeled for approved path', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'review-gate',
+            approvalChannel: 'slack-ops',
+            timeoutHours: 24,
+            upstream: 'handler',
+            approved: 'post-approve',
+          },
+          {
+            kind: 'agent',
+            name: 'post-approve',
+            modelId: 'gpt-4',
+            promptTemplate: 'Summarize: {{event}}',
+            upstream: 'review-gate',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const labeledOps = result.ops.filter(
+        (op) => op.op === 'connect_nodes_labeled' && op.label === 'approved',
+      );
+      expect(labeledOps).toHaveLength(1);
+      if (labeledOps[0].op === 'connect_nodes_labeled') {
+        expect(labeledOps[0].from_entity_id).toBe('test-workflow__node_review-gate');
+        expect(labeledOps[0].to_entity_id).toBe('test-workflow__node_post-approve');
+      }
+    });
+
+    it('emits connect_nodes_labeled for rejected path', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'review-gate',
+            approvalChannel: 'slack-ops',
+            timeoutHours: 24,
+            upstream: 'handler',
+            rejected: 'error-handler',
+          },
+          {
+            kind: 'agent',
+            name: 'error-handler',
+            modelId: 'gpt-4',
+            promptTemplate: 'Handle rejection: {{event}}',
+            upstream: 'review-gate',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const labeledOps = result.ops.filter(
+        (op) => op.op === 'connect_nodes_labeled' && op.label === 'rejected',
+      );
+      expect(labeledOps).toHaveLength(1);
+      if (labeledOps[0].op === 'connect_nodes_labeled') {
+        expect(labeledOps[0].from_entity_id).toBe('test-workflow__node_review-gate');
+        expect(labeledOps[0].to_entity_id).toBe('test-workflow__node_error-handler');
+      }
+    });
+
+    it('includes description in entity when provided', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'review-gate',
+            approvalChannel: 'slack-ops',
+            timeoutHours: 48,
+            description: 'Manual review before processing',
+            upstream: 'handler',
+            rejected: 'err-handler',
+          },
+          {
+            kind: 'agent',
+            name: 'err-handler',
+            modelId: 'gpt-4',
+            promptTemplate: 'Handle: {{event}}',
+            upstream: 'review-gate',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const addOp = result.ops.find(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'approvals',
+      );
+      if (addOp && addOp.op === 'add_node') {
+        expect(addOp.entity.description).toBe('Manual review before processing');
+      }
+    });
+  });
+
+  describe('AgentNodeSpec', () => {
+    it('emits add_node op with entity_type agents and config fields', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify this event: {{data}}',
+            upstream: 'handler',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const addOps = result.ops.filter(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'agents',
+      );
+      expect(addOps).toHaveLength(1);
+      const addOp = addOps[0];
+      if (addOp.op === 'add_node') {
+        expect(addOp.entity.name).toBe('classify');
+        expect(addOp.entity.model_id).toBe('claude-3');
+        expect(addOp.entity.prompt_template).toBe('Classify this event: {{data}}');
+        expect(addOp.entity.timeout_seconds).toBe(30);
+        expect(addOp.entity.agent_node_id).toBe('test-workflow__node_classify');
+      }
+    });
+
+    it('uses provided timeoutSeconds instead of default', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify: {{data}}',
+            timeoutSeconds: 120,
+            upstream: 'handler',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const addOp = result.ops.find(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'agents',
+      );
+      if (addOp && addOp.op === 'add_node') {
+        expect(addOp.entity.timeout_seconds).toBe(120);
+      }
+    });
+
+    it('includes outputSchema in entity when provided', () => {
+      const schema = { type: 'object', properties: { label: { type: 'string' } } };
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify: {{data}}',
+            outputSchema: schema,
+            upstream: 'handler',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const addOp = result.ops.find(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'agents',
+      );
+      if (addOp && addOp.op === 'add_node') {
+        expect(addOp.entity.output_schema).toEqual(schema);
+      }
+    });
+
+    it('emits connect_nodes from resolved upstream to agent node', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify: {{data}}',
+            upstream: 'handler',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const connectOps = result.ops.filter(
+        (op) =>
+          op.op === 'connect_nodes' &&
+          op.to_entity_id === 'test-workflow__node_classify',
+      );
+      expect(connectOps).toHaveLength(1);
+      if (connectOps[0].op === 'connect_nodes') {
+        expect(connectOps[0].from_entity_id).toBe('test-workflow__handler');
+      }
+    });
+
+    it('emits connect_nodes_labeled for error path', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify: {{data}}',
+            upstream: 'handler',
+            error: 'err-sink',
+          },
+          {
+            kind: 'agent',
+            name: 'err-sink',
+            modelId: 'gpt-4',
+            promptTemplate: 'Log error: {{data}}',
+            upstream: 'classify',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      const labeledOps = result.ops.filter(
+        (op) => op.op === 'connect_nodes_labeled' && op.label === 'error',
+      );
+      expect(labeledOps).toHaveLength(1);
+      if (labeledOps[0].op === 'connect_nodes_labeled') {
+        expect(labeledOps[0].from_entity_id).toBe('test-workflow__node_classify');
+        expect(labeledOps[0].to_entity_id).toBe('test-workflow__node_err-sink');
+      }
+    });
+  });
+
+  describe('cross-node references', () => {
+    it('resolves upstream between declared nodes', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'gate',
+            approvalChannel: 'ch1',
+            timeoutHours: 12,
+            upstream: 'handler',
+            approved: 'enricher',
+          },
+          {
+            kind: 'agent',
+            name: 'enricher',
+            modelId: 'gpt-4',
+            promptTemplate: 'Enrich: {{data}}',
+            upstream: 'gate',
+          },
+        ],
+      });
+      const result = compileModule(mod, emptyContext());
+
+      // enricher's connect_nodes should reference gate's entity_id
+      const connectOps = result.ops.filter(
+        (op) =>
+          op.op === 'connect_nodes' &&
+          op.to_entity_id === 'test-workflow__node_enricher',
+      );
+      expect(connectOps).toHaveLength(1);
+      if (connectOps[0].op === 'connect_nodes') {
+        expect(connectOps[0].from_entity_id).toBe('test-workflow__node_gate');
+      }
+    });
+
+    it('does not emit ops when module has no nodes', () => {
+      const mod = validModule();
+      const result = compileModule(mod, emptyContext());
+
+      const approvalOps = result.ops.filter(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'approvals',
+      );
+      const agentOps = result.ops.filter(
+        (op) => op.op === 'add_node' && 'entity_type' in op && op.entity_type === 'agents',
+      );
+      const labeledOps = result.ops.filter((op) => op.op === 'connect_nodes_labeled');
+      expect(approvalOps).toHaveLength(0);
+      expect(agentOps).toHaveLength(0);
+      expect(labeledOps).toHaveLength(0);
+    });
+  });
+
+  describe('compile-time validation (R10.3)', () => {
+    it('throws when a node has an unresolvable upstream', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify: {{data}}',
+            upstream: 'nonexistent-node',
+          },
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).toThrow(
+        'Node "classify" has upstream "nonexistent-node" which does not resolve to any known node.',
+      );
+    });
+
+    it('throws when an approval node has no labeled downstream connections', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'gate',
+            approvalChannel: 'ch1',
+            timeoutHours: 12,
+            upstream: 'handler',
+          } as ApprovalNodeSpec,
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).toThrow(
+        'Approval node "gate" must have at least one labeled downstream connection (approved or rejected).',
+      );
+    });
+
+    it('accepts approval node with only approved path', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'gate',
+            approvalChannel: 'ch1',
+            timeoutHours: 12,
+            upstream: 'handler',
+            approved: 'next-step',
+          },
+          {
+            kind: 'agent',
+            name: 'next-step',
+            modelId: 'gpt-4',
+            promptTemplate: 'Process: {{data}}',
+            upstream: 'gate',
+          },
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).not.toThrow();
+    });
+
+    it('accepts approval node with only rejected path', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'gate',
+            approvalChannel: 'ch1',
+            timeoutHours: 12,
+            upstream: 'handler',
+            rejected: 'err-handler',
+          },
+          {
+            kind: 'agent',
+            name: 'err-handler',
+            modelId: 'gpt-4',
+            promptTemplate: 'Handle: {{data}}',
+            upstream: 'gate',
+          },
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).not.toThrow();
+    });
+
+    it('accepts approval node with both approved and rejected paths', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'gate',
+            approvalChannel: 'ch1',
+            timeoutHours: 12,
+            upstream: 'handler',
+            approved: 'approve-step',
+            rejected: 'reject-step',
+          },
+          {
+            kind: 'agent',
+            name: 'approve-step',
+            modelId: 'gpt-4',
+            promptTemplate: 'Approved: {{data}}',
+            upstream: 'gate',
+          },
+          {
+            kind: 'agent',
+            name: 'reject-step',
+            modelId: 'gpt-4',
+            promptTemplate: 'Rejected: {{data}}',
+            upstream: 'gate',
+          },
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).not.toThrow();
+    });
+
+    it('accepts agent node without labeled downstream (error is optional)', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'agent',
+            name: 'classify',
+            modelId: 'claude-3',
+            promptTemplate: 'Classify: {{data}}',
+            upstream: 'handler',
+          },
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).not.toThrow();
+    });
+
+    it('accepts node with upstream referencing another declared node', () => {
+      const mod = validModule({
+        nodes: [
+          {
+            kind: 'approval',
+            name: 'gate',
+            approvalChannel: 'ch1',
+            timeoutHours: 12,
+            upstream: 'handler',
+            approved: 'enricher',
+          },
+          {
+            kind: 'agent',
+            name: 'enricher',
+            modelId: 'gpt-4',
+            promptTemplate: 'Enrich: {{data}}',
+            upstream: 'gate',
+          },
+        ],
+      });
+
+      expect(() => compileModule(mod, emptyContext())).not.toThrow();
+    });
   });
 });

@@ -4,6 +4,13 @@ Get from zero to your first event in under 5 minutes. This guide walks you
 through installing the Loxtep SDK, authenticating, and writing your first event
 to a data product — all with a single method call.
 
+> **Other paths:** This guide covers the **programmatic SDK** path. Loxtep also
+> supports an [Agent-first (MCP)](https://github.com/LoxtepInc/loxtep-plugins-skills)
+> path for conversational operation, a **Code-first CLI** path
+> (`loxtep init → attach → generate → test → deploy`) for workflow authoring,
+> and a **Web UI** for visual management. See the
+> [Loxtep Quickstart](https://docs.loxtep.io/quickstart) for all paths.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)

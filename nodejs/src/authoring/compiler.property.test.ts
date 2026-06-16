@@ -124,6 +124,483 @@ const contextArb: fc.Arbitrary<NormalizedContext> = fc.oneof(
 
 // ─── Property Tests ───────────────────────────────────────────────────────────
 
+// ─── Node-related Arbitraries ─────────────────────────────────────────────────
+
+/** Arbitrary short string for node names (1–128 characters, alphanumeric + hyphen). */
+const nodeNameArb = fc
+  .string({ minLength: 1, maxLength: 128 })
+  .map((s) => s.replace(/[^a-zA-Z0-9_-]/g, 'x') || 'node');
+
+/** Arbitrary approval channel (1–256 characters). */
+const approvalChannelArb = fc
+  .string({ minLength: 1, maxLength: 256 })
+  .map((s) => s.replace(/[^a-zA-Z0-9_-]/g, 'x') || 'channel');
+
+/** Arbitrary timeout hours (1–168). */
+const timeoutHoursArb = fc.integer({ min: 1, max: 168 });
+
+/** Arbitrary model ID (1–256 characters). */
+const modelIdArb = fc
+  .string({ minLength: 1, maxLength: 256 })
+  .map((s) => s.replace(/[^a-zA-Z0-9_-]/g, 'x') || 'model');
+
+/** Arbitrary prompt template (1–10000 characters). */
+const promptTemplateArb = fc
+  .string({ minLength: 1, maxLength: 500 })
+  .map((s) => s || 'Summarize: {{event}}');
+
+/** Arbitrary timeout seconds (1–300). */
+const timeoutSecondsArb = fc.integer({ min: 1, max: 300 });
+
+// ─── Property 21 & 22 Tests ──────────────────────────────────────────────────
+
+describe('Feature: workflow-graph-approval-agent-nodes, Property 21: Compiler lowers nodes to graph ops', () => {
+  /**
+   * **Validates: Requirements 9.3, 9.4, 10.1, 10.2**
+   *
+   * For any valid DataWorkflowModule with resolvable nodes, compiled ops include
+   * exactly one add_node per node (correct entity_type), a connect_nodes from
+   * upstream, and connect_nodes_labeled for each labeled downstream.
+   */
+
+  it(
+    'P21: each declared node produces exactly one add_node with correct entity_type',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          fc.array(
+            fc.oneof(
+              // ApprovalNodeSpec with approved pointing to another node
+              fc.tuple(nodeNameArb, approvalChannelArb, timeoutHoursArb, nodeNameArb).map(
+                ([name, channel, hours, approvedTarget]) => ({
+                  kind: 'approval' as const,
+                  name: `apv_${name}`,
+                  approvalChannel: channel,
+                  timeoutHours: hours,
+                  upstream: 'handler',
+                  approved: `agt_${approvedTarget}`,
+                }),
+              ),
+              // AgentNodeSpec
+              fc.tuple(nodeNameArb, modelIdArb, promptTemplateArb, timeoutSecondsArb).map(
+                ([name, modelId, prompt, timeout]) => ({
+                  kind: 'agent' as const,
+                  name: `agt_${name}`,
+                  modelId,
+                  promptTemplate: prompt,
+                  timeoutSeconds: timeout,
+                  upstream: 'handler',
+                }),
+              ),
+            ),
+            { minLength: 1, maxLength: 5 },
+          ),
+          (workflowName, triggers, rawNodes) => {
+            // Ensure unique node names
+            const seen = new Set<string>();
+            const nodes = rawNodes.filter((n) => {
+              if (seen.has(n.name)) return false;
+              seen.add(n.name);
+              return true;
+            });
+            if (nodes.length === 0) return; // skip degenerate case
+
+            // Make sure approval nodes have valid approved targets that exist
+            const nodeNames = new Set(nodes.map((n) => n.name));
+            const fixedNodes = nodes.map((n) => {
+              if (n.kind === 'approval') {
+                // approved target must be an existing node name
+                const target = nodes.find((other) => other.name !== n.name);
+                return {
+                  ...n,
+                  approved: target ? target.name : undefined,
+                  // Ensure at least one labeled downstream for approval nodes
+                  rejected: !target ? nodes.find((other) => other.name !== n.name)?.name : undefined,
+                };
+              }
+              return n;
+            });
+
+            // Ensure every approval node has at least one labeled downstream
+            const validNodes = fixedNodes.filter((n) => {
+              if (n.kind === 'approval') {
+                return n.approved || n.rejected;
+              }
+              return true;
+            });
+            if (validNodes.length === 0) return;
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes: validNodes as any,
+            };
+
+            const result = compileModule(mod, emptyContext());
+
+            // Count add_node ops for approvals/agents
+            const approvalAddNodes = result.ops.filter(
+              (op) => op.op === 'add_node' && (op as any).entity_type === 'approvals',
+            );
+            const agentAddNodes = result.ops.filter(
+              (op) => op.op === 'add_node' && (op as any).entity_type === 'agents',
+            );
+
+            const expectedApprovals = validNodes.filter((n) => n.kind === 'approval').length;
+            const expectedAgents = validNodes.filter((n) => n.kind === 'agent').length;
+
+            expect(approvalAddNodes.length).toBe(expectedApprovals);
+            expect(agentAddNodes.length).toBe(expectedAgents);
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+
+  it(
+    'P21: each node has a connect_nodes from its upstream (handler)',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          fc.array(
+            fc.oneof(
+              fc.tuple(nodeNameArb, approvalChannelArb, timeoutHoursArb).map(
+                ([name, channel, hours]) => ({
+                  kind: 'approval' as const,
+                  name: `apv_${name}`,
+                  approvalChannel: channel,
+                  timeoutHours: hours,
+                  upstream: 'handler',
+                }),
+              ),
+              fc.tuple(nodeNameArb, modelIdArb, promptTemplateArb).map(
+                ([name, modelId, prompt]) => ({
+                  kind: 'agent' as const,
+                  name: `agt_${name}`,
+                  modelId,
+                  promptTemplate: prompt,
+                  upstream: 'handler',
+                }),
+              ),
+            ),
+            { minLength: 1, maxLength: 5 },
+          ),
+          (workflowName, triggers, rawNodes) => {
+            // Ensure unique node names
+            const seen = new Set<string>();
+            const nodes = rawNodes.filter((n) => {
+              if (seen.has(n.name)) return false;
+              seen.add(n.name);
+              return true;
+            });
+            if (nodes.length === 0) return;
+
+            // For approval nodes, add a valid labeled downstream
+            const nodeNames = nodes.map((n) => n.name);
+            const fixedNodes = nodes.map((n, i) => {
+              if (n.kind === 'approval') {
+                // Point approved to another node in the set (or create a self-referencing pair)
+                const otherNode = nodes.find((other) => other.name !== n.name);
+                return { ...n, approved: otherNode ? otherNode.name : undefined, rejected: otherNode ? undefined : undefined };
+              }
+              return n;
+            });
+
+            // Only keep approval nodes that have at least one labeled downstream
+            const validNodes = fixedNodes.filter((n) => {
+              if (n.kind === 'approval') return !!(n as any).approved || !!(n as any).rejected;
+              return true;
+            });
+            if (validNodes.length === 0) return;
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes: validNodes as any,
+            };
+
+            const result = compileModule(mod, emptyContext());
+
+            const handlerEntityId = `${workflowName}__handler`;
+
+            // Each node should have a connect_nodes from handler to its entity_id
+            const connectOps = result.ops.filter(
+              (op) => op.op === 'connect_nodes' && (op as any).from_entity_id === handlerEntityId,
+            );
+
+            // Should have at least one connect_nodes from handler for each node
+            const nodeEntityIds = validNodes.map((n) => `${workflowName}__node_${n.name}`);
+            for (const expectedId of nodeEntityIds) {
+              const found = connectOps.some((op) => (op as any).to_entity_id === expectedId);
+              expect(found).toBe(true);
+            }
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+
+  it(
+    'P21: approval nodes emit connect_nodes_labeled for each labeled downstream',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          fc.tuple(nodeNameArb, nodeNameArb, approvalChannelArb, timeoutHoursArb).filter(
+            ([approvalName, agentName]) => approvalName !== agentName,
+          ),
+          (workflowName, triggers, [approvalName, agentName, channel, hours]) => {
+            const nodes = [
+              {
+                kind: 'approval' as const,
+                name: `apv_${approvalName}`,
+                approvalChannel: channel,
+                timeoutHours: hours,
+                upstream: 'handler',
+                approved: `agt_${agentName}`,
+              },
+              {
+                kind: 'agent' as const,
+                name: `agt_${agentName}`,
+                modelId: 'test-model',
+                promptTemplate: 'test prompt',
+                upstream: 'handler',
+              },
+            ];
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes,
+            };
+
+            const result = compileModule(mod, emptyContext());
+
+            // Find connect_nodes_labeled ops
+            const labeledOps = result.ops.filter(
+              (op) => op.op === 'connect_nodes_labeled',
+            );
+
+            // Should have exactly one labeled op for the approved path
+            const approvalEntityId = `${workflowName}__node_apv_${approvalName}`;
+            const agentEntityId = `${workflowName}__node_agt_${agentName}`;
+
+            const approvedOp = labeledOps.find(
+              (op) =>
+                (op as any).from_entity_id === approvalEntityId &&
+                (op as any).to_entity_id === agentEntityId &&
+                (op as any).label === 'approved',
+            );
+            expect(approvedOp).toBeDefined();
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+
+  it(
+    'P21: agent nodes emit connect_nodes_labeled for error path when error is specified',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          fc.tuple(nodeNameArb, nodeNameArb, modelIdArb, promptTemplateArb).filter(
+            ([agentName, errorTargetName]) => agentName !== errorTargetName,
+          ),
+          (workflowName, triggers, [agentName, errorTargetName, modelId, prompt]) => {
+            const nodes = [
+              {
+                kind: 'agent' as const,
+                name: `agt_${agentName}`,
+                modelId,
+                promptTemplate: prompt,
+                upstream: 'handler',
+                error: `agt_${errorTargetName}`,
+              },
+              {
+                kind: 'agent' as const,
+                name: `agt_${errorTargetName}`,
+                modelId: 'error-handler-model',
+                promptTemplate: 'handle error',
+                upstream: 'handler',
+              },
+            ];
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes,
+            };
+
+            const result = compileModule(mod, emptyContext());
+
+            // Find connect_nodes_labeled ops
+            const labeledOps = result.ops.filter(
+              (op) => op.op === 'connect_nodes_labeled',
+            );
+
+            const agentEntityId = `${workflowName}__node_agt_${agentName}`;
+            const errorEntityId = `${workflowName}__node_agt_${errorTargetName}`;
+
+            const errorOp = labeledOps.find(
+              (op) =>
+                (op as any).from_entity_id === agentEntityId &&
+                (op as any).to_entity_id === errorEntityId &&
+                (op as any).label === 'error',
+            );
+            expect(errorOp).toBeDefined();
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+});
+
+describe('Feature: workflow-graph-approval-agent-nodes, Property 22: Compiler placement validation', () => {
+  /**
+   * **Validates: Requirements 9.3, 9.4, 10.1, 10.2, 10.3**
+   *
+   * Compilation rejected if any node lacks upstream or any Approval_Node lacks
+   * labeled downstream; accepted when both hold.
+   */
+
+  it(
+    'P22: compilation throws when a node has an invalid upstream (name that does not exist)',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          nodeNameArb,
+          fc.string({ minLength: 1, maxLength: 128 }).map((s) => s.replace(/[^a-zA-Z0-9_-]/g, 'x') || 'bogus'),
+          (workflowName, triggers, nodeName, invalidUpstream) => {
+            // Ensure the upstream name cannot match any known name
+            const safeInvalidUpstream = `nonexistent_${invalidUpstream}`;
+
+            const nodes = [
+              {
+                kind: 'agent' as const,
+                name: `agt_${nodeName}`,
+                modelId: 'test-model',
+                promptTemplate: 'test prompt',
+                upstream: safeInvalidUpstream,
+              },
+            ];
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes,
+            };
+
+            expect(() => compileModule(mod, emptyContext())).toThrow();
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+
+  it(
+    'P22: compilation throws when an ApprovalNodeSpec is missing both approved and rejected',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          nodeNameArb,
+          approvalChannelArb,
+          timeoutHoursArb,
+          (workflowName, triggers, nodeName, channel, hours) => {
+            const nodes = [
+              {
+                kind: 'approval' as const,
+                name: `apv_${nodeName}`,
+                approvalChannel: channel,
+                timeoutHours: hours,
+                upstream: 'handler',
+                // No approved, no rejected
+              },
+            ];
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes,
+            };
+
+            expect(() => compileModule(mod, emptyContext())).toThrow();
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+
+  it(
+    'P22: compilation succeeds when all nodes have valid upstream and approval nodes have labeled downstream',
+    () => {
+      fc.assert(
+        fc.property(
+          validNameArb,
+          validTriggersArb,
+          fc.tuple(nodeNameArb, nodeNameArb, approvalChannelArb, timeoutHoursArb, modelIdArb, promptTemplateArb).filter(
+            ([approvalName, agentName]) => approvalName !== agentName,
+          ),
+          (workflowName, triggers, [approvalName, agentName, channel, hours, modelId, prompt]) => {
+            const nodes = [
+              {
+                kind: 'approval' as const,
+                name: `apv_${approvalName}`,
+                approvalChannel: channel,
+                timeoutHours: hours,
+                upstream: 'handler',
+                approved: `agt_${agentName}`,
+              },
+              {
+                kind: 'agent' as const,
+                name: `agt_${agentName}`,
+                modelId,
+                promptTemplate: prompt,
+                upstream: 'handler',
+              },
+            ];
+
+            const mod: DataWorkflowModule = {
+              name: workflowName,
+              triggers,
+              handler: async () => {},
+              nodes,
+            };
+
+            // Should not throw
+            const result = compileModule(mod, emptyContext());
+            expect(result).toBeDefined();
+            expect(result.ops.length).toBeGreaterThan(0);
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
+});
+
 describe('Feature: ai-first-platform-surface, Property 12: Compiler graph-structure mapping', () => {
   it(
     'R3.4: each trigger produces exactly one connection/ingestion node',

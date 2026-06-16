@@ -1,6 +1,10 @@
 # Loxtep SDKs
 
-Official client libraries for the [Loxtep](https://loxtep.com) data mesh platform.
+Loxtep is the **Enterprise Context Layer**: the system that turns organizational
+knowledge, expertise, and norms into machine-usable context for AI across
+heterogeneous systems.
+
+Official client libraries for the [Loxtep](https://loxtep.com) platform.
 
 | Language | Package | Status |
 |----------|---------|--------|
@@ -9,6 +13,13 @@ Official client libraries for the [Loxtep](https://loxtep.com) data mesh platfor
 | Rust | `loxtep` | 🚧 In progress |
 
 ## Quick start
+
+The SDK supports two developer workflows:
+
+- **Programmatic** — write/read events from application code using `LoxtepClient`
+- **Code-first CLI** — author workflows as TypeScript, test locally, deploy: `loxtep init → attach → generate → test → deploy`
+
+There are also non-SDK paths: **Agent-first (MCP)** via [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills), and the **Web UI** at [app.loxtep.io](https://app.loxtep.io). All paths are covered in the [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
 
 ### Node.js
 
