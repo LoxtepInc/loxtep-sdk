@@ -17,10 +17,10 @@
 
 # AGENTS.md — Loxtep SDK & CLI
 
-Loxtep is **the AI operating system for a company**: context management for AI,
-data management, and integrations across every system. You build and operate
-Loxtep **code-first** — from a terminal and an editor — not by clicking through
-dashboards.
+Loxtep is **the Enterprise Context Layer**: the system that turns organizational
+knowledge, expertise, and norms into machine-usable context for AI across
+heterogeneous systems. You build and operate Loxtep **code-first** — from a
+terminal and an editor — not by clicking through dashboards.
 
 The primary surface is **CLI + SDK + MCP + skills + this doc**. The web UI is
 reduced to user management, billing, and usage. If you are an AI coding agent,

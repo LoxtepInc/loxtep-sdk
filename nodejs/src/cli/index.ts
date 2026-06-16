@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Loxtep CLI entry point.
+ * Loxtep CLI — the Enterprise Context Layer.
+ * Turns organizational knowledge, expertise, and norms into machine-usable
+ * context for AI across heterogeneous systems.
+ *
  * Usage: loxtep <command> [options]
  * Commands: login, logout, whoami, init, attach, config, bus, data-products, queue, flows, workflows, observe, connections, domains, standards, data-contracts
  */
@@ -61,6 +64,9 @@ function getArg(name: string): string | undefined {
 
 function printHelp(): void {
   console.log(`
+Loxtep — the Enterprise Context Layer.
+Turns organizational knowledge, expertise, and norms into machine-usable context for AI.
+
 Usage: loxtep <command> [options]
 
 Commands:

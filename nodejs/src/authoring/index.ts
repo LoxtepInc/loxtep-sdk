@@ -26,6 +26,8 @@ export type {
   QueueRef,
   ConnectorRef,
   HandlerContext,
+  ApprovalNodeSpec,
+  AgentNodeSpec,
 } from './types.js';
 export { compileModule, computeRemovalSet } from './compiler.js';
 export type {

@@ -1,7 +1,7 @@
 {
   "name": "@loxtep/sdk",
   "version": "0.3.0",
-  "description": "Loxtep SDK for Node.js - data products, flows, projects, queues",
+  "description": "Loxtep SDK for Node.js — the Enterprise Context Layer: data products, flows, projects, queues, and machine-usable context for AI",
   "author": "Loxtep <engineering@loxtep.io>",
   "homepage": "https://loxtep.io",
   "repository": {
