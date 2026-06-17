@@ -53,3 +53,44 @@ export async function runDataProductsCreate(
   const created = await client.data_products.create(body);
   console.log(JSON.stringify(created, null, 2));
 }
+
+export async function runDataProductsReadiness(
+  dataProductId: string,
+  options: DataProductsCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  try {
+    const result = await client.data_products.readiness(dataProductId);
+    console.log(JSON.stringify(result, null, 2));
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}
+
+export async function runDataProductsPromote(
+  dataProductId: string,
+  targetTier: 'silver' | 'gold',
+  options: DataProductsCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  try {
+    const result = await client.data_products.promote(dataProductId, targetTier);
+    if (result.success) {
+      console.log(`✅ Promoted to ${result.new_tier}`);
+      if (result.entity_iris?.length) {
+        console.log(`   Minted ${result.entity_iris.length} entity IRI(s)`);
+      }
+    } else {
+      console.error('❌ Promotion rejected:');
+      for (const d of result.diagnostics ?? []) {
+        const icon = d.satisfied ? '✓' : '✗';
+        console.error(`   ${icon} ${d.name}${d.remediation ? ` — ${d.remediation}` : ''}`);
+      }
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}

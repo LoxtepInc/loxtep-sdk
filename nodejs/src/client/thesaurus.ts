@@ -22,6 +22,11 @@ export function createThesaurusApi(
 ): {
   listTerms: (orgId?: string) => Promise<ThesaurusTerm[]>;
   resolveCanonicalKey: (key_or_alias: string, orgId?: string) => Promise<string | null>;
+  append_synonym: (
+    canonical_key: string,
+    alias_path: string,
+    options?: { system?: string; precedence?: number; orgId?: string }
+  ) => Promise<ThesaurusTerm>;
 } {
   const resolveOrg = (orgId?: string) => orgId ?? organization_id;
   return {
@@ -43,6 +48,25 @@ export function createThesaurusApi(
         if (paths.includes(k)) return term.canonical_key;
       }
       return null;
+    },
+
+    async append_synonym(
+      canonical_key: string,
+      alias_path: string,
+      options?: { system?: string; precedence?: number; orgId?: string }
+    ): Promise<ThesaurusTerm> {
+      const org = resolveOrg(options?.orgId);
+      if (!org) throw new Error('organization_id required (pass options.orgId or set on client)');
+      const res = await http.post<{ success: true; data: ThesaurusTerm }>(
+        `/graph/organizations/${encodeURIComponent(org)}/thesaurus/synonyms`,
+        {
+          canonical_key,
+          alias_path,
+          system: options?.system,
+          precedence: options?.precedence ?? 100,
+        }
+      );
+      return res.data;
     },
   };
 }

@@ -28,6 +28,8 @@ import {
   runDataProductsQuery,
   runDataProductsTables,
   runDataProductsCreate,
+  runDataProductsReadiness,
+  runDataProductsPromote,
 } from './commands/data-products-cmd.js';
 import { runMetricsRateLimits, runMetricsLog } from './commands/metrics-cmd.js';
 import { runQueueInfo, runQueueCheckpoint } from './commands/queue-cmd.js';
@@ -42,7 +44,7 @@ import {
 } from './commands/connections-cmd.js';
 import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
 import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
-import { runDataContractsList, runDataContractsGet } from './commands/data-contracts-cmd.js';
+import { runDataContractsList, runDataContractsGet, runDataContractsCreate } from './commands/data-contracts-cmd.js';
 import { runGenerate } from './commands/generate-cmd.js';
 import { runTest } from './commands/test-cmd.js';
 import { runDeploy } from './commands/deploy-cmd.js';
@@ -89,6 +91,8 @@ Commands:
   data-products create --name <n> --domain-id <uuid> [--description <text>]  Create data product
   data-products query <id> <SQL>   Run SQL in data product context (or --file query.sql)
   data-products tables <id> List tables for data product
+  data-products readiness <id>  Check promotion readiness (prerequisites + progress)
+  data-products promote <id> --target <silver|gold>  Execute medallion tier promotion
   metrics rate-limits Show rate limit info from last response or /rate-limits
   metrics log        Log metric (--id <id> --value <n> [--tags k=v,...])
   queue info <id>    Queue info by data product id
@@ -107,6 +111,7 @@ Commands:
   standards get <id>  Get standard by id
   data-contracts list      List data contracts
   data-contracts get <id>  Get data contract by id
+  data-contracts create --data-product-id <id> --name <name> [--description <text>]  Create data contract
   improvements list [--status <s>] [--workflow <name>]  List improvements
   improvements apply <id>  Apply proposed change to workflow module file
   improvements reject <id> Reject an improvement
@@ -304,6 +309,16 @@ async function main(): Promise<void> {
         } else {
           await runDataProductsCreate({ name, domain_id: domainId, kind, description });
         }
+      } else if (sub === 'readiness' && args[2]) {
+        await runDataProductsReadiness(args[2]);
+      } else if (sub === 'promote' && args[2]) {
+        const target = getArg('--target') as 'silver' | 'gold' | undefined;
+        if (!target || !['silver', 'gold'].includes(target)) {
+          console.error('Usage: loxtep data-products promote <id> --target <silver|gold>');
+          process.exitCode = 1;
+        } else {
+          await runDataProductsPromote(args[2], target);
+        }
       } else {
         console.error(
           'Usage: loxtep data-products list | get <id> | create --name ... --domain-id ... | query <id> "SQL" | tables <id>'
@@ -482,8 +497,25 @@ async function main(): Promise<void> {
         await runDataContractsList();
       } else if (sub === 'get' && args[2]) {
         await runDataContractsGet(args[2]);
+      } else if (sub === 'create') {
+        const dpId = getArg('--data-product-id');
+        const name = getArg('--name');
+        if (!dpId || !name) {
+          console.error(
+            'Usage: loxtep data-contracts create --data-product-id <id> --name <name> [--description <text>]'
+          );
+          process.exitCode = 1;
+        } else {
+          await runDataContractsCreate({
+            data_product_id: dpId,
+            name,
+            description: getArg('--description'),
+          });
+        }
       } else {
-        console.error('Usage: loxtep data-contracts list | loxtep data-contracts get <id>');
+        console.error(
+          'Usage: loxtep data-contracts list | get <id> | create --data-product-id <id> --name <name>'
+        );
         process.exitCode = 1;
       }
       break;

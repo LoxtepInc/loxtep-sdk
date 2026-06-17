@@ -439,7 +439,7 @@ Ontology, vocabulary, namespace mappings.
 ```
 
 ### `loxtep_process_intel`
-Process intelligence.
+Process intelligence & unified context retrieval.
 
 | Operation | Scope | Required params | Optional params |
 | --- | --- | --- | --- |
@@ -448,9 +448,10 @@ Process intelligence.
 | `create_entity_context` | organization | `entity_id`, `context` | — |
 | `list_decision_traces` | organization | — | `anchor` |
 | `record_decision_trace` | organization | `decision_id`, `procedure_id`, `outcome`, `actor` | `rationale`, `inputs`, `override` |
+| `query_context` | organization | `query` | `backends`, `max_results`, `include_plan` |
 
 ```json
-{ "operation": "list_decision_traces" }
+{ "operation": "query_context", "query": "What processes touch the customer entity?" }
 ```
 
 ### `loxtep_procedures`
