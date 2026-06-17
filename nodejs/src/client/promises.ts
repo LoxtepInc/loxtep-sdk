@@ -21,6 +21,17 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
 export function createPromisesApi(http: LoxtepHttpClient): {
   get: (contract_id: string) => Promise<Promise_>;
   list: (filters?: PromisesListFilters) => Promise<PromisesListResponse['data']>;
+  create: (payload: {
+    data_product_id: string;
+    name: string;
+    description?: string;
+    version?: string;
+    status?: string;
+    terms?: Record<string, unknown>;
+    schema_version_id?: string;
+  }) => Promise<Promise_>;
+  update: (contract_id: string, payload: Record<string, unknown>) => Promise<Promise_>;
+  delete: (contract_id: string) => Promise<void>;
 } {
   return {
     async list(filters?: PromisesListFilters): Promise<PromisesListResponse['data']> {
@@ -43,6 +54,31 @@ export function createPromisesApi(http: LoxtepHttpClient): {
         `${PROMISES_BASE}/${encodeURIComponent(contract_id)}`
       );
       return res.data;
+    },
+
+    async create(payload: {
+      data_product_id: string;
+      name: string;
+      description?: string;
+      version?: string;
+      status?: string;
+      terms?: Record<string, unknown>;
+      schema_version_id?: string;
+    }): Promise<Promise_> {
+      const res = await http.post<{ success: true; data: Promise_ }>(PROMISES_BASE, payload);
+      return res.data;
+    },
+
+    async update(contract_id: string, payload: Record<string, unknown>): Promise<Promise_> {
+      const res = await http.put<{ success: true; data: Promise_ }>(
+        `${PROMISES_BASE}/${encodeURIComponent(contract_id)}`,
+        payload
+      );
+      return res.data;
+    },
+
+    async delete(contract_id: string): Promise<void> {
+      await http.delete(`${PROMISES_BASE}/${encodeURIComponent(contract_id)}`);
     },
   };
 }

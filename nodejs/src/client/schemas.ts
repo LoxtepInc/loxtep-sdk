@@ -9,6 +9,7 @@ import type { DataProductSchema, SchemaVersion, SchemaListResponse } from './sch
 export function createSchemasApi(http: LoxtepHttpClient): {
   get: (data_product_id: string) => Promise<DataProductSchema | null>;
   list: (data_product_id: string) => Promise<SchemaListResponse>;
+  tag_pii_fields: (data_product_id: string, fields: string[]) => Promise<unknown>;
 } {
   return {
     async get(data_product_id: string): Promise<DataProductSchema | null> {
@@ -29,6 +30,14 @@ export function createSchemasApi(http: LoxtepHttpClient): {
       const schema = (data as { schema?: { versions?: SchemaVersion[] } }).schema;
       const items = schema?.versions ?? [];
       return { items };
+    },
+
+    async tag_pii_fields(data_product_id: string, fields: string[]): Promise<unknown> {
+      const res = await http.post<{ success: true; data: unknown }>(
+        `/schemas/${encodeURIComponent(data_product_id)}/pii`,
+        { fields }
+      );
+      return res.data;
     },
   };
 }

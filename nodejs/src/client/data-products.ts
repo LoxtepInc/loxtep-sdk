@@ -540,5 +540,43 @@ export function createDataProductsApi(
       if (!resolver) return;
       resolver.invalidate(idOrName);
     },
+
+    /**
+     * Check promotion readiness for a data product.
+     * Returns prerequisite checklist, progress percentage, and promotability.
+     */
+    async readiness(data_product_id: string): Promise<{
+      current_tier: string;
+      target_tier: string;
+      prerequisites: Array<{ id: string; name: string; satisfied: boolean; remediation?: string }>;
+      progress_pct: number;
+      promotable: boolean;
+    }> {
+      const res = await http.get<{ success: true; data: any }>(
+        `/graph/promotions/${encodeURIComponent(data_product_id)}/readiness`
+      );
+      return res.data;
+    },
+
+    /**
+     * Execute a medallion tier promotion (Bronze→Silver or Silver→Gold).
+     * Prerequisites are validated server-side. Returns 422 if not satisfied.
+     */
+    async promote(
+      data_product_id: string,
+      target_tier: 'silver' | 'gold'
+    ): Promise<{
+      success: boolean;
+      new_tier?: string;
+      entity_iris?: string[];
+      diagnostics?: Array<{ id: string; name: string; satisfied: boolean; remediation?: string }>;
+      error?: string;
+    }> {
+      const res = await http.post<{ success: true; data: any }>(
+        `/graph/promotions/${encodeURIComponent(data_product_id)}/promote`,
+        { target_tier }
+      );
+      return res.data;
+    },
   };
 }

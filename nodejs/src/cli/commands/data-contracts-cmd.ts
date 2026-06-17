@@ -35,3 +35,24 @@ export async function runDataContractsGet(
     process.exitCode = 1;
   }
 }
+
+export async function runDataContractsCreate(
+  payload: {
+    data_product_id: string;
+    name: string;
+    description?: string;
+    version?: string;
+    status?: string;
+    terms?: Record<string, unknown>;
+  },
+  options: DataContractsCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  try {
+    const created = await client.data_contracts.create(payload);
+    console.log(JSON.stringify(created, null, 2));
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}
