@@ -226,7 +226,7 @@ export class LoxtepClient {
     this.process_intelligence = createProcessIntelligenceApi(this._http);
     this.delivery = createDeliveryApi(this._http);
     this.connectors = createConnectorsApi(this._http);
-    this.instances = createInstancesApi(this._http);
+    this.instances = createInstancesApi(this._http, options.organization_id);
     this.procedures = createProceduresApi(this._http);
     this.improvements = createImprovementsApi(this._http);
     this.activity = createActivityApi(this._http);

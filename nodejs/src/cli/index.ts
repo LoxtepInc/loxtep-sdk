@@ -54,6 +54,15 @@ import {
   runImprovementsRejectCommand,
 } from './commands/improvements-cmd.js';
 import { runActivityListCommand } from './commands/activity-cmd.js';
+import {
+  runInstancesList,
+  runInstancesGet,
+  runInstancesCreate,
+  runInstancesDeploymentUrls,
+  runInstancesRegistration,
+  runInstancesRegister,
+  parseCreateInstanceArgs,
+} from './commands/instances-cmd.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -116,6 +125,18 @@ Commands:
   improvements apply <id>  Apply proposed change to workflow module file
   improvements reject <id> Reject an improvement
   activity list [--source <s>] [--actor <a>] [--resource-type <t>] [--from <date>] [--to <date>]  List activity/audit entries
+  instances list                                List Loxtep instances in this organization
+  instances get <id>                            Get instance by id
+  instances create --name <n> --region <region> --type <shared|managed|self-hosted>
+                                                Create an instance (managed: also pass --plan-id + --payment-method-id;
+                                                  self-hosted: also pass --payment-method-id + --cross-account-role-arn
+                                                  + --rstreams-secret-arn + --rstreams-auth-arn [--external-id <ext>])
+  instances deployment-urls                    Step 1 of self-hosted install: print one-click URL + CLI / Terraform snippets + external ID
+                                                  (LOXTEP_ORGANIZATION_ID must be set, or use --org-id)
+  instances register --cross-account-role-arn <arn> [--region <region>]
+                                                Step 2 of self-hosted install: register the user's role ARN at the org level
+                                                  (required before creating a self-hosted instance)
+  instances registration                       Optional check: print the registered role ARN + external ID
 
 Examples:
   loxtep login
@@ -588,6 +609,42 @@ async function main(): Promise<void> {
       } else {
         console.error(
           'Usage: loxtep activity list [--source cli|sdk|mcp|ui] [--actor <id>] [--resource-type <type>] [--from <date>] [--to <date>] [--limit <n>]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'instances': {
+      if (sub === 'list') {
+        await runInstancesList();
+      } else if (sub === 'get' && args[2]) {
+        await runInstancesGet(args[2]);
+      } else if (sub === 'create') {
+        try {
+          const input = parseCreateInstanceArgs(args.slice(2));
+          await runInstancesCreate(input);
+        } catch (err) {
+          console.error((err as Error).message);
+          process.exitCode = 1;
+        }
+      } else if (sub === 'deployment-urls') {
+        await runInstancesDeploymentUrls();
+      } else if (sub === 'register') {
+        const roleArn = getArg('--cross-account-role-arn');
+        const region = getArg('--region');
+        if (!roleArn) {
+          console.error(
+            'Usage: loxtep instances register --cross-account-role-arn <arn> [--region <region>]'
+          );
+          process.exitCode = 1;
+        } else {
+          await runInstancesRegister(roleArn, region);
+        }
+      } else if (sub === 'registration') {
+        await runInstancesRegistration();
+      } else {
+        console.error(
+          'Usage: loxtep instances list | get <id> | create --name ... --region ... --type ... | deployment-urls | register --cross-account-role-arn <arn> | registration'
         );
         process.exitCode = 1;
       }
