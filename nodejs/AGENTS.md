@@ -300,6 +300,7 @@ Workflows (flows), graph, transforms.
 | `create_workflow` | project | `project_id`, `name` | `description` |
 | `update_workflow` | project | `project_id`, `workflow_id` | `name`, `description` |
 | `delete_workflow` | project | `project_id`, `workflow_id` | — |
+| `archive_workflow` | project | `project_id`, `workflow_id` | `instance_id`, `force` |
 | `list_workflows` | project | `project_id` | — |
 | `get_workflow` | project | `project_id`, `workflow_id` | — |
 | `get_workflow_graph` | project | `project_id`, `workflow_id` | — |
@@ -513,7 +514,7 @@ Deployment lifecycle.
 | --- | --- | --- | --- |
 | `deploy_project` | project | `project_id`, `instance_id` | `force_redeploy` |
 | `deploy_workflow` | project | `project_id`, `instance_id`, `workflow_id` | `force_redeploy`, `skip_validation` |
-| `list_deployments` | organization | — | `project_id`, `instance_id`, `workflow_id`, `status` |
+| `list_deployments` | organization | — | `project_id`, `instance_id`, `workflow_id`, `status`, `orphaned` |
 | `get_deployment` | organization | `deployment_id` | — |
 | `get_runtime_mapping` | project | `project_id` | `workflow_id` |
 
