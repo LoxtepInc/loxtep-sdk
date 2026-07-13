@@ -31,9 +31,21 @@ const createRStreamsSdkMock = jest.fn<(config: unknown) => unknown>();
 // Track resolveStreamsConfiguration calls
 const resolveStreamsConfigurationMock = jest.fn<(partial?: unknown) => unknown>();
 
+// Track createQueueWriter calls
+const createQueueWriterMock = jest.fn<
+  (
+    rsdk: unknown,
+    botId: string,
+    queueName: string,
+    closedError: () => Error
+  ) => { write: (event: unknown) => void; close: () => Promise<void> }
+>();
+
 jest.mock('../../rstreams/event-bridge', () => ({
   putPayloadsToQueue: (...args: unknown[]) => putPayloadsToQueueMock(...args as [unknown, string, string, unknown[]]),
   readQueueBatch: (...args: unknown[]) => readQueueBatchMock(...args as [unknown, string, string, number, string | null | undefined]),
+  createQueueWriter: (...args: unknown[]) =>
+    createQueueWriterMock(...args as [unknown, string, string, () => Error]),
 }));
 
 jest.mock('../../rstreams/leo-runtime', () => ({
@@ -111,6 +123,20 @@ beforeEach(() => {
   createRStreamsSdkMock.mockReturnValue(FAKE_RSDK);
   // Default: putPayloadsToQueue succeeds
   putPayloadsToQueueMock.mockResolvedValue(undefined);
+  // Default: createQueueWriter buffers events and flushes on close
+  createQueueWriterMock.mockImplementation((rsdk, botId, queueName) => {
+    const buffer: unknown[] = [];
+    return {
+      write(event: unknown) {
+        buffer.push(event);
+      },
+      async close() {
+        if (buffer.length > 0) {
+          await putPayloadsToQueueMock(rsdk, botId, queueName, buffer);
+        }
+      },
+    };
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -202,7 +228,7 @@ describe('data_products.get_writer — custom bot_id override', () => {
     );
   });
 
-  it('supports batch_size option (Req 11.1)', async () => {
+  it('flushes all events in a single close() call (batching handled by stream runtime)', async () => {
     const resolver = mockResolver();
     const api = createDataProductsApi(mockHttp(), { resolver } as any);
 
@@ -212,15 +238,12 @@ describe('data_products.get_writer — custom bot_id override', () => {
     writer.write({ id: 3 });
     await writer.close();
 
-    // 3 events with batch_size=2 → 2 batches: [1,2], [3]
-    expect(putPayloadsToQueueMock).toHaveBeenCalledTimes(2);
-    expect(putPayloadsToQueueMock).toHaveBeenNthCalledWith(
-      1, FAKE_RSDK, 'wkflow-nodes-connector-abc', '9c5a188a-queue-conn-out',
-      [{ id: 1 }, { id: 2 }]
-    );
-    expect(putPayloadsToQueueMock).toHaveBeenNthCalledWith(
-      2, FAKE_RSDK, 'wkflow-nodes-connector-abc', '9c5a188a-queue-conn-out',
-      [{ id: 3 }]
+    expect(putPayloadsToQueueMock).toHaveBeenCalledTimes(1);
+    expect(putPayloadsToQueueMock).toHaveBeenCalledWith(
+      FAKE_RSDK,
+      'wkflow-nodes-connector-abc',
+      '9c5a188a-queue-conn-out',
+      [{ id: 1 }, { id: 2 }, { id: 3 }]
     );
   });
 });

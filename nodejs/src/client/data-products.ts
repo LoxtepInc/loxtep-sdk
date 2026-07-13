@@ -20,6 +20,8 @@ import type {
   DataProductLexicon,
   DataProductCreateInput,
   UsageMapResponse,
+  DataProductPromotionReadiness,
+  DataProductPromotionResult,
 } from './data-products-types.js';
 import type { QueueMetadata, ReaderCheckpoint } from './queue-types.js';
 import type { FlowWriter } from './flow-types.js';
@@ -105,6 +107,11 @@ export function createDataProductsApi(
   get_writer: (idOrName: string, options?: DataProductWriterOptions) => Promise<FlowWriter>;
   get_reader: (idOrName: string, options?: DataProductReaderOptions) => Promise<AsyncIterable<StreamEvent>>;
   invalidate_cache: (idOrName?: string) => void;
+  readiness: (data_product_id: string) => Promise<DataProductPromotionReadiness>;
+  promote: (
+    data_product_id: string,
+    target_tier: 'silver' | 'gold'
+  ) => Promise<DataProductPromotionResult>;
 } {
   return {
     async get(id: string, options?: DataProductGetOptions): Promise<DataProduct> {
@@ -545,14 +552,8 @@ export function createDataProductsApi(
      * Check promotion readiness for a data product.
      * Returns prerequisite checklist, progress percentage, and promotability.
      */
-    async readiness(data_product_id: string): Promise<{
-      current_tier: string;
-      target_tier: string;
-      prerequisites: Array<{ id: string; name: string; satisfied: boolean; remediation?: string }>;
-      progress_pct: number;
-      promotable: boolean;
-    }> {
-      const res = await http.get<{ success: true; data: any }>(
+    async readiness(data_product_id: string): Promise<DataProductPromotionReadiness> {
+      const res = await http.get<{ success: true; data: DataProductPromotionReadiness }>(
         `/graph/promotions/${encodeURIComponent(data_product_id)}/readiness`
       );
       return res.data;
@@ -565,14 +566,8 @@ export function createDataProductsApi(
     async promote(
       data_product_id: string,
       target_tier: 'silver' | 'gold'
-    ): Promise<{
-      success: boolean;
-      new_tier?: string;
-      entity_iris?: string[];
-      diagnostics?: Array<{ id: string; name: string; satisfied: boolean; remediation?: string }>;
-      error?: string;
-    }> {
-      const res = await http.post<{ success: true; data: any }>(
+    ): Promise<DataProductPromotionResult> {
+      const res = await http.post<{ success: true; data: DataProductPromotionResult }>(
         `/graph/promotions/${encodeURIComponent(data_product_id)}/promote`,
         { target_tier }
       );
