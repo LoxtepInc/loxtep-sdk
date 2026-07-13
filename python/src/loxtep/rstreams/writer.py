@@ -13,16 +13,19 @@ consumer + checkpointing) is planned.
 from __future__ import annotations
 
 import asyncio
+import datetime
 import gzip
 import json
 import time
+import uuid
 from typing import Any, Optional
 
 from .config import StreamConfig
 
-# Kinesis hard limit is 1 MB per record. A single event larger than this must be
-# offloaded to S3 (a documented follow-up); we raise rather than silently fail.
-_MAX_SINGLE_EVENT_BYTES = 1024 * 1024
+# Events whose JSON exceeds 600 KiB are offloaded to S3 (matches leo-sdk's
+# `twoHundredK * 3`); the Kinesis record then carries an S3-pointer instead of
+# the inline payload.
+_S3_OFFLOAD_THRESHOLD = 1024 * 200 * 3
 
 
 def _now_ms() -> int:
@@ -74,6 +77,7 @@ class LeoStreamWriter:
         max_batch_bytes: int = 200 * 1024,
         max_attempts: int = 10,
         kinesis_client: Any = None,
+        s3_client: Any = None,
     ) -> None:
         if not config.is_writable:
             raise StreamBusUnavailableError(
@@ -89,7 +93,9 @@ class LeoStreamWriter:
         self._buffer: list[dict[str, Any]] = []
         self._buffered_bytes = 0
         self._closed = False
+        self._s3_file_count = 0
         self._client = kinesis_client if kinesis_client is not None else self._make_client()
+        self._s3 = s3_client  # lazily created only if a large payload is offloaded
 
     def _make_client(self) -> Any:
         try:
@@ -99,6 +105,16 @@ class LeoStreamWriter:
                 "boto3 is required for stream-bus writes. Install with: pip install loxtep[streams]"
             ) from exc
         return boto3.client("kinesis", region_name=self._config.region)
+
+    def _make_s3(self) -> Any:
+        if self._s3 is not None:
+            return self._s3
+        try:
+            import boto3  # noqa: PLC0415
+        except ImportError as exc:  # pragma: no cover - env dependent
+            raise StreamBusUnavailableError("boto3 is required for large-payload S3 offload.") from exc
+        self._s3 = boto3.client("s3", region_name=self._config.region)
+        return self._s3
 
     def write(self, business_object: Any, *, event_source_timestamp: Optional[int] = None) -> None:
         if self._closed:
@@ -110,15 +126,63 @@ class LeoStreamWriter:
             event_source_timestamp=event_source_timestamp,
         )
         line = json.dumps(env)
-        if len(line.encode("utf-8")) > _MAX_SINGLE_EVENT_BYTES:
-            raise StreamBusUnavailableError(
-                "Single event exceeds the 1 MB Kinesis record limit. Large-payload "
-                "S3 offload is not yet implemented in the Python SDK."
-            )
+        if len(line.encode("utf-8")) > _S3_OFFLOAD_THRESHOLD:
+            self._offload_event(env)
+            return
         self._buffer.append(env)
         self._buffered_bytes += len(line) + 1
         if len(self._buffer) >= self._max_batch_records or self._buffered_bytes >= self._max_batch_bytes:
             self._flush()
+
+    def _s3_key(self) -> str:
+        self._s3_file_count += 1
+        now = datetime.datetime.now(datetime.timezone.utc)
+        ms = int(now.timestamp() * 1000)
+        return (
+            f"bus/{self._queue}/{self._bot_id}/z/"
+            f"{now.strftime('%Y/%m/%d/%H/%M/')}{ms}-{self._s3_file_count:08d}-{uuid.uuid4()}.gz"
+        )
+
+    def _offload_event(self, env: dict[str, Any]) -> None:
+        """Upload an oversized event to S3 as gzipped NDJSON and emit an
+        S3-pointer record on Kinesis (matches leo-sdk's >600 KiB offload)."""
+        if not self._config.s3_bucket:
+            raise StreamBusUnavailableError(
+                "Event exceeds 600 KiB but no S3 bucket is configured for offload "
+                "(set LeoS3 / LEO_S3_BUCKET in stream config)."
+            )
+        # Any buffered inline events must be flushed first to preserve ordering.
+        self._flush()
+        line = json.dumps(env) + "\n"
+        line_bytes = line.encode("utf-8")
+        gz = gzip.compress(line_bytes)
+        key = self._s3_key()
+        self._make_s3().put_object(Bucket=self._config.s3_bucket, Key=key, Body=gz)
+        pointer = {
+            "event": self._queue,
+            "start": 0,
+            "end": 0,
+            "s3": {"bucket": self._config.s3_bucket, "key": key},
+            "offsets": [
+                {
+                    "event": self._queue,
+                    "start": 0,
+                    "end": 0,
+                    "records": 1,
+                    "size": len(line_bytes),
+                    "gzipSize": len(gz),
+                    "offset": 0,
+                    "gzipOffset": 0,
+                }
+            ],
+            "gzipSize": len(gz),
+            "size": len(line_bytes),
+            "records": 1,
+            "stats": {},
+            "correlations": [],
+        }
+        data = gzip.compress((json.dumps(pointer) + "\n").encode("utf-8"))
+        self._put_with_retry([{"Data": data, "PartitionKey": "0"}])
 
     def close(self) -> None:
         if self._closed:

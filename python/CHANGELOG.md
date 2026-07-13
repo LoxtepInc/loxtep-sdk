@@ -56,10 +56,12 @@ SDKs present the same surface, names, and journey grouping.
 - **Async bus I/O**: `AsyncLeoStreamWriter`/`AsyncLeoStreamReader` (sync boto3 run
   via `asyncio.to_thread`); async `data_products.get_writer`/`get_reader` and
   `workflows.get_writer` use the bus when configured, else HTTP.
-- Writer rejects a single event > 1 MB with a clear error (S3 write-offload for
-  oversized payloads is a documented follow-up).
-- Remaining rstreams follow-ups (perf/edge only): S3 write-offload, S3
-  byte-range fast-read, snapshot/archive queue transitions.
+- **Large-payload S3 write-offload**: events whose JSON exceeds 600 KiB are
+  uploaded to S3 as gzipped NDJSON and replaced on Kinesis with the leo-sdk
+  S3-pointer chunk record (`{event, start, end, s3, offsets, gzipSize, size,
+  records, stats, correlations}`); requires an S3 bucket in stream config.
+- Remaining rstreams follow-ups (perf/edge only): S3 byte-range fast-read,
+  snapshot/archive queue transitions.
 
 ## [0.3.0] - Unreleased
 

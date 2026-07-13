@@ -321,13 +321,43 @@ def test_manual_checkpoint():
     assert cp["read"]["queue:other"]["checkpoint"] == "x"  # preserved other queues
 
 
-# --- oversized event guard ---
+# --- oversized event: S3 offload ---
 
-def test_writer_rejects_oversized_single_event():
-    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K")
+def test_writer_rejects_oversized_single_event_without_s3():
+    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K")  # no s3_bucket
     w = LeoStreamWriter(cfg, "bot", "q", kinesis_client=FakeKinesis())
     with pytest.raises(StreamBusUnavailableError):
-        w.write({"blob": "x" * (1024 * 1024 + 10)})
+        w.write({"blob": "x" * (700 * 1024)})
+
+
+def test_writer_offloads_oversized_event_to_s3_and_emits_pointer():
+    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K", s3_bucket="bus-s3")
+    kinesis = FakeKinesis()
+
+    class FakeS3:
+        def __init__(self): self.puts = []
+        def put_object(self, *, Bucket, Key, Body): self.puts.append({"Bucket": Bucket, "Key": Key, "Body": Body})
+
+    s3 = FakeS3()
+    w = LeoStreamWriter(cfg, "bot", "orders-q", kinesis_client=kinesis, s3_client=s3)
+    big = {"blob": "x" * (700 * 1024)}
+    w.write(big)
+    w.close()
+
+    # uploaded gzipped NDJSON to S3 under bus/<queue>/<bot>/z/...
+    assert len(s3.puts) == 1
+    assert s3.puts[0]["Bucket"] == "bus-s3"
+    assert s3.puts[0]["Key"].startswith("bus/orders-q/bot/z/") and s3.puts[0]["Key"].endswith(".gz")
+    uploaded = json.loads(gzip.decompress(s3.puts[0]["Body"]).decode().splitlines()[0])
+    assert uploaded["payload"] == big and uploaded["event"] == "orders-q"
+
+    # Kinesis got the S3-pointer record (not the inline payload)
+    assert len(kinesis.calls) == 1
+    pointer = _decode_records(kinesis.calls[0])[0]
+    assert pointer["s3"] == {"bucket": "bus-s3", "key": s3.puts[0]["Key"]}
+    assert pointer["records"] == 1 and pointer["event"] == "orders-q"
+    assert "payload" not in pointer  # pointer is a chunk descriptor, not an event
+    assert pointer["offsets"][0]["gzipSize"] == len(s3.puts[0]["Body"])
 
 
 # --- async facades ---
