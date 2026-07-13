@@ -1,5 +1,12 @@
 name: Publish @loxtep/sdk to npm
 
+# Publishes via npm Trusted Publishing (OIDC). Configure on npmjs.com:
+# @loxtep/sdk → Settings → Trusted publishing → GitHub Actions
+#   Organization: LoxtepInc
+#   Repository:   loxtep-sdk
+#   Workflow:     nodejs-publish.yml
+#   Allowed:      npm publish
+
 on:
   workflow_dispatch:
     inputs:
@@ -23,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      id-token: write # required for npm Trusted Publishing (OIDC)
     defaults:
       run:
         working-directory: nodejs
@@ -36,6 +43,9 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Ensure npm supports Trusted Publishing
+        run: npm install -g npm@latest
+
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -46,7 +56,7 @@ jobs:
 
       - name: Set version (if provided)
         if: inputs.version != ''
-        run: npm version ${{ inputs.version }} --no-git-tag-version
+        run: npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Build
         run: pnpm run build
@@ -59,12 +69,9 @@ jobs:
 
       - name: Publish (dry run)
         if: inputs.dry_run == true
-        run: npm publish --dry-run --tag ${{ inputs.tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --dry-run --access public --tag ${{ inputs.tag }}
 
       - name: Publish
         if: inputs.dry_run != true
-        run: npm publish --provenance --access public --tag ${{ inputs.tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --tag ${{ inputs.tag }}
+        # OIDC via Trusted Publishing — no NPM_TOKEN. Provenance is automatic.

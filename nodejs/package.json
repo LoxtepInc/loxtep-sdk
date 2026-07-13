@@ -6,7 +6,7 @@
   "homepage": "https://loxtep.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/loxtepinc/loxtep-sdk.git",
+    "url": "https://github.com/LoxtepInc/loxtep-sdk.git",
     "directory": "nodejs"
   },
   "bugs": {
