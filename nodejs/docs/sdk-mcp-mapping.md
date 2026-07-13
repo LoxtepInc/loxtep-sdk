@@ -8,10 +8,10 @@ I/O.
 | ------------------------ | ----------------------------------------- | ------------------------------------------------------------------------ |
 | Catalog / discovery      | `POST /ai/mcp/tools/call` discovery tools | `client.discovery.*`, `client.catalog.search`                            |
 | Data products            | MCP dataproduct tools                     | `client.data_products` (get, list, create, query, stream, replay, …)     |
-| Flows / workflows        | MCP / Studio workflows                    | `client.flows`, `client.workflows`, `client.projects`                    |
-| Connections / connectors | MCP connectors                            | `client.connections`, `client.connectors`                                |
+| Workflows                | MCP / Studio workflows                    | `client.workflows`, `client.projects`                                    |
+| Triggers / connectors    | MCP connectors                            | `client.triggers`, `client.connectors`                                   |
 | Org / instances          | MCP org / instances                       | `client.instances.list()`, config `instance_id`                          |
-| Live queue I/O           | Not a substitute for the stream runtime   | `client.queues`, `client.flows.get_writer`, `data_products.get_writer` |
+| Live queue I/O           | Not a substitute for the stream runtime   | `client.queues`, `data_products.get_writer`                              |
 
 When unsure: **MCP for provisioning and agent tool calls**; **SDK for runtime**
 services running in your infrastructure or CI.

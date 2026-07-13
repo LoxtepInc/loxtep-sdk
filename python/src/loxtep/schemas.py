@@ -1,10 +1,16 @@
 """
-Schemas API (data product schema). get.
+Schemas API (data product schema). get, list, tag_pii_fields.
 """
+
+from __future__ import annotations
 
 from typing import Any, Optional
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
+
+
+def _unwrap(res: Any) -> Any:
+    return res.get("data", res) if isinstance(res, dict) else res
 
 
 class SchemasApi:
@@ -18,7 +24,20 @@ class SchemasApi:
         if version is not None:
             path += f"?version={version}"
         res = self._http.get(path)
-        return res.get("data", res) if isinstance(res, dict) else res
+        return _unwrap(res)
+
+    def list(self, data_product_id: str) -> dict[str, Any]:
+        """List schema versions for a data product. Returns {'items': [...]}."""
+        res = self._http.get(f"/dataproducts/{data_product_id}?include_schema=true")
+        data = _unwrap(res)
+        schema = data.get("schema") if isinstance(data, dict) else None
+        items = schema.get("versions", []) if isinstance(schema, dict) else []
+        return {"items": items}
+
+    def tag_pii_fields(self, data_product_id: str, fields: list[str]) -> Any:
+        """Tag fields as PII on a data product's schema."""
+        res = self._http.post(f"/schemas/{data_product_id}/pii", {"fields": fields})
+        return _unwrap(res)
 
 
 class AsyncSchemasApi:
@@ -32,4 +51,15 @@ class AsyncSchemasApi:
         if version is not None:
             path += f"?version={version}"
         res = await self._http.get(path)
-        return res.get("data", res) if isinstance(res, dict) else res
+        return _unwrap(res)
+
+    async def list(self, data_product_id: str) -> dict[str, Any]:
+        res = await self._http.get(f"/dataproducts/{data_product_id}?include_schema=true")
+        data = _unwrap(res)
+        schema = data.get("schema") if isinstance(data, dict) else None
+        items = schema.get("versions", []) if isinstance(schema, dict) else []
+        return {"items": items}
+
+    async def tag_pii_fields(self, data_product_id: str, fields: list[str]) -> Any:
+        res = await self._http.post(f"/schemas/{data_product_id}/pii", {"fields": fields})
+        return _unwrap(res)

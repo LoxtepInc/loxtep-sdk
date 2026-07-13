@@ -39,10 +39,10 @@ async function callTool<T>(
 
 export function createDiscoveryApi(http: LoxtepHttpClient): {
   search: (options: DiscoverySearchOptions) => Promise<DiscoverySearchResponse>;
-  getEvidence: (dataProductIds: string[]) => Promise<GetEvidenceResponse>;
-  getLineageImpact: (dataProductId: string) => Promise<GetLineageImpactResponse>;
-  getGovernanceFlags: (dataProductId: string) => Promise<GetGovernanceFlagsResponse>;
-  runDiscovery: () => Promise<RunDiscoveryResponse>;
+  get_evidence: (dataProductIds: string[]) => Promise<GetEvidenceResponse>;
+  get_lineage_impact: (dataProductId: string) => Promise<GetLineageImpactResponse>;
+  get_governance_flags: (dataProductId: string) => Promise<GetGovernanceFlagsResponse>;
+  run: () => Promise<RunDiscoveryResponse>;
 } {
   return {
     async search(options: DiscoverySearchOptions): Promise<DiscoverySearchResponse> {
@@ -59,25 +59,25 @@ export function createDiscoveryApi(http: LoxtepHttpClient): {
       return callTool<DiscoverySearchResponse>(http, 'search_catalog', args);
     },
 
-    async getEvidence(dataProductIds: string[]): Promise<GetEvidenceResponse> {
+    async get_evidence(dataProductIds: string[]): Promise<GetEvidenceResponse> {
       return callTool<GetEvidenceResponse>(http, 'get_evidence', {
         data_product_ids: dataProductIds,
       });
     },
 
-    async getLineageImpact(dataProductId: string): Promise<GetLineageImpactResponse> {
+    async get_lineage_impact(dataProductId: string): Promise<GetLineageImpactResponse> {
       return callTool<GetLineageImpactResponse>(http, 'get_lineage_impact', {
         data_product_id: dataProductId,
       });
     },
 
-    async getGovernanceFlags(dataProductId: string): Promise<GetGovernanceFlagsResponse> {
+    async get_governance_flags(dataProductId: string): Promise<GetGovernanceFlagsResponse> {
       return callTool<GetGovernanceFlagsResponse>(http, 'get_governance_flags', {
         data_product_id: dataProductId,
       });
     },
 
-    async runDiscovery(): Promise<RunDiscoveryResponse> {
+    async run(): Promise<RunDiscoveryResponse> {
       return callTool<RunDiscoveryResponse>(http, 'run_discovery', {});
     },
   };

@@ -1,31 +1,31 @@
 /**
- * CLI: loxtep connections list | connections get <id> | connections create ... | connections test <id>
+ * CLI: loxtep triggers list | triggers get <id> | triggers create ... | triggers test <id>
  */
 
 import { requireCliClient } from '../create-cli-client.js';
 
-export interface ConnectionsCmdOptions {
+export interface TriggersCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
 }
 
-export async function runConnectionsList(options: ConnectionsCmdOptions = {}): Promise<void> {
+export async function runTriggersList(options: TriggersCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.connections.list({ page_size: 50 });
+  const result = await client.triggers.list({ page_size: 50 });
   console.log(JSON.stringify(result, null, 2));
 }
 
-export async function runConnectionsGet(
-  connectionId: string,
-  options: ConnectionsCmdOptions = {}
+export async function runTriggersGet(
+  triggerId: string,
+  options: TriggersCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const conn = await client.connections.get(connectionId);
-  console.log(JSON.stringify(conn, null, 2));
+  const trigger = await client.triggers.get(triggerId);
+  console.log(JSON.stringify(trigger, null, 2));
 }
 
-export async function runConnectionsCreate(
+export async function runTriggersCreate(
   params: {
     name?: string;
     type?: string;
@@ -33,7 +33,7 @@ export async function runConnectionsCreate(
     data?: string;
     configuration?: Record<string, unknown>;
   },
-  options: ConnectionsCmdOptions = {}
+  options: TriggersCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   const name = params.name ?? '';
@@ -44,21 +44,21 @@ export async function runConnectionsCreate(
     process.exitCode = 1;
     return;
   }
-  const conn = await client.connections.create({
+  const trigger = await client.triggers.create({
     name,
     type: type as 'database' | 'api' | 'webhook' | 'file',
     key,
     data: params.data ?? '{}',
     configuration: params.configuration,
   });
-  console.log(JSON.stringify(conn, null, 2));
+  console.log(JSON.stringify(trigger, null, 2));
 }
 
-export async function runConnectionsTest(
-  connectionId: string,
-  options: ConnectionsCmdOptions = {}
+export async function runTriggersTest(
+  triggerId: string,
+  options: TriggersCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.connections.test(connectionId);
+  const result = await client.triggers.test(triggerId);
   console.log(JSON.stringify(result, null, 2));
 }

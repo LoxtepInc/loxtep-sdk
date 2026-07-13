@@ -1,11 +1,13 @@
 """
 Loxtep Python SDK.
-data_products, delivery, flows, projects, domains, standards (policies), data_contracts,
-connections, queues, quality, catalog, schemas.
+Grouped by the ingest → define → deliver journey: triggers, connectors, workflows,
+data_products, schemas, quality, catalog, discovery, domains, standards,
+data_contracts, targets. Plus advanced: projects, templates, instances, observe,
+queues, metrics.
 """
 
 from .client import AsyncLoxtepClient, LoxtepClient
-from .delivery import AsyncDeliveryApi, DeliveryApi
+from .targets import AsyncTargetsApi, TargetsApi
 from .errors import (
     AuthenticationError,
     AuthorizationError,
@@ -20,8 +22,8 @@ from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
 from .models import (
     DataProduct,
     DataProductKind,
-    DeliveryInterface,
-    DeliveryType,
+    Target,
+    TargetType,
     UsageMap,
     UsageMapEdge,
     UsageMapNode,
@@ -43,10 +45,10 @@ __all__ = [
     "RateLimitInfo",
     "DataProduct",
     "DataProductKind",
-    "DeliveryInterface",
-    "DeliveryType",
-    "DeliveryApi",
-    "AsyncDeliveryApi",
+    "Target",
+    "TargetType",
+    "TargetsApi",
+    "AsyncTargetsApi",
     "UsageMap",
     "UsageMapEdge",
     "UsageMapNode",

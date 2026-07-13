@@ -1,5 +1,5 @@
 """
-Templates API: list_templates, get_template.
+Templates API: list, get.
 Canonical API: GET /dataproducts/templates, GET /dataproducts/templates/:template_id (dataproducts).
 Path must match API Gateway (frontend uses /dataproducts/templates).
 Apply template: use client.projects.apply_template(project_id, ...).
@@ -23,12 +23,12 @@ def _data(res: Any) -> Any:
 
 
 class TemplatesApi:
-    """Sync templates surface: list_templates, get_template."""
+    """Sync templates surface: list, get."""
 
     def __init__(self, http: LoxtepHttpClient) -> None:
         self._http = http
 
-    def list_templates(
+    def list(
         self,
         *,
         category: Optional[str] = None,
@@ -45,7 +45,7 @@ class TemplatesApi:
         res = self._http.get(f"{TEMPLATES_BASE}{qs}")
         return _data(res)
 
-    def get_template(self, template_id: str) -> dict[str, Any]:
+    def get(self, template_id: str) -> dict[str, Any]:
         path = f"{TEMPLATES_BASE}/{quote(template_id)}"
         res = self._http.get(path)
         return _data(res)
@@ -57,7 +57,7 @@ class AsyncTemplatesApi:
     def __init__(self, http: AsyncLoxtepHttpClient) -> None:
         self._http = http
 
-    async def list_templates(
+    async def list(
         self,
         *,
         category: Optional[str] = None,
@@ -74,7 +74,7 @@ class AsyncTemplatesApi:
         res = await self._http.get(f"{TEMPLATES_BASE}{qs}")
         return _data(res)
 
-    async def get_template(self, template_id: str) -> dict[str, Any]:
+    async def get(self, template_id: str) -> dict[str, Any]:
         path = f"{TEMPLATES_BASE}/{quote(template_id)}"
         res = await self._http.get(path)
         return _data(res)

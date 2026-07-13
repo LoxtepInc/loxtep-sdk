@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — API surface redesign (parity with Node.js SDK)
+
+Clean breaks (no deprecated aliases). Mirrors the Node.js SDK redesign so both
+SDKs present the same surface, names, and journey grouping.
+
+### Breaking changes
+
+- **`flows` merged into `workflows`** — `client.flows` removed. Use
+  `client.workflows` (`list`, `get`, `create`, `get_graph`, `deploy`,
+  `get_writer`). `get_writer` is a low-level escape hatch (internal); prefer
+  `data_products.get_writer`.
+- **`connections` → `triggers`** — ingest source bindings.
+- **`delivery` → `targets`** — delivery sink bindings. Model `DeliveryInterface`
+  → `Target`, `DeliveryType` → `TargetType`, field `delivery_type` →
+  `target_type` (the wire field stays `delivery_type` via a pydantic alias).
+  `DeliveryApi`/`AsyncDeliveryApi` → `TargetsApi`/`AsyncTargetsApi`.
+- **Short method names** for cross-language parity:
+  `workflows.list_workflows→list`, `get_workflow_graph→get_graph`,
+  `create_workflow→create`; `projects.list_projects→list`, `get_project→get`,
+  `create_project→create`, `update_project→update`, `delete_project→delete`;
+  `templates.list_templates→list`, `get_template→get`;
+  `data_products.create_data_product→create`; `discovery.run_discovery→run`.
+- **`process_intelligence`** de-emphasized to experimental (parity with Node).
+
+### Added (Node.js parity)
+
+- `data_products`: `get_writer`, `get_reader` (resolve name→id, HTTP data path),
+  `get_lexicon`, `readiness`, `promote`, `invalidate_cache`.
+- `schemas`: `list`, `tag_pii_fields`. `quality`: `create`.
+- `projects`: `repository`. `instances`: `get_stream_config`.
+- New `thesaurus` namespace (`list_terms`, `resolve_canonical_key`,
+  `append_synonym`).
+- Internal `improvements` (`list`/`apply`/`reject`) and `activity` (`list`)
+  namespaces (excluded from the documented surface, matching Node).
+- `domains`, `standards`, `data_contracts` are now real HTTP-backed namespaces
+  (previously stubs). `data_contracts` gains `create`/`update`/`delete`.
+  (`metrics` remains a no-op, matching Node.)
+- **Native `loxtep.rstreams` stream data-plane module** (no external Leo SDK
+  dependency): `resolve_stream_config` + `LeoStreamWriter` (Kinesis producer —
+  gzipped NDJSON envelopes, batching, retry). `data_products.get_writer` and
+  `workflows.get_writer` (sync) produce to the bus when `streams=` config (or
+  `LEO_*` env) is present and `boto3` is installed (`pip install loxtep[streams]`),
+  else HTTP fallback. The rstreams **read** path and an async bus writer are the
+  next steps of the port.
+
 ## [0.3.0] - Unreleased
 
 ### Terminology Migration

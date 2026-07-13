@@ -1,4 +1,4 @@
-"""Tests for the delivery namespace and DeliveryInterface model."""
+"""Tests for the targets namespace and Target model."""
 
 from unittest.mock import patch
 
@@ -6,11 +6,11 @@ import pytest
 
 from loxtep import (
     AsyncLoxtepClient,
-    DeliveryInterface,
-    DeliveryType,
+    Target,
+    TargetType,
     LoxtepClient,
 )
-from loxtep.delivery import AsyncDeliveryApi, DeliveryApi
+from loxtep.targets import AsyncTargetsApi, TargetsApi
 
 
 # ---------------------------------------------------------------------------
@@ -19,17 +19,17 @@ from loxtep.delivery import AsyncDeliveryApi, DeliveryApi
 
 
 def test_delivery_interface_model_creation():
-    """DeliveryInterface can be created with all required fields."""
-    di = DeliveryInterface(
+    """Target can be created with all required fields."""
+    di = Target(
         consumption_id="cons_123",
         data_product_id="dp_456",
         organization_id="org_789",
-        delivery_type="webhook",
+        target_type="webhook",
     )
     assert di.consumption_id == "cons_123"
     assert di.data_product_id == "dp_456"
     assert di.organization_id == "org_789"
-    assert di.delivery_type == "webhook"
+    assert di.target_type == "webhook"
     assert di.is_active is True
     assert di.method == "POST"
     assert di.status == "active"
@@ -40,12 +40,12 @@ def test_delivery_interface_model_creation():
 
 
 def test_delivery_interface_model_all_fields():
-    """DeliveryInterface accepts all optional fields."""
-    di = DeliveryInterface(
+    """Target accepts all optional fields."""
+    di = Target(
         consumption_id="cons_abc",
         data_product_id="dp_def",
         organization_id="org_ghi",
-        delivery_type="api_endpoint",
+        target_type="api_endpoint",
         delivery_method="rest",
         status="paused",
         is_active=False,
@@ -60,19 +60,19 @@ def test_delivery_interface_model_all_fields():
         created_at="2024-01-01T00:00:00Z",
         updated_at="2024-06-01T12:00:00Z",
     )
-    assert di.delivery_type == "api_endpoint"
+    assert di.target_type == "api_endpoint"
     assert di.endpoint_url == "https://example.com/api"
     assert di.is_active is False
     assert di.name == "My API Endpoint"
 
 
 def test_delivery_interface_allows_extra_fields():
-    """DeliveryInterface allows extra fields (model_config extra='allow')."""
-    di = DeliveryInterface(
+    """Target allows extra fields (model_config extra='allow')."""
+    di = Target(
         consumption_id="cons_1",
         data_product_id="dp_1",
         organization_id="org_1",
-        delivery_type="export",
+        target_type="export",
         custom_field="extra_value",
     )
     assert di.model_extra.get("custom_field") == "extra_value"
@@ -84,25 +84,25 @@ def test_delivery_interface_allows_extra_fields():
 
 
 def test_sync_client_has_delivery_property():
-    """LoxtepClient exposes a delivery property of type DeliveryApi."""
+    """LoxtepClient exposes a delivery property of type TargetsApi."""
     client = LoxtepClient(api_url="https://api.example.com")
-    assert isinstance(client.delivery, DeliveryApi)
+    assert isinstance(client.targets, TargetsApi)
     client.close()
 
 
 def test_async_client_has_delivery_property():
-    """AsyncLoxtepClient exposes a delivery property of type AsyncDeliveryApi."""
+    """AsyncLoxtepClient exposes a delivery property of type AsyncTargetsApi."""
     client = AsyncLoxtepClient(api_url="https://api.example.com")
-    assert isinstance(client.delivery, AsyncDeliveryApi)
+    assert isinstance(client.targets, AsyncTargetsApi)
 
 
 # ---------------------------------------------------------------------------
-# DeliveryApi method tests (sync, mocked HTTP)
+# TargetsApi method tests (sync, mocked HTTP)
 # ---------------------------------------------------------------------------
 
 
 def test_delivery_list_returns_delivery_interfaces():
-    """delivery.list parses response into DeliveryInterface models."""
+    """delivery.list parses response into Target models."""
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "get") as mock_get:
         mock_get.return_value = {
@@ -129,12 +129,12 @@ def test_delivery_list_returns_delivery_interfaces():
                 }
             ],
         }
-        result = client.delivery.list("dp_1")
+        result = client.targets.list("dp_1")
 
     assert len(result) == 1
-    assert isinstance(result[0], DeliveryInterface)
+    assert isinstance(result[0], Target)
     assert result[0].consumption_id == "cons_1"
-    assert result[0].delivery_type == "webhook"
+    assert result[0].target_type == "webhook"
     mock_get.assert_called_once_with("/dataproducts/dp_1/consumptions?page=1&page_size=20")
     client.close()
 
@@ -144,7 +144,7 @@ def test_delivery_list_with_filters():
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "get") as mock_get:
         mock_get.return_value = {"success": True, "data": []}
-        client.delivery.list("dp_1", status="active", is_active=True, page=2, page_size=10)
+        client.targets.list("dp_1", status="active", is_active=True, page=2, page_size=10)
 
     call_url = mock_get.call_args[0][0]
     assert "page=2" in call_url
@@ -180,18 +180,18 @@ def test_delivery_get_returns_delivery_interface():
                 "updated_at": "2024-03-01T00:00:00Z",
             },
         }
-        result = client.delivery.get("dp_1", "cons_42")
+        result = client.targets.get("dp_1", "cons_42")
 
-    assert isinstance(result, DeliveryInterface)
+    assert isinstance(result, Target)
     assert result.consumption_id == "cons_42"
-    assert result.delivery_type == "export"
+    assert result.target_type == "export"
     assert result.configuration == {"format": "csv", "bucket": "my-bucket"}
     mock_get.assert_called_once_with("/dataproducts/dp_1/consumptions/cons_42")
     client.close()
 
 
 def test_delivery_create_posts_body_and_returns_model():
-    """delivery.create sends POST with delivery_type and returns DeliveryInterface."""
+    """delivery.create sends POST with delivery_type and returns Target."""
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "post") as mock_post:
         mock_post.return_value = {
@@ -216,17 +216,17 @@ def test_delivery_create_posts_body_and_returns_model():
                 "updated_at": "2024-06-01T00:00:00Z",
             },
         }
-        result = client.delivery.create(
+        result = client.targets.create(
             "dp_1",
-            delivery_type="webhook",
+            target_type="webhook",
             endpoint_url="https://hook.example.com",
             method="POST",
             headers={"X-Secret": "abc"},
         )
 
-    assert isinstance(result, DeliveryInterface)
+    assert isinstance(result, Target)
     assert result.consumption_id == "cons_new"
-    assert result.delivery_type == "webhook"
+    assert result.target_type == "webhook"
     mock_post.assert_called_once_with(
         "/dataproducts/dp_1/consumptions",
         {
@@ -240,7 +240,7 @@ def test_delivery_create_posts_body_and_returns_model():
 
 
 def test_delivery_update_puts_body_and_returns_model():
-    """delivery.update sends PUT with kwargs and returns updated DeliveryInterface."""
+    """delivery.update sends PUT with kwargs and returns updated Target."""
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "put") as mock_put:
         mock_put.return_value = {
@@ -265,9 +265,9 @@ def test_delivery_update_puts_body_and_returns_model():
                 "updated_at": "2024-06-15T00:00:00Z",
             },
         }
-        result = client.delivery.update("dp_1", "cons_1", is_active=False, status="paused", name="Updated webhook")
+        result = client.targets.update("dp_1", "cons_1", is_active=False, status="paused", name="Updated webhook")
 
-    assert isinstance(result, DeliveryInterface)
+    assert isinstance(result, Target)
     assert result.is_active is False
     assert result.status == "paused"
     assert result.name == "Updated webhook"
@@ -283,7 +283,7 @@ def test_delivery_delete_calls_http_delete():
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "delete") as mock_delete:
         mock_delete.return_value = None
-        result = client.delivery.delete("dp_1", "cons_1")
+        result = client.targets.delete("dp_1", "cons_1")
 
     assert result is None
     mock_delete.assert_called_once_with("/dataproducts/dp_1/consumptions/cons_1")

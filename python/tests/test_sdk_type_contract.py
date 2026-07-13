@@ -9,7 +9,7 @@ These tests assert that:
 1. The Python SDK's DataProduct Pydantic model requires `kind` as a field
    with type Literal['source', 'consumer'].
 2. Instantiating DataProduct from API output that omits `kind` raises ValidationError.
-3. The create_data_product method signature requires `kind` as a keyword argument.
+3. The create method signature requires `kind` as a keyword argument.
 4. Invalid `kind` values are rejected by the Pydantic model.
 """
 
@@ -103,33 +103,33 @@ class TestDataProductKindRequired:
 
 
 class TestCreateDataProductKindRequired:
-    """create_data_product method requires `kind` keyword argument — Requirement 8.3."""
+    """create method requires `kind` keyword argument — Requirement 8.3."""
 
-    def test_create_data_product_signature_has_kind_parameter(self):
-        """The create_data_product method has a `kind` parameter."""
-        sig = inspect.signature(DataProductsApi.create_data_product)
+    def test_create_signature_has_kind_parameter(self):
+        """The create method has a `kind` parameter."""
+        sig = inspect.signature(DataProductsApi.create)
         params = sig.parameters
         assert "kind" in params, f"'kind' must be a parameter, got: {list(params.keys())}"
 
-    def test_create_data_product_kind_is_keyword_only(self):
+    def test_create_kind_is_keyword_only(self):
         """The `kind` parameter is keyword-only (cannot be passed positionally)."""
-        sig = inspect.signature(DataProductsApi.create_data_product)
+        sig = inspect.signature(DataProductsApi.create)
         kind_param = sig.parameters["kind"]
         assert kind_param.kind == inspect.Parameter.KEYWORD_ONLY, (
             f"'kind' should be KEYWORD_ONLY, got: {kind_param.kind.name}"
         )
 
-    def test_create_data_product_kind_has_no_default(self):
+    def test_create_kind_has_no_default(self):
         """The `kind` parameter has no default value (it is required)."""
-        sig = inspect.signature(DataProductsApi.create_data_product)
+        sig = inspect.signature(DataProductsApi.create)
         kind_param = sig.parameters["kind"]
         assert kind_param.default is inspect.Parameter.empty, (
             f"'kind' should have no default, got: {kind_param.default}"
         )
 
-    def test_create_data_product_kind_type_annotation(self):
+    def test_create_kind_type_annotation(self):
         """The `kind` parameter is annotated with DataProductKind type."""
-        hints = get_type_hints(DataProductsApi.create_data_product)
+        hints = get_type_hints(DataProductsApi.create)
         assert "kind" in hints, f"'kind' must have a type annotation, got hints: {list(hints.keys())}"
         # The annotation should be DataProductKind (Literal['source', 'consumer'])
         assert hints["kind"] is DataProductKind, (

@@ -221,7 +221,7 @@ async function deploySingleWorkflow(
 
     if (!workflowId) {
       // Create a new workflow
-      const created = await client.workflows.createWorkflow({
+      const created = await client.workflows.create({
         name: compiled.name,
         project_id: projectId,
       });

@@ -159,7 +159,7 @@ function mockFailingClient(
       create: async () => makeProject(),
       update: async () => makeProject(),
       delete: async () => ({ project_id: 'proj_test1', deleted: true }),
-      applyTemplate: async () => ({} as any),
+      apply_template: async () => ({} as any),
     },
   } as unknown as LoxtepClient;
 }

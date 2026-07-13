@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking changes — API surface redesign
+
+The client surface was reorganized around the ingest → define → deliver journey
+and made consistent. All renames are clean breaks (no deprecated aliases).
+
+- **Casing** — every method is now `snake_case`. Renamed:
+  `workflows.listWorkflows → list`, `workflows.getWorkflowGraph → get_graph`,
+  `workflows.createWorkflow → create`,
+  `discovery.getEvidence → get_evidence`,
+  `discovery.getLineageImpact → get_lineage_impact`,
+  `discovery.getGovernanceFlags → get_governance_flags`,
+  `discovery.runDiscovery → run`,
+  `connectors.getOauthUrl → get_oauth_url`,
+  `projects.applyTemplate → apply_template`,
+  `thesaurus.listTerms → list_terms`,
+  `thesaurus.resolveCanonicalKey → resolve_canonical_key`,
+  `data_products.getUsageMap → get_usage_map`.
+- **`flows` merged into `workflows`** — `client.flows` is removed. Use
+  `client.workflows` (`list`, `get`, `create`, `get_graph`, `deploy`). The
+  low-level `get_writer` escape hatch remains on `workflows` but is `@internal`
+  and undocumented; use `data_products.get_writer(name)`.
+- **`connections` → `triggers`** — ingest source bindings. Types
+  `Connection*` → `Trigger*`; `CONNECTION_TYPES`/`CONNECTION_STATUSES` →
+  `TRIGGER_TYPES`/`TRIGGER_STATUSES`.
+- **`delivery` → `targets`** — delivery sink bindings. Types
+  `DeliveryInterface`/`DeliveryType`/`Delivery*Input` → `Target`/`TargetType`/
+  `Target*Input`; the `deliveryType` discriminator → `targetType`.
+- **`improvements`, `activity`, `process_intelligence`** marked `@internal`
+  (still on the client, excluded from docs and the generated API reference).
+
+### CLI
+
+- `flows *` commands removed; use `workflows list | get | create | deploy`.
+- `connections *` commands renamed to `triggers *`.
+
 ## [0.4.0] - 2026-07-13
 
 ### Breaking changes

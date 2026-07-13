@@ -1,7 +1,11 @@
 """
-Workflows API: list_workflows, get_workflow_graph, create_workflow, deploy.
+Workflows API: list, get (with nodes), create, get_graph, deploy, get_writer.
 Backend: workflows microservice (/workflows/workflows, graph, projects/:id/deploy).
 snake_case per backend conventions.
+
+The former ``flows`` namespace has been folded in here (same backend entity).
+``get_writer`` is a low-level stream-writer escape hatch — internal; customers
+should use ``data_products.get_writer``.
 """
 
 from typing import Any, Optional
@@ -23,12 +27,13 @@ def _data(res: Any) -> Any:
 
 
 class WorkflowsApi:
-    """Sync client for workflow list, graph, create, and project deploy."""
+    """Sync client for workflow list, get, create, graph, deploy, and writer."""
 
-    def __init__(self, http: LoxtepHttpClient) -> None:
+    def __init__(self, http: LoxtepHttpClient, stream_config: Optional[Any] = None) -> None:
         self._http = http
+        self._stream_config = stream_config
 
-    def list_workflows(
+    def list(
         self,
         project_id: str,
         *,
@@ -50,14 +55,44 @@ class WorkflowsApi:
         res = self._http.get(f"{WORKFLOWS_BASE}{qs}")
         return _data(res)
 
-    def get_workflow_graph(self, workflow_id: str, project_id: str) -> dict[str, Any]:
+    def get(self, id: str) -> dict[str, Any]:
+        flow_res = self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}")
+        flow = _data(flow_res)
+        nodes: list[dict[str, Any]] = []
+        try:
+            nodes_res = self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}/nodes")
+            data = _data(nodes_res)
+            nodes = data.get("items", []) if isinstance(data, dict) else []
+        except Exception:
+            pass
+        out: dict[str, Any] = {"nodes": nodes}
+        if isinstance(flow, dict):
+            out["workflow"] = flow
+        return out
+
+    def create(
+        self,
+        name: str,
+        project_id: str,
+        *,
+        template_id: Optional[str] = None,
+        description: Optional[str] = None,
+        configuration: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"name": name, "project_id": project_id}
+        if template_id is not None:
+            body["template_id"] = template_id
+        if description is not None:
+            body["description"] = description
+        if configuration is not None:
+            body["configuration"] = configuration
+        res = self._http.post(WORKFLOWS_BASE, body)
+        return _data(res)
+
+    def get_graph(self, workflow_id: str, project_id: str) -> dict[str, Any]:
         qs = _query_string({"project_id": project_id})
         path = f"{WORKFLOWS_BASE}/{quote(workflow_id)}/graph{qs}"
         res = self._http.get(path)
-        return _data(res)
-
-    def create_workflow(self, input: dict[str, Any]) -> dict[str, Any]:
-        res = self._http.post(WORKFLOWS_BASE, input)
         return _data(res)
 
     def deploy(
@@ -78,14 +113,44 @@ class WorkflowsApi:
         res = self._http.post(path, body)
         return _data(res)
 
+    def get_writer(
+        self, workflow_id: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+    ) -> Any:
+        """Low-level stream-writer escape hatch. Internal — prefer
+        ``data_products.get_writer``.
+
+        Uses the Kinesis stream bus when the client has stream config and a
+        queue is available; otherwise an HTTP writer.
+        """
+        cfg = self._stream_config
+        if cfg is not None and getattr(cfg, "is_writable", False) and queue_name:
+            from .rstreams import LeoStreamWriter
+
+            return LeoStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
+        return WorkflowWriter(workflow_id=workflow_id, http=self._http)
+
+
+class WorkflowWriter:
+    """Sync workflow writer: write(event), close(). Internal escape hatch."""
+
+    def __init__(self, workflow_id: str, http: LoxtepHttpClient) -> None:
+        self._workflow_id = workflow_id
+        self._http = http
+
+    def write(self, event: dict[str, Any]) -> None:
+        self._http.post(f"{WORKFLOWS_BASE}/{self._workflow_id}/events", event)
+
+    def close(self) -> None:
+        pass
+
 
 class AsyncWorkflowsApi:
-    """Async client for workflow list, graph, create, and project deploy."""
+    """Async client for workflow list, get, create, graph, deploy, and writer."""
 
     def __init__(self, http: AsyncLoxtepHttpClient) -> None:
         self._http = http
 
-    async def list_workflows(
+    async def list(
         self,
         project_id: str,
         *,
@@ -107,14 +172,44 @@ class AsyncWorkflowsApi:
         res = await self._http.get(f"{WORKFLOWS_BASE}{qs}")
         return _data(res)
 
-    async def get_workflow_graph(self, workflow_id: str, project_id: str) -> dict[str, Any]:
+    async def get(self, id: str) -> dict[str, Any]:
+        flow_res = await self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}")
+        flow = _data(flow_res)
+        nodes: list[dict[str, Any]] = []
+        try:
+            nodes_res = await self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}/nodes")
+            data = _data(nodes_res)
+            nodes = data.get("items", []) if isinstance(data, dict) else []
+        except Exception:
+            pass
+        out: dict[str, Any] = {"nodes": nodes}
+        if isinstance(flow, dict):
+            out["workflow"] = flow
+        return out
+
+    async def create(
+        self,
+        name: str,
+        project_id: str,
+        *,
+        template_id: Optional[str] = None,
+        description: Optional[str] = None,
+        configuration: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"name": name, "project_id": project_id}
+        if template_id is not None:
+            body["template_id"] = template_id
+        if description is not None:
+            body["description"] = description
+        if configuration is not None:
+            body["configuration"] = configuration
+        res = await self._http.post(WORKFLOWS_BASE, body)
+        return _data(res)
+
+    async def get_graph(self, workflow_id: str, project_id: str) -> dict[str, Any]:
         qs = _query_string({"project_id": project_id})
         path = f"{WORKFLOWS_BASE}/{quote(workflow_id)}/graph{qs}"
         res = await self._http.get(path)
-        return _data(res)
-
-    async def create_workflow(self, input: dict[str, Any]) -> dict[str, Any]:
-        res = await self._http.post(WORKFLOWS_BASE, input)
         return _data(res)
 
     async def deploy(
@@ -134,3 +229,22 @@ class AsyncWorkflowsApi:
         path = f"{PROJECTS_BASE}/{quote(project_id)}/deploy"
         res = await self._http.post(path, body)
         return _data(res)
+
+    def get_writer(self, workflow_id: str) -> "AsyncWorkflowWriter":
+        """Low-level stream-writer escape hatch. Internal — prefer
+        ``data_products.get_writer``."""
+        return AsyncWorkflowWriter(workflow_id=workflow_id, http=self._http)
+
+
+class AsyncWorkflowWriter:
+    """Async workflow writer. Internal escape hatch."""
+
+    def __init__(self, workflow_id: str, http: AsyncLoxtepHttpClient) -> None:
+        self._workflow_id = workflow_id
+        self._http = http
+
+    async def write(self, event: dict[str, Any]) -> None:
+        await self._http.post(f"{WORKFLOWS_BASE}/{self._workflow_id}/events", event)
+
+    async def close(self) -> None:
+        pass

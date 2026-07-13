@@ -32,7 +32,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
   create: (body: CreateProjectInput) => Promise<Project>;
   update: (project_id: string, body: UpdateProjectInput) => Promise<Project>;
   delete: (project_id: string) => Promise<{ project_id: string; deleted: boolean }>;
-  applyTemplate: (project_id: string, body: ApplyTemplateInput) => Promise<ApplyTemplateResult>;
+  apply_template: (project_id: string, body: ApplyTemplateInput) => Promise<ApplyTemplateResult>;
   repository: (project_id: string) => Promise<RepositoryBinding>;
 } {
   return {
@@ -76,7 +76,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
       return res.data;
     },
 
-    async applyTemplate(
+    async apply_template(
       project_id: string,
       body: ApplyTemplateInput
     ): Promise<ApplyTemplateResult> {

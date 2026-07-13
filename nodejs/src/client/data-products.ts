@@ -101,7 +101,7 @@ export function createDataProductsApi(
   get_queue_info: (id: string) => Promise<QueueMetadata>;
   get_reader_checkpoint: (id: string, bot_id: string) => Promise<ReaderCheckpoint>;
   create: (body: DataProductCreateInput) => Promise<DataProduct>;
-  getUsageMap: () => Promise<UsageMapResponse>;
+  get_usage_map: () => Promise<UsageMapResponse>;
   stream: (id: string, options?: DataProductStreamOptions) => AsyncIterable<StreamEvent>;
   replay: (id: string, options?: DataProductReplayOptions) => AsyncIterable<StreamEvent>;
   get_writer: (idOrName: string, options?: DataProductWriterOptions) => Promise<FlowWriter>;
@@ -248,7 +248,7 @@ export function createDataProductsApi(
      * Returns nodes (each with id, kind, name, fanout) and edges (source→target with projection_spec_id).
      * Scoped to the caller's organization.
      */
-    async getUsageMap(): Promise<UsageMapResponse> {
+    async get_usage_map(): Promise<UsageMapResponse> {
       const res = await http.get<{ success?: true; data?: UsageMapResponse; nodes?: UsageMapResponse['nodes']; edges?: UsageMapResponse['edges'] }>(
         '/dataproducts/usage-map'
       );
