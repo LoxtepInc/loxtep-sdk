@@ -7,9 +7,15 @@ name: Publish @loxtep/sdk to npm
 #   Workflow:   nodejs-publish.yml
 #   Allowed:    npm publish
 #
-# Or CLI (after npm login): npm trust github @loxtep/sdk --file nodejs-publish.yml --repository LoxtepInc/loxtep-sdk --allow-publish
+# Release (automatic): push a semver tag on main, e.g. v0.4.1
+#   git tag v0.4.1 && git push origin v0.4.1
+#
+# Release (manual): Actions → Run workflow (optional version / dry_run / dist-tag inputs)
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -36,6 +42,8 @@ jobs:
     defaults:
       run:
         working-directory: nodejs
+    env:
+      NPM_DIST_TAG: ${{ inputs.tag || 'latest' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,8 +64,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Set version (if provided)
-        if: inputs.version != ''
+      - name: Set version from git tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+
+      - name: Set version (manual input)
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
         run: npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Build
@@ -70,10 +82,10 @@ jobs:
         run: npm pack --dry-run
 
       - name: Publish (dry run)
-        if: inputs.dry_run == true
-        run: npm publish --dry-run --access public --tag ${{ inputs.tag }}
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        run: npm publish --dry-run --access public --tag ${{ env.NPM_DIST_TAG }}
 
       - name: Publish
-        if: inputs.dry_run != true
-        run: npm publish --access public --tag ${{ inputs.tag }}
+        if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true
+        run: npm publish --access public --tag ${{ env.NPM_DIST_TAG }}
         # OIDC via Trusted Publishing — no NPM_TOKEN. Provenance is automatic.
