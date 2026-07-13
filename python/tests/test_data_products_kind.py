@@ -6,7 +6,6 @@ import pytest
 
 from loxtep import (
     DataProduct,
-    DataProductKind,
     LoxtepClient,
     UsageMap,
     UsageMapEdge,

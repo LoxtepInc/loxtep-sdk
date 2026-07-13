@@ -213,8 +213,13 @@ def test_reader_reads_s3_backed_item():
         def read(self): return self._b
 
     class FakeS3:
-        def __init__(self, blob): self._blob = blob; self.calls = []
-        def get_object(self, *, Bucket, Key): self.calls.append((Bucket, Key)); return {"Body": Body(self._blob)}
+        def __init__(self, blob):
+            self._blob = blob
+            self.calls = []
+
+        def get_object(self, *, Bucket, Key):
+            self.calls.append((Bucket, Key))
+            return {"Body": Body(self._blob)}
 
     s3 = FakeS3(_gz([{"event": "q", "payload": {"z": 9}}]))
     ddb = FakeDDB({

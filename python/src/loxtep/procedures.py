@@ -3,7 +3,7 @@ Procedures API. list.
 Backend: process-intelligence /process-intelligence/organizations/:org_id/procedures.
 """
 
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlencode
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient

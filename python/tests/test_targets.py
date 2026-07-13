@@ -2,12 +2,9 @@
 
 from unittest.mock import patch
 
-import pytest
-
 from loxtep import (
     AsyncLoxtepClient,
     Target,
-    TargetType,
     LoxtepClient,
 )
 from loxtep.targets import AsyncTargetsApi, TargetsApi

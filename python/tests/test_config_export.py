@@ -3,8 +3,6 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from loxtep.cli_config import (
     SdkConfig,
     format_sdk_config_as_env,
