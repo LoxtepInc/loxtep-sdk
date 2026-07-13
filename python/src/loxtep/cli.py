@@ -140,7 +140,7 @@ def _cmd_workflows_list(project_id: str | None) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.workflows.list_workflows(project_id=pid, page_size=50)
+        result = client.workflows.list(project_id=pid, page_size=50)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -243,7 +243,7 @@ def _cmd_projects_list() -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.projects.list_projects(page_size=50)
+        result = client.projects.list(page_size=50)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -274,7 +274,7 @@ def _cmd_projects_get(project_id: str) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.projects.get_project(project_id)
+        result = client.projects.get(project_id)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -305,7 +305,7 @@ def _cmd_templates_list() -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.templates.list_templates(page_size=50)
+        result = client.templates.list(page_size=50)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -336,7 +336,7 @@ def _cmd_templates_get(template_id: str) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.templates.get_template(template_id)
+        result = client.templates.get(template_id)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:

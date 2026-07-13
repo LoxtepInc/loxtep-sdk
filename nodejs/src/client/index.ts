@@ -37,14 +37,13 @@ export type {
   QueueEvent,
 } from './queue-types.js';
 export type {
-  Connection,
-  ConnectionCreateInput,
-  ConnectionUpdateInput,
-  ConnectionsListFilters,
-  ConnectionTestResult,
-  CONNECTION_TYPES,
-  CONNECTION_STATUSES,
-} from './connection-types.js';
+  Trigger,
+  TriggerCreateInput,
+  TriggerUpdateInput,
+  TriggersListFilters,
+  TriggerTestResult,
+} from './trigger-types.js';
+export { TRIGGER_TYPES, TRIGGER_STATUSES } from './trigger-types.js';
 export type {
   Flow,
   FlowWithNodes,
@@ -116,14 +115,14 @@ export type {
   GetEntityContextParams,
 } from './process-intelligence-types.js';
 export type {
-  DeliveryInterface,
-  DeliveryType,
-  DeliveryListParams,
-  DeliveryListResponse,
-  DeliveryCreateInput,
-  DeliveryUpdateInput,
-} from './delivery-types.js';
-export type { DeliveryApi } from './delivery.js';
+  Target,
+  TargetType,
+  TargetsListParams,
+  TargetsListResponse,
+  TargetCreateInput,
+  TargetUpdateInput,
+} from './target-types.js';
+export type { TargetsApi } from './targets.js';
 export type {
   Connector,
   ConnectorShare,

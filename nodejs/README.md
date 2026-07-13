@@ -1,10 +1,15 @@
 # Loxtep Node.js SDK
 
-Client for the Loxtep API. Customer-facing surface: **data_products**,
-**flows**, **connections**, **queues**, **quality**, **catalog**, **discovery**,
-**schemas**, **projects**, **domains**, **standards**, **data_contracts**,
-**workflows**, **templates**, **connectors**, **instances**, **delivery**,
-**thesaurus**, **procedures**, **metrics**.
+Client for the Loxtep API, organized around one journey: **ingest → define →
+deliver**. Install the SDK and get to your first event in five steps (below),
+then reach for the namespace that matches the stage you're in:
+
+- **Ingest** — `triggers`, `connectors`, `workflows`, `data_products.get_writer`
+- **Define** — `data_products`, `schemas`, `quality`, `catalog`, `discovery`,
+  `domains`, `standards`, `data_contracts`, `thesaurus`, `procedures`
+- **Deliver** — `data_products` (reader/stream/replay/query), `targets`
+- **Advanced / platform** — `projects`, `templates`, `instances`, `observe`,
+  `queues`, `metrics`
 
 **Node.js 22+** is the supported runtime (`engines` in `package.json`). **Live**
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
@@ -78,24 +83,7 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
    stream bus configuration automatically from the deployment metadata. No
    manual queue names, no stream config, no bot IDs.
 
-4. **Lower-level escape hatch** — if you need explicit control over bot_id,
-   queue name, or stream bus resources, use `flows.get_writer` directly:
-
-   ```ts
-   const writer = client.flows.get_writer('your-flow-id', {
-     bot_id: 'your-bot-id',
-     output_queue_name: 'your-ingest-queue',
-   });
-   writer.write({ customer_id: '123', name: 'Alice', email: 'alice@example.com' });
-   writer.write({ customer_id: '456', name: 'Bob', email: 'bob@example.com' });
-   await writer.close();
-   ```
-
-   The `write()` method accepts your raw business object — the SDK handles
-   batching and delivery to the stream bus automatically. No event envelope
-   or metadata wrapper is needed.
-
-5. **Stream config from the platform (optional)** — after login,
+4. **Stream config from the platform (optional)** — after login,
    `await client.observe.stream_config()` returns stream resource names
    needed for the data plane. Merge into
    `new LoxtepClient({ ...opts, streams: { ...partial } })` with your
@@ -158,31 +146,53 @@ See `loxtep init --help`, `loxtep attach --help`, etc. for all flags. The full C
 
 ## API surface
 
-- **data_products** – get, get_lexicon, list, search, query, list_tables,
-  get_queue_info, get_reader_checkpoint, create, stream, replay,
-  **get_writer**, **get_reader**, invalidate_cache
-- **flows** – list, get, create, get_writer
-- **workflows** – listWorkflows, getWorkflowGraph, createWorkflow, deploy
-- **connections** – get, list, create, update, delete, test
-- **connectors** – list, get, create, update, delete, test, getOauthUrl
-- **queues** – get_queue_metadata, get_reader_checkpoint, open_reader,
-  open_writer
-- **quality** – list, get, create
-- **catalog** – search
-- **discovery** – search, getEvidence, getLineageImpact, getGovernanceFlags,
-  runDiscovery
-- **schemas** – get, list
-- **observe** – status, stream_config
-- **projects** – list, get, create, update, delete, applyTemplate
-- **templates** – list, get
-- **domains** – list, get
-- **standards** – list, get
-- **data_contracts** – list, get
-- **thesaurus** – listTerms, resolveCanonicalKey
-- **delivery** – list, get, create, update, delete
-- **instances** – list, get, get_stream_config
-- **procedures** – list
-- **metrics** – log, get_reporter
+Every method is `snake_case`. Namespaces are grouped by the stage of the journey
+they serve, and labelled by *kind*: **Resource** (full CRUD), **Reference**
+(read-only), **Runtime** (live stream I/O).
+
+### Ingest — connect sources, write events
+
+- **triggers** *(Resource)* – `get`, `list`, `create`, `update`, `delete`,
+  `test` — ingest source bindings (external systems that feed a workflow)
+- **connectors** *(Resource)* – `list`, `get`, `create`, `update`, `delete`,
+  `test`, `get_oauth_url` — org-level catalog of connectable system types
+- **workflows** *(Resource)* – `list`, `get`, `create`, `get_graph`, `deploy` —
+  the ingestion → transformation → export DAG
+- **data_products.get_writer(name)** *(Runtime)* – the write path for events
+
+### Define — semantics, schema, quality, governance
+
+- **data_products** *(Resource + Runtime)* – `get`, `get_lexicon`, `list`,
+  `search`, `query`, `list_tables`, `get_queue_info`, `get_reader_checkpoint`,
+  `create`, `readiness`, `promote`, `get_usage_map`, `invalidate_cache`
+- **schemas** *(Reference)* – `get`, `list`, `tag_pii_fields`
+- **quality** *(Resource)* – `list`, `get`, `create`
+- **catalog** *(Reference)* – `search`
+- **discovery** *(Reference)* – `search`, `get_evidence`, `get_lineage_impact`,
+  `get_governance_flags`, `run`
+- **domains** *(Reference)* – `list`, `get`
+- **standards** *(Reference)* – `list`, `get`
+- **data_contracts** *(Resource)* – `list`, `get`, `create`, `update`, `delete`
+- **thesaurus** *(Reference)* – `list_terms`, `resolve_canonical_key`,
+  `append_synonym`
+- **procedures** *(Reference)* – `list`
+
+### Deliver — consume and route data
+
+- **data_products** *(Runtime)* – `get_reader`, `stream`, `replay`
+- **targets** *(Resource)* – `list`, `get`, `create`, `update`, `delete` —
+  delivery sink bindings (webhook, API, export, DB sync, BI, event stream)
+
+### Advanced / platform
+
+- **projects** *(Resource)* – `list`, `get`, `create`, `update`, `delete`,
+  `apply_template`, `repository`
+- **templates** *(Reference)* – `list`, `get`
+- **instances** *(Reference)* – `list`, `get`, `get_stream_config`
+- **observe** – `status`, `stream_config`
+- **queues** – `get_queue_metadata`, `get_reader_checkpoint`, `open_reader`,
+  `open_writer`
+- **metrics** – `log`, `get_reporter`
 
 ## Data product writer and reader
 
@@ -214,28 +224,6 @@ Options:
 Cache: call `client.data_products.invalidate_cache('name')` to force
 re-resolution on the next call.
 
-## Flow writer (lower-level escape hatch)
-
-`client.flows.get_writer(flow_id)` returns a **FlowWriter** with:
-
-- **`write(event)`** – enqueues a raw business object. Batching is transparent:
-  you do not control batch size or flush timing.
-- **`close()`** – flushes any buffered events and guarantees delivery (or
-  attempts to). Always call `close()` when done writing.
-
-Example:
-
-```ts
-const writer = client.flows.get_writer(flowId, { bot_id: 'your-bot-id' });
-writer.write({ customer_id: '123', name: 'Alice', email: 'alice@example.com' });
-writer.write({ customer_id: '456', name: 'Bob', email: 'bob@example.com' });
-await writer.close();
-```
-
-Pass your raw business objects — no envelope, no `id`/`payload` wrapper needed.
-Buffered events flush on `close()` via the stream data plane to the resolved
-output queue.
-
 ## Stream helpers
 
 Use `mapStream` and `filterStream` with `data_products.stream()`,
@@ -255,37 +243,37 @@ for await (const event of filterStream(
 }
 ```
 
-## Delivery interfaces
+## Targets (delivery)
 
 Configure how a data product delivers data to external systems.
 
 ```ts
 import { LoxtepClient } from '@loxtep/sdk';
-import type { DeliveryInterface, DeliveryCreateInput } from '@loxtep/sdk';
+import type { Target, TargetCreateInput } from '@loxtep/sdk';
 
 const client = new LoxtepClient({
   api_url: 'https://api.loxtep.com',
   auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
 });
 
-// List delivery interfaces for a data product
-const { items, pagination } = await client.delivery.list('dp_abc123');
+// List targets for a data product
+const { items, pagination } = await client.targets.list('dp_abc123');
 
-// Create a webhook delivery interface
-const webhook = await client.delivery.create('dp_abc123', {
-  deliveryType: 'webhook',
+// Create a webhook target
+const webhook = await client.targets.create('dp_abc123', {
+  targetType: 'webhook',
   name: 'Order notifications',
   endpoint_url: 'https://example.com/webhooks/orders',
   method: 'POST',
 });
 
-// Update a delivery interface
-await client.delivery.update('dp_abc123', webhook.consumption_id, {
+// Update a target
+await client.targets.update('dp_abc123', webhook.consumption_id, {
   is_active: false,
 });
 
-// Delete a delivery interface
-await client.delivery.delete('dp_abc123', webhook.consumption_id);
+// Delete a target
+await client.targets.delete('dp_abc123', webhook.consumption_id);
 ```
 
 ## Documentation
@@ -325,15 +313,14 @@ await client.delivery.delete('dp_abc123', webhook.consumption_id);
 | `data-products create --name … --domain-id …`        | Create data product                                                |
 | `data-products query <id> <SQL>`                     | Run SQL in data product context (or `--file query.sql`)            |
 | `data-products tables <id>`                          | List tables for data product                                       |
-| `flows list [--project-id <id>]`                     | List flows (project_id required or from config)                    |
-| `flows get <id>`                                     | Get flow by id (with nodes)                                        |
-| `flows create --name <n> --project-id <id>`          | Create flow (optional: `--template-id`, `--description`)           |
-| `workflows list [--project-id <id>]`                 | List workflows                                                     |
+| `workflows list [--project-id <id>]`                 | List workflows (project_id required or from config)                |
+| `workflows get <id>`                                 | Get workflow by id (with nodes)                                    |
+| `workflows create --name <n> --project-id <id>`      | Create workflow (optional: `--template-id`, `--description`)       |
 | `workflows deploy --project-id <id>`                 | Deploy workflow (optional: `--instance-id`, `--version-id`)        |
-| `connections list`                                   | List connections                                                   |
-| `connections get <id>`                               | Get connection by id                                               |
-| `connections create --name <n> --type <t> --key <k>` | Create connection                                                  |
-| `connections test <id>`                              | Test connection                                                    |
+| `triggers list`                                      | List triggers (ingest source bindings)                             |
+| `triggers get <id>`                                  | Get trigger by id                                                 |
+| `triggers create --name <n> --type <t> --key <k>`    | Create trigger                                                    |
+| `triggers test <id>`                                 | Test trigger                                                      |
 | `observe status`                                     | Show observability status (bots)                                   |
 | `queue info <data-product-id>`                       | Queue info by data product id                                      |
 | `queue info --queue <name>`                          | Queue info by queue name                                           |
@@ -350,9 +337,8 @@ Examples:
 loxtep login
 loxtep whoami
 loxtep data-products list
-loxtep flows list --project-id <project-id>
-loxtep flows get <flow-id>
 loxtep workflows list --project-id <project-id>
+loxtep workflows get <workflow-id>
 loxtep workflows deploy --project-id <id> --instance-id <id>
 loxtep config export --from-connector <connector-id> --format json
 loxtep queue info <data-product-id>

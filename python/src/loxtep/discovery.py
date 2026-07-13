@@ -1,5 +1,5 @@
 """
-Discovery API (MCP tools: search_catalog, get_evidence, get_lineage_impact, get_governance_flags, run_discovery).
+Discovery API (MCP tools: search_catalog, get_evidence, get_lineage_impact, get_governance_flags, run).
 Calls POST /ai/mcp/tools/call; results are access-filtered when user context is present.
 """
 
@@ -25,7 +25,7 @@ def _parse_tool_response(res: Any) -> Any:
 
 
 class DiscoveryApi:
-    """Sync discovery surface: search (with include_evidence, include_lineage), get_evidence, get_lineage_impact, get_governance_flags, run_discovery."""
+    """Sync discovery surface: search (with include_evidence, include_lineage), get_evidence, get_lineage_impact, get_governance_flags, run."""
 
     def __init__(self, http: LoxtepHttpClient) -> None:
         self._http = http
@@ -81,7 +81,7 @@ class DiscoveryApi:
         )
         return _parse_tool_response(res)
 
-    def run_discovery(self) -> dict[str, Any]:
+    def run(self) -> dict[str, Any]:
         res = self._http.post(MCP_TOOLS_PATH, {"name": "run_discovery", "arguments": {}})
         return _parse_tool_response(res)
 
@@ -143,6 +143,6 @@ class AsyncDiscoveryApi:
         )
         return _parse_tool_response(res)
 
-    async def run_discovery(self) -> dict[str, Any]:
+    async def run(self) -> dict[str, Any]:
         res = await self._http.post(MCP_TOOLS_PATH, {"name": "run_discovery", "arguments": {}})
         return _parse_tool_response(res)

@@ -76,14 +76,14 @@ function createFailingMockClient(errorMessage: string) {
       open_writer: jest.fn().mockRejectedValue(new Error(errorMessage)),
       get_queue_metadata: jest.fn().mockRejectedValue(new Error(errorMessage)),
     },
-    connections: {
+    triggers: {
       list: jest.fn().mockRejectedValue(new Error(errorMessage)),
       get: jest.fn().mockRejectedValue(new Error(errorMessage)),
       test: jest.fn().mockRejectedValue(new Error(errorMessage)),
     },
     workflows: {
-      listWorkflows: jest.fn().mockRejectedValue(new Error(errorMessage)),
-      getWorkflowGraph: jest.fn().mockRejectedValue(new Error(errorMessage)),
+      list: jest.fn().mockRejectedValue(new Error(errorMessage)),
+      get_graph: jest.fn().mockRejectedValue(new Error(errorMessage)),
     },
     // Model/LLM namespace — should NEVER be called by the toolbox
     model: {

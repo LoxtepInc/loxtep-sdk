@@ -214,7 +214,7 @@ export interface UsageMapEdge {
   projection_spec_id: string;
 }
 
-/** Response from data_products.getUsageMap(). */
+/** Response from data_products.get_usage_map(). */
 export interface UsageMapResponse {
   nodes: UsageMapNode[];
   edges: UsageMapEdge[];

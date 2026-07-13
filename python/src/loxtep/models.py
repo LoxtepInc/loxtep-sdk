@@ -1,7 +1,7 @@
 """
 Pydantic models for the Loxtep Python SDK.
 
-Typed representations of API resources including DataProduct, DeliveryInterface,
+Typed representations of API resources including DataProduct, Target,
 UsageMapNode, and UsageMapEdge.
 """
 
@@ -75,7 +75,7 @@ class UsageMap(BaseModel):
 # Delivery Interface
 # ---------------------------------------------------------------------------
 
-DeliveryType = Literal[
+TargetType = Literal[
     "webhook",
     "api_endpoint",
     "export",
@@ -83,22 +83,24 @@ DeliveryType = Literal[
     "bi_connect",
     "event_stream",
 ]
-"""Discriminator for the delivery pattern used by a delivery interface."""
+"""Discriminator for the delivery pattern used by a target."""
 
 
-class DeliveryInterface(BaseModel):
-    """A delivery interface record (stored in the `consumptions` table).
+class Target(BaseModel):
+    """A target record (delivery sink binding, stored in the `consumptions` table).
 
-    Delivery interfaces define how a data product makes its data available to
-    external systems. Previously called "consumption" — the database table
-    retains the old name for migration safety.
+    A target defines how a data product makes its data available to external
+    systems. Backed by the "consumption" record — the database table retains
+    the old name for migration safety.
     """
 
-    consumption_id: str = Field(..., description="Unique identifier for the delivery interface")
-    data_product_id: str = Field(..., description="The data product this interface belongs to")
+    consumption_id: str = Field(..., description="Unique identifier for the target")
+    data_product_id: str = Field(..., description="The data product this target belongs to")
     organization_id: str = Field(..., description="Owning organization")
-    delivery_type: DeliveryType = Field(
-        ..., description="The delivery pattern: webhook, api_endpoint, export, database_sync, bi_connect, event_stream"
+    target_type: TargetType = Field(
+        ...,
+        alias="delivery_type",
+        description="The delivery pattern: webhook, api_endpoint, export, database_sync, bi_connect, event_stream",
     )
     delivery_method: str = Field(default="", description="Delivery method identifier")
     status: str = Field(default="active", description="Current status (active, paused, failed, etc.)")

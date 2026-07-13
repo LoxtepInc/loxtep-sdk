@@ -1,10 +1,9 @@
 """
-Delivery Interfaces API.
+Targets API — delivery sink bindings for data products.
 
-Manages delivery interfaces (formerly called "consumptions") for data products.
-Delivery interfaces define how a data product makes its data available to
-external systems via webhooks, API endpoints, exports, database syncs, BI
-connections, or event streams.
+A target defines how a data product makes its data available to external
+systems via webhooks, API endpoints, exports, database syncs, BI connections,
+or event streams. Backend endpoint: /dataproducts/{id}/consumptions.
 
 list, get, create, update, delete.
 """
@@ -12,7 +11,7 @@ list, get, create, update, delete.
 from typing import Any, Optional
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
-from .models import DeliveryInterface, DeliveryType
+from .models import Target, TargetType
 
 
 def _base_path(data_product_id: str) -> str:
@@ -24,23 +23,23 @@ def _query_string(params: dict[str, Any]) -> str:
     return "?" + "&".join(parts) if parts else ""
 
 
-def _parse_delivery_interface(data: dict[str, Any]) -> DeliveryInterface:
-    """Parse a raw API response dict into a DeliveryInterface model."""
-    return DeliveryInterface.model_validate(data)
+def _parse_target(data: dict[str, Any]) -> Target:
+    """Parse a raw API response dict into a Target model."""
+    return Target.model_validate(data)
 
 
-def _parse_delivery_list(data: Any) -> list[DeliveryInterface]:
-    """Parse API list response into a list of DeliveryInterface models."""
+def _parse_target_list(data: Any) -> list[Target]:
+    """Parse API list response into a list of Target models."""
     if isinstance(data, list):
-        return [_parse_delivery_interface(item) for item in data]
+        return [_parse_target(item) for item in data]
     if isinstance(data, dict):
         items = data.get("items", data.get("data", []))
         if isinstance(items, list):
-            return [_parse_delivery_interface(item) for item in items]
+            return [_parse_target(item) for item in items]
     return []
 
 
-class DeliveryApi:
+class TargetsApi:
     """Sync delivery interfaces surface.
 
     Provides CRUD operations for delivery interfaces on data products.
@@ -58,7 +57,7 @@ class DeliveryApi:
         page_size: int = 20,
         status: Optional[str] = None,
         is_active: Optional[bool] = None,
-    ) -> list[DeliveryInterface]:
+    ) -> list[Target]:
         """List delivery interfaces for a data product.
 
         Args:
@@ -69,7 +68,7 @@ class DeliveryApi:
             is_active: Optional active state filter.
 
         Returns:
-            List of DeliveryInterface instances.
+            List of Target instances.
         """
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if status is not None:
@@ -79,74 +78,74 @@ class DeliveryApi:
         qs = _query_string(params)
         res = self._http.get(f"{_base_path(data_product_id)}{qs}")
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_list(data)
+        return _parse_target_list(data)
 
-    def get(self, data_product_id: str, delivery_id: str) -> DeliveryInterface:
+    def get(self, data_product_id: str, target_id: str) -> Target:
         """Get a single delivery interface by ID.
 
         Args:
             data_product_id: The data product ID.
-            delivery_id: The delivery interface (consumption) ID.
+            target_id: The delivery interface (consumption) ID.
 
         Returns:
-            A DeliveryInterface instance.
+            A Target instance.
         """
-        res = self._http.get(f"{_base_path(data_product_id)}/{delivery_id}")
+        res = self._http.get(f"{_base_path(data_product_id)}/{target_id}")
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_interface(data)
+        return _parse_target(data)
 
     def create(
         self,
         data_product_id: str,
-        delivery_type: DeliveryType = "webhook",
+        target_type: TargetType = "webhook",
         **kwargs: Any,
-    ) -> DeliveryInterface:
+    ) -> Target:
         """Create a new delivery interface.
 
         Args:
             data_product_id: The data product ID.
-            delivery_type: The type of delivery interface (default "webhook").
+            target_type: The type of delivery interface (default "webhook").
             **kwargs: Additional fields (endpoint_url, method, headers, filters, etc.)
 
         Returns:
-            The created DeliveryInterface instance.
+            The created Target instance.
         """
-        body: dict[str, Any] = {"delivery_type": delivery_type, **kwargs}
+        body: dict[str, Any] = {"delivery_type": target_type, **kwargs}
         res = self._http.post(_base_path(data_product_id), body)
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_interface(data)
+        return _parse_target(data)
 
     def update(
         self,
         data_product_id: str,
-        delivery_id: str,
+        target_id: str,
         **kwargs: Any,
-    ) -> DeliveryInterface:
+    ) -> Target:
         """Update an existing delivery interface.
 
         Args:
             data_product_id: The data product ID.
-            delivery_id: The delivery interface (consumption) ID.
+            target_id: The delivery interface (consumption) ID.
             **kwargs: Fields to update.
 
         Returns:
-            The updated DeliveryInterface instance.
+            The updated Target instance.
         """
-        res = self._http.put(f"{_base_path(data_product_id)}/{delivery_id}", kwargs)
+        res = self._http.put(f"{_base_path(data_product_id)}/{target_id}", kwargs)
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_interface(data)
+        return _parse_target(data)
 
-    def delete(self, data_product_id: str, delivery_id: str) -> None:
+    def delete(self, data_product_id: str, target_id: str) -> None:
         """Delete a delivery interface.
 
         Args:
             data_product_id: The data product ID.
-            delivery_id: The delivery interface (consumption) ID.
+            target_id: The delivery interface (consumption) ID.
         """
-        self._http.delete(f"{_base_path(data_product_id)}/{delivery_id}")
+        self._http.delete(f"{_base_path(data_product_id)}/{target_id}")
 
 
-class AsyncDeliveryApi:
+class AsyncTargetsApi:
     """Async delivery interfaces surface.
 
     Provides async CRUD operations for delivery interfaces on data products.
@@ -164,7 +163,7 @@ class AsyncDeliveryApi:
         page_size: int = 20,
         status: Optional[str] = None,
         is_active: Optional[bool] = None,
-    ) -> list[DeliveryInterface]:
+    ) -> list[Target]:
         """List delivery interfaces for a data product.
 
         Args:
@@ -175,7 +174,7 @@ class AsyncDeliveryApi:
             is_active: Optional active state filter.
 
         Returns:
-            List of DeliveryInterface instances.
+            List of Target instances.
         """
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if status is not None:
@@ -185,68 +184,68 @@ class AsyncDeliveryApi:
         qs = _query_string(params)
         res = await self._http.get(f"{_base_path(data_product_id)}{qs}")
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_list(data)
+        return _parse_target_list(data)
 
-    async def get(self, data_product_id: str, delivery_id: str) -> DeliveryInterface:
+    async def get(self, data_product_id: str, target_id: str) -> Target:
         """Get a single delivery interface by ID.
 
         Args:
             data_product_id: The data product ID.
-            delivery_id: The delivery interface (consumption) ID.
+            target_id: The delivery interface (consumption) ID.
 
         Returns:
-            A DeliveryInterface instance.
+            A Target instance.
         """
-        res = await self._http.get(f"{_base_path(data_product_id)}/{delivery_id}")
+        res = await self._http.get(f"{_base_path(data_product_id)}/{target_id}")
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_interface(data)
+        return _parse_target(data)
 
     async def create(
         self,
         data_product_id: str,
-        delivery_type: DeliveryType = "webhook",
+        target_type: TargetType = "webhook",
         **kwargs: Any,
-    ) -> DeliveryInterface:
+    ) -> Target:
         """Create a new delivery interface.
 
         Args:
             data_product_id: The data product ID.
-            delivery_type: The type of delivery interface (default "webhook").
+            target_type: The type of delivery interface (default "webhook").
             **kwargs: Additional fields (endpoint_url, method, headers, filters, etc.)
 
         Returns:
-            The created DeliveryInterface instance.
+            The created Target instance.
         """
-        body: dict[str, Any] = {"delivery_type": delivery_type, **kwargs}
+        body: dict[str, Any] = {"delivery_type": target_type, **kwargs}
         res = await self._http.post(_base_path(data_product_id), body)
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_interface(data)
+        return _parse_target(data)
 
     async def update(
         self,
         data_product_id: str,
-        delivery_id: str,
+        target_id: str,
         **kwargs: Any,
-    ) -> DeliveryInterface:
+    ) -> Target:
         """Update an existing delivery interface.
 
         Args:
             data_product_id: The data product ID.
-            delivery_id: The delivery interface (consumption) ID.
+            target_id: The delivery interface (consumption) ID.
             **kwargs: Fields to update.
 
         Returns:
-            The updated DeliveryInterface instance.
+            The updated Target instance.
         """
-        res = await self._http.put(f"{_base_path(data_product_id)}/{delivery_id}", kwargs)
+        res = await self._http.put(f"{_base_path(data_product_id)}/{target_id}", kwargs)
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_delivery_interface(data)
+        return _parse_target(data)
 
-    async def delete(self, data_product_id: str, delivery_id: str) -> None:
+    async def delete(self, data_product_id: str, target_id: str) -> None:
         """Delete a delivery interface.
 
         Args:
             data_product_id: The data product ID.
-            delivery_id: The delivery interface (consumption) ID.
+            target_id: The delivery interface (consumption) ID.
         """
-        await self._http.delete(f"{_base_path(data_product_id)}/{delivery_id}")
+        await self._http.delete(f"{_base_path(data_product_id)}/{target_id}")

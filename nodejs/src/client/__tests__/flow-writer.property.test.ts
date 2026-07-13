@@ -3,7 +3,7 @@
  */
 
 import fc from 'fast-check';
-import { createFlowsApi } from '../flows';
+import { createWorkflowsApi } from '../workflows';
 import type { LoxtepHttpClient } from '../../http/client';
 import type { RStreamsSdk } from '../../rstreams/leo-runtime';
 
@@ -47,7 +47,7 @@ describe('FlowWriter property tests', () => {
     await fc.assert(
       fc.asyncProperty(fc.array(eventArb, { minLength: 1, maxLength: 50 }), async (events) => {
         const { rsdk, written } = mockRsdk();
-        const api = createFlowsApi(mockHttp(), { rsdk });
+        const api = createWorkflowsApi(mockHttp(), { rsdk });
         const writer = await api.get_writer('flow-1', {
           bot_id: 'bot-1',
           output_queue_name: 'test-queue',

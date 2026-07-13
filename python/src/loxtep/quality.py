@@ -1,10 +1,17 @@
 """
-Quality API. list, get.
+Quality API. list, get, create.
 """
 
 from typing import Any, Optional
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
+
+
+def _metric(res: Any) -> Any:
+    payload = res.get("data", res) if isinstance(res, dict) else res
+    if isinstance(payload, dict) and "metric" in payload:
+        return payload["metric"]
+    return payload
 
 
 class QualityApi:
@@ -31,6 +38,11 @@ class QualityApi:
         res = self._http.get(f"/quality/metrics/{id}")
         return res.get("data", res) if isinstance(res, dict) else res
 
+    def create(self, input: dict[str, Any]) -> dict[str, Any]:
+        """Create a quality metric. Pass a dict body (data_product_id, metric_type, ...)."""
+        res = self._http.post("/quality/metrics", input)
+        return _metric(res)
+
 
 class AsyncQualityApi:
     """Async quality surface."""
@@ -55,3 +67,7 @@ class AsyncQualityApi:
     async def get(self, id: str) -> dict[str, Any]:
         res = await self._http.get(f"/quality/metrics/{id}")
         return res.get("data", res) if isinstance(res, dict) else res
+
+    async def create(self, input: dict[str, Any]) -> dict[str, Any]:
+        res = await self._http.post("/quality/metrics", input)
+        return _metric(res)

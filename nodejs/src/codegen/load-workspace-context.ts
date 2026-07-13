@@ -33,21 +33,22 @@ export async function loadWorkspaceContext(
   projectId: string
 ): Promise<WorkspaceContext> {
   // Fetch all resource types concurrently for performance.
-  // Project-scoped resources (flows, workflows) use projectId directly.
+  // Project-scoped resources (workflows) use projectId directly.
   // Org-scoped resources (data products, connectors, domains) fetch all available.
   const [
     dataProductsResult,
     connectorsResult,
     domainsResult,
-    flowsResult,
     workflowsResult,
   ] = await Promise.all([
     client.data_products.list({ page: 1, page_size: 1000 }),
     client.connectors.list({ page: 1, page_size: 1000 }),
     client.domains.list({ page: 1, page_size: 1000 }),
-    client.flows.list({ project_id: projectId, page: 1, page_size: 1000 }),
-    client.workflows.listWorkflows({ project_id: projectId, page: 1, page_size: 1000 }),
+    client.workflows.list({ project_id: projectId, page: 1, page_size: 1000 }),
   ]);
+  // `flows` and `workflows` are the same backend entity; the WorkspaceContext
+  // keeps both collections for the generated artifact, sourced from one fetch.
+  const flowsResult = workflowsResult;
 
   // Fetch queues from the observe endpoint (instance-level).
   // The observe.status() returns bot/queue info for the configured instance.

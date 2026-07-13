@@ -70,18 +70,6 @@ writer.write({"id": "evt-2", "payload": {"key": "value"}})
 await writer.close()  # flushes all buffered events
 ```
 
-### Lower-level escape hatch (explicit control)
-
-```typescript
-// Only use when you need manual bot_id/queue control
-const writer = client.flows.get_writer('<flow_id>', {
-  bot_id: 'my-bot',
-  output_queue_name: 'raw-events',
-});
-writer.write({ id: 'evt-1', payload: { key: 'value' } });
-await writer.close();
-```
-
 ---
 
 ## Reading Events
@@ -108,7 +96,7 @@ for event in reader:
     print(event)
 ```
 
-### Lower-level escape hatch (explicit control)
+### Advanced: manual queue reader (`queues` namespace)
 
 ```typescript
 const reader = await client.queues.open_reader({
@@ -188,20 +176,20 @@ product = client.data_products.get("<data_product_id>")
 
 ---
 
-## Flows and Connectors
+## Workflows and Connectors
 
-### List Flows
+### List Workflows
 
 #### Node.js
 
 ```typescript
-const flows = await client.flows.list();
+const workflows = await client.workflows.list({ project_id: '<project_id>' });
 ```
 
 #### Python
 
 ```python
-flows = client.flows.list()
+workflows = client.workflows.list(project_id="<project_id>")
 ```
 
 ### Get Connector
@@ -227,13 +215,12 @@ connector = client.connectors.get("<connector_id>")
 | **Init client** | `new LoxtepClient(options)` | `LoxtepClient(**options)` |
 | **Write events** | `await client.data_products.get_writer('name')` → `writer.write(evt)` → `writer.close()` | Same API |
 | **Read events** | `await client.data_products.get_reader('name')` → `for await (const e of reader)` | Same API |
-| **Write (low-level)** | `client.flows.get_writer(flow_id, { bot_id, output_queue_name })` | Same API |
 | **Read (low-level)** | `client.queues.open_reader({ bot_id, queue_name })` → `reader.read()` | Same API |
 | **Stream live** | `client.data_products.stream(id, opts)` | Same API |
 | **Replay history** | `client.data_products.replay(id, opts)` | Same API |
 | **List data products** | `client.data_products.list()` | Same API |
 | **Get data product** | `client.data_products.get(id)` | Same API |
-| **List flows** | `client.flows.list()` | Same API |
+| **List workflows** | `client.workflows.list({ project_id })` | Same API |
 | **Get connector** | `client.connectors.get(id)` | Same API |
 | **Invalidate cache** | `client.data_products.invalidate_cache('name')` | Same API |
 

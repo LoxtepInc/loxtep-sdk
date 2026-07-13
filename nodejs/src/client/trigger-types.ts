@@ -1,10 +1,11 @@
 /**
- * Connection API types. snake_case per backend conventions.
+ * Trigger API types (ingest-side source bindings). snake_case per backend conventions.
  * Backend: workflows microservice GET/POST /workflows/connections, etc.
+ * ("connections" is the backend term; the SDK surface names these `triggers`.)
  */
 
 /** Pagination metadata from list APIs. */
-export interface ConnectionPaginationMeta {
+export interface TriggerPaginationMeta {
   page: number;
   page_size: number;
   total: number;
@@ -13,23 +14,23 @@ export interface ConnectionPaginationMeta {
   has_prev: boolean;
 }
 
-/** Connection type enum (backend ConnectionTypes). */
-export const CONNECTION_TYPES = {
+/** Trigger type enum (backend ConnectionTypes). */
+export const TRIGGER_TYPES = {
   DATABASE: 'database',
   API: 'api',
   WEBHOOK: 'webhook',
   FILE: 'file',
 } as const;
 
-/** Connection status enum (backend ConnectionStatuses). */
-export const CONNECTION_STATUSES = {
+/** Trigger status enum (backend ConnectionStatuses). */
+export const TRIGGER_STATUSES = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
   ERROR: 'error',
 } as const;
 
-/** Single connection. */
-export interface Connection {
+/** Single trigger (ingest source binding). */
+export interface Trigger {
   connection_id: string;
   organization_id?: string | null;
   key: string;
@@ -50,8 +51,8 @@ export interface Connection {
   [key: string]: unknown;
 }
 
-/** Input for connections.create(). */
-export interface ConnectionCreateInput {
+/** Input for triggers.create(). */
+export interface TriggerCreateInput {
   key: string;
   name: string;
   type: string;
@@ -63,8 +64,8 @@ export interface ConnectionCreateInput {
   draft?: boolean;
 }
 
-/** Input for connections.update(). */
-export interface ConnectionUpdateInput {
+/** Input for triggers.update(). */
+export interface TriggerUpdateInput {
   key?: string;
   name?: string;
   type?: string;
@@ -76,8 +77,8 @@ export interface ConnectionUpdateInput {
   draft?: boolean;
 }
 
-/** Filters for connections.list(). */
-export interface ConnectionsListFilters {
+/** Filters for triggers.list(). */
+export interface TriggersListFilters {
   page?: number;
   page_size?: number;
   search?: string;
@@ -87,17 +88,17 @@ export interface ConnectionsListFilters {
   draft?: boolean;
 }
 
-/** Response from connections.list() — API returns { success, data: { items, pagination } }. */
-export interface ConnectionsListResponse {
+/** Response from triggers.list() — API returns { success, data: { items, pagination } }. */
+export interface TriggersListResponse {
   success: true;
   data: {
-    items: Connection[];
-    pagination: ConnectionPaginationMeta;
+    items: Trigger[];
+    pagination: TriggerPaginationMeta;
   };
 }
 
-/** Result from connections.test(). */
-export interface ConnectionTestResult {
+/** Result from triggers.test(). */
+export interface TriggerTestResult {
   success: boolean;
   message: string;
   details?: Record<string, unknown>;

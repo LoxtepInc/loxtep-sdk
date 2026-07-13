@@ -2,7 +2,7 @@
 Catalog (search) API. search.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 

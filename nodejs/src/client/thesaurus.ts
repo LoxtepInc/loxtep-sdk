@@ -20,8 +20,8 @@ export function createThesaurusApi(
   http: LoxtepHttpClient,
   organization_id?: string
 ): {
-  listTerms: (orgId?: string) => Promise<ThesaurusTerm[]>;
-  resolveCanonicalKey: (key_or_alias: string, orgId?: string) => Promise<string | null>;
+  list_terms: (orgId?: string) => Promise<ThesaurusTerm[]>;
+  resolve_canonical_key: (key_or_alias: string, orgId?: string) => Promise<string | null>;
   append_synonym: (
     canonical_key: string,
     alias_path: string,
@@ -30,16 +30,16 @@ export function createThesaurusApi(
 } {
   const resolveOrg = (orgId?: string) => orgId ?? organization_id;
   return {
-    async listTerms(orgId?: string): Promise<ThesaurusTerm[]> {
+    async list_terms(orgId?: string): Promise<ThesaurusTerm[]> {
       const org = resolveOrg(orgId);
-      if (!org) throw new Error('organization_id required (pass to listTerms or set on client)');
+      if (!org) throw new Error('organization_id required (pass to list_terms or set on client)');
       return fetchTerms(http, org);
     },
 
-    async resolveCanonicalKey(key_or_alias: string, orgId?: string): Promise<string | null> {
+    async resolve_canonical_key(key_or_alias: string, orgId?: string): Promise<string | null> {
       const org = resolveOrg(orgId);
       if (!org)
-        throw new Error('organization_id required (pass to resolveCanonicalKey or set on client)');
+        throw new Error('organization_id required (pass to resolve_canonical_key or set on client)');
       const terms = await fetchTerms(http, org);
       const k = key_or_alias.toLowerCase();
       for (const term of terms) {

@@ -1,4 +1,4 @@
-"""Tests for the DataProduct kind discriminator, create_data_product, list with kind filter, and get_usage_map."""
+"""Tests for the DataProduct kind discriminator, create, list with kind filter, and get_usage_map."""
 
 from unittest.mock import patch
 
@@ -6,7 +6,6 @@ import pytest
 
 from loxtep import (
     DataProduct,
-    DataProductKind,
     LoxtepClient,
     UsageMap,
     UsageMapEdge,
@@ -85,9 +84,9 @@ class TestUsageMapModels:
 
 
 class TestCreateDataProduct:
-    """Tests for the create_data_product method."""
+    """Tests for the create method."""
 
-    def test_create_data_product_sends_kind(self):
+    def test_create_sends_kind(self):
         client = LoxtepClient(api_url="https://api.example.com")
         with patch.object(client._http, "post") as mock_post:
             mock_post.return_value = {
@@ -98,7 +97,7 @@ class TestCreateDataProduct:
                     "kind": "source",
                 },
             }
-            result = client.data_products.create_data_product(
+            result = client.data_products.create(
                 name="New Source",
                 kind="source",
             )
@@ -109,7 +108,7 @@ class TestCreateDataProduct:
         assert result["kind"] == "source"
         client.close()
 
-    def test_create_data_product_consumer_kind(self):
+    def test_create_consumer_kind(self):
         client = LoxtepClient(api_url="https://api.example.com")
         with patch.object(client._http, "post") as mock_post:
             mock_post.return_value = {
@@ -120,7 +119,7 @@ class TestCreateDataProduct:
                     "kind": "consumer",
                 },
             }
-            result = client.data_products.create_data_product(
+            result = client.data_products.create(
                 name="Dashboard",
                 kind="consumer",
                 description="A consumer DP",
