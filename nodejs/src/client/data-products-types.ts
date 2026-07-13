@@ -219,3 +219,29 @@ export interface UsageMapResponse {
   nodes: UsageMapNode[];
   edges: UsageMapEdge[];
 }
+
+/** Prerequisite item in a medallion promotion readiness check. */
+export interface DataProductPromotionPrerequisite {
+  id: string;
+  name: string;
+  satisfied: boolean;
+  remediation?: string;
+}
+
+/** Result of data_products.readiness(id). */
+export interface DataProductPromotionReadiness {
+  current_tier: string;
+  target_tier: string;
+  prerequisites: DataProductPromotionPrerequisite[];
+  progress_pct: number;
+  promotable: boolean;
+}
+
+/** Result of data_products.promote(id, target_tier). */
+export interface DataProductPromotionResult {
+  success: boolean;
+  new_tier?: string;
+  entity_iris?: string[];
+  diagnostics?: DataProductPromotionPrerequisite[];
+  error?: string;
+}

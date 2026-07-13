@@ -93,8 +93,8 @@ const workspaceContextArb = fc.record({
  */
 function extractIdsFromArtifact(artifact: string): Set<string> {
   const ids = new Set<string>();
-  // Match all quoted strings that look like resource IDs (dp_, cn_, dm_, q_, f_, wf_ prefixes)
-  const idPattern = /['"]((dp|cn|dm|q|f|wf)_[a-z0-9]+)['"]/g;
+  // Match quoted resource IDs (prefix + at least 4 chars), not short name slugs like "q_a".
+  const idPattern = /['"]((dp|cn|dm|q|f|wf)_[a-z0-9]{4,12})['"]/g;
   let match: RegExpExecArray | null;
   while ((match = idPattern.exec(artifact)) !== null) {
     ids.add(match[1]);

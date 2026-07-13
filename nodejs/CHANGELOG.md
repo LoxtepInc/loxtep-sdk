@@ -6,7 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - Unreleased
+## [0.4.0] - 2026-07-13
+
+### Breaking changes
+
+- **`consumptions` namespace removed** — use `data_products.delivery` and `DeliveryInterface` instead.
+
+### Added
+
+- **`data_products.delivery` namespace** — `list`, `create`, `update`, and `delete` for delivery interfaces.
+- **`data_products.readiness` / `data_products.promote`** — medallion tier promotion APIs.
+- **`instances` client namespace** and **`loxtep instances` CLI** — list, get, create, and update runtime instances.
+- **Data product promotion CLI** — `loxtep data-products readiness` and `loxtep data-products promote`.
+- **Data contracts CLI** — `loxtep data-contracts create`.
+
+### Changed
+
+- Flow and data-product writers now delegate buffering/batching to the rstreams `load` stream via `createQueueWriter`.
+
+---
+
+## [0.3.0] - 2026-06-08
 
 ### Terminology Migration
 

@@ -9,30 +9,29 @@
 
 import { jest } from '@jest/globals';
 
-/* ------------------------------------------------------------------ */
-/*  Mock requireCliClient — must be set up BEFORE dynamic import      */
-/* ------------------------------------------------------------------ */
-
 const mockConnectorsGet = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockRequireCliClient = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
-jest.unstable_mockModule('../create-cli-client.js', () => ({
-  requireCliClient: jest.fn<() => Promise<unknown>>().mockResolvedValue({
-    client: {
-      connectors: { get: (...args: unknown[]) => mockConnectorsGet(...args) },
-    },
-    config: {},
-  }),
+jest.mock('../create-cli-client', () => ({
+  requireCliClient: (...args: unknown[]) => mockRequireCliClient(...args),
 }));
 
-/* Dynamic import AFTER mock setup so the mock takes effect */
-const {
+import {
   formatSdkConfigAsShell,
   formatSdkConfigAsJson,
   formatSdkConfigAsEnv,
   runConfigExportFromConnector,
-} = await import('../commands/config-cmd');
+  type SdkConfig,
+} from '../commands/config-cmd';
 
-import type { SdkConfig } from '../commands/config-cmd';
+beforeAll(() => {
+  mockRequireCliClient.mockResolvedValue({
+    client: {
+      connectors: { get: (...args: unknown[]) => mockConnectorsGet(...args) },
+    },
+    config: {},
+  });
+});
 
 /* ------------------------------------------------------------------ */
 /*  Test fixtures                                                     */

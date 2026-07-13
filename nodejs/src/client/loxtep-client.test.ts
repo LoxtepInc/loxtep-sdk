@@ -547,8 +547,17 @@ describe('LoxtepClient', () => {
   });
 
   it('flows.get_writer returns writer with write and close', async () => {
-    const mockPutEvents = jest.fn().mockResolvedValue(undefined);
-    const rsdk = { putEvents: mockPutEvents } as unknown as LoxtepStreamRuntime;
+    const written: unknown[] = [];
+    const stream = {
+      write(chunk: unknown) {
+        written.push(chunk);
+        return true;
+      },
+      end(cb: (err?: unknown) => void) {
+        cb();
+      },
+    };
+    const rsdk = { load: () => stream } as unknown as LoxtepStreamRuntime;
     const client = new LoxtepClient({
       url_resolution: 'legacy',
       api_url: 'https://api.example.com',
@@ -557,7 +566,7 @@ describe('LoxtepClient', () => {
       streams_sdk: rsdk,
       fetch_fn: async () => new Response(JSON.stringify({}), { status: 404 }),
     });
-    const writer = client.flows.get_writer('flow-1', {
+    const writer = await client.flows.get_writer('flow-1', {
       bot_id: 'bot-1',
       project_id: 'proj-123',
       output_queue_name: 'dev-app-ingest',
@@ -566,16 +575,29 @@ describe('LoxtepClient', () => {
     expect(writer.close).toBeDefined();
     writer.write({ id: 'e1', payload: {} });
     await writer.close();
-    expect(mockPutEvents).toHaveBeenCalled();
+    expect(written).toHaveLength(1);
   });
 
-  it('flows.get_writer with validate_definition reject throws DefinitionValidationError', () => {
+  it('flows.get_writer with validate_definition reject throws DefinitionValidationError', async () => {
+    const stream = {
+      write() {
+        return true;
+      },
+      end(cb: (err?: unknown) => void) {
+        cb();
+      },
+    };
+    const rsdk = { load: () => stream } as unknown as LoxtepStreamRuntime;
     const client = new LoxtepClient({
       url_resolution: 'legacy',
       api_url: 'https://api.example.com',
       auth: { type: 'jwt', token: 'x' },
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      streams_sdk: rsdk,
     });
-    const writer = client.flows.get_writer('flow-1', {
+    const writer = await client.flows.get_writer('flow-1', {
+      bot_id: 'bot-1',
+      output_queue_name: 'dev-app-ingest',
       validate_definition: true,
       on_validation_error: 'reject',
       definition: { required: ['id'] },
@@ -785,9 +807,18 @@ describe('LoxtepClient', () => {
     expect((events[1] as { event_id: string }).event_id).toBe('e2');
   });
 
-  it('queues.open_writer returns handle and buffers until close calls putEvents', async () => {
-    const mockPutEvents = jest.fn().mockResolvedValue(undefined);
-    const rsdk = { putEvents: mockPutEvents } as unknown as LoxtepStreamRuntime;
+  it('queues.open_writer returns handle and writes envelopes to the load stream', async () => {
+    const written: unknown[] = [];
+    const stream = {
+      write(chunk: unknown) {
+        written.push(chunk);
+        return true;
+      },
+      end(cb: (err?: unknown) => void) {
+        cb();
+      },
+    };
+    const rsdk = { load: () => stream } as unknown as LoxtepStreamRuntime;
     const client = new LoxtepClient({
       url_resolution: 'legacy',
       api_url: 'https://api.example.com',
@@ -800,12 +831,9 @@ describe('LoxtepClient', () => {
       bot_id: 'dev-bot-process',
       queue_name: 'dev-app-queue',
     });
-    await expect(writer.write({ foo: 'bar' })).resolves.toBeUndefined();
-    await expect(writer.close()).resolves.toBeUndefined();
-    expect(mockPutEvents).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ foo: 'bar' })]),
-      expect.objectContaining({ botId: 'dev-bot-process', queue: 'dev-app-queue' })
-    );
+    writer.write({ foo: 'bar' });
+    await writer.close();
+    expect(written).toEqual([{ payload: { foo: 'bar' } }]);
   });
 
   it('quality.list returns items when fetch mocked', async () => {
