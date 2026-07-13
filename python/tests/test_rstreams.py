@@ -5,7 +5,13 @@ import json
 
 from loxtep import LoxtepClient
 from loxtep.data_products import DataProductWriter
-from loxtep.rstreams import LeoStreamWriter, StreamConfig, build_envelope, resolve_stream_config
+from loxtep.rstreams import (
+    LeoStreamReader,
+    LeoStreamWriter,
+    StreamConfig,
+    build_envelope,
+    resolve_stream_config,
+)
 
 
 class FakeKinesis:
@@ -116,6 +122,121 @@ def test_writer_requires_writable_config():
 
     with pytest.raises(StreamBusUnavailableError):
         LeoStreamWriter(StreamConfig(region="us-east-1"), "bot", "q", kinesis_client=FakeKinesis())
+
+
+# --- reader ---
+
+def _gz(events: list[dict]) -> bytes:
+    return gzip.compress(("".join(json.dumps(e) + "\n" for e in events)).encode("utf-8"))
+
+
+class FakeTable:
+    def __init__(self, name, get_item_result=None, query_pages=None):
+        self.name = name
+        self._get = get_item_result or {}
+        self._pages = list(query_pages or [])
+        self.queries: list[dict] = []
+
+    def get_item(self, *, Key):
+        return self._get
+
+    def query(self, **params):
+        self.queries.append(params)
+        return self._pages.pop(0) if self._pages else {"Items": []}
+
+
+class FakeDDB:
+    def __init__(self, tables: dict):
+        self._tables = tables
+
+    def Table(self, name):
+        return self._tables[name]
+
+
+def _readable_cfg():
+    return StreamConfig(
+        region="us-east-1",
+        kinesis_stream="Bus-K",
+        stream_table="Bus-LeoStream",
+        event_table="Bus-LeoEvent",
+        cron_table="Bus-LeoCron",
+        s3_bucket="bus-s3",
+    )
+
+
+def test_reader_inline_gzip_reconstructs_eids_and_maps():
+    cfg = _readable_cfg()
+    item = {
+        "event": "orders-q",
+        "start": "z/2026/07/13/18/22/1752430000000-0000000",
+        "end": "z/2026/07/13/18/22/1752430000000-0000001",
+        "gzip": _gz([
+            {"event": "orders-q", "payload": {"n": 1}, "correlation_id": "c1"},
+            {"event": "orders-q", "payload": {"n": 2}},
+        ]),
+    }
+    ddb = FakeDDB({
+        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "z/9"}}),
+        "Bus-LeoCron": FakeTable("Bus-LeoCron", get_item_result={}),
+        "Bus-LeoStream": FakeTable("Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]),
+    })
+    reader = LeoStreamReader(cfg, "bot", "orders-q", start="z/2026/07/13", dynamodb_resource=ddb)
+    events = list(reader)
+    assert [e["payload"] for e in events] == [{"n": 1}, {"n": 2}]
+    assert events[0]["event_id"].endswith("-0000000")
+    assert events[1]["event_id"].endswith("-0000001")
+    assert events[0]["correlation_id"] == "c1"
+    # query used event/end BETWEEN start/maxkey
+    q = ddb._tables["Bus-LeoStream"].queries[0]
+    assert q["ExpressionAttributeValues"][":event"] == "orders-q"
+    assert q["ExpressionAttributeValues"][":maxkey"] == "z/9"
+
+
+def test_reader_reads_s3_backed_item():
+    cfg = _readable_cfg()
+    item = {"event": "q", "start": "p-0000005", "end": "p-0000005", "s3": {"bucket": "bus-s3", "key": "bus/q/x.gz"}}
+
+    class Body:
+        def __init__(self, b): self._b = b
+        def read(self): return self._b
+
+    class FakeS3:
+        def __init__(self, blob): self._blob = blob; self.calls = []
+        def get_object(self, *, Bucket, Key): self.calls.append((Bucket, Key)); return {"Body": Body(self._blob)}
+
+    s3 = FakeS3(_gz([{"event": "q", "payload": {"z": 9}}]))
+    ddb = FakeDDB({
+        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+        "Bus-LeoCron": FakeTable("Bus-LeoCron", get_item_result={}),
+        "Bus-LeoStream": FakeTable("Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]),
+    })
+    reader = LeoStreamReader(cfg, "bot", "q", start="a", dynamodb_resource=ddb, s3_client=s3)
+    events = list(reader)
+    assert events[0]["payload"] == {"z": 9}
+    assert events[0]["event_id"] == "p-0000005"
+    assert s3.calls == [("bus-s3", "bus/q/x.gz")]
+
+
+def test_reader_uses_checkpoint_from_cron_when_no_start():
+    cfg = _readable_cfg()
+    cron = {"Item": {"checkpoints": {"read": {"queue:orders-q": {"checkpoint": "z/checkpoint-eid"}}}}}
+    stream_tbl = FakeTable("Bus-LeoStream", query_pages=[{"Items": []}])
+    ddb = FakeDDB({
+        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+        "Bus-LeoCron": FakeTable("Bus-LeoCron", get_item_result=cron),
+        "Bus-LeoStream": stream_tbl,
+    })
+    list(LeoStreamReader(cfg, "bot", "orders-q", dynamodb_resource=ddb))
+    assert stream_tbl.queries[0]["ExpressionAttributeValues"][":start"] == "z/checkpoint-eid "
+
+
+def test_reader_requires_readable_config():
+    import pytest
+
+    from loxtep.rstreams.writer import StreamBusUnavailableError
+
+    with pytest.raises(StreamBusUnavailableError):
+        LeoStreamReader(StreamConfig(region="us-east-1", kinesis_stream="k"), "b", "q", dynamodb_resource=FakeDDB({}))
 
 
 # --- client wiring: bus when configured, HTTP otherwise ---

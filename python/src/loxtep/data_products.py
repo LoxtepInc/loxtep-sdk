@@ -248,10 +248,39 @@ class DataProductsApi:
         return DataProductWriter(dp_id, self._http)
 
     def get_reader(
-        self, id_or_name: str, *, start: Optional[str] = None, batch_size: int = 100
+        self,
+        id_or_name: str,
+        *,
+        bot_id: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        start: Optional[str] = None,
+        batch_size: int = 100,
     ) -> Iterator[dict[str, Any]]:
-        """Return an iterator of events for the data product (resolves name→id)."""
+        """Return an iterator of events for the data product (resolves name→id).
+
+        When the client has readable stream-bus config, consumes from the bus
+        (DynamoDB/S3); otherwise falls back to the HTTP stream endpoint.
+        """
         dp_id = self._resolve_id(id_or_name)
+        cfg = self._stream_config
+        if cfg is not None and getattr(cfg, "is_readable", False):
+            from .rstreams import LeoStreamReader
+
+            queue = queue_name or self._resolve_queue_name(dp_id)
+            if not queue:
+                raise ValueError(
+                    f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
+                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                )
+            return iter(
+                LeoStreamReader(
+                    cfg,
+                    bot_id or f"sdk-reader-{id_or_name}",
+                    queue,
+                    start=start,
+                    batch_size=batch_size,
+                )
+            )
         return self.stream(dp_id, start=start, batch_size=batch_size)
 
     def stream(

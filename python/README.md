@@ -17,12 +17,13 @@ The namespace names, casing, method names, and journey grouping match the
 Node.js SDK — see **Parity with the Node.js SDK** at the bottom.
 
 > **Stream bus:** `loxtep.rstreams` is a native Leo data-plane client (Kinesis
-> **write** path implemented; read path planned). Enable it with
-> `pip install loxtep[streams]` and pass `streams=` (or set `LEO_*` env).
+> **write** + DynamoDB/S3 **read**). Enable it with `pip install loxtep[streams]`
+> and pass `streams=` (or set `LEO_*` env).
 >
-> **Not yet ported from the Node.js SDK:** the rstreams **read** path, and the
-> `config`, `auth`, `codegen`, `skills`, `authoring`, `http`, `checkpoint`
-> modules (client namespaces are at parity).
+> **Not yet ported from the Node.js SDK:** the `config`, `auth`, `codegen`,
+> `skills`, `authoring`, `http`, `checkpoint` modules (client namespaces are at
+> parity). rstreams follow-ups: checkpoint persistence, snapshot/archive,
+> async bus I/O.
 
 ## Install
 
@@ -245,12 +246,12 @@ Delivery sink bindings — how a data product delivers data to external systems
 | `stream(id, *, start, batch_size)` | Stream events (sync generator) |
 | `replay(id, *, start, batch_size)` | Replay events (sync generator) |
 
-> **Writer transport:** when the client is configured with stream-bus config
-> (`streams=` or `LEO_*` env) and `boto3` is installed (`pip install loxtep[streams]`),
-> `data_products.get_writer` returns a **native Kinesis producer** — the
-> performant path, matching the Node.js SDK. Without stream config it falls back
-> to the HTTP data path. `get_reader` currently uses HTTP (a native bus reader is
-> the next step of the port). See the `loxtep.rstreams` module.
+> **Writer/reader transport:** when the client is configured with stream-bus
+> config (`streams=` or `LEO_*` env) and `boto3` is installed
+> (`pip install loxtep[streams]`), `data_products.get_writer` returns a **native
+> Kinesis producer** and `get_reader` a **native DynamoDB/S3 consumer** — the
+> performant path, matching the Node.js SDK. Without stream config both fall back
+> to the HTTP data path. See the `loxtep.rstreams` module.
 
 ### `client.thesaurus`
 
@@ -333,15 +334,15 @@ Remaining, intentional differences:
 
 | Area | Node.js | Python |
 | --- | --- | --- |
-| `get_writer` transport | rstreams stream bus (Kinesis) | **native Kinesis producer** (`loxtep.rstreams`) when configured; HTTP fallback |
-| `get_reader` transport | rstreams stream bus | HTTP for now — native bus reader is the next step of the port |
-| async bus writer | n/a | planned — async `get_writer` uses HTTP for now |
+| `get_writer` / `get_reader` transport | rstreams stream bus | **native Kinesis producer + DynamoDB/S3 consumer** (`loxtep.rstreams`) when configured; HTTP fallback |
+| async bus writer/reader | n/a | planned — async `get_writer`/`get_reader` use HTTP for now |
+| rstreams read extras | checkpoint persistence, snapshot/archive queues, S3 byte-range fast-read | follow-ups (reads work; cursor is in-memory) |
 | `metrics` | no-op stub | no-op stub (identical) |
 | Author-side modules (`config`, `auth`, `codegen`, `skills`, `authoring`, `http`, `checkpoint`) | present | not ported |
 
 `domains`, `standards`, and `data_contracts` are real HTTP-backed namespaces.
-The `loxtep.rstreams` module is a native Leo data-plane client (write path done,
-read path planned) — no dependency on any external Leo SDK.
+The `loxtep.rstreams` module is a native Leo data-plane client (write + read)
+with no dependency on any external Leo SDK.
 
 The low-level writer escape hatch (`workflows.get_writer`, formerly
 `flows.get_writer`) exists in both and is intentionally undocumented for

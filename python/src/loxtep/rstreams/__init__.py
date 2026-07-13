@@ -7,17 +7,20 @@ dependency) and is intended to grow into a full port of the data plane:
 
 - ``config``  — resolve the Leo bus resource names (Kinesis/DynamoDB/S3 tables).
 - ``writer``  — Kinesis producer (implemented).
-- ``reader``  — DynamoDB/S3 consumer + checkpointing (planned; not yet built).
+- ``reader``  — DynamoDB/S3 consumer (implemented; checkpoint *persistence* and
+  snapshot/archive + S3 byte-range fast-read are follow-ups).
 
 Requires the optional ``boto3`` dependency: ``pip install loxtep[streams]``.
 """
 
 from .config import StreamConfig, resolve_stream_config
 from .writer import LeoStreamWriter, build_envelope
+from .reader import LeoStreamReader
 
 __all__ = [
     "StreamConfig",
     "resolve_stream_config",
     "LeoStreamWriter",
     "build_envelope",
+    "LeoStreamReader",
 ]

@@ -48,8 +48,12 @@ SDKs present the same surface, names, and journey grouping.
   gzipped NDJSON envelopes, batching, retry). `data_products.get_writer` and
   `workflows.get_writer` (sync) produce to the bus when `streams=` config (or
   `LEO_*` env) is present and `boto3` is installed (`pip install loxtep[streams]`),
-  else HTTP fallback. The rstreams **read** path and an async bus writer are the
-  next steps of the port.
+  else HTTP fallback.
+- **rstreams read path**: `LeoStreamReader` (LeoEvent/LeoCron bootstrap →
+  LeoStream range query → inline-gzip/S3 NDJSON → per-event eid reconstruction →
+  cursor advance). Sync `data_products.get_reader` consumes from the bus when
+  readable stream config is present, else HTTP. Follow-ups: LeoCron checkpoint
+  persistence, snapshot/archive queues, S3 byte-range fast-read, async bus I/O.
 
 ## [0.3.0] - Unreleased
 
