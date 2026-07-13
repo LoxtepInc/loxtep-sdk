@@ -51,9 +51,15 @@ SDKs present the same surface, names, and journey grouping.
   else HTTP fallback.
 - **rstreams read path**: `LeoStreamReader` (LeoEvent/LeoCron bootstrap →
   LeoStream range query → inline-gzip/S3 NDJSON → per-event eid reconstruction →
-  cursor advance). Sync `data_products.get_reader` consumes from the bus when
-  readable stream config is present, else HTTP. Follow-ups: LeoCron checkpoint
-  persistence, snapshot/archive queues, S3 byte-range fast-read, async bus I/O.
+  cursor advance), with optional **LeoCron checkpoint persistence**
+  (`auto_checkpoint=` / `reader.checkpoint()`).
+- **Async bus I/O**: `AsyncLeoStreamWriter`/`AsyncLeoStreamReader` (sync boto3 run
+  via `asyncio.to_thread`); async `data_products.get_writer`/`get_reader` and
+  `workflows.get_writer` use the bus when configured, else HTTP.
+- Writer rejects a single event > 1 MB with a clear error (S3 write-offload for
+  oversized payloads is a documented follow-up).
+- Remaining rstreams follow-ups (perf/edge only): S3 write-offload, S3
+  byte-range fast-read, snapshot/archive queue transitions.
 
 ## [0.3.0] - Unreleased
 

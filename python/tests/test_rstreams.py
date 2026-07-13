@@ -3,15 +3,22 @@
 import gzip
 import json
 
+import asyncio
+
+import pytest
+
 from loxtep import LoxtepClient
 from loxtep.data_products import DataProductWriter
 from loxtep.rstreams import (
+    AsyncLeoStreamReader,
+    AsyncLeoStreamWriter,
     LeoStreamReader,
     LeoStreamWriter,
     StreamConfig,
     build_envelope,
     resolve_stream_config,
 )
+from loxtep.rstreams.writer import StreamBusUnavailableError
 
 
 class FakeKinesis:
@@ -136,6 +143,7 @@ class FakeTable:
         self._get = get_item_result or {}
         self._pages = list(query_pages or [])
         self.queries: list[dict] = []
+        self.updates: list[dict] = []
 
     def get_item(self, *, Key):
         return self._get
@@ -143,6 +151,10 @@ class FakeTable:
     def query(self, **params):
         self.queries.append(params)
         return self._pages.pop(0) if self._pages else {"Items": []}
+
+    def update_item(self, **params):
+        self.updates.append(params)
+        return {}
 
 
 class FakeDDB:
@@ -268,3 +280,86 @@ def test_get_writer_uses_bus_when_stream_config_present():
     writer.close()
     assert fake.calls[0]["StreamName"] == "Bus-Kinesis"
     client.close()
+
+
+# --- checkpoint persistence ---
+
+def test_reader_auto_checkpoint_persists_to_cron():
+    cfg = _readable_cfg()
+    item = {
+        "event": "orders-q",
+        "start": "z/2026/07/13/18/22/1752430000000-0000000",
+        "end": "z/2026/07/13/18/22/1752430000000-0000000",
+        "gzip": _gz([{"event": "orders-q", "payload": {"n": 1}}]),
+    }
+    cron = FakeTable("Bus-LeoCron", get_item_result={})
+    ddb = FakeDDB({
+        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+        "Bus-LeoCron": cron,
+        "Bus-LeoStream": FakeTable("Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]),
+    })
+    reader = LeoStreamReader(
+        cfg, "sdk-reader-orders_reader", "orders-q", start="a", auto_checkpoint=True, dynamodb_resource=ddb
+    )
+    list(reader)
+    assert cron.updates, "expected a checkpoint write to LeoCron"
+    written = cron.updates[-1]["ExpressionAttributeValues"][":cp"]
+    cp = written["read"]["queue:orders-q"]["checkpoint"]
+    assert cp.endswith("-0000000")
+    # bot id had its _reader suffix stripped for the cron key
+    assert cron.updates[-1]["Key"] == {"id": "sdk-reader-orders"}
+
+
+def test_manual_checkpoint():
+    cfg = _readable_cfg()
+    cron = FakeTable("Bus-LeoCron", get_item_result={"Item": {"checkpoints": {"read": {"queue:other": {"checkpoint": "x"}}}}})
+    ddb = FakeDDB({"Bus-LeoCron": cron, "Bus-LeoEvent": FakeTable("e"), "Bus-LeoStream": FakeTable("s")})
+    reader = LeoStreamReader(cfg, "bot", "orders-q", dynamodb_resource=ddb)
+    reader.checkpoint("z/my-eid")
+    cp = cron.updates[-1]["ExpressionAttributeValues"][":cp"]
+    assert cp["read"]["queue:orders-q"]["checkpoint"] == "z/my-eid"
+    assert cp["read"]["queue:other"]["checkpoint"] == "x"  # preserved other queues
+
+
+# --- oversized event guard ---
+
+def test_writer_rejects_oversized_single_event():
+    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K")
+    w = LeoStreamWriter(cfg, "bot", "q", kinesis_client=FakeKinesis())
+    with pytest.raises(StreamBusUnavailableError):
+        w.write({"blob": "x" * (1024 * 1024 + 10)})
+
+
+# --- async facades ---
+
+def test_async_writer_produces_via_thread():
+    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K")
+    fake = FakeKinesis()
+
+    async def run():
+        w = AsyncLeoStreamWriter(cfg, "bot", "q", kinesis_client=fake)
+        await w.write({"a": 1})
+        await w.close()
+
+    asyncio.run(run())
+    assert len(fake.calls) == 1
+    assert _decode_records(fake.calls[0])[0]["payload"] == {"a": 1}
+
+
+def test_async_reader_iterates_via_thread():
+    cfg = _readable_cfg()
+    item = {"event": "q", "start": "p-0000000", "end": "p-0000000", "gzip": _gz([{"event": "q", "payload": {"v": 7}}])}
+    ddb = FakeDDB({
+        "Bus-LeoEvent": FakeTable("e", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+        "Bus-LeoCron": FakeTable("c", get_item_result={}),
+        "Bus-LeoStream": FakeTable("s", query_pages=[{"Items": [item]}, {"Items": []}]),
+    })
+
+    async def run():
+        out = []
+        async for e in AsyncLeoStreamReader(cfg, "bot", "q", start="a", dynamodb_resource=ddb):
+            out.append(e)
+        return out
+
+    events = asyncio.run(run())
+    assert events[0]["payload"] == {"v": 7}

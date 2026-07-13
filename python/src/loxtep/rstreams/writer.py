@@ -12,12 +12,17 @@ consumer + checkpointing) is planned.
 
 from __future__ import annotations
 
+import asyncio
 import gzip
 import json
 import time
 from typing import Any, Optional
 
 from .config import StreamConfig
+
+# Kinesis hard limit is 1 MB per record. A single event larger than this must be
+# offloaded to S3 (a documented follow-up); we raise rather than silently fail.
+_MAX_SINGLE_EVENT_BYTES = 1024 * 1024
 
 
 def _now_ms() -> int:
@@ -105,6 +110,11 @@ class LeoStreamWriter:
             event_source_timestamp=event_source_timestamp,
         )
         line = json.dumps(env)
+        if len(line.encode("utf-8")) > _MAX_SINGLE_EVENT_BYTES:
+            raise StreamBusUnavailableError(
+                "Single event exceeds the 1 MB Kinesis record limit. Large-payload "
+                "S3 offload is not yet implemented in the Python SDK."
+            )
         self._buffer.append(env)
         self._buffered_bytes += len(line) + 1
         if len(self._buffer) >= self._max_batch_records or self._buffered_bytes >= self._max_batch_bytes:
@@ -152,3 +162,26 @@ class LeoStreamWriter:
         raise StreamBusUnavailableError(
             f"Failed to put {len(pending)} record(s) to {self._config.kinesis_stream} after {self._max_attempts} attempts"
         )
+
+
+class AsyncLeoStreamWriter:
+    """Async facade over `LeoStreamWriter`; runs the sync boto3 calls in a
+    thread (boto3 is synchronous). Same batching/retry semantics."""
+
+    def __init__(self, config: StreamConfig, bot_id: str, queue: str, **kwargs: Any) -> None:
+        self._writer = LeoStreamWriter(config, bot_id, queue, **kwargs)
+
+    async def write(self, business_object: Any, *, event_source_timestamp: Optional[int] = None) -> None:
+        # Buffering is in-memory/cheap; the flush (network) may run here.
+        await asyncio.to_thread(
+            self._writer.write, business_object, event_source_timestamp=event_source_timestamp
+        )
+
+    async def close(self) -> None:
+        await asyncio.to_thread(self._writer.close)
+
+    async def __aenter__(self) -> "AsyncLeoStreamWriter":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.close()

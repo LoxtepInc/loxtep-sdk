@@ -147,8 +147,9 @@ class WorkflowWriter:
 class AsyncWorkflowsApi:
     """Async client for workflow list, get, create, graph, deploy, and writer."""
 
-    def __init__(self, http: AsyncLoxtepHttpClient) -> None:
+    def __init__(self, http: AsyncLoxtepHttpClient, stream_config: Optional[Any] = None) -> None:
         self._http = http
+        self._stream_config = stream_config
 
     async def list(
         self,
@@ -230,9 +231,16 @@ class AsyncWorkflowsApi:
         res = await self._http.post(path, body)
         return _data(res)
 
-    def get_writer(self, workflow_id: str) -> "AsyncWorkflowWriter":
+    def get_writer(
+        self, workflow_id: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+    ) -> Any:
         """Low-level stream-writer escape hatch. Internal — prefer
-        ``data_products.get_writer``."""
+        ``data_products.get_writer``. Uses the Kinesis bus when configured."""
+        cfg = self._stream_config
+        if cfg is not None and getattr(cfg, "is_writable", False) and queue_name:
+            from .rstreams import AsyncLeoStreamWriter
+
+            return AsyncLeoStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
         return AsyncWorkflowWriter(workflow_id=workflow_id, http=self._http)
 
 

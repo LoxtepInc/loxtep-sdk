@@ -14,13 +14,15 @@ Requires the optional ``boto3`` dependency: ``pip install loxtep[streams]``.
 """
 
 from .config import StreamConfig, resolve_stream_config
-from .writer import LeoStreamWriter, build_envelope
-from .reader import LeoStreamReader
+from .writer import AsyncLeoStreamWriter, LeoStreamWriter, build_envelope
+from .reader import AsyncLeoStreamReader, LeoStreamReader
 
 __all__ = [
     "StreamConfig",
     "resolve_stream_config",
     "LeoStreamWriter",
+    "AsyncLeoStreamWriter",
     "build_envelope",
     "LeoStreamReader",
+    "AsyncLeoStreamReader",
 ]

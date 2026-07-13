@@ -6,24 +6,30 @@ DynamoDB table, materializing inline-gzip or S3-backed NDJSON payloads, and
 reconstructing per-event ids — matching the Node.js SDK / leo-sdk read path
 (the modern ``leoEvent.v >= 2`` path).
 
-Scope of this first cut (documented follow-ups):
-- No snapshot/archive queue transitions (modern live queues only).
-- Reads whole S3 objects (no byte-range/offset fast-read optimization).
-- Cursor advances in-memory; LeoCron checkpoint *persistence* is not written
-  yet (reads the stored checkpoint as the start position, like the Node SDK).
+Supports optional LeoCron checkpoint persistence (`auto_checkpoint=` /
+`.checkpoint()`) and an async facade (`AsyncLeoStreamReader`).
+
+Documented follow-ups (perf / historical edges): snapshot/archive queue
+transitions, and S3 byte-range/offset fast-read (whole objects are read, which
+is correct but less efficient for partial reads).
 """
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import gzip
 import json
-from typing import Any, Iterator, Optional
+from typing import Any, AsyncIterator, Iterator, Optional
 
 from .config import StreamConfig
 from .writer import StreamBusUnavailableError
 
 _EID_PAD = 7
+
+
+def _now_ms() -> int:
+    return int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
 
 
 def _default_start() -> str:
@@ -66,6 +72,7 @@ class LeoStreamReader:
         start: Optional[str] = None,
         batch_size: int = 50,
         limit: Optional[int] = None,
+        auto_checkpoint: bool = False,
         dynamodb_resource: Any = None,
         s3_client: Any = None,
     ) -> None:
@@ -79,8 +86,12 @@ class LeoStreamReader:
         self._explicit_start = start
         self._batch_size = batch_size
         self._limit = limit
+        self._auto_checkpoint = auto_checkpoint
         self._ddb = dynamodb_resource if dynamodb_resource is not None else self._make_ddb()
         self._s3 = s3_client  # lazily created only if an S3-backed item is hit
+        #: eid of the last event yielded (advances as you iterate).
+        self.last_eid: Optional[str] = None
+        self._records_since_checkpoint = 0
 
     # --- boto3 factories (overridable for tests) ---
     def _make_ddb(self) -> Any:
@@ -119,6 +130,40 @@ class LeoStreamReader:
             read_cp = (((leo_cron.get("checkpoints") or {}).get("read") or {}).get(queue_ref) or {})
             start = read_cp.get("checkpoint") or _default_start()
         return start + " ", max_eid
+
+    def _checkpoint_bot(self) -> str:
+        return self._bot_id[: -len("_reader")] if self._bot_id.endswith("_reader") else self._bot_id
+
+    def checkpoint(self, eid: Optional[str] = None) -> None:
+        """Persist the read checkpoint to LeoCron.
+
+        Merges into ``checkpoints.read["queue:<name>"]`` and writes the map.
+        Best-effort single-consumer semantics (no optimistic-lock contention
+        handling — a documented follow-up).
+        """
+        eid = eid or self.last_eid
+        if not eid:
+            return
+        bot = self._checkpoint_bot()
+        cron_tbl = self._ddb.Table(self._config.cron_table)
+        item = (cron_tbl.get_item(Key={"id": bot}).get("Item")) or {}
+        checkpoints = dict(item.get("checkpoints") or {})
+        read = dict(checkpoints.get("read") or {})
+        now = _now_ms()
+        read[f"queue:{self._queue}"] = {
+            "checkpoint": eid,
+            "records": self._records_since_checkpoint,
+            "ended_timestamp": now,
+            "source_timestamp": now,
+        }
+        checkpoints["read"] = read
+        cron_tbl.update_item(
+            Key={"id": bot},
+            UpdateExpression="SET #cp = :cp",
+            ExpressionAttributeNames={"#cp": "checkpoints"},
+            ExpressionAttributeValues={":cp": checkpoints},
+        )
+        self._records_since_checkpoint = 0
 
     # --- item materialization ---
     def _item_lines(self, item: dict[str, Any]) -> list[dict[str, Any]]:
@@ -159,13 +204,46 @@ class LeoStreamReader:
                     got_any = True
                     last_end = item.get("end")
                     for i, raw in enumerate(self._item_lines(item)):
-                        yield _map_event(raw, _reconstruct_eid(item.get("start", ""), i))
+                        eid = _reconstruct_eid(item.get("start", ""), i)
+                        self.last_eid = eid
+                        self._records_since_checkpoint += 1
+                        yield _map_event(raw, eid)
                         count += 1
                         if self._limit is not None and count >= self._limit:
+                            if self._auto_checkpoint:
+                                self.checkpoint()
                             return
                 last_evaluated = resp.get("LastEvaluatedKey") if isinstance(resp, dict) else None
                 if not last_evaluated:
                     break
             if not got_any or not last_end:
+                if self._auto_checkpoint and self.last_eid:
+                    self.checkpoint()
                 return
+            if self._auto_checkpoint:
+                self.checkpoint()
             start = last_end + " "
+
+
+class AsyncLeoStreamReader:
+    """Async facade over `LeoStreamReader`; runs the sync boto3 iteration in a
+    thread (boto3 is synchronous). Async-iterate it (``async for``)."""
+
+    def __init__(self, config: StreamConfig, bot_id: str, queue: str, **kwargs: Any) -> None:
+        self._reader = LeoStreamReader(config, bot_id, queue, **kwargs)
+
+    async def __aiter__(self) -> AsyncIterator[dict[str, Any]]:
+        it = iter(self._reader)
+        sentinel = object()
+        while True:
+            item = await asyncio.to_thread(next, it, sentinel)
+            if item is sentinel:
+                break
+            yield item
+
+    async def checkpoint(self, eid: Optional[str] = None) -> None:
+        await asyncio.to_thread(self._reader.checkpoint, eid)
+
+    @property
+    def last_eid(self) -> Optional[str]:
+        return self._reader.last_eid

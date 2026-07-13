@@ -332,11 +332,22 @@ class AsyncDataProductsApi:
         http: AsyncLoxtepHttpClient,
         get_queue_metadata: Optional[Any] = None,
         get_reader_checkpoint: Optional[Any] = None,
+        stream_config: Optional[Any] = None,
     ) -> None:
         self._http = http
         self._get_queue_metadata = get_queue_metadata
         self._get_reader_checkpoint = get_reader_checkpoint
+        self._stream_config = stream_config
         self._resolve_cache: dict[str, str] = {}
+
+    async def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
+        asset = await self.get(dp_id)
+        storage = asset.get("storage") if isinstance(asset, dict) else None
+        if isinstance(storage, dict):
+            q = storage.get("rstreams_queue")
+            if isinstance(q, str) and q:
+                return q
+        return None
 
     async def get(self, id: str, *, include_schema: bool = False, include_quality: bool = False) -> dict[str, Any]:
         qs = _query_string({"include_schema": include_schema, "include_quality": include_quality})
@@ -472,14 +483,50 @@ class AsyncDataProductsApi:
         self._resolve_cache[key] = resolved
         return resolved
 
-    async def get_writer(self, id_or_name: str, **_options: Any) -> AsyncDataProductWriter:
+    async def get_writer(
+        self, id_or_name: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+    ) -> Any:
+        """Async writer. Uses the native Kinesis bus when stream config is
+        present, else the HTTP data path."""
         dp_id = await self._resolve_id(id_or_name)
+        cfg = self._stream_config
+        if cfg is not None and getattr(cfg, "is_writable", False):
+            from .rstreams import AsyncLeoStreamWriter
+
+            queue = queue_name or await self._resolve_queue_name(dp_id)
+            if not queue:
+                raise ValueError(
+                    f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
+                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                )
+            return AsyncLeoStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
         return AsyncDataProductWriter(dp_id, self._http)
 
     async def get_reader(
-        self, id_or_name: str, *, start: Optional[str] = None, batch_size: int = 100
+        self,
+        id_or_name: str,
+        *,
+        bot_id: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        start: Optional[str] = None,
+        batch_size: int = 100,
     ) -> AsyncIterator[dict[str, Any]]:
+        """Async reader. Consumes from the bus when readable stream config is
+        present, else the HTTP stream endpoint."""
         dp_id = await self._resolve_id(id_or_name)
+        cfg = self._stream_config
+        if cfg is not None and getattr(cfg, "is_readable", False):
+            from .rstreams import AsyncLeoStreamReader
+
+            queue = queue_name or await self._resolve_queue_name(dp_id)
+            if not queue:
+                raise ValueError(
+                    f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
+                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                )
+            return AsyncLeoStreamReader(
+                cfg, bot_id or f"sdk-reader-{id_or_name}", queue, start=start, batch_size=batch_size
+            )
         return self.stream(dp_id, start=start, batch_size=batch_size)
 
     async def stream(

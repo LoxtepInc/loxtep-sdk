@@ -244,12 +244,13 @@ class AsyncLoxtepClient:
         )
         self._queues = AsyncQueuesApi(self._http)
         self._triggers = AsyncTriggersApi(self._http)
-        self._workflows = AsyncWorkflowsApi(self._http)
+        self._workflows = AsyncWorkflowsApi(self._http, stream_config=self._stream_config)
         self._observe = AsyncObserveApi(self._http)
         self._data_products = AsyncDataProductsApi(
             self._http,
             get_queue_metadata=None,
             get_reader_checkpoint=None,
+            stream_config=self._stream_config,
         )
         self._quality = AsyncQualityApi(self._http)
         self._catalog = AsyncCatalogApi(self._http)

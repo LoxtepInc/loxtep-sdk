@@ -22,8 +22,8 @@ Node.js SDK — see **Parity with the Node.js SDK** at the bottom.
 >
 > **Not yet ported from the Node.js SDK:** the `config`, `auth`, `codegen`,
 > `skills`, `authoring`, `http`, `checkpoint` modules (client namespaces are at
-> parity). rstreams follow-ups: checkpoint persistence, snapshot/archive,
-> async bus I/O.
+> parity). rstreams perf/edge follow-ups: S3 write-offload for >1 MB events,
+> S3 byte-range fast-read, snapshot/archive queue transitions.
 
 ## Install
 
@@ -250,8 +250,10 @@ Delivery sink bindings — how a data product delivers data to external systems
 > config (`streams=` or `LEO_*` env) and `boto3` is installed
 > (`pip install loxtep[streams]`), `data_products.get_writer` returns a **native
 > Kinesis producer** and `get_reader` a **native DynamoDB/S3 consumer** — the
-> performant path, matching the Node.js SDK. Without stream config both fall back
-> to the HTTP data path. See the `loxtep.rstreams` module.
+> performant path, matching the Node.js SDK — on both the sync and async
+> clients. Without stream config both fall back to the HTTP data path. Pass
+> `auto_checkpoint=True` (or call `reader.checkpoint()`) to persist read
+> position to LeoCron. See the `loxtep.rstreams` module.
 
 ### `client.thesaurus`
 
@@ -334,15 +336,18 @@ Remaining, intentional differences:
 
 | Area | Node.js | Python |
 | --- | --- | --- |
-| `get_writer` / `get_reader` transport | rstreams stream bus | **native Kinesis producer + DynamoDB/S3 consumer** (`loxtep.rstreams`) when configured; HTTP fallback |
-| async bus writer/reader | n/a | planned — async `get_writer`/`get_reader` use HTTP for now |
-| rstreams read extras | checkpoint persistence, snapshot/archive queues, S3 byte-range fast-read | follow-ups (reads work; cursor is in-memory) |
+| `get_writer` / `get_reader` transport (sync + async) | rstreams stream bus | **native Kinesis producer + DynamoDB/S3 consumer** (`loxtep.rstreams`) when configured; HTTP fallback |
+| LeoCron checkpoint persistence | yes | yes (`auto_checkpoint=` / `reader.checkpoint()`) |
+| large-payload S3 write-offload | auto (>600 KB) | raises a clear error (S3 write-offload is a follow-up) |
+| S3 byte-range fast-read; snapshot/archive queues | yes | follow-ups (whole-object read is correct; live/modern queues supported) |
 | `metrics` | no-op stub | no-op stub (identical) |
 | Author-side modules (`config`, `auth`, `codegen`, `skills`, `authoring`, `http`, `checkpoint`) | present | not ported |
 
 `domains`, `standards`, and `data_contracts` are real HTTP-backed namespaces.
-The `loxtep.rstreams` module is a native Leo data-plane client (write + read)
-with no dependency on any external Leo SDK.
+The `loxtep.rstreams` module is a native Leo data-plane client — sync **and**
+async write + read, with LeoCron checkpointing — and no dependency on any
+external Leo SDK. Remaining follow-ups are perf/edge only: S3 write-offload for
+>1 MB events, S3 byte-range fast-read, and snapshot/archive queue transitions.
 
 The low-level writer escape hatch (`workflows.get_writer`, formerly
 `flows.get_writer`) exists in both and is intentionally undocumented for
