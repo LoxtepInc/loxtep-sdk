@@ -1,11 +1,13 @@
 name: Publish @loxtep/sdk to npm
 
 # Publishes via npm Trusted Publishing (OIDC). Configure on npmjs.com:
-# @loxtep/sdk → Settings → Trusted publishing → GitHub Actions
-#   Organization: LoxtepInc
-#   Repository:   loxtep-sdk
-#   Workflow:     nodejs-publish.yml
-#   Allowed:      npm publish
+# https://www.npmjs.com/package/@loxtep/sdk/access
+#   → Trusted Publisher → GitHub Actions
+#   Repository: LoxtepInc/loxtep-sdk
+#   Workflow:   nodejs-publish.yml
+#   Allowed:    npm publish
+#
+# Or CLI (after npm login): npm trust github @loxtep/sdk --file nodejs-publish.yml --repository LoxtepInc/loxtep-sdk --allow-publish
 
 on:
   workflow_dispatch:
