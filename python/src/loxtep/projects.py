@@ -22,12 +22,12 @@ def _data(res: Any) -> Any:
 
 
 class ProjectsApi:
-    """Sync projects surface: list_projects, get_project, create_project, update_project, delete_project."""
+    """Sync projects surface: list, get, create, update, delete, apply_template."""
 
     def __init__(self, http: LoxtepHttpClient) -> None:
         self._http = http
 
-    def list_projects(
+    def list(
         self,
         *,
         status: Optional[str] = None,
@@ -44,12 +44,12 @@ class ProjectsApi:
         res = self._http.get(f"{PROJECTS_BASE}{qs}")
         return _data(res)
 
-    def get_project(self, project_id: str) -> dict[str, Any]:
+    def get(self, project_id: str) -> dict[str, Any]:
         path = f"{PROJECTS_BASE}/{quote(project_id)}"
         res = self._http.get(path)
         return _data(res)
 
-    def create_project(
+    def create(
         self,
         name: str,
         *,
@@ -89,7 +89,7 @@ class ProjectsApi:
         res = self._http.post(PROJECTS_BASE, body)
         return _data(res)
 
-    def update_project(
+    def update(
         self,
         project_id: str,
         *,
@@ -133,7 +133,7 @@ class ProjectsApi:
         res = self._http.put(path, body)
         return _data(res)
 
-    def delete_project(self, project_id: str) -> dict[str, Any]:
+    def delete(self, project_id: str) -> dict[str, Any]:
         path = f"{PROJECTS_BASE}/{quote(project_id)}"
         res = self._http.delete(path)
         return _data(res)
@@ -158,6 +158,20 @@ class ProjectsApi:
         res = self._http.post(path, body)
         return _data(res)
 
+    def repository(self, project_id: str) -> dict[str, Any]:
+        """Return the project's repository binding (github_* fields mapped)."""
+        res = self._http.get(f"{PROJECTS_BASE}/{quote(project_id)}")
+        p = _data(res)
+        p = p if isinstance(p, dict) else {}
+        return {
+            "url": p.get("github_repo_url"),
+            "name": p.get("github_repo_name"),
+            "subpath": p.get("github_repo_path", ""),
+            "branch": p.get("github_branch", "main"),
+            "last_commit_sha": p.get("github_last_commit_sha", ""),
+            "last_sync_at": p.get("github_last_sync_at", ""),
+        }
+
 
 class AsyncProjectsApi:
     """Async projects surface."""
@@ -165,7 +179,7 @@ class AsyncProjectsApi:
     def __init__(self, http: AsyncLoxtepHttpClient) -> None:
         self._http = http
 
-    async def list_projects(
+    async def list(
         self,
         *,
         status: Optional[str] = None,
@@ -182,12 +196,12 @@ class AsyncProjectsApi:
         res = await self._http.get(f"{PROJECTS_BASE}{qs}")
         return _data(res)
 
-    async def get_project(self, project_id: str) -> dict[str, Any]:
+    async def get(self, project_id: str) -> dict[str, Any]:
         path = f"{PROJECTS_BASE}/{quote(project_id)}"
         res = await self._http.get(path)
         return _data(res)
 
-    async def create_project(
+    async def create(
         self,
         name: str,
         *,
@@ -227,7 +241,7 @@ class AsyncProjectsApi:
         res = await self._http.post(PROJECTS_BASE, body)
         return _data(res)
 
-    async def update_project(
+    async def update(
         self,
         project_id: str,
         *,
@@ -271,7 +285,7 @@ class AsyncProjectsApi:
         res = await self._http.put(path, body)
         return _data(res)
 
-    async def delete_project(self, project_id: str) -> dict[str, Any]:
+    async def delete(self, project_id: str) -> dict[str, Any]:
         path = f"{PROJECTS_BASE}/{quote(project_id)}"
         res = await self._http.delete(path)
         return _data(res)
@@ -295,3 +309,16 @@ class AsyncProjectsApi:
         path = f"{PROJECTS_BASE}/{quote(project_id)}/templates"
         res = await self._http.post(path, body)
         return _data(res)
+
+    async def repository(self, project_id: str) -> dict[str, Any]:
+        res = await self._http.get(f"{PROJECTS_BASE}/{quote(project_id)}")
+        p = _data(res)
+        p = p if isinstance(p, dict) else {}
+        return {
+            "url": p.get("github_repo_url"),
+            "name": p.get("github_repo_name"),
+            "subpath": p.get("github_repo_path", ""),
+            "branch": p.get("github_branch", "main"),
+            "last_commit_sha": p.get("github_last_commit_sha", ""),
+            "last_sync_at": p.get("github_last_sync_at", ""),
+        }

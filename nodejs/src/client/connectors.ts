@@ -37,7 +37,7 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
   update: (connector_id: string, input: UpdateConnectorInput) => Promise<Connector>;
   delete: (connector_id: string) => Promise<void>;
   test: (connector_id: string) => Promise<ConnectorTestResult>;
-  getOauthUrl: (
+  get_oauth_url: (
     connector_id: string,
     opts?: { callback_url?: string; toolkit?: string }
   ) => Promise<{ oauth_url: string }>;
@@ -95,7 +95,7 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
       return r?.data ?? (res as ConnectorTestResult);
     },
 
-    async getOauthUrl(
+    async get_oauth_url(
       connector_id: string,
       opts?: { callback_url?: string; toolkit?: string }
     ): Promise<{ oauth_url: string }> {

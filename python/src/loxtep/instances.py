@@ -1,5 +1,5 @@
 """
-Instances API. list, get.
+Instances API. list, get, get_stream_config.
 Backend: organizations microservice /organizations/instances.
 """
 
@@ -29,6 +29,11 @@ class InstancesApi:
         data = res.get("data", res) if isinstance(res, dict) else {}
         return data.get("instance", data) if isinstance(data, dict) else data
 
+    def get_stream_config(self, instance_id: str) -> dict[str, Any]:
+        """Get the instance's stream bus configuration."""
+        res = self._http.get(f"/instances/{instance_id}/stream-config")
+        return res.get("data", res) if isinstance(res, dict) else res
+
 
 class AsyncInstancesApi:
     """Async instances surface."""
@@ -48,3 +53,7 @@ class AsyncInstancesApi:
         res = await self._http.get(f"{INSTANCES_BASE}/{instance_id}")
         data = res.get("data", res) if isinstance(res, dict) else {}
         return data.get("instance", data) if isinstance(data, dict) else data
+
+    async def get_stream_config(self, instance_id: str) -> dict[str, Any]:
+        res = await self._http.get(f"/instances/{instance_id}/stream-config")
+        return res.get("data", res) if isinstance(res, dict) else res

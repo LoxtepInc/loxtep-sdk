@@ -28,7 +28,7 @@ describe('createDiscoveryApi', () => {
     });
   });
 
-  it('getEvidence calls POST with get_evidence and data_product_ids', async () => {
+  it('get_evidence calls POST with get_evidence and data_product_ids', async () => {
     let capturedBody: unknown = null;
     const http = {
       post: async (_path: string, body: unknown) => {
@@ -41,7 +41,7 @@ describe('createDiscoveryApi', () => {
     } as unknown as LoxtepHttpClient;
 
     const api = createDiscoveryApi(http);
-    await api.getEvidence(['id-1', 'id-2']);
+    await api.get_evidence(['id-1', 'id-2']);
 
     expect(capturedBody).toEqual({
       name: 'get_evidence',
@@ -49,7 +49,7 @@ describe('createDiscoveryApi', () => {
     });
   });
 
-  it('getLineageImpact calls POST with get_lineage_impact and data_product_id', async () => {
+  it('get_lineage_impact calls POST with get_lineage_impact and data_product_id', async () => {
     let capturedBody: unknown = null;
     const http = {
       post: async (_path: string, body: unknown) => {
@@ -69,7 +69,7 @@ describe('createDiscoveryApi', () => {
     } as unknown as LoxtepHttpClient;
 
     const api = createDiscoveryApi(http);
-    await api.getLineageImpact('dp-1');
+    await api.get_lineage_impact('dp-1');
 
     expect(capturedBody).toEqual({
       name: 'get_lineage_impact',
@@ -77,7 +77,7 @@ describe('createDiscoveryApi', () => {
     });
   });
 
-  it('getGovernanceFlags calls POST with get_governance_flags', async () => {
+  it('get_governance_flags calls POST with get_governance_flags', async () => {
     let capturedBody: unknown = null;
     const http = {
       post: async (_path: string, body: unknown) => {
@@ -101,7 +101,7 @@ describe('createDiscoveryApi', () => {
     } as unknown as LoxtepHttpClient;
 
     const api = createDiscoveryApi(http);
-    await api.getGovernanceFlags('dp-1');
+    await api.get_governance_flags('dp-1');
 
     expect(capturedBody).toEqual({
       name: 'get_governance_flags',
@@ -109,7 +109,7 @@ describe('createDiscoveryApi', () => {
     });
   });
 
-  it('runDiscovery calls POST with run_discovery and empty arguments', async () => {
+  it('run calls POST with run_discovery and empty arguments', async () => {
     let capturedBody: unknown = null;
     const http = {
       post: async (_path: string, body: unknown) => {
@@ -132,7 +132,7 @@ describe('createDiscoveryApi', () => {
     } as unknown as LoxtepHttpClient;
 
     const api = createDiscoveryApi(http);
-    await api.runDiscovery();
+    await api.run();
 
     expect(capturedBody).toEqual({ name: 'run_discovery', arguments: {} });
   });

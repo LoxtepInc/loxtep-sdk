@@ -1,19 +1,18 @@
 """
 LoxtepClient (sync) and AsyncLoxtepClient (async).
-Public surface: data_products, delivery, flows, workflows, observe, projects, templates, connectors, instances, procedures, domains, standards, data_contracts, connections, queues, quality, catalog, discovery, schemas, metrics.
+Public surface: data_products, targets, workflows, observe, projects, templates, connectors, instances, procedures, domains, standards, data_contracts, triggers, thesaurus, queues, quality, catalog, discovery, schemas, metrics.
 """
 
 from typing import Any, Callable, Optional
 
 from .catalog import AsyncCatalogApi, CatalogApi
-from .connections import AsyncConnectionsApi, ConnectionsApi
+from .triggers import AsyncTriggersApi, TriggersApi
 from .connectors import AsyncConnectorsApi, ConnectorsApi
 from .data_products import AsyncDataProductsApi, DataProductsApi
-from .delivery import AsyncDeliveryApi, DeliveryApi
+from .targets import AsyncTargetsApi, TargetsApi
 from .instances import AsyncInstancesApi, InstancesApi
 from .procedures import AsyncProceduresApi, ProceduresApi
 from .discovery import AsyncDiscoveryApi, DiscoveryApi
-from .flows import AsyncFlowsApi, FlowsApi
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
 from .observe import AsyncObserveApi, ObserveApi
 from .workflows import AsyncWorkflowsApi, WorkflowsApi
@@ -23,7 +22,13 @@ from .queues import AsyncQueuesApi, QueuesApi
 from .quality import AsyncQualityApi, QualityApi
 from .schemas import AsyncSchemasApi, SchemasApi
 from .templates import AsyncTemplatesApi, TemplatesApi
-from .stubs import data_contracts_stub, domains_stub, standards_stub
+from .thesaurus import AsyncThesaurusApi, ThesaurusApi
+from .improvements import AsyncImprovementsApi, ImprovementsApi
+from .activity import AsyncActivityApi, ActivityApi
+from .domains import AsyncDomainsApi, DomainsApi
+from .standards import AsyncStandardsApi, StandardsApi
+from .data_contracts import AsyncDataContractsApi, DataContractsApi
+from .rstreams import resolve_stream_config
 
 
 def _default_get_token() -> Optional[str]:
@@ -33,7 +38,7 @@ def _default_get_token() -> Optional[str]:
 class LoxtepClient:
     """
     Sync Loxtep SDK client.
-    data_products, flows, workflows, projects, connectors, instances, procedures, domains, standards, data_contracts, connections, queues, quality, catalog, discovery, schemas.
+    data_products, workflows, projects, connectors, instances, procedures, domains, standards, data_contracts, triggers, targets, thesaurus, queues, quality, catalog, discovery, schemas.
     """
 
     def __init__(
@@ -45,6 +50,7 @@ class LoxtepClient:
         project_id: Optional[str] = None,
         get_token: Optional[Callable[[], Optional[str]]] = None,
         timeout: float = 30.0,
+        streams: Optional[dict[str, Any]] = None,
     ) -> None:
         self.api_url = api_url.rstrip("/")
         self.auth = auth or {}
@@ -57,15 +63,19 @@ class LoxtepClient:
             get_token=self._get_token,
             timeout=timeout,
         )
+        # Resolve stream-bus config (Kinesis/DynamoDB/S3 resource names) from the
+        # `streams` option merged with LEO_* env vars. When writable, data-product
+        # and workflow writers produce to the bus instead of HTTP.
+        self._stream_config = resolve_stream_config(streams)
         self._queues = QueuesApi(self._http)
-        self._connections = ConnectionsApi(self._http)
-        self._flows = FlowsApi(self._http)
-        self._workflows = WorkflowsApi(self._http)
+        self._triggers = TriggersApi(self._http)
+        self._workflows = WorkflowsApi(self._http, stream_config=self._stream_config)
         self._observe = ObserveApi(self._http)
         self._data_products = DataProductsApi(
             self._http,
             get_queue_metadata=lambda name: self._queues.get_queue_metadata(name),
             get_reader_checkpoint=lambda name, bot_id: self._queues.get_reader_checkpoint(name, bot_id),
+            stream_config=self._stream_config,
         )
         self._quality = QualityApi(self._http)
         self._catalog = CatalogApi(self._http)
@@ -77,10 +87,13 @@ class LoxtepClient:
         self._connectors = ConnectorsApi(self._http)
         self._instances = InstancesApi(self._http)
         self._procedures = ProceduresApi(self._http)
-        self._delivery = DeliveryApi(self._http)
-        self.domains = domains_stub
-        self.standards = standards_stub
-        self.data_contracts = data_contracts_stub
+        self._targets = TargetsApi(self._http)
+        self._thesaurus = ThesaurusApi(self._http, organization_id)
+        self._improvements = ImprovementsApi(self._http)
+        self._activity = ActivityApi(self._http)
+        self._domains = DomainsApi(self._http)
+        self._standards = StandardsApi(self._http)
+        self._data_contracts = DataContractsApi(self._http)
         self.metrics = _MetricsStub()
 
     @property
@@ -104,16 +117,12 @@ class LoxtepClient:
         return self._data_products
 
     @property
-    def delivery(self) -> DeliveryApi:
-        """Delivery interfaces API.
+    def targets(self) -> TargetsApi:
+        """Targets API (delivery sink bindings).
 
         Manage how data products deliver data to external systems.
         """
-        return self._delivery
-
-    @property
-    def flows(self) -> FlowsApi:
-        return self._flows
+        return self._targets
 
     @property
     def workflows(self) -> WorkflowsApi:
@@ -124,8 +133,8 @@ class LoxtepClient:
         return self._observe
 
     @property
-    def connections(self) -> ConnectionsApi:
-        return self._connections
+    def triggers(self) -> TriggersApi:
+        return self._triggers
 
     @property
     def queues(self) -> QueuesApi:
@@ -150,6 +159,32 @@ class LoxtepClient:
     @property
     def process_intelligence(self) -> ProcessIntelligenceApi:
         return self._process_intelligence
+
+    @property
+    def thesaurus(self) -> ThesaurusApi:
+        return self._thesaurus
+
+    @property
+    def improvements(self) -> ImprovementsApi:
+        """Internal / experimental — not part of the documented customer surface."""
+        return self._improvements
+
+    @property
+    def activity(self) -> ActivityApi:
+        """Internal / experimental — not part of the documented customer surface."""
+        return self._activity
+
+    @property
+    def domains(self) -> DomainsApi:
+        return self._domains
+
+    @property
+    def standards(self) -> StandardsApi:
+        return self._standards
+
+    @property
+    def data_contracts(self) -> DataContractsApi:
+        return self._data_contracts
 
     @property
     def projects(self) -> ProjectsApi:
@@ -191,11 +226,15 @@ class AsyncLoxtepClient:
         project_id: Optional[str] = None,
         get_token: Optional[Callable[[], Any]] = None,
         timeout: float = 30.0,
+        streams: Optional[dict[str, Any]] = None,
     ) -> None:
         self.api_url = api_url.rstrip("/")
         self.auth = auth or {}
         self.organization_id = organization_id
         self.project_id = project_id
+        # Stream config is resolved for parity; the async writers currently use
+        # the HTTP path (an async bus writer is a planned follow-up).
+        self._stream_config = resolve_stream_config(streams)
         token = self.auth.get("token") if isinstance(self.auth, dict) else None
         self._get_token = get_token or (lambda: token if isinstance(token, str) else None)
         self._http = AsyncLoxtepHttpClient(
@@ -204,14 +243,14 @@ class AsyncLoxtepClient:
             timeout=timeout,
         )
         self._queues = AsyncQueuesApi(self._http)
-        self._connections = AsyncConnectionsApi(self._http)
-        self._flows = AsyncFlowsApi(self._http)
-        self._workflows = AsyncWorkflowsApi(self._http)
+        self._triggers = AsyncTriggersApi(self._http)
+        self._workflows = AsyncWorkflowsApi(self._http, stream_config=self._stream_config)
         self._observe = AsyncObserveApi(self._http)
         self._data_products = AsyncDataProductsApi(
             self._http,
             get_queue_metadata=None,
             get_reader_checkpoint=None,
+            stream_config=self._stream_config,
         )
         self._quality = AsyncQualityApi(self._http)
         self._catalog = AsyncCatalogApi(self._http)
@@ -223,10 +262,13 @@ class AsyncLoxtepClient:
         self._connectors = AsyncConnectorsApi(self._http)
         self._instances = AsyncInstancesApi(self._http)
         self._procedures = AsyncProceduresApi(self._http)
-        self._delivery = AsyncDeliveryApi(self._http)
-        self.domains = domains_stub
-        self.standards = standards_stub
-        self.data_contracts = data_contracts_stub
+        self._targets = AsyncTargetsApi(self._http)
+        self._thesaurus = AsyncThesaurusApi(self._http, organization_id)
+        self._improvements = AsyncImprovementsApi(self._http)
+        self._activity = AsyncActivityApi(self._http)
+        self._domains = AsyncDomainsApi(self._http)
+        self._standards = AsyncStandardsApi(self._http)
+        self._data_contracts = AsyncDataContractsApi(self._http)
         self.metrics = _MetricsStub()
 
     @property
@@ -246,16 +288,12 @@ class AsyncLoxtepClient:
         return self._data_products
 
     @property
-    def delivery(self) -> AsyncDeliveryApi:
-        """Delivery interfaces API.
+    def targets(self) -> AsyncTargetsApi:
+        """Targets API (delivery sink bindings).
 
         Manage how data products deliver data to external systems.
         """
-        return self._delivery
-
-    @property
-    def flows(self) -> AsyncFlowsApi:
-        return self._flows
+        return self._targets
 
     @property
     def workflows(self) -> AsyncWorkflowsApi:
@@ -266,8 +304,8 @@ class AsyncLoxtepClient:
         return self._observe
 
     @property
-    def connections(self) -> AsyncConnectionsApi:
-        return self._connections
+    def triggers(self) -> AsyncTriggersApi:
+        return self._triggers
 
     @property
     def queues(self) -> AsyncQueuesApi:
@@ -292,6 +330,32 @@ class AsyncLoxtepClient:
     @property
     def process_intelligence(self) -> AsyncProcessIntelligenceApi:
         return self._process_intelligence
+
+    @property
+    def thesaurus(self) -> AsyncThesaurusApi:
+        return self._thesaurus
+
+    @property
+    def improvements(self) -> AsyncImprovementsApi:
+        """Internal / experimental — not part of the documented customer surface."""
+        return self._improvements
+
+    @property
+    def activity(self) -> AsyncActivityApi:
+        """Internal / experimental — not part of the documented customer surface."""
+        return self._activity
+
+    @property
+    def domains(self) -> AsyncDomainsApi:
+        return self._domains
+
+    @property
+    def standards(self) -> AsyncStandardsApi:
+        return self._standards
+
+    @property
+    def data_contracts(self) -> AsyncDataContractsApi:
+        return self._data_contracts
 
     @property
     def projects(self) -> AsyncProjectsApi:

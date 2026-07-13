@@ -3,7 +3,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createFlowsApi, isTransientError } from '../flows';
+import { createWorkflowsApi, isTransientError } from '../workflows';
 import { StreamingError } from '../../errors/streaming';
 import type { LoxtepHttpClient } from '../../http/client';
 import type { RStreamsSdk } from '../../rstreams/leo-runtime';
@@ -46,7 +46,7 @@ function mockRsdk(): {
 describe('FlowWriter — Stream Bus integration', () => {
   it('write() forwards envelopes to the load stream and close() ends it', async () => {
     const { rsdk, loads, written } = mockRsdk();
-    const api = createFlowsApi(mockHttp(), { rsdk });
+    const api = createWorkflowsApi(mockHttp(), { rsdk });
     const writer = await api.get_writer('flow-1', {
       bot_id: 'bot-1',
       output_queue_name: 'test-queue',
@@ -62,7 +62,7 @@ describe('FlowWriter — Stream Bus integration', () => {
 
   it('close() with empty buffer still ends the stream', async () => {
     const { rsdk, loads } = mockRsdk();
-    const api = createFlowsApi(mockHttp(), { rsdk });
+    const api = createWorkflowsApi(mockHttp(), { rsdk });
     const writer = await api.get_writer('flow-1', {
       bot_id: 'bot-1',
       output_queue_name: 'test-queue',
@@ -74,7 +74,7 @@ describe('FlowWriter — Stream Bus integration', () => {
   });
 
   it('throws StreamingError when rsdk is not available', async () => {
-    const api = createFlowsApi(mockHttp(), { rsdk: undefined });
+    const api = createWorkflowsApi(mockHttp(), { rsdk: undefined });
 
     await expect(
       api.get_writer('flow-1', {
@@ -86,7 +86,7 @@ describe('FlowWriter — Stream Bus integration', () => {
 
   it('throws StreamingError when bot_id is missing', async () => {
     const { rsdk } = mockRsdk();
-    const api = createFlowsApi(mockHttp(), { rsdk });
+    const api = createWorkflowsApi(mockHttp(), { rsdk });
 
     await expect(
       api.get_writer('flow-1', {
@@ -97,7 +97,7 @@ describe('FlowWriter — Stream Bus integration', () => {
 
   it('throws StreamingError when writing to a closed writer', async () => {
     const { rsdk } = mockRsdk();
-    const api = createFlowsApi(mockHttp(), { rsdk });
+    const api = createWorkflowsApi(mockHttp(), { rsdk });
     const writer = await api.get_writer('flow-1', {
       bot_id: 'bot-1',
       output_queue_name: 'test-queue',
@@ -106,12 +106,12 @@ describe('FlowWriter — Stream Bus integration', () => {
     await writer.close();
 
     expect(() => writer.write({ id: 1 })).toThrow(StreamingError);
-    expect(() => writer.write({ id: 1 })).toThrow(/closed FlowWriter/);
+    expect(() => writer.write({ id: 1 })).toThrow(/closed writer/);
   });
 
   it('close() is idempotent — second call is a no-op', async () => {
     const { rsdk, loads } = mockRsdk();
-    const api = createFlowsApi(mockHttp(), { rsdk });
+    const api = createWorkflowsApi(mockHttp(), { rsdk });
     const writer = await api.get_writer('flow-1', {
       bot_id: 'bot-1',
       output_queue_name: 'test-queue',
@@ -127,7 +127,7 @@ describe('FlowWriter — Stream Bus integration', () => {
   it('resolves rsdk lazily via get_rsdk when rsdk is not set', async () => {
     const { rsdk, written } = mockRsdk();
     const getRsdk = jest.fn(async () => rsdk);
-    const api = createFlowsApi(mockHttp(), { get_rsdk: getRsdk });
+    const api = createWorkflowsApi(mockHttp(), { get_rsdk: getRsdk });
     const writer = await api.get_writer('flow-1', {
       bot_id: 'bot-1',
       output_queue_name: 'test-queue',

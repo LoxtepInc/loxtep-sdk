@@ -1,16 +1,16 @@
 /**
- * Delivery Interface types — the primary interface for configuring how data
- * products deliver data to external systems.
+ * Target types — how a data product delivers its data to an external system
+ * (delivery-side sink bindings).
  *
- * Replaces the "consumptions" terminology. The underlying API endpoints remain
- * unchanged (`/dataproducts/:data_product_id/consumptions`) for backward
- * compatibility.
+ * ("consumptions"/"delivery" are the backend terms; the SDK surface names these
+ * `targets`.) The underlying API endpoints are unchanged
+ * (`/dataproducts/:data_product_id/consumptions`).
  */
 
 /**
- * Discriminator for the type of delivery mechanism configured on a data product.
+ * Discriminator for the type of delivery mechanism configured on a target.
  */
-export type DeliveryType =
+export type TargetType =
   | 'webhook'
   | 'api_endpoint'
   | 'export'
@@ -19,10 +19,10 @@ export type DeliveryType =
   | 'event_stream';
 
 /**
- * A delivery interface defines how a data product makes its data available
- * to an external system. Formerly called "Consumption."
+ * A target defines how a data product makes its data available to an external
+ * system. Backed by the "consumption" record.
  */
-export interface DeliveryInterface {
+export interface Target {
   consumption_id: string;
   data_product_id: string;
   organization_id: string;
@@ -30,7 +30,7 @@ export interface DeliveryInterface {
   name: string | null;
   description: string | null;
   /** The type of delivery mechanism. */
-  deliveryType: DeliveryType;
+  targetType: TargetType;
   delivery_method: string;
   status: string;
   is_active: boolean;
@@ -59,17 +59,17 @@ export interface DeliveryInterface {
   deleted_at: string | null;
 }
 
-export interface DeliveryListParams {
+export interface TargetsListParams {
   page?: number;
   page_size?: number;
   status?: string;
   is_active?: boolean;
 }
 
-export interface DeliveryListResponse {
+export interface TargetsListResponse {
   success: true;
   data: {
-    items: DeliveryInterface[];
+    items: Target[];
     pagination: {
       page: number;
       page_size: number;
@@ -81,9 +81,9 @@ export interface DeliveryListResponse {
   };
 }
 
-export interface DeliveryCreateInput {
+export interface TargetCreateInput {
   /** The type of delivery mechanism to configure. */
-  deliveryType?: DeliveryType;
+  targetType?: TargetType;
   name?: string | null;
   description?: string | null;
   delivery_method?: string;
@@ -102,7 +102,7 @@ export interface DeliveryCreateInput {
   batch_size?: number | null;
 }
 
-export interface DeliveryUpdateInput extends Partial<DeliveryCreateInput> {
+export interface TargetUpdateInput extends Partial<TargetCreateInput> {
   status?: string;
   is_active?: boolean;
 }

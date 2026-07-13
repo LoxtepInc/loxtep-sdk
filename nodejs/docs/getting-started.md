@@ -321,16 +321,4 @@ Now that you've written and read your first event, explore these resources:
 | [Event Replay Cookbook](./event-replay-cookbook.md) | Patterns for replaying and reprocessing historical events |
 | [MCP → SDK Mapping](./sdk-mcp-mapping.md) | How MCP tools map to SDK methods |
 
-### Lower-level API
-
-If you need explicit control over bot IDs, queue names, or stream configuration,
-the `flows.get_writer` API is still available as a lower-level escape hatch:
-
-```typescript
-const writer = await client.flows.get_writer('<flow_id>', {
-  bot_id: 'my-custom-bot',
-  output_queue_name: 'specific-queue-name',
-});
-```
-
 See the [SDK README](../README.md) for the full API surface.

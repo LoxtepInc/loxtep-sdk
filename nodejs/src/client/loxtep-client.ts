@@ -4,8 +4,7 @@ import { LoxtepHttpClient, type RateLimitInfo } from '../http/client.js';
 import { extendClientBaseUrl } from '../config/api-path.js';
 import { createDataProductsApi } from './data-products.js';
 import { createQueuesApi } from './queues.js';
-import { createConnectionsApi } from './connections.js';
-import { createFlowsApi } from './flows.js';
+import { createTriggersApi } from './triggers.js';
 import { createQualityApi } from './quality.js';
 import { createCatalogApi } from './catalog.js';
 import { createSchemasApi } from './schemas.js';
@@ -16,7 +15,7 @@ import { createTemplatesApi } from './templates.js';
 import { createObserveApi } from './observe.js';
 import { createThesaurusApi } from './thesaurus.js';
 import { createProcessIntelligenceApi } from './process-intelligence.js';
-import { createDeliveryApi, type DeliveryApi } from './delivery.js';
+import { createTargetsApi, type TargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
 import { createInstancesApi } from './instances.js';
 import { createProceduresApi } from './procedures.js';
@@ -68,9 +67,11 @@ export interface FromWorkspaceOptions {
 }
 
 /**
- * Main SDK client. Public surface uses customer-facing terminology:
- * data_products, flows, projects, domains, standards (policies), data_contracts,
- * connections, queues. No data_products, or standalone analytics.
+ * Main SDK client. Public surface uses customer-facing terminology grouped by
+ * the ingest → define → deliver journey: triggers, connectors, workflows,
+ * data_products (writer/reader), schemas, quality, catalog, discovery, domains,
+ * standards, data_contracts, thesaurus, procedures, targets. Plus advanced
+ * surfaces: projects, templates, instances, observe, queues, metrics.
  */
 export class LoxtepClient {
   readonly api_url: string;
@@ -87,10 +88,7 @@ export class LoxtepClient {
   /** Data products (backend: data products). get, list, search. */
   readonly data_products: ReturnType<typeof createDataProductsApi>;
 
-  /** Flows (backend: workflows); always project-scoped. list, get (with nodes), create, get_writer. */
-  readonly flows: ReturnType<typeof createFlowsApi>;
-
-  /** Workflows: listWorkflows, getWorkflowGraph, createWorkflow, deploy. */
+  /** Workflows (backend: workflows); project-scoped DAG of nodes. list, get (with nodes), create, get_graph, deploy. */
   readonly workflows: WorkflowsApi;
 
   /** Observe: status (bots / observability). */
@@ -99,7 +97,7 @@ export class LoxtepClient {
   /** Projects: list, get, create, update, delete (workflows MS). */
   readonly projects: ReturnType<typeof createProjectsApi>;
 
-  /** Templates: list, get (catalog). Apply via projects.applyTemplate(project_id, body). */
+  /** Templates: list, get (catalog). Apply via projects.apply_template(project_id, body). */
   readonly templates: ReturnType<typeof createTemplatesApi>;
 
   /** Domains. */
@@ -111,8 +109,8 @@ export class LoxtepClient {
   /** Data contracts (backend: datacontracts). */
   readonly data_contracts: ReturnType<typeof createPromisesApi>;
 
-  /** Connections: get, list, create, update, test. */
-  readonly connections: ReturnType<typeof createConnectionsApi>;
+  /** Triggers (ingest source bindings; backend: connections): get, list, create, update, delete, test. */
+  readonly triggers: ReturnType<typeof createTriggersApi>;
 
   /** Queues: get_queue_metadata, get_reader_checkpoint, open_reader, open_writer. */
   readonly queues: ReturnType<typeof createQueuesApi>;
@@ -123,22 +121,26 @@ export class LoxtepClient {
   /** Catalog (search): search. */
   readonly catalog: ReturnType<typeof createCatalogApi>;
 
-  /** Discovery (MCP tools): search with include_evidence/include_lineage, getEvidence, getLineageImpact, getGovernanceFlags, runDiscovery. */
+  /** Discovery (MCP tools): search with include_evidence/include_lineage, get_evidence, get_lineage_impact, get_governance_flags, run. */
   readonly discovery: ReturnType<typeof createDiscoveryApi>;
 
-  /** Schemas (data product schema): get, list. */
+  /** Schemas (data product schema): get, list, tag_pii_fields. */
   readonly schemas: ReturnType<typeof createSchemasApi>;
 
-  /** Thesaurus (canonical correlation keys + aliases): listTerms, resolveCanonicalKey. */
+  /** Thesaurus (canonical correlation keys + aliases): list_terms, resolve_canonical_key, append_synonym. */
   readonly thesaurus: ReturnType<typeof createThesaurusApi>;
 
-  /** Process Intelligence: decisionTraces.list (optional anchor params). LOX-1478. */
+  /**
+   * @internal
+   * Process Intelligence: decisionTraces.list (optional anchor params). LOX-1478.
+   * Experimental — excluded from the documented surface.
+   */
   readonly process_intelligence: ReturnType<typeof createProcessIntelligenceApi>;
 
-  /** Delivery interfaces: list, get, create, update, delete. Primary namespace for configuring how data products deliver data externally. */
-  readonly delivery: DeliveryApi;
+  /** Targets (delivery sink bindings): list, get, create, update, delete. How data products deliver data externally. */
+  readonly targets: TargetsApi;
 
-  /** Connectors (organization-level): list, get, create, update, delete, test, getOauthUrl. */
+  /** Connectors (organization-level): list, get, create, update, delete, test, get_oauth_url. */
   readonly connectors: ReturnType<typeof createConnectorsApi>;
 
   /** Instances (organization-level): list, get. */
@@ -147,10 +149,18 @@ export class LoxtepClient {
   /** Procedures (process graph): list. */
   readonly procedures: ReturnType<typeof createProceduresApi>;
 
-  /** Improvements (AI Eval self-improvement): list, apply, reject (R8.3–R8.6). */
+  /**
+   * @internal
+   * Improvements (AI Eval self-improvement): list, apply, reject (R8.3–R8.6).
+   * Experimental — excluded from the documented surface.
+   */
   readonly improvements: ImprovementsApi;
 
-  /** Activity & observability: list activity/audit entries (R7.4, R18.5). */
+  /**
+   * @internal
+   * Activity & observability: list activity/audit entries (R7.4, R18.5).
+   * Experimental — excluded from the documented surface.
+   */
   readonly activity: ActivityApi;
 
   /** Metrics: log, get_reporter (stub until metrics wiring is added). */
@@ -202,12 +212,11 @@ export class LoxtepClient {
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
     });
-    this.connections = createConnectionsApi(this._http);
-    this.flows = createFlowsApi(this._http, {
+    this.triggers = createTriggersApi(this._http);
+    this.workflows = createWorkflowsApi(this._http, {
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
     });
-    this.workflows = createWorkflowsApi(this._http);
     this.projects = createProjectsApi(this._http);
     this.templates = createTemplatesApi(this._http);
     this.observe = createObserveApi(this._http);
@@ -224,7 +233,7 @@ export class LoxtepClient {
     this.schemas = createSchemasApi(this._http);
     this.thesaurus = createThesaurusApi(this._http, options.organization_id);
     this.process_intelligence = createProcessIntelligenceApi(this._http);
-    this.delivery = createDeliveryApi(this._http);
+    this.targets = createTargetsApi(this._http);
     this.connectors = createConnectorsApi(this._http);
     this.instances = createInstancesApi(this._http, options.organization_id);
     this.procedures = createProceduresApi(this._http);

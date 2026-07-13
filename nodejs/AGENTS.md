@@ -103,13 +103,12 @@ loxtep data-products create --name <n> --domain-id <uuid> --kind <source|consume
 loxtep data-products query <id> "SELECT * FROM t LIMIT 10"
 loxtep data-products tables <id>
 
-loxtep flows list --project-id <id>
-loxtep flows get <id>
-loxtep flows create --name <n> --project-id <id> [--template-id <id>]
 loxtep workflows list --project-id <id>
+loxtep workflows get <id>
+loxtep workflows create --name <n> --project-id <id> [--template-id <id>]
 loxtep workflows deploy --project-id <id> [--instance-id <id>]
 
-loxtep connections list | get <id> | create --name <n> --type <type> --key <k> | test <id>
+loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id>
 loxtep connectors  # (org-level connectors are managed via SDK/MCP)
 loxtep domains list | get <id>
 loxtep standards list | get <id>
@@ -151,24 +150,22 @@ required for all calls.**
 | Namespace | Typical methods | Purpose |
 | --- | --- | --- |
 | `client.data_products` | `list()`, `get(id)`, `create(body)`, `get_writer(name)`, `get_reader(name)`, `stream(id, opts)`, `replay(id, opts)` | Data products + live/historical stream I/O |
-| `client.flows` | `list()`, `get(id)`, `create(body)`, `get_writer(flow_id, opts)` | Flow nodes (project-scoped) |
-| `client.workflows` | `listWorkflows()`, `getWorkflowGraph(id)`, `createWorkflow(body)`, `deploy(...)` | Workflows + graph + deploy |
-| `client.projects` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)` | Data-mesh projects / workspaces |
-| `client.templates` | `list()`, `get(slug)` | Template catalog (apply via `projects.applyTemplate`) |
-| `client.instances` | `list()`, `get(id)` | Runtime instances |
-| `client.connections` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `test(id)` | Workflow connection nodes |
-| `client.connectors` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `test(id)`, `getOauthUrl(...)` | Org-level connectors |
-| `client.queues` | `get_queue_metadata(name)`, `get_reader_checkpoint(name, bot)`, `open_reader(opts)`, `open_writer(opts)` | Stream queue I/O (escape hatch) |
+| `client.triggers` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `test(id)` | Ingest source bindings (backend: connections) |
+| `client.workflows` | `list()`, `get(id)`, `create(body)`, `get_graph(id, project_id)`, `deploy(...)` | Workflows + graph + deploy (absorbs former `flows`; `get_writer` is `@internal`) |
+| `client.projects` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `apply_template(id, body)` | Data-mesh projects / workspaces |
+| `client.templates` | `list()`, `get(slug)` | Template catalog (apply via `projects.apply_template`) |
+| `client.instances` | `list()`, `get(id)`, `get_stream_config(id)` | Runtime instances |
+| `client.connectors` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `test(id)`, `get_oauth_url(...)` | Org-level connectors |
+| `client.queues` | `get_queue_metadata(name)`, `get_reader_checkpoint(name, bot)`, `open_reader(opts)`, `open_writer(opts)` | Stream queue I/O (advanced) |
 | `client.domains` | `list()`, `get(id)` | Domains |
-| `client.schemas` | `get(...)`, `list(...)` | Data-product schemas |
+| `client.schemas` | `get(...)`, `list(...)`, `tag_pii_fields(...)` | Data-product schemas |
 | `client.quality` | `list()`, `get(id)`, `create(body)` | Quality rules |
 | `client.catalog` | `search(query)` | Catalog search |
-| `client.discovery` | `search(...)`, `getEvidence(...)`, `getLineageImpact(...)`, `getGovernanceFlags(...)`, `runDiscovery(...)` | Discovery / governance |
+| `client.discovery` | `search(...)`, `get_evidence(...)`, `get_lineage_impact(...)`, `get_governance_flags(...)`, `run(...)` | Discovery / governance |
+| `client.thesaurus` | `list_terms(...)`, `resolve_canonical_key(...)`, `append_synonym(...)` | Canonical keys + aliases |
 | `client.standards` | `list()`, `get(id)` | Standards (policies) |
-| `client.data_contracts` | `list()`, `get(id)` | Data contracts |
-| `client.consumptions` | `list()`, `create(body)`, `get(id)`, `update(id, body)`, `delete(id)` | Webhook subscriptions |
-| `client.thesaurus` | `listTerms()`, `resolveCanonicalKey(...)` | Canonical keys + aliases |
-| `client.process_intelligence` | `decisionTraces.list(...)` | Entity context + decision traces |
+| `client.data_contracts` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)` | Data contracts |
+| `client.targets` | `list(dp_id)`, `create(dp_id, body)`, `get(dp_id, id)`, `update(dp_id, id, body)`, `delete(dp_id, id)` | Delivery sink bindings (backend: consumptions) |
 | `client.procedures` | `list()` | Process graph procedures |
 | `client.observe` | `status()`, `stream_config()` | Bots / observability |
 | `client.metrics` | `log(metric)`, `get_reporter()` | Optional metrics integration |

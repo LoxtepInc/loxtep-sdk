@@ -10,7 +10,7 @@
 
 import type { LoxtepClient } from '../client/loxtep-client.js';
 import type { DataProduct, DataProductQueryResult } from '../client/data-products-types.js';
-import type { Connection, ConnectionTestResult } from '../client/connection-types.js';
+import type { Trigger, TriggerTestResult } from '../client/trigger-types.js';
 import type { Flow } from '../client/flow-types.js';
 import type { WorkflowGraph } from '../client/workflows-types.js';
 import type { QueueRef, ConnectorRef } from './types.js';
@@ -117,12 +117,12 @@ export interface ToolboxQueues {
  * Connections toolbox — deterministic operations on connections.
  */
 export interface ToolboxConnections {
-  /** List connections for the project. */
-  list(): Promise<Connection[]>;
-  /** Get a specific connection. */
-  get(connectionId: string): Promise<Connection>;
-  /** Test a connection. */
-  test(connectionId: string): Promise<ConnectionTestResult>;
+  /** List connections (triggers) for the project. */
+  list(): Promise<Trigger[]>;
+  /** Get a specific connection (trigger). */
+  get(connectionId: string): Promise<Trigger>;
+  /** Test a connection (trigger). */
+  test(connectionId: string): Promise<TriggerTestResult>;
 }
 
 /**
@@ -269,9 +269,9 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   };
 
   const connections: ToolboxConnections = {
-    async list(): Promise<Connection[]> {
+    async list(): Promise<Trigger[]> {
       try {
-        const result = await client.connections.list();
+        const result = await client.triggers.list();
         return result.items;
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -283,9 +283,9 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
       }
     },
 
-    async get(connectionId: string): Promise<Connection> {
+    async get(connectionId: string): Promise<Trigger> {
       try {
-        return await client.connections.get(connectionId);
+        return await client.triggers.get(connectionId);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'connections',
@@ -296,9 +296,9 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
       }
     },
 
-    async test(connectionId: string): Promise<ConnectionTestResult> {
+    async test(connectionId: string): Promise<TriggerTestResult> {
       try {
-        return await client.connections.test(connectionId);
+        return await client.triggers.test(connectionId);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'connections',
@@ -313,7 +313,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   const workflows: ToolboxWorkflows = {
     async list(): Promise<Flow[]> {
       try {
-        const result = await client.workflows.listWorkflows({ project_id: projectId });
+        const result = await client.workflows.list({ project_id: projectId });
         return result.items;
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -327,7 +327,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async getGraph(ref: WorkflowRef): Promise<WorkflowGraph> {
       try {
-        return await client.workflows.getWorkflowGraph(ref.id, projectId);
+        return await client.workflows.get_graph(ref.id, projectId);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'workflows',

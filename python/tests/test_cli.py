@@ -1,6 +1,5 @@
 """Basic tests for CLI and CLI config."""
 
-import os
 import json
 import tempfile
 from pathlib import Path

@@ -5,7 +5,7 @@
  * context for AI across heterogeneous systems.
  *
  * Usage: loxtep <command> [options]
- * Commands: login, logout, whoami, init, attach, config, bus, data-products, queue, flows, workflows, observe, connections, domains, standards, data-contracts
+ * Commands: login, logout, whoami, init, attach, config, bus, data-products, queue, workflows, observe, triggers, domains, standards, data-contracts
  */
 
 import { runLogin } from './commands/login.js';
@@ -33,15 +33,19 @@ import {
 } from './commands/data-products-cmd.js';
 import { runMetricsRateLimits, runMetricsLog } from './commands/metrics-cmd.js';
 import { runQueueInfo, runQueueCheckpoint } from './commands/queue-cmd.js';
-import { runFlowsList, runFlowsGet, runFlowsCreate } from './commands/flows-cmd.js';
-import { runWorkflowsList, runWorkflowsDeploy } from './commands/workflows-cmd.js';
+import {
+  runWorkflowsList,
+  runWorkflowsGet,
+  runWorkflowsCreate,
+  runWorkflowsDeploy,
+} from './commands/workflows-cmd.js';
 import { runObserveStatus } from './commands/observe-cmd.js';
 import {
-  runConnectionsList,
-  runConnectionsGet,
-  runConnectionsCreate,
-  runConnectionsTest,
-} from './commands/connections-cmd.js';
+  runTriggersList,
+  runTriggersGet,
+  runTriggersCreate,
+  runTriggersTest,
+} from './commands/triggers-cmd.js';
 import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
 import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
 import { runDataContractsList, runDataContractsGet, runDataContractsCreate } from './commands/data-contracts-cmd.js';
@@ -107,13 +111,14 @@ Commands:
   queue info <id>    Queue info by data product id
   queue info --queue <name> Queue info by queue name
   queue checkpoint <id> --bot <bot-id> Reader checkpoint for data product and bot
-  flows list         List flows (requires --project-id or config project_id)
-  flows get <id>     Get flow by id (with nodes)
-  flows create       Create flow (--name, --project-id required; --template-id, --description optional)
-  connections list   List connections
-  connections get <id> Get connection by id
-  connections create Create connection (--name, --type, --key required)
-  connections test <id> Test connection
+  workflows list     List workflows (requires --project-id or config project_id)
+  workflows get <id> Get workflow by id (with nodes)
+  workflows create   Create workflow (--name, --project-id required; --template-id, --description optional)
+  workflows deploy   Deploy workflow (--project-id required; --instance-id, --version-id, --force optional)
+  triggers list      List triggers (ingest source bindings)
+  triggers get <id>  Get trigger by id
+  triggers create    Create trigger (--name, --type, --key required)
+  triggers test <id> Test trigger
   domains list       List domains
   domains get <id>   Get domain by id
   standards list      List standards (policies)
@@ -144,11 +149,11 @@ Examples:
   loxtep login --console --email you@ex.com --password '…' --mfa-code 123456
   loxtep whoami
   loxtep data-products list
-  loxtep flows list --project-id <project-id>
-  loxtep flows get <flow-id>
-  loxtep flows create --name "my-flow" --project-id <project-id> --template-id <template-id>
   loxtep workflows list --project-id <project-id>
+  loxtep workflows get <workflow-id>
+  loxtep workflows create --name "my-workflow" --project-id <project-id> --template-id <template-id>
   loxtep workflows deploy --project-id <id> [--instance-id <id>]  (instance_id defaults from config)
+  loxtep triggers list
   loxtep config export --from-connector <connector-id> --format json
   loxtep config export --from-data-product <data-product-id>
   loxtep observe status
@@ -395,11 +400,11 @@ async function main(): Promise<void> {
         process.exitCode = 1;
       }
       break;
-    case 'flows':
+    case 'workflows':
       if (sub === 'list') {
-        await runFlowsList({ project_id: getArg('--project-id') });
+        await runWorkflowsList({ project_id: getArg('--project-id') });
       } else if (sub === 'get' && args[2]) {
-        await runFlowsGet(args[2]);
+        await runWorkflowsGet(args[2]);
       } else if (sub === 'create') {
         const name = getArg('--name');
         const projectId = getArg('--project-id');
@@ -407,27 +412,17 @@ async function main(): Promise<void> {
         const description = getArg('--description');
         if (!name || !projectId) {
           console.error(
-            'Usage: loxtep flows create --name <name> --project-id <id> [--template-id <id>] [--description <text>]'
+            'Usage: loxtep workflows create --name <name> --project-id <id> [--template-id <id>] [--description <text>]'
           );
           process.exitCode = 1;
         } else {
-          await runFlowsCreate({
+          await runWorkflowsCreate({
             name,
             project_id: projectId,
             template_id: templateId,
             description,
           });
         }
-      } else {
-        console.error(
-          'Usage: loxtep flows list [--project-id <id>] | loxtep flows get <id> | loxtep flows create --name <name> --project-id <id>'
-        );
-        process.exitCode = 1;
-      }
-      break;
-    case 'workflows':
-      if (sub === 'list') {
-        await runWorkflowsList({ project_id: getArg('--project-id') });
       } else if (sub === 'deploy') {
         const projectId = getArg('--project-id');
         const instanceId = getArg('--instance-id');
@@ -448,7 +443,7 @@ async function main(): Promise<void> {
         }
       } else {
         console.error(
-          'Usage: loxtep workflows list [--project-id <id>] | loxtep workflows deploy --project-id <id> --instance-id <id>'
+          'Usage: loxtep workflows list [--project-id <id>] | get <id> | create --name <name> --project-id <id> | deploy --project-id <id> --instance-id <id>'
         );
         process.exitCode = 1;
       }
@@ -461,11 +456,11 @@ async function main(): Promise<void> {
         process.exitCode = 1;
       }
       break;
-    case 'connections':
+    case 'triggers':
       if (sub === 'list') {
-        await runConnectionsList();
+        await runTriggersList();
       } else if (sub === 'get' && args[2]) {
-        await runConnectionsGet(args[2]);
+        await runTriggersGet(args[2]);
       } else if (sub === 'create') {
         const name = getArg('--name');
         const type = getArg('--type');
@@ -473,11 +468,11 @@ async function main(): Promise<void> {
         const data = getArg('--data');
         if (!name || !type || !key) {
           console.error(
-            'Usage: loxtep connections create --name <name> --type <database|api|webhook|file> --key <key> [--data <json>]'
+            'Usage: loxtep triggers create --name <name> --type <database|api|webhook|file> --key <key> [--data <json>]'
           );
           process.exitCode = 1;
         } else {
-          await runConnectionsCreate({
+          await runTriggersCreate({
             name,
             type,
             key,
@@ -485,10 +480,10 @@ async function main(): Promise<void> {
           });
         }
       } else if (sub === 'test' && args[2]) {
-        await runConnectionsTest(args[2]);
+        await runTriggersTest(args[2]);
       } else {
         console.error(
-          'Usage: loxtep connections list | get <id> | create --name <name> --type <type> --key <key> | test <id>'
+          'Usage: loxtep triggers list | get <id> | create --name <name> --type <type> --key <key> | test <id>'
         );
         process.exitCode = 1;
       }
