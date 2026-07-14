@@ -45,19 +45,20 @@ jobs:
     env:
       NPM_DIST_TAG: ${{ inputs.tag || 'latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
+          package-manager-cache: false
           registry-url: 'https://registry.npmjs.org'
 
       - name: Ensure npm supports Trusted Publishing
         run: npm install -g npm@latest
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 10.12.4
 
