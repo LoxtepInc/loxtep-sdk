@@ -273,24 +273,28 @@ Org-level connectors.
 { "operation": "create_connector", "connector_type": "shopify", "metadata": { "api_key": "…" } }
 ```
 
-### `loxtep_connections`
-Workflow connection nodes (project-scoped).
+### `loxtep_triggers`
+Ingest source bindings (project-scoped; backend: connections). Maps to SDK
+`client.triggers`. Formerly `loxtep_connections` — the old facade and
+`*_connection` operations remain as deprecated aliases.
 
 | Operation | Scope | Required params | Optional params |
 | --- | --- | --- | --- |
-| `create_connection` | project | `project_id`, `name`, `type` | `configuration` |
-| `update_connection` | project | `project_id`, `connection_id` | `configuration` |
-| `delete_connection` | project | `project_id`, `connection_id` | — |
-| `list_connections` | project | `project_id` | — |
-| `get_connection` | project | `project_id`, `connection_id` | — |
-| `test_connection` | project | `project_id`, `connection_id` | — |
+| `update_trigger` | project | `project_id`, `connection_id` | `configuration` |
+| `delete_trigger` | project | `project_id`, `connection_id` | — |
+| `list_triggers` | project | `project_id` | — |
+| `get_trigger` | project | `project_id`, `connection_id` | — |
+| `test_trigger` | project | `project_id`, `connection_id` | — |
 
 ```json
-{ "operation": "list_connections", "project_id": "proj_…" }
+{ "operation": "list_triggers", "project_id": "proj_…" }
 ```
 
+New trigger entities are authored inside `save_workflow_bundle`
+(`connections/{id}.json` with `connector_id`), same as before.
+
 ### `loxtep_workflows`
-Workflows (flows), graph, transforms.
+Workflows, graph, transforms.
 
 | Operation | Scope | Required params | Optional params |
 | --- | --- | --- | --- |
@@ -311,8 +315,10 @@ Workflows (flows), graph, transforms.
 ```
 
 ### `loxtep_data_products`
-Data products and consumptions. `kind` is `source` (atomic, domain-owned) or
-`consumer` (composed projection).
+Data products and targets (delivery). `kind` is `source` (atomic, domain-owned)
+or `consumer` (composed projection). Target operations map to SDK
+`client.targets`; the older `*_delivery_interface` / `*_consumption` names remain
+as deprecated aliases.
 
 | Operation | Scope | Required params | Optional params |
 | --- | --- | --- | --- |
@@ -323,8 +329,8 @@ Data products and consumptions. `kind` is `source` (atomic, domain-owned) or
 | `get_data_product` | organization | `data_product_id` | — |
 | `get_data_product_lexicon` | organization | `data_product_id` | — |
 | `get_data_product_sdk_config` | organization | `data_product_id` | — |
-| `list_delivery_interfaces` | organization | — | `data_product_id` |
-| `create_delivery_interface` | organization | `data_product_id`, `endpoint_url` | `delivery_type`, `headers`, `secret_token`, `filters`, `method` |
+| `list_targets` | organization | — | `data_product_id` |
+| `create_target` | organization | `data_product_id`, `endpoint_url` | `target_type`, `headers`, `secret_token`, `filters`, `method` |
 
 ```json
 { "operation": "create_data_product", "project_id": "proj_…", "name": "orders", "kind": "source" }
