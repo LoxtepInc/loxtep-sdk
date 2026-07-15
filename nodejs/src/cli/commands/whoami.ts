@@ -39,7 +39,7 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
           });
           if (!authCtx) {
             console.error(
-              'Missing api_url or access token. Set LOXTEP_API_URL / LOXTEP_AUTH_TOKEN, or run: loxtep config set api_url <url> ; loxtep login | npx @loxtep/customer-mcp-server login'
+              'Missing api_url or access token. Set LOXTEP_API_URL / LOXTEP_AUTH_TOKEN, or run: loxtep config set api_url <url> ; loxtep login'
             );
             process.exitCode = 1;
             return null;

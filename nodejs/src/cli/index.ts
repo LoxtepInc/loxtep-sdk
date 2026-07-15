@@ -86,7 +86,8 @@ Usage: loxtep <command> [options]
 
 Commands:
   login              Log in (opens browser by default). Use --console for terminal email/password/TOTP login.
-  logout             Remove stored credentials
+                     Saves to <project>/.loxtep/credentials.json when run inside a project (--global for ~/.loxtep instead).
+  logout             Remove stored credentials (project-local if present, else global). --local / --global to force.
   whoami             Print current user and organization
   init               Print setup checklist (config + auth + docs pointers)
   attach [--instance <id>]  Link project to an Instance (writes instance_id + api_url)
@@ -147,6 +148,8 @@ Examples:
   loxtep login
   loxtep login --console
   loxtep login --console --email you@ex.com --password '…' --mfa-code 123456
+  loxtep login --global    # always use ~/.loxtep/credentials.json, even inside a project
+  loxtep logout --local    # only clear this project's credentials.json
   loxtep whoami
   loxtep data-products list
   loxtep workflows list --project-id <project-id>
@@ -179,18 +182,22 @@ async function main(): Promise<void> {
       const passwordIdx = args.indexOf('--password');
       const mfaIdx = args.indexOf('--mfa-code');
       const orgIdx = args.indexOf('--organization-id');
+      const scope = args.includes('--global') ? 'global' : args.includes('--local') ? 'local' : undefined;
       await runLogin({
         console: args.includes('--console'),
         email: emailIdx >= 0 ? args[emailIdx + 1] : undefined,
         password: passwordIdx >= 0 ? args[passwordIdx + 1] : undefined,
         mfa_code: mfaIdx >= 0 ? args[mfaIdx + 1] : undefined,
         organization_id: orgIdx >= 0 ? args[orgIdx + 1] : undefined,
+        scope,
       });
       break;
     }
-    case 'logout':
-      await runLogout();
+    case 'logout': {
+      const scope = args.includes('--global') ? 'global' : args.includes('--local') ? 'local' : undefined;
+      await runLogout({ scope });
       break;
+    }
     case 'whoami':
       await runWhoami();
       break;
