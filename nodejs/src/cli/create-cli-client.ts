@@ -4,7 +4,7 @@
 
 import { loadConfig } from '../config/load.js';
 import { resolveCliAccessToken, type CliAuthSource } from './auth-resolve.js';
-import { writeCredentials, readCredentials, getCredentialsPath } from './credentials.js';
+import { writeCredentials, readCredentials, resolveCredentialsPath } from './credentials.js';
 import { TokenManager } from '../auth/token-manager.js';
 import { refresh, type RefreshResponse, type AwsCredentialsSnake } from '../auth/login.js';
 import { decodeJwtPayload } from '../auth/jwt.js';
@@ -14,6 +14,8 @@ export interface CreateCliClientOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  /** Working directory used to resolve project-local credentials (default: `process.cwd()`). */
+  cwd?: string;
   /** After refresh, apply STS (or other) side effects; used by {@link createCliClient} for SigV4. */
   on_after_refresh?: (result: RefreshResponse) => void;
 }
@@ -29,10 +31,10 @@ async function persistRefreshedTokens(
   refresh_token: string | undefined,
   expires_at: string | undefined,
   aws_credentials: AwsCredentialsSnake | undefined,
-  options: CreateCliClientOptions
+  credentialsPath: string
 ): Promise<void> {
   if (source !== 'credentials') return;
-  const prev = await readCredentials(options.credentialsPath);
+  const prev = await readCredentials(credentialsPath);
   await writeCredentials(
     {
       access_token,
@@ -40,7 +42,7 @@ async function persistRefreshedTokens(
       expires_at,
       aws_credentials: aws_credentials ?? prev?.aws_credentials,
     },
-    options.credentialsPath
+    credentialsPath
   );
 }
 
@@ -59,6 +61,7 @@ export async function createCliAuthContext(
   const config = await loadConfig(options.configFilePath);
   const resolved = await resolveCliAccessToken({
     credentialsPath: options.credentialsPath,
+    cwd: options.cwd,
   });
   const api_url = (config.api_url || resolved?.api_url_from_mcp || '').replace(/\/$/, '');
   if (!api_url || !resolved?.access_token) {
@@ -70,6 +73,11 @@ export async function createCliAuthContext(
   tm.setToken(resolved.access_token, resolved.refresh_token, exp);
 
   const source = resolved.source;
+  // The exact file the token was read from — refreshed tokens must be written
+  // back to this same file (local project creds vs. global ~/.loxtep), not
+  // wherever the global default happens to point.
+  const credentialsPath =
+    options.credentialsPath ?? resolved.credentials_path ?? resolveCredentialsPath(options.cwd).path;
   const refreshFn = async (apiUrl: string, refreshToken: string) => {
     const r = await refresh(apiUrl, refreshToken, { auth_path_prefix: config.auth_path_prefix });
     const nextExp =
@@ -83,7 +91,7 @@ export async function createCliAuthContext(
       r.refresh_token ?? refreshToken,
       r.expires_at,
       r.aws_credentials,
-      options
+      credentialsPath
     );
     options.on_after_refresh?.(r);
     return {
@@ -121,7 +129,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
   config: Awaited<ReturnType<typeof loadConfig>>;
 } | null> {
   const config = await loadConfig(options.configFilePath);
-  const credsPath = options.credentialsPath ?? getCredentialsPath();
+  const credsPath = options.credentialsPath ?? resolveCredentialsPath(options.cwd).path;
   const fileCreds = await readCredentials(credsPath);
   const cliSigv4: {
     accessKeyId: string;

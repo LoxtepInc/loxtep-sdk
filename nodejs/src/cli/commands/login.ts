@@ -2,7 +2,12 @@ import * as readline from 'node:readline';
 import { login as authLogin, LoginMfaRequiredError } from '../../auth/login.js';
 import { browserLogin } from '../../auth/browser-login.js';
 import { loadConfig } from '../../config/load.js';
-import { getCredentialsPath, writeCredentials } from '../credentials.js';
+import {
+  writeCredentials,
+  resolveCredentialsWriteTarget,
+  ensureLocalCredentialsGitignored,
+  type CredentialsScope,
+} from '../credentials.js';
 
 export interface LoginOptions {
   email?: string;
@@ -22,8 +27,16 @@ export interface LoginOptions {
   fetchFn?: typeof fetch;
   /** For tests: config file path (default: env/file). */
   configFilePath?: string;
-  /** For tests: credentials file path to write. */
+  /** For tests: credentials file path to write. Takes precedence over --local/--global. */
   credentialsPath?: string;
+  /**
+   * Force credentials scope: `local` writes to `<project>/.loxtep/credentials.json`
+   * (requires a project found via `.loxtep/project.json`); `global` writes to
+   * `~/.loxtep/credentials.json`. Default: local when run inside a project, else global.
+   */
+  scope?: CredentialsScope;
+  /** Working directory used to resolve the project for local scoping (default: `process.cwd()`). */
+  cwd?: string;
   /** Override config auth first path segment (default: `app` when omitted in config). */
   auth_path_prefix?: string;
   /** Don't auto-open browser — just print the URL. */
@@ -58,9 +71,24 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
   // Default to browser login unless --console or --email/--password forces console mode
   const useBrowser = !options.console && !options.email && !options.password;
 
+  let credentialsPath: string;
+  let scope: CredentialsScope | undefined;
+  if (options.credentialsPath) {
+    credentialsPath = options.credentialsPath;
+  } else {
+    try {
+      const target = resolveCredentialsWriteTarget(options.cwd, options.scope);
+      credentialsPath = target.path;
+      scope = target.scope;
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   if (useBrowser) {
     const config = await loadConfig(options.configFilePath);
-    const credentialsPath = options.credentialsPath ?? getCredentialsPath();
 
     // Determine app URL from config or default
     const apiUrl = (config.api_url || '').replace(/\/$/, '');
@@ -89,7 +117,12 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
         },
         credentialsPath
       );
-      console.log(`\nLogged in successfully. Tokens saved to ${credentialsPath}`);
+      if (scope === 'local') {
+        const target = resolveCredentialsWriteTarget(options.cwd, 'local');
+        if (target.projectDir) await ensureLocalCredentialsGitignored(target.projectDir);
+      }
+      const scopeNote = scope === 'local' ? ' (project-local)' : scope === 'global' ? ' (global)' : '';
+      console.log(`\nLogged in successfully. Tokens saved to ${credentialsPath}${scopeNote}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Login failed:', msg);
@@ -143,9 +176,14 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
         expires_at: result.expires_at,
         aws_credentials: result.aws_credentials,
       },
-      options.credentialsPath
+      credentialsPath
     );
-    console.log('Logged in successfully.');
+    if (scope === 'local') {
+      const target = resolveCredentialsWriteTarget(options.cwd, 'local');
+      if (target.projectDir) await ensureLocalCredentialsGitignored(target.projectDir);
+    }
+    const scopeNote = scope === 'local' ? ' (project-local)' : scope === 'global' ? ' (global)' : '';
+    console.log(`Logged in successfully. Tokens saved to ${credentialsPath}${scopeNote}`);
   } catch (err) {
     if (err instanceof LoginMfaRequiredError) {
       console.error(

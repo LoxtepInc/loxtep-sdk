@@ -5,18 +5,18 @@
 Use one base URL everywhere:
 
 - **REST / SDK:** `LOXTEP_API_URL` or `config.json` → `api_url`
-- **Customer MCP / browser login:** same base URL in credentials
+- **Loxtep MCP:** hosted only — connect with a URL and OAuth 2.1 (PKCE), not a local login
 
 The CLI and SDK resolve tokens in this order: **`LOXTEP_AUTH_TOKEN`** →
-**`~/.loxtep/credentials.json`** (shared: `loxtep login` and
-`npx @loxtep/customer-mcp-server login`). You should not need two logins for the
-same machine if you use one file-based flow.
+project-local **`.loxtep/credentials.json`** → **`~/.loxtep/credentials.json`**
+(written by `loxtep login`). MCP auth is separate — it's a hosted server, so it
+authenticates via its own OAuth flow in the MCP client, not this file.
 
 ## When to use what
 
 | Job | Tool |
 | --- | ---- |
-| Provision org resources, run catalog/dataproduct MCP tools, IDE agent calls | **Customer MCP** (HTTP tools against the platform) |
+| Provision org resources, run catalog/dataproduct MCP tools, IDE agent calls | **Loxtep MCP** (hosted; connect via URL + OAuth) |
 | Typed REST from Node services, scripts, CI | **`@loxtep/sdk`** (`LoxtepClient`) |
 | Quick operator commands, token bootstrap | **`loxtep` CLI** (ships with the SDK) |
 | **Live** queue produce/consume | **SDK** with stream config |

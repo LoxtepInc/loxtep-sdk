@@ -11,8 +11,8 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { getConfigDir } from './paths.js';
 import { findProjectDir, getProjectFilePath, PROJECT_DIR_NAME, PROJECT_FILE_NAME } from '../cli/project-context.js';
+import { resolveCredentialsPath } from '../cli/credentials.js';
 
 /**
  * Fields that auto-config resolves from workspace files.
@@ -36,12 +36,10 @@ export interface WorkspaceConfigResult {
   missingFiles: string[];
 }
 
-/** Credentials file name within `~/.loxtep/`. */
-const CREDENTIALS_FILE_NAME = 'credentials.json';
-
 /**
  * Load workspace-resolved configuration from `.loxtep/project.json` (local project)
- * and `~/.loxtep/credentials.json` (user credentials).
+ * and credentials — project-local `.loxtep/credentials.json` if present, else
+ * `~/.loxtep/credentials.json` (see {@link resolveCredentialsPath}).
  *
  * This does NOT check env vars or explicit config — it only resolves from files.
  * The caller is responsible for merging with the correct precedence.
@@ -85,8 +83,8 @@ export function loadWorkspaceConfig(cwd?: string): WorkspaceConfigResult {
     missingFiles.push(searchedPath);
   }
 
-  // 2. Resolve ~/.loxtep/credentials.json (user-level credentials)
-  const credentialsPath = join(getConfigDir(), CREDENTIALS_FILE_NAME);
+  // 2. Resolve credentials.json — project-local first, else ~/.loxtep/credentials.json
+  const credentialsPath = resolveCredentialsPath(workDir).path;
 
   if (existsSync(credentialsPath)) {
     try {
