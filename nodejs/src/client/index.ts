@@ -4,6 +4,13 @@ export type { LoxtepStreamRuntime, ConfigurationResources } from '../rstreams/le
 export type { MetricsSurface, FromWorkspaceOptions } from './loxtep-client.js';
 export type { RateLimitInfo } from '../http/client.js';
 export type {
+  ApprovalRequest,
+  ApprovalStatus,
+  ApprovalsListResponse,
+  ApprovalsListFilters,
+  ApprovalDecisionResult,
+} from './approvals-types.js';
+export type {
   DataProduct,
   DataProductKind,
   DataProductCreateInput,

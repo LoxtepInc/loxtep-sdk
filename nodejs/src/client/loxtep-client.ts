@@ -6,6 +6,7 @@ import { createDataProductsApi } from './data-products.js';
 import { createQueuesApi } from './queues.js';
 import { createTriggersApi } from './triggers.js';
 import { createQualityApi } from './quality.js';
+import { createApprovalsApi } from './approvals.js';
 import { createCatalogApi } from './catalog.js';
 import { createSchemasApi } from './schemas.js';
 import { createDiscoveryApi } from './discovery.js';
@@ -118,6 +119,10 @@ export class LoxtepClient {
   /** Quality metrics: list, get, create. */
   readonly quality: ReturnType<typeof createQualityApi>;
 
+  /** Approvals: list pending approval requests and resolve them (approve/reject) —
+   * programmatic parity for pipeline HITL gates. */
+  readonly approvals: ReturnType<typeof createApprovalsApi>;
+
   /** Catalog (search): search. */
   readonly catalog: ReturnType<typeof createCatalogApi>;
 
@@ -228,6 +233,9 @@ export class LoxtepClient {
       resolver: this._resolver,
     });
     this.quality = createQualityApi(this._http);
+    this.approvals = createApprovalsApi(this._http, {
+      organization_id: options.organization_id,
+    });
     this.catalog = createCatalogApi(this._http);
     this.discovery = createDiscoveryApi(this._http);
     this.schemas = createSchemasApi(this._http);

@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-14
+
+### Added
+
+- **`client.approvals`** — programmatic parity with the web inbox and
+  Slack/email channels for pipeline HITL gates. `list(filters)`,
+  `list_pending(organization_id?)`, `resolve(id, action, organization_id?)`,
+  `approve(id, organization_id?)`, `reject(id, organization_id?)`. Backed by
+  the agent-orchestration `approval-requests` REST API; resolving an approval
+  via the SDK resolves the same shared record as the inbox, Slack, and email
+  buttons. Mirrors the new `loxtep_approvals` MCP facade
+  (`list_pending_approvals` / `resolve_approval`).
+
 ## [0.5.0] - 2026-07-13
 
 ### Breaking changes — API surface redesign
