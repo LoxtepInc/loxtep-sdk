@@ -67,6 +67,8 @@ export type {
   WorkflowGraphEdge,
   GetWorkflowGraphResponse,
   DeployInput,
+  SaveWorkflowBundleInput,
+  SaveWorkflowBundleResult,
   DeployResponse,
   CreateWorkflowInput,
 } from './workflows-types.js';

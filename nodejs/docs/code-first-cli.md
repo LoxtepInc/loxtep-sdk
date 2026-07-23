@@ -5,10 +5,10 @@ deploy to a runtime instance — without using the Studio UI as your source of
 truth.
 
 Start with the [Getting Started Guide](./getting-started.md) if you have not
-yet run `login`, `init`, `attach`, and `generate`.
+yet run `login`, `init`, and `attach`.
 
-For **application code** that calls platform APIs or streams events after
-deploy, use `LoxtepClient.fromWorkspace()` (see Getting Started, Step 7–8).
+**Sending events from your app without authoring workflow modules first?**
+Use [SDK-first ingest](./sdk-first-ingest.md) instead of this guide.
 
 ---
 

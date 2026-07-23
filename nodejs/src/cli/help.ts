@@ -26,6 +26,10 @@ Workspace
                      Provision and register runtime instances
 
 Build & deploy
+  ingest provision [--name app-events] [--domain-id <id>] [--dry-run] [--no-deploy]
+                     SDK connector + workflow bundle + deploy (CLI-only path)
+  bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
+                     Persist a workflow entity bundle JSON to the project workspace
   test <module> --event <file>
                      Run a workflow module locally (action trace)
   deploy             Compile workflow modules and deploy to the attached instance
@@ -65,6 +69,11 @@ Configuration
 
 Examples:
   pnpm exec loxtep login
+  pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
+  pnpm exec loxtep ingest provision --name app-events
+  pnpm exec loxtep bundle save --dry-run
+  pnpm exec loxtep workflows deploy --project-id <id> --instance-id <id>
+  node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
   pnpm exec loxtep projects list
@@ -77,7 +86,7 @@ Examples:
   pnpm exec loxtep observe status
   pnpm exec loxtep config export --from-connector <connector-id> --format json
 
-Docs: nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md
+Docs: nodejs/docs/sdk-first-ingest.md · nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md
 `.trimEnd();
 
 export function printCliHelp(): void {

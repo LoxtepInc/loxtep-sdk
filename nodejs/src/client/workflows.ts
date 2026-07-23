@@ -19,6 +19,9 @@ import type {
   DeployInput,
   DeployResponse,
   CreateWorkflowInput,
+  SaveWorkflowBundleInput,
+  SaveWorkflowBundleResult,
+  SaveWorkflowBundleResponse,
 } from './workflows-types.js';
 import type {
   Flow,
@@ -172,6 +175,10 @@ export type WorkflowsApi = {
     project_id: string
   ) => Promise<GetWorkflowGraphResponse['data']>;
   deploy: (input: DeployInput) => Promise<DeployResponse['data']>;
+  save_workflow_bundle: (
+    project_id: string,
+    input: SaveWorkflowBundleInput
+  ) => Promise<SaveWorkflowBundleResult>;
   /**
    * @internal
    * Low-level stream-writer escape hatch. Requires explicit `bot_id` and an
@@ -238,6 +245,20 @@ export function createWorkflowsApi(
       const res = await http.post<DeployResponse>(
         `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/deploy`,
         { instance_id, version_id, force_redeploy: force_redeploy ?? false }
+      );
+      return res.data;
+    },
+
+    async save_workflow_bundle(
+      project_id: string,
+      input: SaveWorkflowBundleInput
+    ): Promise<SaveWorkflowBundleResult> {
+      const res = await http.post<SaveWorkflowBundleResponse>(
+        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/workflow-bundle`,
+        {
+          files: input.files,
+          dry_run: input.dry_run ?? false,
+        }
       );
       return res.data;
     },

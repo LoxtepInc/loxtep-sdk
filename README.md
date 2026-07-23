@@ -36,7 +36,16 @@ pnpm exec loxtep attach --instance <instance-id>
 pnpm exec loxtep generate
 ```
 
-You now have an attached project. Explore what exists on the instance:
+**SDK-first ingest** (provision a source data product + write events):
+
+```bash
+pnpm exec loxtep domains list
+node node_modules/@loxtep/sdk/docs/examples/generate-ingest-bundle.mjs
+# save_workflow_bundle via Loxtep MCP, then deploy + write — see:
+# nodejs/docs/sdk-first-ingest.md
+```
+
+Explore what exists on the instance:
 
 ```bash
 pnpm exec loxtep data-products list
@@ -44,8 +53,8 @@ pnpm exec loxtep data-products list
 pnpm exec loxtep workflows list --project-id <project-id>
 ```
 
-**Next:** author workflows under `workflows/`, run `pnpm exec loxtep test …`,
-then `pnpm exec loxtep deploy`. Full lifecycle:
+**Next:** [SDK-first ingest](./nodejs/docs/sdk-first-ingest.md) (greenfield
+`get_writer` path) or author workflow modules:
 [`nodejs/docs/code-first-cli.md`](./nodejs/docs/code-first-cli.md).
 
 ### Programmatic SDK (after attach)

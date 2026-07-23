@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.17] - 2026-07-23
+
+### Added
+
+- **`workflows.save_workflow_bundle(project_id, { files, dry_run? })`** — HTTP
+  wrapper for `POST /workflows/projects/{project_id}/workflow-bundle` (same
+  bundle shape as agent `save_workflow_bundle`; requires platform workflows MS
+  with the new endpoint deployed).
+- **`buildSdkIngestBundle()`** — builds SDK-ingest topology (SDK connector
+  connection node → source data product) for programmatic or CLI provisioning.
+- **CLI `loxtep ingest provision`** — create SDK connector, save workflow
+  bundle, and deploy to the attached instance (`--dry-run`, `--no-deploy`,
+  `--name`, `--domain-id`).
+- **CLI `loxtep bundle save`** — persist a workflow bundle JSON file
+  (default `.loxtep/sdk-ingest-bundle.json`; supports `--dry-run`).
+- **Docs** — [SDK-first ingest](./docs/sdk-first-ingest.md), example scripts
+  (`generate-ingest-bundle.mjs`, `write-events.mjs`), and Getting Started updates
+  for the MCP-free greenfield path.
+
 ## [0.7.16] - 2026-07-23
 
 ### Changed

@@ -14,3 +14,5 @@ export * from './types/index.js';
 export * from './codegen/index.js';
 export * from './skills/index.js';
 export * from './authoring/index.js';
+export { buildSdkIngestBundle } from './lib/sdk-ingest-bundle.js';
+export type { SdkIngestBundleParams, SdkIngestBundleResult } from './lib/sdk-ingest-bundle.js';

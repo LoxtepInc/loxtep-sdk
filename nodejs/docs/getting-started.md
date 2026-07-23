@@ -1,9 +1,13 @@
 # SDK Getting Started Guide
 
 Get from zero to a working Loxtep workspace: authenticate, scaffold a project,
-attach to a runtime instance, and generate typed constants. Stream read/write
-comes **after** you deploy a workflow that publishes a data product.
+attach to a runtime instance, **provision your first source data product**, and
+write events with `get_writer`.
 
+> **SDK-first ingest (login → init → attach → write):**
+> [SDK-first ingest](./sdk-first-ingest.md) — the primary path when your app
+> sends events via the SDK (no SaaS connector first).
+>
 > **Other paths:** [Code-first CLI](./code-first-cli.md) (`init → attach →
 > generate → test → deploy`), [Agent-first MCP](https://github.com/LoxtepInc/loxtep-plugins-skills),
 > or the **Web UI** at [app.loxtep.io](https://app.loxtep.io).
@@ -17,9 +21,10 @@ comes **after** you deploy a workflow that publishes a data product.
 - [Step 3: Scaffold a Workspace](#step-3-scaffold-a-workspace)
 - [Step 4: Attach to an Instance](#step-4-attach-to-an-instance)
 - [Step 5: Generate Typed Constants](#step-5-generate-typed-constants)
-- [Step 6: Explore the Platform](#step-6-explore-the-platform)
-- [Step 7: Use the SDK in Application Code](#step-7-use-the-sdk-in-application-code)
-- [Step 8: Write and Read Events (after deploy)](#step-8-write-and-read-events-after-deploy)
+- [Step 6: Your first data product (SDK ingest)](#step-6-your-first-data-product-sdk-ingest)
+- [Step 7: Explore the platform (optional)](#step-7-explore-the-platform-optional)
+- [Step 8: Use the SDK in application code](#step-8-use-the-sdk-in-application-code)
+- [Step 9: Write and read events](#step-9-write-and-read-events)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
 
@@ -158,7 +163,33 @@ products, connectors, domains, queues, workflows). Re-run after platform changes
 
 ---
 
-## Step 6: Explore the Platform
+## Step 6: Your first data product (SDK ingest)
+
+After `attach`, the usual greenfield goal is: **provision a source data product
+on your instance, then call `get_writer` from your app.**
+
+`get_writer` needs **deployment metadata** (queues and bots created at deploy
+time). Creating a catalog row alone is not enough.
+
+**Recommended:** follow **[SDK-first ingest](./sdk-first-ingest.md)** end to end.
+Short version:
+
+```bash
+pnpm exec loxtep domains list
+
+# One command: SDK connector + workflow bundle + deploy (no MCP)
+pnpm exec loxtep ingest provision --name app-events
+
+pnpm exec loxtep data-products list
+node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
+```
+
+Do **not** expect `pnpm exec loxtep data-products create` alone to enable
+streaming — it registers catalog metadata without runtime bindings.
+
+---
+
+## Step 7: Explore the platform (optional)
 
 Run these **from your workspace directory** (where `.loxtep/project.json` lives)
 after Steps 3–4:
@@ -178,12 +209,12 @@ pnpm exec loxtep projects list
 pnpm exec loxtep workflows list --project-id <project-id-from-list>
 ```
 
-On a new account, **data products may be empty** until you create and deploy
-workflows (CLI, MCP, or Web UI). That's expected — don't call `get_writer` yet.
+On a new account, **data products may be empty** until you complete
+[Step 6](#step-6-your-first-data-product-sdk-ingest). That's expected.
 
 ---
 
-## Step 7: Use the SDK in Application Code
+## Step 8: Use the SDK in application code
 
 Prefer workspace auto-config instead of hand-building `api_url` and tokens:
 
@@ -209,33 +240,22 @@ const instances = await client.workspace.instances.list();
 
 ---
 
-## Step 8: Write and Read Events (after deploy)
+## Step 9: Write and read events
 
-`get_writer` and `get_reader` resolve queue, bot, and stream configuration from
-**deployment metadata**. They only work for data products that exist **and** are
-deployed on your attached instance.
-
-1. Author a workflow under `workflows/` (see [Code-first CLI](./code-first-cli.md)).
-2. `pnpm exec loxtep deploy`
-3. Confirm the data product name:
-
-   ```bash
-   pnpm exec loxtep data-products list
-   ```
-
-4. Stream from application code:
+After [Step 6](#step-6-your-first-data-product-sdk-ingest), stream from
+application code:
 
 ```typescript
 const client = await LoxtepClient.fromWorkspace();
 
-const writer = await client.get_writer('orders'); // use your deployed name
+const writer = await client.get_writer('app-events'); // name from Step 6 / data-products list
 writer.write({
   order_id: 'ord_1',
   total: 99.5,
 });
 await writer.close();
 
-const reader = await client.get_reader('orders', {
+const reader = await client.get_reader('app-events', {
   bot_id: 'my-app-reader',
 });
 for await (const event of reader) {
@@ -318,6 +338,7 @@ data product UUID instead of a name.
 
 | Resource | Description |
 |----------|-------------|
+| [SDK-first ingest](./sdk-first-ingest.md) | Greenfield: provision + `get_writer` |
 | [Code-first CLI guide](./code-first-cli.md) | Workflow modules, `test`, `deploy` |
 | [Quick Reference Card](./quick-reference.md) | Cheat sheet for common operations |
 | [Event Replay Cookbook](./event-replay-cookbook.md) | Replay and reprocess historical events |

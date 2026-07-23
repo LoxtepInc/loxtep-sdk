@@ -39,6 +39,8 @@ import {
   runWorkflowsCreate,
   runWorkflowsDeploy,
 } from './commands/workflows-cmd.js';
+import { runBundleSave } from './commands/bundle-cmd.js';
+import { runIngestProvision } from './commands/ingest-cmd.js';
 import { runObserveStatus } from './commands/observe-cmd.js';
 import {
   runTriggersList,
@@ -386,6 +388,36 @@ async function main(): Promise<void> {
       } else {
         console.error(
           'Usage: loxtep workflows list [--project-id <id>] | get <id> | create --name <name> --project-id <id> | deploy --project-id <id> --instance-id <id>'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    case 'bundle':
+      if (sub === 'save') {
+        await runBundleSave({
+          file: getArg('--file'),
+          project_id: getArg('--project-id'),
+          dry_run: args.includes('--dry-run'),
+        });
+      } else {
+        console.error('Usage: loxtep bundle save [--file .loxtep/sdk-ingest-bundle.json] [--project-id <id>] [--dry-run]');
+        process.exitCode = 1;
+      }
+      break;
+    case 'ingest':
+      if (sub === 'provision') {
+        await runIngestProvision({
+          name: getArg('--name'),
+          domain_id: getArg('--domain-id'),
+          workflow_name: getArg('--workflow-name'),
+          project_id: getArg('--project-id'),
+          instance_id: getArg('--instance-id'),
+          dry_run: args.includes('--dry-run'),
+          no_deploy: args.includes('--no-deploy'),
+        });
+      } else {
+        console.error(
+          'Usage: loxtep ingest provision [--name app-events] [--domain-id <id>] [--dry-run] [--no-deploy]'
         );
         process.exitCode = 1;
       }
