@@ -8,7 +8,7 @@ from .improvements import ImprovementsApi
 
 
 class ApprovalsApiStub:
-    """Approvals REST not yet ported to Python SDK — use MCP loxtep_approvals."""
+    """Approvals REST not yet ported to Python SDK — use MCP `loxtep_review` (`list_pending`, `resolve`)."""
 
     unavailable: bool = True
 

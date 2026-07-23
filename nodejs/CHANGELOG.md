@@ -16,7 +16,7 @@ and this project adheres to
   `approve(id, organization_id?)`, `reject(id, organization_id?)`. Backed by
   the agent-orchestration `approval-requests` REST API; resolving an approval
   via the SDK resolves the same shared record as the inbox, Slack, and email
-  buttons. Mirrors the new `loxtep_approvals` MCP facade
+  buttons. Mirrors the `loxtep_review` MCP tool
   (`list_pending_approvals` / `resolve_approval`).
 
 ## [0.5.0] - 2026-07-13

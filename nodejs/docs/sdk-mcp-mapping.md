@@ -4,7 +4,7 @@ This is a **guide for agents**, not an exhaustive OpenAPI listing. MCP stays on
 **HTTP**; the SDK adds **typed REST** and the **stream data plane** for live
 I/O.
 
-The SDK exposes **10 namespaces** that mirror hosted MCP job facades. Old flat
+The SDK exposes **10 namespaces** that mirror hosted MCP tools. Old flat
 namespaces (`data_products`, `workflows`, `connectors`, …) are **removed** — no
 deprecation aliases.
 
