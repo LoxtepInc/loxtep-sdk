@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-23
+
+### Breaking changes — MCP-aligned client facades
+
+`LoxtepClient` now exposes **10 namespaces** that mirror the hosted MCP tool
+facades (`loxtep_session`, `loxtep_connect`, `loxtep_workspace`, etc.). The
+previous flat top-level namespaces (`projects`, `workflows`, `connectors`,
+`improvements`, …) are removed from the public client surface.
+
+| MCP facade | SDK namespace | Former top-level namespaces (removed) |
+| --- | --- | --- |
+| `loxtep_session` | `client.session` | — |
+| `loxtep_connect` | `client.connect` | `connectors`, `templates` |
+| `loxtep_workspace` | `client.workspace` | `projects`, `instances`, `versions` |
+| `loxtep_build` | `client.build` | `workflows`, `triggers`, `data_products`, `targets` |
+| `loxtep_define` | `client.define` | `schemas`, `quality`, `standards`, `data_contracts`, `domains` |
+| `loxtep_meaning` | `client.meaning` | `thesaurus` |
+| `loxtep_review` | `client.review` | `approvals`, `improvements` |
+| `loxtep_query` | `client.query` | `catalog`, `discovery` |
+| `loxtep_observe` | `client.observe` | `observe`, `queues` (partial) |
+| `loxtep_context` | `client.context` | `procedures`, `activity`, `process_intelligence` |
+
+CLI commands and internal tooling were updated to use the new facade paths
+(e.g. `client.workspace.projects.get`, `client.review.improvements.list`,
+`client.connect.connectors.get`).
+
+### Added
+
+- Facade modules: `session`, `connect`, `workspace`, `build`, `define`,
+  `meaning`, `review`, `query`, `observe` (facade), `context`.
+
+### Changed
+
+- SDK docs and MCP mapping updated for the 10-tool MCP surface.
+
 ## [0.6.0] - 2026-07-14
 
 ### Added

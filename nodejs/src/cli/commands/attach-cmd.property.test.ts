@@ -130,36 +130,38 @@ function mockFailingClient(
   instanceId?: string
 ): LoxtepClient {
   return {
-    instances: {
-      list: async () => {
-        if (stage === 'resolveInstance' && !instanceId) {
-          throw new Error(reason);
-        }
-        return {
-          items: [makeInstance()],
-          pagination: { page: 1, page_size: 20, total: 1, total_pages: 1, has_next: false, has_prev: false },
-        };
+    workspace: {
+      instances: {
+        list: async () => {
+          if (stage === 'resolveInstance' && !instanceId) {
+            throw new Error(reason);
+          }
+          return {
+            items: [makeInstance()],
+            pagination: { page: 1, page_size: 20, total: 1, total_pages: 1, has_next: false, has_prev: false },
+          };
+        },
+        get: async (_id: string) => {
+          if (stage === 'resolveInstance') {
+            throw new Error(reason);
+          }
+          return makeInstance();
+        },
+        get_stream_config: async () => ({} as any),
       },
-      get: async (_id: string) => {
-        if (stage === 'resolveInstance') {
-          throw new Error(reason);
-        }
-        return makeInstance();
+      projects: {
+        get: async (_id: string) => {
+          if (stage === 'fetchProject') {
+            throw new Error(reason);
+          }
+          return makeProject();
+        },
+        list: async () => [],
+        create: async () => makeProject(),
+        update: async () => makeProject(),
+        delete: async () => ({ project_id: 'proj_test1', deleted: true }),
+        apply_template: async () => ({} as any),
       },
-      get_stream_config: async () => ({} as any),
-    },
-    projects: {
-      get: async (_id: string) => {
-        if (stage === 'fetchProject') {
-          throw new Error(reason);
-        }
-        return makeProject();
-      },
-      list: async () => [],
-      create: async () => makeProject(),
-      update: async () => makeProject(),
-      delete: async () => ({ project_id: 'proj_test1', deleted: true }),
-      apply_template: async () => ({} as any),
     },
   } as unknown as LoxtepClient;
 }
