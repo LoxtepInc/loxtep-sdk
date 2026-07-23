@@ -2,9 +2,7 @@
  * CLI/SDK version from package.json (same semver as `@loxtep/sdk` on npm).
  */
 
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import pkg from '../../package.json' with { type: 'json' };
 
 let cachedVersion: string | undefined;
 
@@ -14,9 +12,6 @@ export function getSdkVersion(): string {
     return cachedVersion;
   }
 
-  const here = dirname(fileURLToPath(import.meta.url));
-  const pkgPath = join(here, '../../package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version?: string };
   cachedVersion = pkg.version ?? '0.0.0';
   return cachedVersion;
 }

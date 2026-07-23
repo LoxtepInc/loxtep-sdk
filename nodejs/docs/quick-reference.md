@@ -1,7 +1,7 @@
 # SDK Quick Reference Card
 
-Concise cheat sheet for common Loxtep SDK operations (Node.js **v0.7+** MCP
-facades). For full walkthroughs, see the [Getting Started Guide](./getting-started.md)
+Concise cheat sheet for common Loxtep SDK operations (Node.js **v0.7+**).
+For full walkthroughs, see the [Getting Started Guide](./getting-started.md)
 (programmatic) or [Code-first CLI guide](./code-first-cli.md) (`loxtep init`).
 
 ---
@@ -175,8 +175,6 @@ const hits = await client.query.catalog.search({ query: 'orders' });
 | **Catalog search** | `client.query.catalog.search({ query })` |
 | **Invalidate cache** | `client.build.data_products.invalidate_cache('name')` |
 
-See [MCP → SDK mapping](./sdk-mcp-mapping.md) for all 10 facades.
-
 ---
 
 ## CLI Shortcuts
@@ -220,4 +218,4 @@ in application code.
 |----------|-------------|
 | [Getting Started Guide](./getting-started.md) | Zero-to-first-event walkthrough |
 | [Event Replay Cookbook](./event-replay-cookbook.md) | Replay patterns (`build.data_products`, `observe`) |
-| [MCP → SDK Mapping](./sdk-mcp-mapping.md) | How MCP tools map to SDK methods |
+| [Code-first CLI guide](./code-first-cli.md) | `loxtep init` through deploy |

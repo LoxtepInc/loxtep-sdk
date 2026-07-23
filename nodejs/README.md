@@ -1,27 +1,26 @@
 # Loxtep Node.js SDK
 
-Client for the Loxtep API. Since **v0.7.0**, the public surface mirrors the
-**10 hosted MCP tool facades** (no flat top-level namespaces like
+Client for the Loxtep API. Since **v0.7.0**, `LoxtepClient` groups APIs under
+**namespaced areas** on the client (no flat top-level namespaces like
 `client.workflows` or `client.data_products`).
 
-| MCP facade | SDK namespace | Examples |
+| Area | SDK namespace | Examples |
 | --- | --- | --- |
-| `loxtep_session` | `client.session` | `get_current_user()` |
-| `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
-| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*` |
-| `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*` |
-| `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.domains.*`, … |
-| `loxtep_meaning` | `client.meaning` | `.thesaurus.*` |
-| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*` |
-| `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()` |
-| `loxtep_observe` | `client.observe` | `.stream_config()`, `.open_reader()` |
-| `loxtep_context` | `client.context` | `.procedures.*`, `.activity.*`, … |
+| Authentication | `client.session` | `get_current_user()` |
+| Connect | `client.connect` | `.connectors.*`, `.templates.*` |
+| Workspace | `client.workspace` | `.projects.*`, `.instances.*` |
+| Build & deploy | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*` |
+| Governance | `client.define` | `.schemas.*`, `.quality.*`, `.domains.*`, … |
+| Semantics | `client.meaning` | `.thesaurus.*` |
+| Review | `client.review` | `.approvals.*`, `.improvements.*` |
+| Analytics | `client.query` | `.catalog.*`, `.discovery.*`, `.query()` |
+| Observe | `client.observe` | `.stream_config()`, `.open_reader()` |
+| Context | `client.context` | `.procedures.*`, `.activity.*`, … |
 
-**Stream I/O** uses top-level helpers (not nested under a facade):
+**Stream I/O** uses top-level helpers on the client:
 `await client.get_writer('data-product-name')` and
 `await client.get_reader('data-product-name')`.
 
-Full mapping table: [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
 **Upgrading from 0.6.x:** replace `client.data_products` →
 `client.build.data_products` (CRUD/stream/replay) or `client.get_writer` /
 `client.get_reader` (recommended write/read path); `client.workflows` →
@@ -163,18 +162,18 @@ See `loxtep init --help`, `loxtep attach --help`, etc. for all flags. The full C
 
 ## API surface
 
-Every method is `snake_case`. Use the **10 MCP-aligned facades** on
-`LoxtepClient` (see table at the top). Nested APIs keep descriptive names
-(`workflows`, `data_products`, `connectors`, …) under their facade.
+Every method is `snake_case`. APIs live on **namespaced areas** of
+`LoxtepClient` (see table at the top). Nested APIs use descriptive names
+(`workflows`, `data_products`, `connectors`, …) under each area.
 
 ### Top-level stream I/O (preferred)
 
 - **`get_writer(name_or_id)`** — write path; resolves queue, bot, stream config
 - **`get_reader(name_or_id)`** — async iterable read path
 - **`LoxtepClient.fromWorkspace()`** — construct from `.loxtep/project.json` +
-  `~/.loxtep/credentials.json` (env overrides: `LOXTEP_API_URL`, `LOXTEP_TOKEN`, …)
+  `./.loxtep/credentials.json` (env overrides: `LOXTEP_API_URL`, `LOXTEP_TOKEN`, …)
 
-### `client.build` (MCP: loxtep_build)
+### Build & deploy (`client.build`)
 
 - **`.workflows`** — `list`, `get`, `create`, `get_graph`, `deploy`; low-level
   `.get_writer(workflow_id, { bot_id, … })` escape hatch
@@ -184,38 +183,36 @@ Every method is `snake_case`. Use the **10 MCP-aligned facades** on
   `client.get_writer` / `get_reader`)
 - **`.targets`** — delivery sink bindings (`list`, `get`, `create`, `update`, `delete`)
 
-### `client.connect` (MCP: loxtep_connect)
+### Connect (`client.connect`)
 
 - **`.connectors`** — org-level connector credentials
 - **`.templates`** — starter templates (`list`, `get`, `apply_template` on projects)
 
-### `client.workspace` (MCP: loxtep_workspace)
+### Workspace (`client.workspace`)
 
 - **`.projects`** — `list`, `get`, `create`, `update`, `delete`, `apply_template`
 - **`.instances`** — `list`, `get`, stream config helpers
 
-### `client.define` (MCP: loxtep_define)
+### Governance (`client.define`)
 
 - **`.schemas`**, **`.quality`**, **`.standards`**, **`.data_contracts`**, **`.domains`**
 
-### `client.query` (MCP: loxtep_query)
+### Analytics (`client.query`)
 
 - **`.catalog`**, **`.discovery`**, **`.query()`**, **`.list_tables()`**, **`.search()`**
 
-### `client.observe` (MCP: loxtep_observe)
+### Observe (`client.observe`)
 
 - **`status()`**, **`stream_config()`**, **`open_reader()`**, **`open_writer()`**,
   **`get_queue_metadata()`**, **`get_reader_checkpoint()`**
 
-### Other facades
+### Authentication, semantics, review, and context
 
 - **`client.session`** — `get_current_user`, `get_current_organization`, `logout`
 - **`client.meaning`** — `.thesaurus.*`
 - **`client.review`** — `.approvals.*`, `.improvements.*`
 - **`client.context`** — `.procedures.*`, `.activity.*`, `.process_intelligence.*`
 - **`client.metrics`** — `log`, `get_reporter` (stub until metrics wiring lands)
-
-See [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md) for the full MCP ↔ SDK table.
 
 ## Data product writer and reader
 
@@ -304,8 +301,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 - **[Code-first CLI](./docs/code-first-cli.md)** – `loxtep init`, attach, generate, test, deploy.
 - **[Quick reference](./docs/quick-reference.md)** – Single-page cheat sheet.
 - **[Event replay cookbook](./docs/event-replay-cookbook.md)** – Replay events from a data product or queue.
-- **[MCP + SDK pairing](./docs/sdk-pairing.md)** – One auth story, when MCP vs SDK.
-- **[MCP → SDK mapping](./docs/sdk-mcp-mapping.md)** – Agent-oriented table.
+- **[SDK + agent pairing](./docs/sdk-pairing.md)** – When to use the SDK vs IDE agent integrations.
 - **Typed errors** – `import { … } from '@loxtep/sdk/errors'`.
 - **API reference** – `pnpm run docs` (Typedoc).
 
