@@ -4,7 +4,7 @@
  */
 
 import { toDomainListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface DomainsCmdOptions {
@@ -18,7 +18,7 @@ export async function runDomainsList(options: DomainsCmdOptions = {}): Promise<v
   const { client } = await requireCliClient(options);
   try {
     const result = await client.define.domains.list();
-    const summary = mapPaginatedList(result, toDomainListSummary);
+    const summary = mapListSummaries(result, toDomainListSummary);
     printCliListOutput(summary, result, { ...options, label: 'domains list' });
   } catch (err) {
     console.error((err as Error).message);

@@ -32,13 +32,12 @@ function mockClient(entries: ActivityEntry[] = [], cursor: string | null = null)
 }
 
 describe('runActivityListCommand', () => {
-  it('returns empty items array when API returns no entries', async () => {
+  it('returns empty array when API returns no entries', async () => {
     const client = mockClient([]);
     const result = await runActivityListCommand(client);
     expect(result.exitCode).toBe(0);
-    const parsed = JSON.parse(result.stdout[0]!) as { items: unknown[]; cursor: null };
-    expect(parsed.items).toEqual([]);
-    expect(parsed.cursor).toBeNull();
+    const parsed = JSON.parse(result.stdout[0]!) as unknown[];
+    expect(parsed).toEqual([]);
     expect(result.stderr).toHaveLength(0);
   });
 
@@ -70,17 +69,15 @@ describe('runActivityListCommand', () => {
     const result = await runActivityListCommand(client);
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toHaveLength(0);
-    const parsed = JSON.parse(result.stdout[0]!) as {
-      items: Array<Record<string, unknown>>;
-    };
-    expect(parsed.items[0]).toMatchObject({
+    const parsed = JSON.parse(result.stdout[0]!) as Array<Record<string, unknown>>;
+    expect(parsed[0]).toMatchObject({
       entry_id: 'ent_001',
       kind: 'action_trace',
       workflow_name: 'sync-orders',
       outcome: 'succeeded',
       target_resource: 'dp_orders',
     });
-    expect(parsed.items[1]).toMatchObject({
+    expect(parsed[1]).toMatchObject({
       entry_id: 'ent_002',
       kind: 'audit',
       source: 'mcp',

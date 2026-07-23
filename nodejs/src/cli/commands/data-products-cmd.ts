@@ -3,7 +3,7 @@
  */
 
 import { toDataProductListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 import type { DataProductCreateInput } from '../../client/data-products-types.js';
 
@@ -17,7 +17,7 @@ export interface DataProductsCmdOptions {
 export async function runDataProductsList(options: DataProductsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   const result = await client.build.data_products.list({ page_size: 20 });
-  const summary = mapPaginatedList(result, toDataProductListSummary);
+  const summary = mapListSummaries(result, toDataProductListSummary);
   printCliListOutput(summary, result, { ...options, label: 'data-products list' });
 }
 

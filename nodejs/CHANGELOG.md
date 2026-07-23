@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.16] - 2026-07-23
+
+### Changed
+
+- **CLI `list` stdout** is now a bare JSON **array** of summary rows (same as
+  `instances list`), not `{ items, pagination }`. Pagination and cursor metadata
+  remain in the raw API response, visible with `--debug` or `LOXTEP_DEBUG=1`.
+  Affected: `projects`, `domains`, `data-products`, `workflows`, `triggers`,
+  `standards`, `data-contracts`, `activity`, and `improvements`.
+
 ## [0.7.15] - 2026-07-23
 
 ### Changed
@@ -14,9 +24,8 @@ and this project adheres to
   other fields needed to pick resources or configure workflows) instead of full
   API records. Affected: `domains`, `data-products`, `workflows`, `triggers`,
   `standards`, `data-contracts`, `improvements`, and `activity` (plus existing
-  `instances list`). Pagination/cursor metadata is preserved where the API
-  returns it. Use `--debug` or `LOXTEP_DEBUG=1` to dump the raw API payload to
-  stderr.
+  `instances list`). Use `--debug` or `LOXTEP_DEBUG=1` to dump the raw API payload to
+  stderr. *(0.7.16: stdout is a bare array; pagination only in debug output.)*
 - **`loxtep projects list | get <id>`** — discover project UUIDs in your org.
 - **Getting Started** — documents what a project is, where `project_id` comes
   from (`init` / `config list`), and that `workflows list` uses the workspace

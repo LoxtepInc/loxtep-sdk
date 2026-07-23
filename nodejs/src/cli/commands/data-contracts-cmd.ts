@@ -4,7 +4,7 @@
  */
 
 import { toDataContractListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface DataContractsCmdOptions {
@@ -18,7 +18,7 @@ export async function runDataContractsList(options: DataContractsCmdOptions = {}
   const { client } = await requireCliClient(options);
   try {
     const result = await client.define.data_contracts.list();
-    const summary = mapPaginatedList(result, toDataContractListSummary);
+    const summary = mapListSummaries(result, toDataContractListSummary);
     printCliListOutput(summary, result, { ...options, label: 'data-contracts list' });
   } catch (err) {
     console.error((err as Error).message);

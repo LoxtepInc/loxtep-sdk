@@ -3,7 +3,7 @@
  */
 
 import { toWorkflowListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface WorkflowsCmdOptions {
@@ -29,7 +29,7 @@ export async function runWorkflowsList(
     return;
   }
   const result = await client.build.workflows.list({ project_id: projectId, page_size: 50 });
-  const summary = mapPaginatedList(result, toWorkflowListSummary);
+  const summary = mapListSummaries(result, toWorkflowListSummary);
   printCliListOutput(summary, result, { ...options, label: 'workflows list' });
 }
 

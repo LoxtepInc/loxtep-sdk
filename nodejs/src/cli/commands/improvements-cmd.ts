@@ -47,10 +47,7 @@ export async function runImprovementsListCommand(
     }
 
     const result = await client.review.improvements.list(filters);
-    const summary = {
-      items: result.improvements.map(toImprovementListSummary),
-      cursor: result.cursor,
-    };
+    const summary = result.improvements.map(toImprovementListSummary);
     return {
       exitCode: 0,
       stdout: [JSON.stringify(summary, null, 2)],

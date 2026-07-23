@@ -1,6 +1,7 @@
 /**
  * Shared stdout/stderr formatting for CLI `list` subcommands.
- * Default output is a pruned summary; raw API payloads go to stderr with --debug or LOXTEP_DEBUG=1.
+ * Default output is a pruned JSON **array** of summary rows (human + jq friendly).
+ * Raw API payloads (including pagination/cursor) go to stderr with --debug or LOXTEP_DEBUG=1.
  */
 
 export interface CliListOutputOptions {
@@ -14,7 +15,7 @@ export function isCliListDebugEnabled(options?: CliListOutputOptions): boolean {
 }
 
 export function printCliListOutput(
-  summary: unknown,
+  summaryRows: unknown[],
   raw: unknown,
   options?: CliListOutputOptions
 ): void {
@@ -23,16 +24,26 @@ export function printCliListOutput(
     console.error(`[loxtep ${label} debug] raw API response:`);
     console.error(JSON.stringify(raw, null, 2));
   }
-  console.log(JSON.stringify(summary, null, 2));
+  console.log(JSON.stringify(summaryRows, null, 2));
 }
 
-/** Map list rows while preserving pagination metadata for scripts. */
+/** Map paginated SDK list results to a flat summary array for CLI stdout. */
+export function mapListSummaries<T, S>(
+  data: { items: T[] },
+  mapItem: (item: T) => S
+): S[] {
+  return data.items.map(mapItem);
+}
+
+/**
+ * @deprecated CLI stdout is a bare array; use {@link mapListSummaries}. Pagination belongs in --debug raw output only.
+ */
 export function mapPaginatedList<T, S>(
   data: { items: T[]; pagination?: unknown },
   mapItem: (item: T) => S
 ): { items: S[]; pagination?: unknown } {
   return {
-    items: data.items.map(mapItem),
+    items: mapListSummaries(data, mapItem),
     ...(data.pagination !== undefined ? { pagination: data.pagination } : {}),
   };
 }

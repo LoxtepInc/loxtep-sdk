@@ -4,7 +4,7 @@
  */
 
 import { toProjectListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface ProjectsCmdOptions {
@@ -18,7 +18,7 @@ export async function runProjectsList(options: ProjectsCmdOptions = {}): Promise
   const { client } = await requireCliClient(options);
   try {
     const result = await client.workspace.projects.list({ page_size: 100 });
-    const summary = mapPaginatedList(result, toProjectListSummary);
+    const summary = mapListSummaries(result, toProjectListSummary);
     printCliListOutput(summary, result, { ...options, label: 'projects list' });
   } catch (err) {
     console.error((err as Error).message);
