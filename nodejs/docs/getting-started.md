@@ -70,7 +70,7 @@ npx loxtep login
 Follow the prompts to enter your email and password. On success you'll see:
 
 ```
-✓ Logged in successfully. Credentials saved to ~/.loxtep/credentials.json
+✓ Logged in successfully. Credentials saved to ./.loxtep/credentials.json
 ```
 
 **Alternative: use an environment variable.** If you're running in CI/CD or a
@@ -80,8 +80,8 @@ container, set the token directly instead of using `loxtep login`:
 export LOXTEP_AUTH_TOKEN="your-jwt-token"
 ```
 
-The SDK checks `LOXTEP_AUTH_TOKEN` first, then falls back to
-`~/.loxtep/credentials.json`.
+The SDK checks `LOXTEP_AUTH_TOKEN` first, then `./.loxtep/credentials.json`
+(walking up from cwd), then `~/.loxtep/credentials.json`.
 
 ---
 
@@ -298,7 +298,8 @@ const writer = await client.get_writer('09fa202b-...');
 
 **Cause:** The SDK cannot find a JWT token. Set `LOXTEP_AUTH_TOKEN` (CLI) or
 `LOXTEP_TOKEN` (programmatic auto-config), or run `npx loxtep login` so
-`~/.loxtep/credentials.json` exists.
+`./.loxtep/credentials.json` exists (or `~/.loxtep/credentials.json` with
+`--global`).
 
 **Fix:**
 

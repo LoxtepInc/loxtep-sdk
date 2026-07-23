@@ -64,7 +64,7 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
    ```
 
    A browser window opens — sign in to Loxtep and you're authenticated.
-   Tokens are saved to `~/.loxtep/credentials.json` and refresh automatically.
+   Tokens are saved to `./.loxtep/credentials.json` (use `--global` for home dir).
 
    > **CI/headless:** Use `npx loxtep login --email you@co.com --password ...`
    > or set `LOXTEP_AUTH_TOKEN` in your environment.

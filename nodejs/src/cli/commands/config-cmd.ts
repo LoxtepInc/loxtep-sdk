@@ -412,10 +412,10 @@ export async function runConfigExportFromConnector(
 export async function runInit(): Promise<void> {
   console.log(`Loxtep CLI — setup checklist:
 
-  Config is stored at ~/.loxtep/config.json. Auth tokens are stored at ~/.loxtep/credentials.json.
+  Config is stored at ~/.loxtep/config.json. Auth tokens default to ./.loxtep/credentials.json (use loxtep login --global for ~/.loxtep/credentials.json).
 
   1. loxtep config set api_url <https://your-api-host>   (host only; no trailing /app)
-  2. loxtep login   (stores credentials at ~/.loxtep/credentials.json; or set LOXTEP_AUTH_TOKEN env var)
+  2. loxtep login   (stores credentials at ./.loxtep/credentials.json by default; or set LOXTEP_AUTH_TOKEN env var)
   3. (Legacy only) loxtep config set api_path_prefix <one ms>  if you must pin a single microservice base URL (LOXTEP_API_PATH_PREFIX); default is per-path platform routing
   4. Optional: loxtep config set organization_id <uuid> | project_id <uuid> | instance_id <uuid> | region <aws-region>
      (saved to ~/.loxtep/config.json; used as defaults for LoxtepClient constructor)
@@ -423,7 +423,7 @@ export async function runInit(): Promise<void> {
   6. From a connector: loxtep config export --from-connector <uuid>
      From a data product: loxtep config export --from-data-product <uuid>
 
-  Auth precedence: LOXTEP_AUTH_TOKEN env var → ~/.loxtep/credentials.json (from loxtep login).
+  Auth precedence: LOXTEP_AUTH_TOKEN env var → ./.loxtep/credentials.json (walk up from cwd) → ~/.loxtep/credentials.json.
   Docs: package docs/sdk-pairing.md and docs/sdk-control-vs-data-plane.md (npm pack path: node_modules/@loxtep/sdk/docs/...).
 `);
 }

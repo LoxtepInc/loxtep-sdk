@@ -54,8 +54,8 @@ are no unauthenticated endpoints.
 
 | Surface | How auth is provided |
 | --- | --- |
-| **CLI** | `loxtep login` stores credentials in `~/.loxtep/credentials.json`. |
-| **SDK** | `LOXTEP_AUTH_TOKEN` env var, or `~/.loxtep/credentials.json` (written by `loxtep login`). |
+| **CLI** | `loxtep login` stores credentials in `./.loxtep/credentials.json` (cwd; `--global` for `~/.loxtep/`). |
+| **SDK** | `LOXTEP_AUTH_TOKEN` env var, or project-local then global `credentials.json`. |
 | **MCP** | OAuth 2.1 + PKCE against `https://mcp.loxtep.io/ai/mcp/stream`. The browser flow runs on first connect; tokens refresh in the background. |
 
 SDK auth precedence: `LOXTEP_AUTH_TOKEN` → `~/.loxtep/credentials.json`. When a

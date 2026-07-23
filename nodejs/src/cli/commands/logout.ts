@@ -5,7 +5,6 @@ import {
   getLocalCredentialsPath,
   type CredentialsScope,
 } from '../credentials.js';
-import { findProjectDir } from '../project-context.js';
 
 export interface LogoutOptions {
   /** Force scope instead of the default local-first resolution. */
@@ -31,15 +30,7 @@ export async function runLogout(options: LogoutOptions = {}): Promise<void> {
   }
 
   if (options.scope === 'local') {
-    const projectDir = findProjectDir(cwd);
-    if (!projectDir) {
-      console.error(
-        'No .loxtep/project.json found in this directory or any parent — nothing local to log out of.'
-      );
-      process.exitCode = 1;
-      return;
-    }
-    const path = getLocalCredentialsPath(projectDir);
+    const path = getLocalCredentialsPath(cwd);
     await deleteCredentials(path);
     console.log(`Logged out (local: ${path}).`);
     return;
