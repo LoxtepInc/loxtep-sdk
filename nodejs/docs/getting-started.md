@@ -31,7 +31,7 @@ comes **after** you deploy a workflow that publishes a data product.
 |-------------|---------|
 | **Node.js 22+** | Required for `@loxtep/sdk`. Check with `node --version`. |
 | **Loxtep account** | Sign up at [app.loxtep.io](https://app.loxtep.io). |
-| **Runtime instance** | Your org needs at least one instance (`loxtep instances list`). New trials usually include a shared dev instance. |
+| **Runtime instance** | Your org needs at least one instance (`loxtep instances list`). New accounts get a default shared instance automatically; an empty list usually means wrong API host or a CLI parsing bug — not a greenfield state. |
 
 You do **not** need an existing data product on day one. Empty lists after
 attach are normal until you deploy workflows.

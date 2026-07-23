@@ -22,20 +22,55 @@
  *   loxtep instances registration                          # optional check: read registered ARN + external ID
  */
 
-import { requireCliClient } from '../create-cli-client.js';
+import { parseInstancesListResponse } from '../../client/instances-list-response.js';
+import { toInstanceListSummaries } from '../../client/instance-list-summary.js';
+import { createCliHttpClient, requireCliClient } from '../create-cli-client.js';
 import type { InstanceCreateInput, InstanceType } from '../../client/instances-types.js';
 
 export interface InstancesCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  /** Print raw GET /organizations/instances JSON to stderr (also enabled with LOXTEP_DEBUG=1). */
+  debug?: boolean;
+  /** For tests: inject fetch to mock API. */
+  fetch_fn?: typeof fetch;
+}
+
+function isDebugEnabled(options: InstancesCmdOptions): boolean {
+  return options.debug === true || process.env.LOXTEP_DEBUG === '1';
 }
 
 export async function runInstancesList(options: InstancesCmdOptions = {}): Promise<void> {
-  const { client } = await requireCliClient(options);
   try {
-    const { items } = await client.workspace.instances.list();
-    console.log(JSON.stringify(items, null, 2));
+    const cli = await createCliHttpClient({
+      configFilePath: options.configFilePath,
+      credentialsPath: options.credentialsPath,
+      customerMcpPath: options.customerMcpPath,
+      fetch_fn: options.fetch_fn,
+    });
+    if (!cli) {
+      console.error('Missing api_url or access token. Run: pnpm exec loxtep login');
+      process.exitCode = 1;
+      return;
+    }
+
+    const raw = await cli.http.get<unknown>('/organizations/instances');
+
+    if (isDebugEnabled(options)) {
+      console.error('[loxtep instances debug] GET /organizations/instances response:');
+      console.error(JSON.stringify(raw, null, 2));
+    }
+
+    const { items } = parseInstancesListResponse(raw);
+    console.log(JSON.stringify(toInstanceListSummaries(items), null, 2));
+
+    if (items.length === 0) {
+      console.error(
+        'No instances returned. Every org should have at least a default shared instance. Run `LOXTEP_DEBUG=1 loxtep instances list --debug` to inspect the API host and raw response, or `loxtep login` again if the API host is wrong.'
+      );
+      process.exitCode = 1;
+    }
   } catch (err) {
     console.error((err as Error).message);
     process.exitCode = 1;
