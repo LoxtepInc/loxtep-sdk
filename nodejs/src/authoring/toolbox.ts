@@ -176,7 +176,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   const dataProducts: ToolboxDataProducts = {
     async write(ref: DataProductRef, event: unknown): Promise<WriteResult> {
       try {
-        const writer = await client.data_products.get_writer(ref.name);
+        const writer = await client.get_writer(ref.name);
         writer.write(event);
         await writer.close();
         return { success: true, events_written: 1 };
@@ -192,7 +192,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async query(ref: DataProductRef, sql: string): Promise<QueryRows> {
       try {
-        const result = await client.data_products.query(ref.id, sql);
+        const result = await client.query.query(ref.id, sql);
         return { items: result.items, metadata: result.metadata };
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -206,7 +206,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async get(ref: DataProductRef): Promise<DataProduct> {
       try {
-        return await client.data_products.get(ref.id);
+        return await client.build.data_products.get(ref.id);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'dataProducts',
@@ -219,7 +219,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async list(filters?: { domain_id?: string }): Promise<DataProduct[]> {
       try {
-        const result = await client.data_products.list({
+        const result = await client.build.data_products.list({
           domain_id: filters?.domain_id,
         });
         return result.items;
@@ -237,7 +237,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   const queues: ToolboxQueues = {
     async write(ref: QueueRef, event: unknown): Promise<void> {
       try {
-        const writer = await client.queues.open_writer({
+        const writer = await client.observe.open_writer({
           bot_id: `toolbox-writer-${ref.name}`,
           queue_name: ref.name,
         });
@@ -255,7 +255,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async getMetadata(ref: QueueRef): Promise<{ queue_name: string; [key: string]: unknown }> {
       try {
-        const metadata = await client.queues.get_queue_metadata(ref.name);
+        const metadata = await client.observe.get_queue_metadata(ref.name);
         return metadata as { queue_name: string; [key: string]: unknown };
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -271,7 +271,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   const connections: ToolboxConnections = {
     async list(): Promise<Trigger[]> {
       try {
-        const result = await client.triggers.list();
+        const result = await client.build.triggers.list();
         return result.items;
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -285,7 +285,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async get(connectionId: string): Promise<Trigger> {
       try {
-        return await client.triggers.get(connectionId);
+        return await client.build.triggers.get(connectionId);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'connections',
@@ -298,7 +298,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async test(connectionId: string): Promise<TriggerTestResult> {
       try {
-        return await client.triggers.test(connectionId);
+        return await client.build.triggers.test(connectionId);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'connections',
@@ -313,7 +313,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   const workflows: ToolboxWorkflows = {
     async list(): Promise<Flow[]> {
       try {
-        const result = await client.workflows.list({ project_id: projectId });
+        const result = await client.build.workflows.list({ project_id: projectId });
         return result.items;
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -327,7 +327,7 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async getGraph(ref: WorkflowRef): Promise<WorkflowGraph> {
       try {
-        return await client.workflows.get_graph(ref.id, projectId);
+        return await client.build.workflows.get_graph(ref.id, projectId);
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'workflows',

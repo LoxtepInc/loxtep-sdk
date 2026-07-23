@@ -190,7 +190,7 @@ def run_config_export_from_connector(
     )
     try:
         try:
-            connector = client.connectors.get(connector_id)
+            connector = client.connect.connectors.get(connector_id)
         except Exception as exc:
             print(
                 f"Error: Connector '{connector_id}' not found. {exc}",

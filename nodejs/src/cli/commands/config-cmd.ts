@@ -194,11 +194,11 @@ export async function runConfigExportFromDataProduct(
   // Step 1: Resolve the data product (by UUID or name search)
   let dp;
   try {
-    dp = await client.data_products.get(dataProductIdOrName);
+    dp = await client.build.data_products.get(dataProductIdOrName);
   } catch {
     // If direct get fails (likely not a UUID), try searching by name
     try {
-      const listResult = await client.data_products.list({ search: dataProductIdOrName });
+      const listResult = await client.build.data_products.list({ search: dataProductIdOrName });
       const matches = listResult.items.filter(
         (item: { name: string }) => item.name === dataProductIdOrName
       );
@@ -249,7 +249,7 @@ export async function runConfigExportFromDataProduct(
     LeoSettings: string;
   };
   try {
-    streamConfig = await client.instances.get_stream_config(bindings.instance_id);
+    streamConfig = await client.workspace.instances.get_stream_config(bindings.instance_id);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(
@@ -367,7 +367,7 @@ export async function runConfigExportFromConnector(
 
   let connector;
   try {
-    connector = await client.connectors.get(connectorId);
+    connector = await client.connect.connectors.get(connectorId);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`Error: Connector '${connectorId}' not found. ${msg}`);

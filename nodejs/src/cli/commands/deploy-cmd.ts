@@ -221,7 +221,7 @@ async function deploySingleWorkflow(
 
     if (!workflowId) {
       // Create a new workflow
-      const created = await client.workflows.create({
+      const created = await client.build.workflows.create({
         name: compiled.name,
         project_id: projectId,
       });
@@ -229,7 +229,7 @@ async function deploySingleWorkflow(
     }
 
     // Deploy via the workflows microservice deploy endpoint
-    const deployResult = await client.workflows.deploy({
+    const deployResult = await client.build.workflows.deploy({
       project_id: projectId,
       instance_id: instanceId,
     });
@@ -263,7 +263,7 @@ async function removeAbsentWorkflows(
 
   for (const { name, workflow_id } of removals) {
     try {
-      await client.projects.delete(workflow_id);
+      await client.workspace.projects.delete(workflow_id);
       results.push({ name, status: 'removed' });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -400,7 +400,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   // 8. Resolve deploy target by instance type (R14.4, R14.5)
   let instance: Instance;
   try {
-    instance = await client.instances.get(instanceId);
+    instance = await client.workspace.instances.get(instanceId);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -423,7 +423,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
     // For repo-bound projects: deploy from the synced S3 Code_Bundle (R17.11)
     // The platform's deploy endpoint handles S3 bundle resolution internally.
     try {
-      const result = await client.workflows.deploy({
+      const result = await client.build.workflows.deploy({
         project_id: projectId,
         instance_id: instanceId,
       });
@@ -456,7 +456,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
 
     // Trigger the project-level deploy to drive the orchestrator
     try {
-      const result = await client.workflows.deploy({
+      const result = await client.build.workflows.deploy({
         project_id: projectId,
         instance_id: instanceId,
       });

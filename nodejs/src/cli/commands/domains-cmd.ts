@@ -14,7 +14,7 @@ export interface DomainsCmdOptions {
 export async function runDomainsList(options: DomainsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.domains.list();
+    const result = await client.define.domains.list();
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -28,7 +28,7 @@ export async function runDomainsGet(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const domain = await client.domains.get(domainId);
+    const domain = await client.define.domains.get(domainId);
     console.log(JSON.stringify(domain, null, 2));
   } catch (err) {
     console.error((err as Error).message);

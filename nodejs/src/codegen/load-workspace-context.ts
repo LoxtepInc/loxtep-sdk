@@ -41,10 +41,10 @@ export async function loadWorkspaceContext(
     domainsResult,
     workflowsResult,
   ] = await Promise.all([
-    client.data_products.list({ page: 1, page_size: 1000 }),
-    client.connectors.list({ page: 1, page_size: 1000 }),
-    client.domains.list({ page: 1, page_size: 1000 }),
-    client.workflows.list({ project_id: projectId, page: 1, page_size: 1000 }),
+    client.build.data_products.list({ page: 1, page_size: 1000 }),
+    client.connect.connectors.list({ page: 1, page_size: 1000 }),
+    client.define.domains.list({ page: 1, page_size: 1000 }),
+    client.build.workflows.list({ project_id: projectId, page: 1, page_size: 1000 }),
   ]);
   // `flows` and `workflows` are the same backend entity; the WorkspaceContext
   // keeps both collections for the generated artifact, sourced from one fetch.

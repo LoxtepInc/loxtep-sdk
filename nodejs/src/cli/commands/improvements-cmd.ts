@@ -45,7 +45,7 @@ export async function runImprovementsListCommand(
       filters.workflow_name = options.workflow_name;
     }
 
-    const result = await client.improvements.list(filters);
+    const result = await client.review.improvements.list(filters);
     const { improvements } = result;
 
     if (improvements.length === 0) {
@@ -96,7 +96,7 @@ export async function runImprovementsApplyCommand(
   // 1. Fetch the improvement from the list endpoint to get its details
   let improvement;
   try {
-    const result = await client.improvements.list();
+    const result = await client.review.improvements.list();
     improvement = result.improvements.find(imp => imp.id === id);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -150,7 +150,7 @@ export async function runImprovementsApplyCommand(
 
   // 4. Set status to 'applied' on the server
   try {
-    await client.improvements.apply(id);
+    await client.review.improvements.apply(id);
   } catch (err: unknown) {
     // File was already written successfully, but API update failed.
     // Per R8.4, the write happened; per R8.7 failure semantics are about write failure.
@@ -185,7 +185,7 @@ export async function runImprovementsRejectCommand(
   id: string
 ): Promise<CliResult> {
   try {
-    await client.improvements.reject(id);
+    await client.review.improvements.reject(id);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     // The API returns 404 for unknown id and 409 for non-proposed status.

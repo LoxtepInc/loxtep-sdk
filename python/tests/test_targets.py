@@ -83,14 +83,14 @@ def test_delivery_interface_allows_extra_fields():
 def test_sync_client_has_delivery_property():
     """LoxtepClient exposes a delivery property of type TargetsApi."""
     client = LoxtepClient(api_url="https://api.example.com")
-    assert isinstance(client.targets, TargetsApi)
+    assert isinstance(client.build.targets, TargetsApi)
     client.close()
 
 
 def test_async_client_has_delivery_property():
     """AsyncLoxtepClient exposes a delivery property of type AsyncTargetsApi."""
     client = AsyncLoxtepClient(api_url="https://api.example.com")
-    assert isinstance(client.targets, AsyncTargetsApi)
+    assert isinstance(client.build.targets, AsyncTargetsApi)
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ def test_delivery_list_returns_delivery_interfaces():
                 }
             ],
         }
-        result = client.targets.list("dp_1")
+        result = client.build.targets.list("dp_1")
 
     assert len(result) == 1
     assert isinstance(result[0], Target)
@@ -141,7 +141,7 @@ def test_delivery_list_with_filters():
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "get") as mock_get:
         mock_get.return_value = {"success": True, "data": []}
-        client.targets.list("dp_1", status="active", is_active=True, page=2, page_size=10)
+        client.build.targets.list("dp_1", status="active", is_active=True, page=2, page_size=10)
 
     call_url = mock_get.call_args[0][0]
     assert "page=2" in call_url
@@ -177,7 +177,7 @@ def test_delivery_get_returns_delivery_interface():
                 "updated_at": "2024-03-01T00:00:00Z",
             },
         }
-        result = client.targets.get("dp_1", "cons_42")
+        result = client.build.targets.get("dp_1", "cons_42")
 
     assert isinstance(result, Target)
     assert result.consumption_id == "cons_42"
@@ -213,7 +213,7 @@ def test_delivery_create_posts_body_and_returns_model():
                 "updated_at": "2024-06-01T00:00:00Z",
             },
         }
-        result = client.targets.create(
+        result = client.build.targets.create(
             "dp_1",
             target_type="webhook",
             endpoint_url="https://hook.example.com",
@@ -262,7 +262,7 @@ def test_delivery_update_puts_body_and_returns_model():
                 "updated_at": "2024-06-15T00:00:00Z",
             },
         }
-        result = client.targets.update("dp_1", "cons_1", is_active=False, status="paused", name="Updated webhook")
+        result = client.build.targets.update("dp_1", "cons_1", is_active=False, status="paused", name="Updated webhook")
 
     assert isinstance(result, Target)
     assert result.is_active is False
@@ -280,7 +280,7 @@ def test_delivery_delete_calls_http_delete():
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "delete") as mock_delete:
         mock_delete.return_value = None
-        result = client.targets.delete("dp_1", "cons_1")
+        result = client.build.targets.delete("dp_1", "cons_1")
 
     assert result is None
     mock_delete.assert_called_once_with("/dataproducts/dp_1/consumptions/cons_1")

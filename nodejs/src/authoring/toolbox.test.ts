@@ -8,24 +8,28 @@ import type { QueueRef } from './types';
  */
 function createMockClient() {
   return {
-    data_products: {
-      get_writer: jest.fn(),
-      query: jest.fn(),
-      get: jest.fn(),
-      list: jest.fn(),
+    get_writer: jest.fn(),
+    build: {
+      data_products: {
+        get: jest.fn(),
+        list: jest.fn(),
+      },
+      triggers: {
+        list: jest.fn(),
+        get: jest.fn(),
+        test: jest.fn(),
+      },
+      workflows: {
+        list: jest.fn(),
+        get_graph: jest.fn(),
+      },
     },
-    queues: {
+    query: {
+      query: jest.fn(),
+    },
+    observe: {
       open_writer: jest.fn(),
       get_queue_metadata: jest.fn(),
-    },
-    triggers: {
-      list: jest.fn(),
-      get: jest.fn(),
-      test: jest.fn(),
-    },
-    workflows: {
-      list: jest.fn(),
-      get_graph: jest.fn(),
     },
   } as unknown as Parameters<typeof createToolbox>[0]['client'];
 }
@@ -45,18 +49,18 @@ describe('toolbox', () => {
 
     it('writes an event and returns a WriteResult on success', async () => {
       const mockWriter = { write: jest.fn(), close: jest.fn().mockResolvedValue(undefined) };
-      (client.data_products.get_writer as jest.Mock).mockResolvedValue(mockWriter);
+      (client.get_writer as jest.Mock).mockResolvedValue(mockWriter);
 
       const result = await toolbox.dataProducts.write(ref, { order_id: 1 });
 
-      expect(client.data_products.get_writer).toHaveBeenCalledWith('orders');
+      expect(client.get_writer).toHaveBeenCalledWith('orders');
       expect(mockWriter.write).toHaveBeenCalledWith({ order_id: 1 });
       expect(mockWriter.close).toHaveBeenCalled();
       expect(result).toEqual({ success: true, events_written: 1 });
     });
 
     it('throws ToolboxOperationError on failure (no model fallback)', async () => {
-      (client.data_products.get_writer as jest.Mock).mockRejectedValue(
+      (client.get_writer as jest.Mock).mockRejectedValue(
         new Error('stream bus not configured'),
       );
 
@@ -77,17 +81,17 @@ describe('toolbox', () => {
         items: [{ order_id: 1 }, { order_id: 2 }],
         metadata: { data_product_id: 'dp_1', total_rows: 2 },
       };
-      (client.data_products.query as jest.Mock).mockResolvedValue(mockResult);
+      (client.query.query as jest.Mock).mockResolvedValue(mockResult);
 
       const result = await toolbox.dataProducts.query(ref, 'SELECT * FROM orders');
 
-      expect(client.data_products.query).toHaveBeenCalledWith('dp_1', 'SELECT * FROM orders');
+      expect(client.query.query).toHaveBeenCalledWith('dp_1', 'SELECT * FROM orders');
       expect(result.items).toEqual([{ order_id: 1 }, { order_id: 2 }]);
       expect(result.metadata.data_product_id).toBe('dp_1');
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.data_products.query as jest.Mock).mockRejectedValue(new Error('query timeout'));
+      (client.query.query as jest.Mock).mockRejectedValue(new Error('query timeout'));
 
       await expect(toolbox.dataProducts.query(ref, 'SELECT 1')).rejects.toThrow(
         ToolboxOperationError,
@@ -104,16 +108,16 @@ describe('toolbox', () => {
 
     it('returns a data product by reference', async () => {
       const mockDP = { data_product_id: 'dp_1', name: 'orders', kind: 'source' };
-      (client.data_products.get as jest.Mock).mockResolvedValue(mockDP);
+      (client.build.data_products.get as jest.Mock).mockResolvedValue(mockDP);
 
       const result = await toolbox.dataProducts.get(ref);
 
-      expect(client.data_products.get).toHaveBeenCalledWith('dp_1');
+      expect(client.build.data_products.get).toHaveBeenCalledWith('dp_1');
       expect(result).toEqual(mockDP);
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.data_products.get as jest.Mock).mockRejectedValue(new Error('not found'));
+      (client.build.data_products.get as jest.Mock).mockRejectedValue(new Error('not found'));
 
       await expect(toolbox.dataProducts.get(ref)).rejects.toThrow(ToolboxOperationError);
       await expect(toolbox.dataProducts.get(ref)).rejects.toMatchObject({
@@ -126,24 +130,24 @@ describe('toolbox', () => {
   describe('dataProducts.list', () => {
     it('lists data products', async () => {
       const items = [{ data_product_id: 'dp_1', name: 'orders' }];
-      (client.data_products.list as jest.Mock).mockResolvedValue({ items, pagination: {} });
+      (client.build.data_products.list as jest.Mock).mockResolvedValue({ items, pagination: {} });
 
       const result = await toolbox.dataProducts.list();
 
-      expect(client.data_products.list).toHaveBeenCalledWith({ domain_id: undefined });
+      expect(client.build.data_products.list).toHaveBeenCalledWith({ domain_id: undefined });
       expect(result).toEqual(items);
     });
 
     it('passes domain_id filter', async () => {
-      (client.data_products.list as jest.Mock).mockResolvedValue({ items: [], pagination: {} });
+      (client.build.data_products.list as jest.Mock).mockResolvedValue({ items: [], pagination: {} });
 
       await toolbox.dataProducts.list({ domain_id: 'dm_1' });
 
-      expect(client.data_products.list).toHaveBeenCalledWith({ domain_id: 'dm_1' });
+      expect(client.build.data_products.list).toHaveBeenCalledWith({ domain_id: 'dm_1' });
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.data_products.list as jest.Mock).mockRejectedValue(new Error('unauthorized'));
+      (client.build.data_products.list as jest.Mock).mockRejectedValue(new Error('unauthorized'));
 
       await expect(toolbox.dataProducts.list()).rejects.toThrow(ToolboxOperationError);
       await expect(toolbox.dataProducts.list()).rejects.toMatchObject({
@@ -161,11 +165,11 @@ describe('toolbox', () => {
         write: jest.fn().mockResolvedValue(undefined),
         close: jest.fn().mockResolvedValue(undefined),
       };
-      (client.queues.open_writer as jest.Mock).mockResolvedValue(mockWriter);
+      (client.observe.open_writer as jest.Mock).mockResolvedValue(mockWriter);
 
       await toolbox.queues.write(ref, { payload: 'data' });
 
-      expect(client.queues.open_writer).toHaveBeenCalledWith({
+      expect(client.observe.open_writer).toHaveBeenCalledWith({
         bot_id: 'toolbox-writer-orders_raw',
         queue_name: 'orders_raw',
       });
@@ -174,7 +178,7 @@ describe('toolbox', () => {
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.queues.open_writer as jest.Mock).mockRejectedValue(
+      (client.observe.open_writer as jest.Mock).mockRejectedValue(
         new Error('stream bus missing'),
       );
 
@@ -191,16 +195,16 @@ describe('toolbox', () => {
 
     it('returns queue metadata', async () => {
       const metadata = { queue_name: 'orders_raw', stats: { event_count: 42 } };
-      (client.queues.get_queue_metadata as jest.Mock).mockResolvedValue(metadata);
+      (client.observe.get_queue_metadata as jest.Mock).mockResolvedValue(metadata);
 
       const result = await toolbox.queues.getMetadata(ref);
 
-      expect(client.queues.get_queue_metadata).toHaveBeenCalledWith('orders_raw');
+      expect(client.observe.get_queue_metadata).toHaveBeenCalledWith('orders_raw');
       expect(result.queue_name).toBe('orders_raw');
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.queues.get_queue_metadata as jest.Mock).mockRejectedValue(
+      (client.observe.get_queue_metadata as jest.Mock).mockRejectedValue(
         new Error('queue not found'),
       );
 
@@ -215,16 +219,16 @@ describe('toolbox', () => {
   describe('connections.list', () => {
     it('lists connections', async () => {
       const items = [{ connection_id: 'conn_1', name: 'shopify' }];
-      (client.triggers.list as jest.Mock).mockResolvedValue({ items, pagination: {} });
+      (client.build.triggers.list as jest.Mock).mockResolvedValue({ items, pagination: {} });
 
       const result = await toolbox.connections.list();
 
-      expect(client.triggers.list).toHaveBeenCalled();
+      expect(client.build.triggers.list).toHaveBeenCalled();
       expect(result).toEqual(items);
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.triggers.list as jest.Mock).mockRejectedValue(new Error('network error'));
+      (client.build.triggers.list as jest.Mock).mockRejectedValue(new Error('network error'));
 
       await expect(toolbox.connections.list()).rejects.toThrow(ToolboxOperationError);
       await expect(toolbox.connections.list()).rejects.toMatchObject({
@@ -237,16 +241,16 @@ describe('toolbox', () => {
   describe('connections.get', () => {
     it('gets a connection by ID', async () => {
       const conn = { connection_id: 'conn_1', name: 'shopify' };
-      (client.triggers.get as jest.Mock).mockResolvedValue(conn);
+      (client.build.triggers.get as jest.Mock).mockResolvedValue(conn);
 
       const result = await toolbox.connections.get('conn_1');
 
-      expect(client.triggers.get).toHaveBeenCalledWith('conn_1');
+      expect(client.build.triggers.get).toHaveBeenCalledWith('conn_1');
       expect(result).toEqual(conn);
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.triggers.get as jest.Mock).mockRejectedValue(new Error('not found'));
+      (client.build.triggers.get as jest.Mock).mockRejectedValue(new Error('not found'));
 
       await expect(toolbox.connections.get('conn_x')).rejects.toThrow(ToolboxOperationError);
     });
@@ -255,16 +259,16 @@ describe('toolbox', () => {
   describe('connections.test', () => {
     it('tests a connection', async () => {
       const testResult = { success: true, message: 'Connected' };
-      (client.triggers.test as jest.Mock).mockResolvedValue(testResult);
+      (client.build.triggers.test as jest.Mock).mockResolvedValue(testResult);
 
       const result = await toolbox.connections.test('conn_1');
 
-      expect(client.triggers.test).toHaveBeenCalledWith('conn_1');
+      expect(client.build.triggers.test).toHaveBeenCalledWith('conn_1');
       expect(result).toEqual(testResult);
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.triggers.test as jest.Mock).mockRejectedValue(new Error('timeout'));
+      (client.build.triggers.test as jest.Mock).mockRejectedValue(new Error('timeout'));
 
       await expect(toolbox.connections.test('conn_1')).rejects.toThrow(ToolboxOperationError);
       await expect(toolbox.connections.test('conn_1')).rejects.toMatchObject({
@@ -277,19 +281,19 @@ describe('toolbox', () => {
   describe('workflows.list', () => {
     it('lists workflows for the project', async () => {
       const items = [{ workflow_id: 'wf_1', name: 'ingest-orders' }];
-      (client.workflows.list as jest.Mock).mockResolvedValue({
+      (client.build.workflows.list as jest.Mock).mockResolvedValue({
         items,
         pagination: {},
       });
 
       const result = await toolbox.workflows.list();
 
-      expect(client.workflows.list).toHaveBeenCalledWith({ project_id: projectId });
+      expect(client.build.workflows.list).toHaveBeenCalledWith({ project_id: projectId });
       expect(result).toEqual(items);
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.workflows.list as jest.Mock).mockRejectedValue(
+      (client.build.workflows.list as jest.Mock).mockRejectedValue(
         new Error('unauthorized'),
       );
 
@@ -310,16 +314,16 @@ describe('toolbox', () => {
         nodes: [{ node_id: 'n1', workflow_id: 'wf_1', type: 'ingestion' }],
         edges: [{ source_node_id: 'n1', target_node_id: 'n2' }],
       };
-      (client.workflows.get_graph as jest.Mock).mockResolvedValue(graph);
+      (client.build.workflows.get_graph as jest.Mock).mockResolvedValue(graph);
 
       const result = await toolbox.workflows.getGraph(ref);
 
-      expect(client.workflows.get_graph).toHaveBeenCalledWith('wf_1', projectId);
+      expect(client.build.workflows.get_graph).toHaveBeenCalledWith('wf_1', projectId);
       expect(result).toEqual(graph);
     });
 
     it('throws ToolboxOperationError on failure', async () => {
-      (client.workflows.get_graph as jest.Mock).mockRejectedValue(
+      (client.build.workflows.get_graph as jest.Mock).mockRejectedValue(
         new Error('workflow not found'),
       );
 
@@ -343,93 +347,93 @@ describe('toolbox', () => {
      * and no other client method was called — proving no model indirection.
      */
 
-    it('dataProducts.write calls only client.data_products.get_writer — no model invoked', async () => {
+    it('dataProducts.write calls only client.get_writer — no model invoked', async () => {
       const ref: DataProductRef = { id: 'dp_1', name: 'orders' };
       const mockWriter = { write: jest.fn(), close: jest.fn().mockResolvedValue(undefined) };
-      (client.data_products.get_writer as jest.Mock).mockResolvedValue(mockWriter);
+      (client.get_writer as jest.Mock).mockResolvedValue(mockWriter);
 
       await toolbox.dataProducts.write(ref, { order_id: 1 });
 
       // The expected client method was called
-      expect(client.data_products.get_writer).toHaveBeenCalledTimes(1);
+      expect(client.get_writer).toHaveBeenCalledTimes(1);
 
       // No other client namespace methods were invoked (no model/LLM indirection)
-      expect(client.data_products.query).not.toHaveBeenCalled();
-      expect(client.data_products.get).not.toHaveBeenCalled();
-      expect(client.data_products.list).not.toHaveBeenCalled();
-      expect(client.queues.open_writer).not.toHaveBeenCalled();
-      expect(client.queues.get_queue_metadata).not.toHaveBeenCalled();
-      expect(client.triggers.list).not.toHaveBeenCalled();
-      expect(client.triggers.get).not.toHaveBeenCalled();
-      expect(client.triggers.test).not.toHaveBeenCalled();
-      expect(client.workflows.list).not.toHaveBeenCalled();
-      expect(client.workflows.get_graph).not.toHaveBeenCalled();
+      expect(client.query.query).not.toHaveBeenCalled();
+      expect(client.build.data_products.get).not.toHaveBeenCalled();
+      expect(client.build.data_products.list).not.toHaveBeenCalled();
+      expect(client.observe.open_writer).not.toHaveBeenCalled();
+      expect(client.observe.get_queue_metadata).not.toHaveBeenCalled();
+      expect(client.build.triggers.list).not.toHaveBeenCalled();
+      expect(client.build.triggers.get).not.toHaveBeenCalled();
+      expect(client.build.triggers.test).not.toHaveBeenCalled();
+      expect(client.build.workflows.list).not.toHaveBeenCalled();
+      expect(client.build.workflows.get_graph).not.toHaveBeenCalled();
     });
 
-    it('dataProducts.query calls only client.data_products.query — no model invoked', async () => {
+    it('dataProducts.query calls only client.query.query — no model invoked', async () => {
       const ref: DataProductRef = { id: 'dp_1', name: 'orders' };
-      (client.data_products.query as jest.Mock).mockResolvedValue({
+      (client.query.query as jest.Mock).mockResolvedValue({
         items: [{ id: 1 }],
         metadata: { data_product_id: 'dp_1', total_rows: 1 },
       });
 
       await toolbox.dataProducts.query(ref, 'SELECT 1');
 
-      expect(client.data_products.query).toHaveBeenCalledTimes(1);
-      expect(client.data_products.get_writer).not.toHaveBeenCalled();
-      expect(client.data_products.get).not.toHaveBeenCalled();
-      expect(client.data_products.list).not.toHaveBeenCalled();
-      expect(client.queues.open_writer).not.toHaveBeenCalled();
-      expect(client.workflows.list).not.toHaveBeenCalled();
+      expect(client.query.query).toHaveBeenCalledTimes(1);
+      expect(client.get_writer).not.toHaveBeenCalled();
+      expect(client.build.data_products.get).not.toHaveBeenCalled();
+      expect(client.build.data_products.list).not.toHaveBeenCalled();
+      expect(client.observe.open_writer).not.toHaveBeenCalled();
+      expect(client.build.workflows.list).not.toHaveBeenCalled();
     });
 
-    it('queues.write calls only client.queues.open_writer — no model invoked', async () => {
+    it('queues.write calls only client.observe.open_writer — no model invoked', async () => {
       const ref: QueueRef = { id: 'q_1', name: 'orders_raw' };
       const mockWriter = {
         write: jest.fn().mockResolvedValue(undefined),
         close: jest.fn().mockResolvedValue(undefined),
       };
-      (client.queues.open_writer as jest.Mock).mockResolvedValue(mockWriter);
+      (client.observe.open_writer as jest.Mock).mockResolvedValue(mockWriter);
 
       await toolbox.queues.write(ref, { data: 'test' });
 
-      expect(client.queues.open_writer).toHaveBeenCalledTimes(1);
-      expect(client.data_products.get_writer).not.toHaveBeenCalled();
-      expect(client.data_products.query).not.toHaveBeenCalled();
-      expect(client.queues.get_queue_metadata).not.toHaveBeenCalled();
-      expect(client.workflows.list).not.toHaveBeenCalled();
+      expect(client.observe.open_writer).toHaveBeenCalledTimes(1);
+      expect(client.get_writer).not.toHaveBeenCalled();
+      expect(client.query.query).not.toHaveBeenCalled();
+      expect(client.observe.get_queue_metadata).not.toHaveBeenCalled();
+      expect(client.build.workflows.list).not.toHaveBeenCalled();
     });
 
-    it('workflows.list calls only client.workflows.list — no model invoked', async () => {
-      (client.workflows.list as jest.Mock).mockResolvedValue({
+    it('workflows.list calls only client.build.workflows.list — no model invoked', async () => {
+      (client.build.workflows.list as jest.Mock).mockResolvedValue({
         items: [{ workflow_id: 'wf_1', name: 'flow' }],
         pagination: {},
       });
 
       await toolbox.workflows.list();
 
-      expect(client.workflows.list).toHaveBeenCalledTimes(1);
-      expect(client.data_products.get_writer).not.toHaveBeenCalled();
-      expect(client.data_products.query).not.toHaveBeenCalled();
-      expect(client.queues.open_writer).not.toHaveBeenCalled();
-      expect(client.triggers.list).not.toHaveBeenCalled();
-      expect(client.workflows.get_graph).not.toHaveBeenCalled();
+      expect(client.build.workflows.list).toHaveBeenCalledTimes(1);
+      expect(client.get_writer).not.toHaveBeenCalled();
+      expect(client.query.query).not.toHaveBeenCalled();
+      expect(client.observe.open_writer).not.toHaveBeenCalled();
+      expect(client.build.triggers.list).not.toHaveBeenCalled();
+      expect(client.build.workflows.get_graph).not.toHaveBeenCalled();
     });
 
-    it('connections.list calls only client.triggers.list — no model invoked', async () => {
-      (client.triggers.list as jest.Mock).mockResolvedValue({
+    it('connections.list calls only client.build.triggers.list — no model invoked', async () => {
+      (client.build.triggers.list as jest.Mock).mockResolvedValue({
         items: [{ connection_id: 'conn_1', name: 'main' }],
         pagination: {},
       });
 
       await toolbox.connections.list();
 
-      expect(client.triggers.list).toHaveBeenCalledTimes(1);
-      expect(client.triggers.get).not.toHaveBeenCalled();
-      expect(client.triggers.test).not.toHaveBeenCalled();
-      expect(client.data_products.get_writer).not.toHaveBeenCalled();
-      expect(client.queues.open_writer).not.toHaveBeenCalled();
-      expect(client.workflows.list).not.toHaveBeenCalled();
+      expect(client.build.triggers.list).toHaveBeenCalledTimes(1);
+      expect(client.build.triggers.get).not.toHaveBeenCalled();
+      expect(client.build.triggers.test).not.toHaveBeenCalled();
+      expect(client.get_writer).not.toHaveBeenCalled();
+      expect(client.observe.open_writer).not.toHaveBeenCalled();
+      expect(client.build.workflows.list).not.toHaveBeenCalled();
     });
   });
 

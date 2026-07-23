@@ -3,6 +3,7 @@ import type { LoxtepClientOptions } from './types.js';
 import { LoxtepHttpClient, type RateLimitInfo } from '../http/client.js';
 import { extendClientBaseUrl } from '../config/api-path.js';
 import { createDataProductsApi } from './data-products.js';
+import type { DataProductWriterOptions, DataProductReaderOptions } from './data-products.js';
 import { createQueuesApi } from './queues.js';
 import { createTriggersApi } from './triggers.js';
 import { createQualityApi } from './quality.js';
@@ -10,27 +11,39 @@ import { createApprovalsApi } from './approvals.js';
 import { createCatalogApi } from './catalog.js';
 import { createSchemasApi } from './schemas.js';
 import { createDiscoveryApi } from './discovery.js';
-import { createWorkflowsApi, type WorkflowsApi } from './workflows.js';
+import { createWorkflowsApi } from './workflows.js';
 import { createProjectsApi } from './projects.js';
 import { createTemplatesApi } from './templates.js';
 import { createObserveApi } from './observe.js';
 import { createThesaurusApi } from './thesaurus.js';
 import { createProcessIntelligenceApi } from './process-intelligence.js';
-import { createTargetsApi, type TargetsApi } from './targets.js';
+import { createTargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
 import { createInstancesApi } from './instances.js';
 import { createProceduresApi } from './procedures.js';
 import { createDomainsApi } from './domains.js';
 import { createStandardsApi } from './standards.js';
 import { createPromisesApi } from './promises.js';
-import { createImprovementsApi, type ImprovementsApi } from './improvements.js';
-import { createActivityApi, type ActivityApi } from './activity.js';
+import { createImprovementsApi } from './improvements.js';
+import { createActivityApi } from './activity.js';
+import { createSessionApi } from './session.js';
+import { createConnectFacade } from './connect.js';
+import { createWorkspaceFacade } from './workspace.js';
+import { createBuildFacade } from './build.js';
+import { createDefineFacade } from './define.js';
+import { createMeaningFacade } from './meaning.js';
+import { createReviewFacade } from './review.js';
+import { createQueryFacade } from './query.js';
+import { createObserveFacade } from './observe-facade.js';
+import { createContextFacade } from './context.js';
 import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
 import type { RStreamsSdk } from '../rstreams/leo-runtime.js';
 import { DataProductResolver } from './data-product-resolver.js';
 import { resolveAutoConfig, type ExplicitConfigFields } from '../config/workspace-config.js';
 import { ValidationError } from '../errors/validation.js';
+import type { FlowWriter } from './flow-types.js';
+import type { StreamEvent } from './data-products-types.js';
 
 /** Metrics surface: log and get_reporter (optional Loxtep metrics integration). */
 export interface MetricsSurface {
@@ -68,11 +81,9 @@ export interface FromWorkspaceOptions {
 }
 
 /**
- * Main SDK client. Public surface uses customer-facing terminology grouped by
- * the ingest → define → deliver journey: triggers, connectors, workflows,
- * data_products (writer/reader), schemas, quality, catalog, discovery, domains,
- * standards, data_contracts, thesaurus, procedures, targets. Plus advanced
- * surfaces: projects, templates, instances, observe, queues, metrics.
+ * Main SDK client. Ten namespaces mirror hosted MCP tool facades:
+ * session, connect, workspace, build, define, meaning, review, query, observe, context.
+ * Top-level `get_writer` / `get_reader` resolve data products for stream I/O.
  */
 export class LoxtepClient {
   readonly api_url: string;
@@ -83,90 +94,40 @@ export class LoxtepClient {
 
   private readonly _http: LoxtepHttpClient;
   private readonly _resolver: DataProductResolver;
+  private readonly _dataProductsApi: ReturnType<typeof createDataProductsApi>;
+  private readonly _workflowsApi: ReturnType<typeof createWorkflowsApi>;
   private _rsdk?: RStreamsSdk;
   private _rsdkResolutionAttempted = false;
 
-  /** Data products (backend: data products). get, list, search. */
-  readonly data_products: ReturnType<typeof createDataProductsApi>;
+  /** Session & org context (MCP: loxtep_session). */
+  readonly session: ReturnType<typeof createSessionApi>;
 
-  /** Workflows (backend: workflows); project-scoped DAG of nodes. list, get (with nodes), create, get_graph, deploy. */
-  readonly workflows: WorkflowsApi;
+  /** Connectors + templates (MCP: loxtep_connectors, loxtep_templates). */
+  readonly connect: ReturnType<typeof createConnectFacade>;
 
-  /** Observe: status (bots / observability). */
-  readonly observe: ReturnType<typeof createObserveApi>;
+  /** Projects, instances, versions (MCP: loxtep_projects, loxtep_instances, loxtep_workspace). */
+  readonly workspace: ReturnType<typeof createWorkspaceFacade>;
 
-  /** Projects: list, get, create, update, delete (workflows MS). */
-  readonly projects: ReturnType<typeof createProjectsApi>;
+  /** Workflows, triggers, data products, targets, deploy (MCP: loxtep_workflows, loxtep_triggers, loxtep_data_products, loxtep_deployments). */
+  readonly build: ReturnType<typeof createBuildFacade>;
 
-  /** Templates: list, get (catalog). Apply via projects.apply_template(project_id, body). */
-  readonly templates: ReturnType<typeof createTemplatesApi>;
+  /** Schemas, quality, standards, contracts, domains (MCP: loxtep_schemas, loxtep_quality, loxtep_catalog domains). */
+  readonly define: ReturnType<typeof createDefineFacade>;
 
-  /** Domains. */
-  readonly domains: ReturnType<typeof createDomainsApi>;
+  /** Thesaurus / ontology vocabulary (MCP: loxtep_ontology, loxtep_semantic_layer). */
+  readonly meaning: ReturnType<typeof createMeaningFacade>;
 
-  /** Standards (backend: data standards). */
-  readonly standards: ReturnType<typeof createStandardsApi>;
+  /** Approvals + improvements (MCP: loxtep_approvals). */
+  readonly review: ReturnType<typeof createReviewFacade>;
 
-  /** Data contracts (backend: datacontracts). */
-  readonly data_contracts: ReturnType<typeof createPromisesApi>;
+  /** Catalog, discovery, analytics query (MCP: loxtep_catalog, loxtep_analytics). */
+  readonly query: ReturnType<typeof createQueryFacade>;
 
-  /** Triggers (ingest source bindings; backend: connections): get, list, create, update, delete, test. */
-  readonly triggers: ReturnType<typeof createTriggersApi>;
+  /** Observe status + queue I/O (MCP: observe + loxtep_workspace queue hints). */
+  readonly observe: ReturnType<typeof createObserveFacade>;
 
-  /** Queues: get_queue_metadata, get_reader_checkpoint, open_reader, open_writer. */
-  readonly queues: ReturnType<typeof createQueuesApi>;
-
-  /** Quality metrics: list, get, create. */
-  readonly quality: ReturnType<typeof createQualityApi>;
-
-  /** Approvals: list pending approval requests and resolve them (approve/reject) —
-   * programmatic parity for pipeline HITL gates. */
-  readonly approvals: ReturnType<typeof createApprovalsApi>;
-
-  /** Catalog (search): search. */
-  readonly catalog: ReturnType<typeof createCatalogApi>;
-
-  /** Discovery (MCP tools): search with include_evidence/include_lineage, get_evidence, get_lineage_impact, get_governance_flags, run. */
-  readonly discovery: ReturnType<typeof createDiscoveryApi>;
-
-  /** Schemas (data product schema): get, list, tag_pii_fields. */
-  readonly schemas: ReturnType<typeof createSchemasApi>;
-
-  /** Thesaurus (canonical correlation keys + aliases): list_terms, resolve_canonical_key, append_synonym. */
-  readonly thesaurus: ReturnType<typeof createThesaurusApi>;
-
-  /**
-   * @internal
-   * Process Intelligence: decisionTraces.list (optional anchor params). LOX-1478.
-   * Experimental — excluded from the documented surface.
-   */
-  readonly process_intelligence: ReturnType<typeof createProcessIntelligenceApi>;
-
-  /** Targets (delivery sink bindings): list, get, create, update, delete. How data products deliver data externally. */
-  readonly targets: TargetsApi;
-
-  /** Connectors (organization-level): list, get, create, update, delete, test, get_oauth_url. */
-  readonly connectors: ReturnType<typeof createConnectorsApi>;
-
-  /** Instances (organization-level): list, get. */
-  readonly instances: ReturnType<typeof createInstancesApi>;
-
-  /** Procedures (process graph): list. */
-  readonly procedures: ReturnType<typeof createProceduresApi>;
-
-  /**
-   * @internal
-   * Improvements (AI Eval self-improvement): list, apply, reject (R8.3–R8.6).
-   * Experimental — excluded from the documented surface.
-   */
-  readonly improvements: ImprovementsApi;
-
-  /**
-   * @internal
-   * Activity & observability: list activity/audit entries (R7.4, R18.5).
-   * Experimental — excluded from the documented surface.
-   */
-  readonly activity: ActivityApi;
+  /** Process intelligence, procedures, activity (MCP: loxtep_process_intel, loxtep_procedures). */
+  readonly context: ReturnType<typeof createContextFacade>;
 
   /** Metrics: log, get_reporter (stub until metrics wiring is added). */
   readonly metrics: MetricsSurface;
@@ -213,44 +174,91 @@ export class LoxtepClient {
     this._rsdk =
       prebuiltSdk ??
       (streamResourcesResolved ? createRStreamsSdk(streamResourcesResolved) : undefined);
-    this.queues = createQueuesApi(this._http, {
+
+    const queuesApi = createQueuesApi(this._http, {
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
     });
-    this.triggers = createTriggersApi(this._http);
-    this.workflows = createWorkflowsApi(this._http, {
+    const triggersApi = createTriggersApi(this._http);
+    this._workflowsApi = createWorkflowsApi(this._http, {
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
     });
-    this.projects = createProjectsApi(this._http);
-    this.templates = createTemplatesApi(this._http);
-    this.observe = createObserveApi(this._http);
-    this.data_products = createDataProductsApi(this._http, {
-      get_queue_metadata: name => this.queues.get_queue_metadata(name),
-      get_reader_checkpoint: (name, bot_id) => this.queues.get_reader_checkpoint(name, bot_id),
+    const projectsApi = createProjectsApi(this._http);
+    const templatesApi = createTemplatesApi(this._http);
+    const observeApi = createObserveApi(this._http);
+    this._dataProductsApi = createDataProductsApi(this._http, {
+      get_queue_metadata: name => queuesApi.get_queue_metadata(name),
+      get_reader_checkpoint: (name, bot_id) => queuesApi.get_reader_checkpoint(name, bot_id),
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
       resolver: this._resolver,
     });
-    this.quality = createQualityApi(this._http);
-    this.approvals = createApprovalsApi(this._http, {
+    const qualityApi = createQualityApi(this._http);
+    const approvalsApi = createApprovalsApi(this._http, {
       organization_id: options.organization_id,
     });
-    this.catalog = createCatalogApi(this._http);
-    this.discovery = createDiscoveryApi(this._http);
-    this.schemas = createSchemasApi(this._http);
-    this.thesaurus = createThesaurusApi(this._http, options.organization_id);
-    this.process_intelligence = createProcessIntelligenceApi(this._http);
-    this.targets = createTargetsApi(this._http);
-    this.connectors = createConnectorsApi(this._http);
-    this.instances = createInstancesApi(this._http, options.organization_id);
-    this.procedures = createProceduresApi(this._http);
-    this.improvements = createImprovementsApi(this._http);
-    this.activity = createActivityApi(this._http);
-    this.domains = createDomainsApi(this._http);
-    this.standards = createStandardsApi(this._http);
-    this.data_contracts = createPromisesApi(this._http);
+    const catalogApi = createCatalogApi(this._http);
+    const discoveryApi = createDiscoveryApi(this._http);
+    const schemasApi = createSchemasApi(this._http);
+    const thesaurusApi = createThesaurusApi(this._http, options.organization_id);
+    const processIntelligenceApi = createProcessIntelligenceApi(this._http);
+    const targetsApi = createTargetsApi(this._http);
+    const connectorsApi = createConnectorsApi(this._http);
+    const instancesApi = createInstancesApi(this._http, options.organization_id);
+    const proceduresApi = createProceduresApi(this._http);
+    const improvementsApi = createImprovementsApi(this._http);
+    const activityApi = createActivityApi(this._http);
+    const domainsApi = createDomainsApi(this._http);
+    const standardsApi = createStandardsApi(this._http);
+    const dataContractsApi = createPromisesApi(this._http);
+
+    this.session = createSessionApi(this._http);
+    this.connect = createConnectFacade({ connectors: connectorsApi, templates: templatesApi });
+    this.workspace = createWorkspaceFacade({ projects: projectsApi, instances: instancesApi });
+    this.build = createBuildFacade({
+      workflows: this._workflowsApi,
+      triggers: triggersApi,
+      data_products: this._dataProductsApi,
+      targets: targetsApi,
+    });
+    this.define = createDefineFacade({
+      schemas: schemasApi,
+      quality: qualityApi,
+      standards: standardsApi,
+      data_contracts: dataContractsApi,
+      domains: domainsApi,
+    });
+    this.meaning = createMeaningFacade({ thesaurus: thesaurusApi });
+    this.review = createReviewFacade({ approvals: approvalsApi, improvements: improvementsApi });
+    this.query = createQueryFacade({
+      catalog: catalogApi,
+      discovery: discoveryApi,
+      data_products: this._dataProductsApi,
+    });
+    this.observe = createObserveFacade({ observe: observeApi, queues: queuesApi });
+    this.context = createContextFacade({
+      process_intelligence: processIntelligenceApi,
+      procedures: proceduresApi,
+      activity: activityApi,
+    });
     this.metrics = this.createMetricsSurface(options.metrics);
+  }
+
+  /** Resolve a data product writer by name or id (delegates to data-products stream logic). */
+  async get_writer(
+    name_or_id: string,
+    options?: DataProductWriterOptions
+  ): Promise<FlowWriter> {
+    return this._dataProductsApi.get_writer(name_or_id, options);
+  }
+
+  /** Resolve a data product reader by name or id (delegates to data-products stream logic). */
+  async get_reader(
+    name_or_id: string,
+    options?: DataProductReaderOptions
+  ): Promise<AsyncIterable<StreamEvent>> {
+    return this._dataProductsApi.get_reader(name_or_id, options);
   }
 
   /** Update SigV4 credentials used by the HTTP layer (e.g. CLI after refresh returns STS). */
@@ -283,7 +291,6 @@ export class LoxtepClient {
 
     const resolved = resolveAutoConfig(explicit, options.cwd);
 
-    // R13.2: Emit debug log naming resolved files
     if (resolved.resolvedFiles.length > 0) {
       debugLog(
         `[loxtep] Auto-config resolved from: ${resolved.resolvedFiles.join(', ')}`
@@ -292,10 +299,7 @@ export class LoxtepClient {
       debugLog('[loxtep] Auto-config: no workspace configuration files found');
     }
 
-    // R13.4: Check required files — api_url and token must be resolvable
-    // If api_url is not resolved from any source, check which file is missing
     if (!resolved.api_url) {
-      // Determine which file would have provided api_url
       const missingProjectFile = resolved.missingFiles.find(f => f.includes('project.json'));
       if (missingProjectFile) {
         throw new ValidationError(
@@ -310,7 +314,6 @@ export class LoxtepClient {
     }
 
     if (!resolved.token) {
-      // Token comes from credentials.json
       const missingCredFile = resolved.missingFiles.find(f => f.includes('credentials.json'));
       if (missingCredFile) {
         throw new ValidationError(
@@ -349,8 +352,6 @@ export class LoxtepClient {
     if (this._rsdkResolutionAttempted) return undefined;
     this._rsdkResolutionAttempted = true;
 
-    // Priority 2: Check if the resolver has any cached stream config from a prior data product resolution
-    // (This covers the case where get_writer/get_reader was called first and cached the config)
     const cachedConfig = this._resolver.getCachedStreamConfig();
     if (cachedConfig) {
       const resolved = resolveStreamsConfiguration(cachedConfig);
@@ -360,7 +361,6 @@ export class LoxtepClient {
       }
     }
 
-    // Priority 3: Resolve from instance record via GET /organizations/instances/{id}/stream-config
     if (this.instance_id) {
       try {
         const streamConfigRes = await this._http.get<{ success: true; data: Record<string, string> }>(
@@ -380,7 +380,6 @@ export class LoxtepClient {
       }
     }
 
-    // Priority 4 (deprecated fallback): observe.stream_config()
     try {
       const remoteConfig = await this.observe.stream_config();
       if (remoteConfig && typeof remoteConfig === 'object') {
@@ -432,7 +431,6 @@ export class LoxtepClient {
         get_reporter: () => null,
       };
     }
-    // Stub: optional metrics reporter can be wired later
     return {
       log: (_metric: { id: string; value: number; tags?: Record<string, string> }) => {
         /* stub */

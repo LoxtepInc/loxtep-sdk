@@ -159,6 +159,16 @@ export type {
   ActivitySource,
 } from './activity-types.js';
 export type { ActivityApi } from './activity.js';
+export type { ConnectFacade } from './connect.js';
+export type { WorkspaceFacade } from './workspace.js';
+export type { BuildFacade } from './build.js';
+export type { DefineFacade } from './define.js';
+export type { MeaningFacade } from './meaning.js';
+export type { ReviewFacade } from './review.js';
+export type { QueryFacade } from './query.js';
+export type { ObserveFacade } from './observe-facade.js';
+export type { ContextFacade } from './context.js';
+export type { CurrentUser, CurrentOrganization } from './session.js';
 export type { ProjectVersionMetadata, VersionDiff } from './versions-types.js';
 export type { DataProductWriterOptions, DataProductReaderOptions } from './data-products.js';
 export { DataProductResolver, AmbiguityError } from './data-product-resolver.js';

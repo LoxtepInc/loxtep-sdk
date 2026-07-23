@@ -8,6 +8,7 @@ from typing import Any
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 
 OBSERVE_BOTS = "/observe/bots"
+OBSERVE_STREAM_CONFIG = "/observe/stream-config"
 
 
 def _data(res: Any) -> Any:
@@ -25,6 +26,11 @@ class ObserveApi:
         res = self._http.get(OBSERVE_BOTS)
         return _data(res)
 
+    def stream_config(self) -> Any:
+        """GET /observe/stream-config. Bus resource names for stream runtime."""
+        res = self._http.get(OBSERVE_STREAM_CONFIG)
+        return _data(res)
+
 
 class AsyncObserveApi:
     """Async observe surface."""
@@ -35,4 +41,9 @@ class AsyncObserveApi:
     async def status(self) -> Any:
         """GET /observe/bots."""
         res = await self._http.get(OBSERVE_BOTS)
+        return _data(res)
+
+    async def stream_config(self) -> Any:
+        """GET /observe/stream-config."""
+        res = await self._http.get(OBSERVE_STREAM_CONFIG)
         return _data(res)
