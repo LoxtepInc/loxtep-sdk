@@ -1,15 +1,31 @@
 # Loxtep Node.js SDK
 
-Client for the Loxtep API, organized around one journey: **ingest → define →
-deliver**. Install the SDK and get to your first event in five steps (below),
-then reach for the namespace that matches the stage you're in:
+Client for the Loxtep API. Since **v0.7.0**, the public surface mirrors the
+**10 hosted MCP tool facades** (no flat top-level namespaces like
+`client.workflows` or `client.data_products`).
 
-- **Ingest** — `triggers`, `connectors`, `workflows`, `data_products.get_writer`
-- **Define** — `data_products`, `schemas`, `quality`, `catalog`, `discovery`,
-  `domains`, `standards`, `data_contracts`, `thesaurus`, `procedures`
-- **Deliver** — `data_products` (reader/stream/replay/query), `targets`
-- **Advanced / platform** — `projects`, `templates`, `instances`, `observe`,
-  `queues`, `metrics`
+| MCP facade | SDK namespace | Examples |
+| --- | --- | --- |
+| `loxtep_session` | `client.session` | `get_current_user()` |
+| `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
+| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*` |
+| `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*` |
+| `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.domains.*`, … |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*` |
+| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*` |
+| `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()` |
+| `loxtep_observe` | `client.observe` | `.stream_config()`, `.open_reader()` |
+| `loxtep_context` | `client.context` | `.procedures.*`, `.activity.*`, … |
+
+**Stream I/O** uses top-level helpers (not nested under a facade):
+`await client.get_writer('data-product-name')` and
+`await client.get_reader('data-product-name')`.
+
+Full mapping table: [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
+**Upgrading from 0.6.x:** replace `client.data_products` →
+`client.build.data_products` (CRUD/stream/replay) or `client.get_writer` /
+`client.get_reader` (recommended write/read path); `client.workflows` →
+`client.build.workflows`; etc.
 
 **Node.js 22+** is the supported runtime (`engines` in `package.json`). **Live**
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
@@ -22,7 +38,7 @@ This SDK supports two developer workflows:
 
 | Path | Use case | Entry point |
 |------|----------|-------------|
-| **Programmatic** | Write/read events from application code (microservices, lambdas, scripts) | `LoxtepClient` → `data_products.get_writer` / `get_reader` |
+| **Programmatic** | Write/read events from application code (microservices, lambdas, scripts) | `LoxtepClient` → `get_writer` / `get_reader` |
 | **Code-first CLI** | Author workflows as TypeScript, test locally, deploy via CI | `loxtep init → attach → generate → test → deploy` |
 
 There are also two additional paths that don't require this SDK:
@@ -63,8 +79,8 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
      auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
    });
 
-   // Write events to a data product
-   const writer = await client.data_products.get_writer('shopify_gql_customer');
+   // Write events to a data product (top-level — resolves deployment metadata)
+   const writer = await client.get_writer('shopify_gql_customer');
    writer.write({
      customer_id: '123',
      name: 'Alice',
@@ -73,7 +89,7 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
    await writer.close();
 
    // Read events from a data product
-   const reader = await client.data_products.get_reader('shopify_gql_customer');
+   const reader = await client.get_reader('shopify_gql_customer');
    for await (const event of reader) {
      console.log(event);
    }
@@ -87,8 +103,9 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
    `await client.observe.stream_config()` returns stream resource names
    needed for the data plane. Merge into
    `new LoxtepClient({ ...opts, streams: { ...partial } })` with your
-   JWT-backed client. Note: `data_products.get_writer` and `get_reader` resolve
-   stream config automatically — this is only needed for manual bus access.
+   JWT-backed client. `get_writer` / `get_reader` resolve stream config
+   automatically — this step is only needed for manual bus access via
+   `client.observe.open_reader()`.
 
 ---
 
@@ -124,7 +141,7 @@ npx loxtep deploy
 The `generate` step produces `.loxtep/generated/index.ts` with typed constants for every data product, connector, domain, and queue in your workspace. Import them in your workflow modules for compile-time safety:
 
 ```ts
-import { defineDataWorkflow, on } from '@loxtep/sdk/authoring'
+import { defineDataWorkflow, on } from '@loxtep/sdk'
 import { workspace } from './.loxtep/generated'
 
 export default defineDataWorkflow({
@@ -146,71 +163,76 @@ See `loxtep init --help`, `loxtep attach --help`, etc. for all flags. The full C
 
 ## API surface
 
-Every method is `snake_case`. Namespaces are grouped by the stage of the journey
-they serve, and labelled by *kind*: **Resource** (full CRUD), **Reference**
-(read-only), **Runtime** (live stream I/O).
+Every method is `snake_case`. Use the **10 MCP-aligned facades** on
+`LoxtepClient` (see table at the top). Nested APIs keep descriptive names
+(`workflows`, `data_products`, `connectors`, …) under their facade.
 
-### Ingest — connect sources, write events
+### Top-level stream I/O (preferred)
 
-- **triggers** *(Resource)* – `get`, `list`, `create`, `update`, `delete`,
-  `test` — ingest source bindings (external systems that feed a workflow)
-- **connectors** *(Resource)* – `list`, `get`, `create`, `update`, `delete`,
-  `test`, `get_oauth_url` — org-level catalog of connectable system types
-- **workflows** *(Resource)* – `list`, `get`, `create`, `get_graph`, `deploy` —
-  the ingestion → transformation → export DAG
-- **data_products.get_writer(name)** *(Runtime)* – the write path for events
+- **`get_writer(name_or_id)`** — write path; resolves queue, bot, stream config
+- **`get_reader(name_or_id)`** — async iterable read path
+- **`LoxtepClient.fromWorkspace()`** — construct from `.loxtep/project.json` +
+  `~/.loxtep/credentials.json` (env overrides: `LOXTEP_API_URL`, `LOXTEP_TOKEN`, …)
 
-### Define — semantics, schema, quality, governance
+### `client.build` (MCP: loxtep_build)
 
-- **data_products** *(Resource + Runtime)* – `get`, `get_lexicon`, `list`,
-  `search`, `query`, `list_tables`, `get_queue_info`, `get_reader_checkpoint`,
-  `create`, `readiness`, `promote`, `get_usage_map`, `invalidate_cache`
-- **schemas** *(Reference)* – `get`, `list`, `tag_pii_fields`
-- **quality** *(Resource)* – `list`, `get`, `create`
-- **catalog** *(Reference)* – `search`
-- **discovery** *(Reference)* – `search`, `get_evidence`, `get_lineage_impact`,
-  `get_governance_flags`, `run`
-- **domains** *(Reference)* – `list`, `get`
-- **standards** *(Reference)* – `list`, `get`
-- **data_contracts** *(Resource)* – `list`, `get`, `create`, `update`, `delete`
-- **thesaurus** *(Reference)* – `list_terms`, `resolve_canonical_key`,
-  `append_synonym`
-- **procedures** *(Reference)* – `list`
+- **`.workflows`** — `list`, `get`, `create`, `get_graph`, `deploy`; low-level
+  `.get_writer(workflow_id, { bot_id, … })` escape hatch
+- **`.triggers`** — `get`, `list`, `create`, `update`, `delete`, `test`
+- **`.data_products`** — CRUD, `stream`, `replay`, `get_queue_info`,
+  `invalidate_cache`, … (for writes/reads by name, prefer top-level
+  `client.get_writer` / `get_reader`)
+- **`.targets`** — delivery sink bindings (`list`, `get`, `create`, `update`, `delete`)
 
-### Deliver — consume and route data
+### `client.connect` (MCP: loxtep_connect)
 
-- **data_products** *(Runtime)* – `get_reader`, `stream`, `replay`
-- **targets** *(Resource)* – `list`, `get`, `create`, `update`, `delete` —
-  delivery sink bindings (webhook, API, export, DB sync, BI, event stream)
+- **`.connectors`** — org-level connector credentials
+- **`.templates`** — starter templates (`list`, `get`, `apply_template` on projects)
 
-### Advanced / platform
+### `client.workspace` (MCP: loxtep_workspace)
 
-- **projects** *(Resource)* – `list`, `get`, `create`, `update`, `delete`,
-  `apply_template`, `repository`
-- **templates** *(Reference)* – `list`, `get`
-- **instances** *(Reference)* – `list`, `get`, `get_stream_config`
-- **observe** – `status`, `stream_config`
-- **queues** – `get_queue_metadata`, `get_reader_checkpoint`, `open_reader`,
-  `open_writer`
-- **metrics** – `log`, `get_reporter`
+- **`.projects`** — `list`, `get`, `create`, `update`, `delete`, `apply_template`
+- **`.instances`** — `list`, `get`, stream config helpers
+
+### `client.define` (MCP: loxtep_define)
+
+- **`.schemas`**, **`.quality`**, **`.standards`**, **`.data_contracts`**, **`.domains`**
+
+### `client.query` (MCP: loxtep_query)
+
+- **`.catalog`**, **`.discovery`**, **`.query()`**, **`.list_tables()`**, **`.search()`**
+
+### `client.observe` (MCP: loxtep_observe)
+
+- **`status()`**, **`stream_config()`**, **`open_reader()`**, **`open_writer()`**,
+  **`get_queue_metadata()`**, **`get_reader_checkpoint()`**
+
+### Other facades
+
+- **`client.session`** — `get_current_user`, `get_current_organization`, `logout`
+- **`client.meaning`** — `.thesaurus.*`
+- **`client.review`** — `.approvals.*`, `.improvements.*`
+- **`client.context`** — `.procedures.*`, `.activity.*`, `.process_intelligence.*`
+- **`client.metrics`** — `log`, `get_reporter` (stub until metrics wiring lands)
+
+See [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md) for the full MCP ↔ SDK table.
 
 ## Data product writer and reader
 
-`await client.data_products.get_writer('name')` resolves the data product's
-queue, bot identity, and stream bus config automatically, then returns a
-**FlowWriter**:
+`await client.get_writer('name')` resolves the data product's queue, bot
+identity, and stream bus config automatically, then returns a **FlowWriter**:
 
 ```ts
-const writer = await client.data_products.get_writer('shopify_gql_customer');
+const writer = await client.get_writer('shopify_gql_customer');
 writer.write({ customer_id: '123', name: 'Alice', email: 'alice@example.com' });
 await writer.close();
 ```
 
-`await client.data_products.get_reader('name')` returns an async iterable over
-the data product's queue:
+`await client.get_reader('name')` returns an async iterable over the data
+product's queue:
 
 ```ts
-const reader = await client.data_products.get_reader('shopify_gql_customer');
+const reader = await client.get_reader('shopify_gql_customer');
 for await (const event of reader) {
   console.log(event);
 }
@@ -221,13 +243,13 @@ Options:
 - **Writer**: `{ bot_id?, batch_size?, max_retries? }`
 - **Reader**: `{ bot_id?, from?, batch_size? }`
 
-Cache: call `client.data_products.invalidate_cache('name')` to force
+Cache: call `client.build.data_products.invalidate_cache('name')` to force
 re-resolution on the next call.
 
 ## Stream helpers
 
-Use `mapStream` and `filterStream` with `data_products.stream()`,
-`data_products.replay()`, or `queues.open_reader().read()`:
+Use `mapStream` and `filterStream` with `client.build.data_products.stream()`,
+`client.build.data_products.replay()`, or `client.observe.open_reader().read()`:
 
 ```ts
 import { mapStream, filterStream } from '@loxtep/sdk';
@@ -257,10 +279,10 @@ const client = new LoxtepClient({
 });
 
 // List targets for a data product
-const { items, pagination } = await client.targets.list('dp_abc123');
+const { items, pagination } = await client.build.targets.list('dp_abc123');
 
 // Create a webhook target
-const webhook = await client.targets.create('dp_abc123', {
+const webhook = await client.build.targets.create('dp_abc123', {
   targetType: 'webhook',
   name: 'Order notifications',
   endpoint_url: 'https://example.com/webhooks/orders',
@@ -268,12 +290,12 @@ const webhook = await client.targets.create('dp_abc123', {
 });
 
 // Update a target
-await client.targets.update('dp_abc123', webhook.consumption_id, {
+await client.build.targets.update('dp_abc123', webhook.consumption_id, {
   is_active: false,
 });
 
 // Delete a target
-await client.targets.delete('dp_abc123', webhook.consumption_id);
+await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 ```
 
 ## Documentation
@@ -348,141 +370,56 @@ loxtep metrics rate-limits
 
 ## Module exports
 
-The SDK also ships standalone modules for configuration, authentication,
-code generation, skill scoping, and workflow authoring. Import them directly
-from the relevant subpath.
-
-### `config` module
-
-```typescript
-import { loadConfig, loadConfigSync, saveConfig } from '@loxtep/sdk/config';
-```
-
-| Export | Type | Description |
-| --- | --- | --- |
-| `loadConfig` | function | Load config from env vars and optional file (async). Precedence: env > file > defaults |
-| `loadConfigSync` | function | Synchronous variant of `loadConfig` using `readFileSync` |
-| `saveConfig` | function | Persist config (api_url, org/project/instance IDs) to file. No secrets written to disk |
-| `parseStreamsPartial` | function | Extract a partial bus config from unknown JSON, keeping only valid stream resource keys |
-| `getConfigDir` | function | Return the default config directory path (`~/.loxtep`) |
-| `getDefaultConfigPath` | function | Return the default config file path (`~/.loxtep/config.json`) |
-| `buildAuthServiceUrl` | function | Build the full URL for auth endpoints (`/auth/login`, `/auth/refresh`) with path prefix |
-| `extendClientBaseUrl` | function | Extend `api_url` with a microservice path segment, avoiding duplication |
-| `buildPlatformRequestUrl` | function | Build a full request URL for the shared control-plane host, handling microservice routing |
-| `resolveAutoConfig` | function | Resolve configuration with full precedence: env > explicit > workspace files |
-
-### `auth` module
+The SDK re-exports configuration, authentication, codegen, skill scoping,
+workflow authoring, HTTP, checkpoint, and streaming helpers from the main
+entry point. **`@loxtep/sdk/errors`** is the only additional published
+subpath (see `package.json` `exports`).
 
 ```typescript
-import { login, refresh, browserLogin, TokenManager } from '@loxtep/sdk/auth';
+import {
+  LoxtepClient,
+  loadConfig,
+  login,
+  defineDataWorkflow,
+  on,
+  checkScope,
+  signRequest,
+  createMemoryCheckpointStore,
+  DataProductResolver,
+} from '@loxtep/sdk';
+
+import { ValidationError, parseHttpError } from '@loxtep/sdk/errors';
 ```
 
-| Export | Type | Description |
-| --- | --- | --- |
-| `decodeJwtPayload` | function | Decode JWT payload to read `exp` (expiry) without verification. Client-side only |
-| `login` | function | Authenticate with email/password via `POST /auth/login`. Returns access + refresh tokens |
-| `refresh` | function | Refresh an access token via `POST /auth/refresh` |
-| `browserLogin` | function | Run OAuth 2.1 browser-based login flow with a localhost callback server |
-| `TokenManager` | class | In-memory token manager with auto-refresh support. No tokens persisted to disk |
-| `LoginMfaRequiredError` | class | Error thrown when login returns 403 and the user must supply a TOTP code |
+### Selected exports (import from `@loxtep/sdk` unless noted)
 
-### `codegen` module
+**Config:** `loadConfig`, `loadConfigSync`, `saveConfig`, `parseStreamsPartial`,
+`getConfigDir`, `getDefaultConfigPath`, `buildAuthServiceUrl`,
+`buildPlatformRequestUrl`, `resolveAutoConfig`
 
-```typescript
-import { loadWorkspaceContext, deriveKey, normalizeContext, emitArtifact, writeArtifact, computeCounts } from '@loxtep/sdk/codegen';
-```
+**Auth:** `decodeJwtPayload`, `login`, `refresh`, `browserLogin`, `TokenManager`,
+`LoginMfaRequiredError`
 
-| Export | Type | Description |
-| --- | --- | --- |
-| `loadWorkspaceContext` | function | Fetch all workspace resources from the control plane and assemble a `WorkspaceContext` |
-| `deriveKey` | function | Derive a deterministic, valid TypeScript identifier key from a resource name |
-| `normalizeContext` | function | Transform raw `WorkspaceContext` into canonical `NormalizedContext` with stable keys and id-sorted ordering |
-| `emitArtifact` | function | Render a `NormalizedContext` into a complete TypeScript source string with `as const` exports |
-| `writeArtifact` | function | Atomic file write of the generated artifact; returns per-resource-type counts |
-| `computeCounts` | function | Compute per-resource-type counts from a `NormalizedContext` |
+**Codegen:** `loadWorkspaceContext`, `deriveKey`, `normalizeContext`, `emitArtifact`,
+`writeArtifact`, `computeCounts`
 
-### `skills` module
+**Skills:** `checkScope`, `checkScopeByName`, `parseSkillYaml`, `loadSkillFromFile`,
+`loadSkillsFromDirectory`, `validateSkillReferences`, `formatSkillValidationErrors`,
+`SkillDefinitionSchema`
 
-```typescript
-import { checkScope, parseSkillYaml, loadSkillsFromDirectory } from '@loxtep/sdk/skills';
-```
+**Authoring:** `defineDataWorkflow`, `on`, `createToolbox`, `agent`,
+`validateAgentOptions`, `compileModule`, `ActionTrace`, `AgentScopeError`,
+`ToolboxOperationError`
 
-| Export | Type | Description |
-| --- | --- | --- |
-| `checkScope` | function | Fail-closed scope decision: check whether an operation on a resource is permitted by a skill |
-| `checkScopeByName` | function | Resolve a skill by name from a map and check scope in one step |
-| `parseSkillYaml` | function | Parse a YAML string into a validated `SkillDefinition` |
-| `loadSkillFromFile` | function | Load a single skill definition from a `.yaml` file path |
-| `loadSkillsFromDirectory` | function | Load all skill definitions from a `.loxtep/skills/` directory |
-| `validateSkillReferences` | function | Validate all skill resource references against the loaded `WorkspaceContext` |
-| `formatSkillValidationErrors` | function | Format skill validation errors into human-readable messages |
-| `SkillDefinitionSchema` | object | Zod schema for validating skill definition YAML structure |
+**HTTP:** `signRequest`, `LoxtepHttpClient`
 
-### `authoring` module
+**Checkpoint:** `createMemoryCheckpointStore`
 
-```typescript
-import { defineDataWorkflow, on, createToolbox, agent } from '@loxtep/sdk/authoring';
-```
+**Streaming:** `mapStream`, `filterStream`
 
-| Export | Type | Description |
-| --- | --- | --- |
-| `defineDataWorkflow` | function | Validate and return a `DataWorkflowModule` spec. Throws `ValidationError` on invalid input |
-| `on` | object | Trigger builders: `queueEvent`, `connectorEvent`, `schedule`, `webhook` |
-| `createToolbox` | function | Create a deterministic typed platform-call toolbox (no model in the loop) |
-| `agent` | function | Agentic operation entry point with scope enforcement and action trace |
-| `validateAgentOptions` | function | Validate agent options (prompt length, skills references) against available skills |
-| `computeReachableScope` | function | Compute the union of all resource scopes from supplied skill definitions |
-| `enforceAgentScope` | function | Check whether a resource access is within the merged scope of the agent's skills |
-| `createScopeGuardedToolbox` | function | Create a scope-guarded proxy that enforces scope and records traces before every call |
-| `compileModule` | function | Pure compiler: lower a `DataWorkflowModule` into `GraphPatchOp[]` for deployment |
-| `computeRemovalSet` | function | Compute workflows present on instance but absent from project modules (for cleanup) |
-| `ActionTrace` | class | Mutable action trace recorder with monotonically increasing sequence numbers |
-| `AgentScopeError` | class | Error thrown when an agentic operation is blocked due to a scope violation |
-| `ToolboxOperationError` | class | Error thrown when a toolbox operation fails (network, validation, or platform error) |
+**Errors** (from `@loxtep/sdk/errors`): `AuthorizationError`, `ConflictError`,
+`ValidationError`, `DefinitionValidationError`, `SchemaValidationError`,
+`CheckpointError`, `parseHttpError`
 
-### `http` module
-
-```typescript
-import { signRequest, LoxtepHttpClient } from '@loxtep/sdk/http';
-```
-
-| Export | Type | Description |
-| --- | --- | --- |
-| `signRequest` | function | Sign an HTTP request with AWS SigV4 for API Gateway (`execute-api`). Returns headers including `Authorization` and `x-amz-*` |
-| `LoxtepHttpClient` | class | HTTP client that signs requests with AWS SigV4 and attaches JWT. Provides `get`, `post`, `put`, `delete` helpers with retry on 5xx/network errors and typed Loxtep errors on 4xx |
-
-### `checkpoint` module
-
-```typescript
-import { createMemoryCheckpointStore } from '@loxtep/sdk/checkpoint';
-```
-
-| Export | Type | Description |
-| --- | --- | --- |
-| `createMemoryCheckpointStore` | function | Create an in-memory checkpoint store for stream/replay resume. Suitable for tests or single-process use |
-
-### Error classes
-
-```typescript
-import { AuthorizationError, ConflictError, ValidationError, DefinitionValidationError, SchemaValidationError, CheckpointError, parseHttpError } from '@loxtep/sdk/errors';
-```
-
-| Export | Type | Description |
-| --- | --- | --- |
-| `AuthorizationError` | class | 403 — Insufficient permissions |
-| `ConflictError` | class | 409 — Resource already exists or version conflict |
-| `ValidationError` | class | 400 — Invalid input with optional `field_errors` array |
-| `DefinitionValidationError` | class | 400 — Payload doesn't match data product definition (schema validation failures) |
-| `SchemaValidationError` | class | Alias for `DefinitionValidationError` (backend terminology) |
-| `CheckpointError` | class | 500 — Failed to save or load a stream checkpoint |
-| `parseHttpError` | function | Map an HTTP status code and response body to the appropriate typed Loxtep error class |
-
-### `DataProductResolver` class
-
-```typescript
-import { DataProductResolver } from '@loxtep/sdk/client';
-```
-
-| Export | Type | Description |
-| --- | --- | --- |
-| `DataProductResolver` | class | Resolves a data product name or UUID into full runtime configuration (queue name, bot_id, stream bus resources). Caches results in memory. Used internally by `client.data_products.get_writer`/`get_reader` |
+**Resolver:** `DataProductResolver`, `AmbiguityError` — used internally by
+`get_writer` / `get_reader`; import when building custom resolution logic.

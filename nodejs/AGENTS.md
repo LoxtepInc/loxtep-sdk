@@ -142,43 +142,37 @@ const client = new LoxtepClient({
 const fromWs = LoxtepClient.fromWorkspace();
 ```
 
-### Client namespaces
+### Client namespaces (v0.7+ MCP facades)
 
-Every namespace is a typed wrapper over the platform HTTP API. **Auth is
-required for all calls.**
+Since **v0.7.0**, `LoxtepClient` exposes **10 facades** that mirror hosted MCP
+tools. Flat top-level namespaces (`client.data_products`, `client.workflows`, …)
+are **removed**. See [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
 
-| Namespace | Typical methods | Purpose |
+| Facade | Nested APIs | Purpose |
 | --- | --- | --- |
-| `client.data_products` | `list()`, `get(id)`, `create(body)`, `get_writer(name)`, `get_reader(name)`, `stream(id, opts)`, `replay(id, opts)` | Data products + live/historical stream I/O |
-| `client.triggers` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `test(id)` | Ingest source bindings (backend: connections) |
-| `client.workflows` | `list()`, `get(id)`, `create(body)`, `get_graph(id, project_id)`, `deploy(...)` | Workflows + graph + deploy (absorbs former `flows`; `get_writer` is `@internal`) |
-| `client.projects` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `apply_template(id, body)` | Data-mesh projects / workspaces |
-| `client.templates` | `list()`, `get(slug)` | Template catalog (apply via `projects.apply_template`) |
-| `client.instances` | `list()`, `get(id)`, `get_stream_config(id)` | Runtime instances |
-| `client.connectors` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)`, `test(id)`, `get_oauth_url(...)` | Org-level connectors |
-| `client.queues` | `get_queue_metadata(name)`, `get_reader_checkpoint(name, bot)`, `open_reader(opts)`, `open_writer(opts)` | Stream queue I/O (advanced) |
-| `client.domains` | `list()`, `get(id)` | Domains |
-| `client.schemas` | `get(...)`, `list(...)`, `tag_pii_fields(...)` | Data-product schemas |
-| `client.quality` | `list()`, `get(id)`, `create(body)` | Quality rules |
-| `client.catalog` | `search(query)` | Catalog search |
-| `client.discovery` | `search(...)`, `get_evidence(...)`, `get_lineage_impact(...)`, `get_governance_flags(...)`, `run(...)` | Discovery / governance |
-| `client.thesaurus` | `list_terms(...)`, `resolve_canonical_key(...)`, `append_synonym(...)` | Canonical keys + aliases |
-| `client.standards` | `list()`, `get(id)` | Standards (policies) |
-| `client.data_contracts` | `list()`, `get(id)`, `create(body)`, `update(id, body)`, `delete(id)` | Data contracts |
-| `client.targets` | `list(dp_id)`, `create(dp_id, body)`, `get(dp_id, id)`, `update(dp_id, id, body)`, `delete(dp_id, id)` | Delivery sink bindings (backend: consumptions) |
-| `client.procedures` | `list()` | Process graph procedures |
-| `client.observe` | `status()`, `stream_config()` | Bots / observability |
-| `client.metrics` | `log(metric)`, `get_reporter()` | Optional metrics integration |
+| `client.session` | — | Current user/org, logout |
+| `client.connect` | `.connectors`, `.templates` | Connect external systems, templates |
+| `client.workspace` | `.projects`, `.instances` | Projects, runtime instances |
+| `client.build` | `.workflows`, `.triggers`, `.data_products`, `.targets` | Authoring, deploy, CRUD, stream/replay |
+| `client.define` | `.schemas`, `.quality`, `.standards`, `.data_contracts`, `.domains` | Schema, quality, governance |
+| `client.meaning` | `.thesaurus` | Vocabulary / ontology terms |
+| `client.review` | `.approvals`, `.improvements` | HITL approvals, AI-eval improvements |
+| `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
+| `client.observe` | `.status()`, `.stream_config()`, `.open_reader()`, … | Observe + low-level queue I/O |
+| `client.context` | `.procedures`, `.activity`, `.process_intelligence` | Process intel, activity feed |
+
+Top-level **`get_writer(name)`** / **`get_reader(name)`** resolve deployment
+metadata for live stream I/O (preferred over calling nested APIs directly).
 
 ### Recommended write/read pattern
 
 ```typescript
 // Resolve queue, bot_id, and stream config automatically from deployment metadata
-const writer = await client.data_products.get_writer('orders_raw');
+const writer = await client.get_writer('orders_raw');
 writer.write({ id: 'evt-1', payload: { sku: 'ABC', qty: 2 } });
 await writer.close();
 
-const reader = await client.data_products.get_reader('orders_raw');
+const reader = await client.get_reader('orders_raw');
 for await (const event of reader) {
   console.log(event);
 }
