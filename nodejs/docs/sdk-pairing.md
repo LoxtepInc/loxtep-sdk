@@ -22,13 +22,13 @@ authenticates via its own OAuth flow in the MCP client, not this file.
 | **Live** queue produce/consume | **SDK** with stream config |
 | **Historical** replay / trace-style reads | **SDK** `client.build.data_products.replay()` (REST API) |
 
-There is **no** required joint npm install of MCP and SDK; pair them by
+There is **no** required joint package install of MCP and SDK; pair them by
 **config + docs**, not a metapackage.
 
 ## Install
 
 ```bash
-npm install @loxtep/sdk
+pnpm add @loxtep/sdk
 # Node.js 22+ recommended (see package engines).
 ```
 

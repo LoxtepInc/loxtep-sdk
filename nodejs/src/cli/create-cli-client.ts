@@ -176,7 +176,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
       if (stillExpired) {
         console.error(
           '[loxtep] AWS credentials expired and refresh did not return new ones. ' +
-            'Stream bus writes will fail. Run `npx loxtep login` to get fresh credentials.'
+            'Stream bus writes will fail. Run `pnpm exec loxtep login` to get fresh credentials.'
         );
       }
     }
@@ -229,7 +229,7 @@ export async function requireCliClient(options: CreateCliClientOptions = {}): Pr
   const r = await createCliClient(options);
   if (!r) {
     console.error(
-      'Missing api_url or access token. Run: npx loxtep login'
+      'Missing api_url or access token. Run: pnpm exec loxtep login'
     );
     process.exit(1);
     return r as never;

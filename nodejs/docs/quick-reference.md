@@ -1,7 +1,8 @@
 # SDK Quick Reference Card
 
 Concise cheat sheet for common Loxtep SDK operations (Node.js **v0.7+** MCP
-facades). For full walkthroughs, see the [Getting Started Guide](./getting-started.md).
+facades). For full walkthroughs, see the [Getting Started Guide](./getting-started.md)
+(programmatic) or [Code-first CLI guide](./code-first-cli.md) (`loxtep init`).
 
 ---
 
@@ -180,10 +181,22 @@ See [MCP → SDK mapping](./sdk-mcp-mapping.md) for all 10 facades.
 
 ## CLI Shortcuts
 
+Workspace lifecycle (requires `loxtep init` first — see [Code-first CLI guide](./code-first-cli.md)):
+
 ```bash
-npx loxtep login
-npx loxtep init
-npx loxtep config export --from-connector "<connector_id>" --format json
+pnpm exec loxtep init [--template shopify-orders]
+pnpm exec loxtep login
+pnpm exec loxtep attach --instance prod
+pnpm exec loxtep generate
+pnpm exec loxtep test my-module --event ./events/sample.json
+pnpm exec loxtep deploy
+```
+
+Other commands:
+
+```bash
+pnpm exec loxtep login
+pnpm exec loxtep config export --from-connector "<connector_id>" --format json
 ```
 
 ---

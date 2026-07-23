@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2026-07-23
+
+### Changed
+
+- **Documentation** defaults to **pnpm** (`pnpm add`, `pnpm exec loxtep`) instead of
+  npm/npx across README, getting started, quick reference, and SDK pairing.
+- **New guide:** [`docs/code-first-cli.md`](./docs/code-first-cli.md) documents the
+  `loxtep init → attach → generate → test → deploy` workflow, when init is
+  required vs login-only programmatic use, and cross-links from getting started
+  and quick reference.
+- CLI auth hints now reference `pnpm exec loxtep login` for consistency with docs.
+
 ## [0.7.3] - 2026-07-23
 
 ### Fixed

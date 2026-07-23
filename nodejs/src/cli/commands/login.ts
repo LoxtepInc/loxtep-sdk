@@ -194,7 +194,7 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Login failed:', msg);
       if (/forbidden|403/i.test(msg)) {
-        console.error('Hint: try browser login with: npx loxtep login');
+        console.error('Hint: try browser login with: pnpm exec loxtep login');
       }
     }
     process.exitCode = 1;
