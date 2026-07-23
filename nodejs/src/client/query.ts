@@ -1,5 +1,5 @@
 /**
- * Query facade (MCP: loxtep_catalog + loxtep_analytics).
+ * Query facade (MCP: loxtep_query).
  * Delegates to catalog, discovery, and data-product query/analytics methods.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Meaning facade (MCP: loxtep_ontology + loxtep_semantic_layer).
+ * Meaning facade (MCP: loxtep_meaning).
  * Delegates to thesaurus API (ontology/semantic REST modules not yet split in SDK).
  */
 

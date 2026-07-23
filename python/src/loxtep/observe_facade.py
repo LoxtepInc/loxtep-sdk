@@ -1,4 +1,4 @@
-"""Observe facade (MCP: observe + workspace queue hints)."""
+"""Observe facade (MCP: loxtep_observe)."""
 
 from __future__ import annotations
 

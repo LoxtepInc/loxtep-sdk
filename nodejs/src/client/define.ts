@@ -1,5 +1,5 @@
 /**
- * Define facade (MCP: loxtep_schemas + loxtep_quality + domains/standards/contracts catalog ops).
+ * Define facade (MCP: loxtep_define).
  * Delegates to schemas, quality, standards, data_contracts, and domains APIs.
  */
 

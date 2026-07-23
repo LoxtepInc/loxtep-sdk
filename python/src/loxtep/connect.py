@@ -1,4 +1,4 @@
-"""Connect facade (MCP: loxtep_connectors + loxtep_templates)."""
+"""Connect facade (MCP: loxtep_connect)."""
 
 from __future__ import annotations
 

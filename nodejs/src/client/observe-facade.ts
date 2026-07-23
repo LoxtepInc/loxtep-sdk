@@ -1,5 +1,5 @@
 /**
- * Observe facade (MCP: observe + workspace queue hints).
+ * Observe facade (MCP: loxtep_observe).
  * Extends observe API with public queue read helpers.
  */
 

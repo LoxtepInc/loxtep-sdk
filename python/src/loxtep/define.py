@@ -1,4 +1,4 @@
-"""Define facade (MCP: loxtep_schemas + loxtep_quality + domains/standards/contracts)."""
+"""Define facade (MCP: loxtep_define)."""
 
 from __future__ import annotations
 

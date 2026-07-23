@@ -1,5 +1,5 @@
 /**
- * Context facade (MCP: loxtep_process_intel + loxtep_procedures + activity).
+ * Context facade (MCP: loxtep_context).
  * Delegates to process intelligence, procedures, and activity APIs.
  */
 

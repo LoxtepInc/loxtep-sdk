@@ -1,4 +1,4 @@
-"""Query facade (MCP: loxtep_catalog + loxtep_analytics)."""
+"""Query facade (MCP: loxtep_query)."""
 
 from __future__ import annotations
 

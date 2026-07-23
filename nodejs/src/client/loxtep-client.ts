@@ -102,31 +102,31 @@ export class LoxtepClient {
   /** Session & org context (MCP: loxtep_session). */
   readonly session: ReturnType<typeof createSessionApi>;
 
-  /** Connectors + templates (MCP: loxtep_connectors, loxtep_templates). */
+  /** Connectors + templates (MCP: loxtep_connect). */
   readonly connect: ReturnType<typeof createConnectFacade>;
 
-  /** Projects, instances, versions (MCP: loxtep_projects, loxtep_instances, loxtep_workspace). */
+  /** Projects, instances, versions (MCP: loxtep_workspace). */
   readonly workspace: ReturnType<typeof createWorkspaceFacade>;
 
-  /** Workflows, triggers, data products, targets, deploy (MCP: loxtep_workflows, loxtep_triggers, loxtep_data_products, loxtep_deployments). */
+  /** Workflows, triggers, data products, targets, deploy (MCP: loxtep_build). */
   readonly build: ReturnType<typeof createBuildFacade>;
 
-  /** Schemas, quality, standards, contracts, domains (MCP: loxtep_schemas, loxtep_quality, loxtep_catalog domains). */
+  /** Schemas, quality, standards, contracts, domains (MCP: loxtep_define). */
   readonly define: ReturnType<typeof createDefineFacade>;
 
-  /** Thesaurus / ontology vocabulary (MCP: loxtep_ontology, loxtep_semantic_layer). */
+  /** Thesaurus / ontology vocabulary (MCP: loxtep_meaning). */
   readonly meaning: ReturnType<typeof createMeaningFacade>;
 
-  /** Approvals + improvements (MCP: loxtep_approvals). */
+  /** Approvals + improvements (MCP: loxtep_review). */
   readonly review: ReturnType<typeof createReviewFacade>;
 
-  /** Catalog, discovery, analytics query (MCP: loxtep_catalog, loxtep_analytics). */
+  /** Catalog, discovery, analytics query (MCP: loxtep_query). */
   readonly query: ReturnType<typeof createQueryFacade>;
 
-  /** Observe status + queue I/O (MCP: observe + loxtep_workspace queue hints). */
+  /** Observe status + queue I/O (MCP: loxtep_observe). */
   readonly observe: ReturnType<typeof createObserveFacade>;
 
-  /** Process intelligence, procedures, activity (MCP: loxtep_process_intel, loxtep_procedures). */
+  /** Process intelligence, procedures, activity (MCP: loxtep_context). */
   readonly context: ReturnType<typeof createContextFacade>;
 
   /** Metrics: log, get_reporter (stub until metrics wiring is added). */
