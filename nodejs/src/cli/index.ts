@@ -68,6 +68,7 @@ import {
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
 import { printCliHelp } from './help.js';
+import { printCliVersion } from './version.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -85,6 +86,11 @@ function printHelp(): void {
 async function main(): Promise<void> {
   if (!command || command === '--help' || command === '-h') {
     printHelp();
+    return;
+  }
+
+  if (command === '--version' || command === '-V' || command === 'version') {
+    printCliVersion();
     return;
   }
 

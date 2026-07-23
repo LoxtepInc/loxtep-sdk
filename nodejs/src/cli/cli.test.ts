@@ -24,6 +24,12 @@ function runCli(args: string[]): string {
     expect(out).toContain('Build (client.build · loxtep_build)');
     expect(out).toContain('login');
     expect(out).toContain('config');
+    expect(out).toContain('--version');
+  });
+
+  it('should print package version for --version', () => {
+    const out = runCli(['--version']).trim();
+    expect(out).toMatch(/^@loxtep\/sdk \d+\.\d+\.\d+/);
   });
 
   it('should run config list and show keys', () => {
