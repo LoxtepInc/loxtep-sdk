@@ -7,6 +7,7 @@ Loxtep — the Enterprise Context Layer.
 Turns organizational knowledge, expertise, and norms into machine-usable context for AI.
 
 Usage: loxtep <command> [subcommand] [options]
+       loxtep --version | loxtep -V
 
 Commands mirror the 10 SDK / MCP facades (see docs/sdk-mcp-mapping.md).
 
