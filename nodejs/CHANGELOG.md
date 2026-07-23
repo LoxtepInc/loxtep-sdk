@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.11] - 2026-07-23
+
+### Fixed
+
+- **`loxtep whoami`** parses double-wrapped `{ success, data }` envelopes, camelCase
+  `/users/me` payloads, and falls back to JWT claims when the API body is sparse.
+- **Browser login** persists `api_base_url` from the app OAuth callback (matches the
+  API host you actually authenticated against).
+- **`whoami`** exits non-zero and prints guidance when identity fields are still
+  placeholders; use `LOXTEP_DEBUG=1 loxtep whoami` or `loxtep whoami --debug` to
+  inspect the raw API response.
+
 ## [0.7.10] - 2026-07-23
 
 ### Fixed

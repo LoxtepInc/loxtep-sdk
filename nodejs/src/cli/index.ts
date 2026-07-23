@@ -117,7 +117,7 @@ async function main(): Promise<void> {
       break;
     }
     case 'whoami':
-      await runWhoami();
+      await runWhoami({ debug: args.includes('--debug') });
       break;
     case 'init': {
       const templateIdx = args.indexOf('--template');

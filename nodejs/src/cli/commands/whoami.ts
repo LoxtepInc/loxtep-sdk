@@ -1,4 +1,9 @@
-import { parseCurrentUserResponse, type ParsedCurrentUser } from '../../client/current-user-response.js';
+import {
+  mergeJwtIdentityFallback,
+  parseCurrentUserResponse,
+  type ParsedCurrentUser,
+} from '../../client/current-user-response.js';
+import { decodeJwtClaims } from '../../auth/jwt.js';
 import { LoxtepHttpClient } from '../../http/client.js';
 import { createCliAuthContext } from '../create-cli-client.js';
 
@@ -6,6 +11,8 @@ import { createCliAuthContext } from '../create-cli-client.js';
 export type UserMeResponse = ParsedCurrentUser;
 
 export interface WhoamiOptions {
+  /** Print raw /users/me JSON to stderr (also enabled with LOXTEP_DEBUG=1). */
+  debug?: boolean;
   /** For tests: inject fetch to mock API. Prefer over `fetchUser` for integration tests. */
   fetchFn?: typeof fetch;
   /** Alias for {@link fetchFn} (matches {@link CreateCliClientOptions.fetch_fn}). */
@@ -21,6 +28,14 @@ export interface WhoamiOptions {
 }
 
 const DUMMY_SIGV4 = { accessKeyId: 'cli', secretAccessKey: 'cli' } as const;
+
+function isDebugEnabled(options: WhoamiOptions): boolean {
+  return options.debug === true || process.env.LOXTEP_DEBUG === '1';
+}
+
+function isPlaceholderIdentity(data: ParsedCurrentUser): boolean {
+  return !data.email && !data.first_name && !data.last_name && !data.organization_name && !data.organization_id;
+}
 
 /**
  * Run whoami: unified auth + GET /organizations/users/me, print user and org.
@@ -52,7 +67,16 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
             fetch_fn: fetchImpl,
           });
           const raw = await client.get<unknown>('/organizations/users/me');
-          return parseCurrentUserResponse(raw);
+          if (isDebugEnabled(options)) {
+            console.error('[loxtep whoami debug] GET /organizations/users/me response:');
+            console.error(JSON.stringify(raw, null, 2));
+          }
+          let parsed = parseCurrentUserResponse(raw);
+          const token = await authCtx.get_token();
+          if (token && isPlaceholderIdentity(parsed)) {
+            parsed = mergeJwtIdentityFallback(parsed, decodeJwtClaims(token));
+          }
+          return parsed;
         })();
     if (data == null) return;
     const email = data?.email ?? '—';
@@ -61,6 +85,12 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
     console.log('User:', email);
     console.log('Name:', name);
     console.log('Organization:', org);
+    if (isPlaceholderIdentity(data)) {
+      console.error(
+        'Could not read your profile from the API. Run `loxtep login` again, or `LOXTEP_DEBUG=1 loxtep whoami` to inspect the raw response.'
+      );
+      process.exitCode = 1;
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Failed to fetch user:', msg);

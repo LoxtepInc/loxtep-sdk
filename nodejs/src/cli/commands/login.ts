@@ -111,7 +111,7 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
           access_token: result.access_token,
           refresh_token: result.refresh_token,
           expires_at: result.expires_at,
-          api_base_url: apiUrl || undefined,
+          api_base_url: result.api_base_url ?? (apiUrl || undefined),
           aws_credentials: result.aws_credentials,
         },
         credentialsPath
