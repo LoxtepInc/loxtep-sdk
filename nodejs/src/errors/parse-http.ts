@@ -15,17 +15,44 @@ import type { ApiErrorBody, RateLimitErrorBody } from './types.js';
  * @param request_id - Optional request ID from headers
  * @returns Instance of the corresponding error class
  */
+function extractPlatformErrorMessage(body: Record<string, unknown>): string | undefined {
+  if (typeof body.message === 'string' && body.message.length > 0) {
+    return body.message;
+  }
+  const nested = body.error;
+  if (nested && typeof nested === 'object') {
+    const nestedRecord = nested as Record<string, unknown>;
+    if (typeof nestedRecord.message === 'string' && nestedRecord.message.length > 0) {
+      return nestedRecord.message;
+    }
+  }
+  return undefined;
+}
+
+function extractPlatformErrorDetails(
+  body: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  if (body.details && typeof body.details === 'object') {
+    return body.details as Record<string, unknown>;
+  }
+  const nested = body.error;
+  if (nested && typeof nested === 'object') {
+    const nestedDetails = (nested as Record<string, unknown>).details;
+    if (nestedDetails && typeof nestedDetails === 'object') {
+      return nestedDetails as Record<string, unknown>;
+    }
+  }
+  return undefined;
+}
+
 export function parseHttpError(
   status_code: number,
   body: ApiErrorBody | RateLimitErrorBody | unknown,
   request_id?: string
 ): LoxtepError {
   const safe = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
-  const message = typeof safe.message === 'string' ? safe.message : `HTTP ${status_code}`;
-  const details =
-    safe.details && typeof safe.details === 'object'
-      ? (safe.details as Record<string, unknown>)
-      : undefined;
+  const message = extractPlatformErrorMessage(safe) ?? `HTTP ${status_code}`;
+  const details = extractPlatformErrorDetails(safe);
   const reqId = typeof safe.request_id === 'string' ? safe.request_id : request_id;
 
   switch (status_code) {

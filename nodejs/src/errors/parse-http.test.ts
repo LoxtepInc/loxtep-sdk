@@ -32,6 +32,19 @@ describe('parseHttpError', () => {
     expect(notFound.resource_id).toBe('asset-123');
   });
 
+  it('should read message from Loxtep platform error envelope', () => {
+    const err = parseHttpError(404, {
+      success: false,
+      error: {
+        message: 'Unable to resolve stream configuration for this instance',
+        details: { instance_id: 'abc', hint: 'Instance may not be fully provisioned' },
+      },
+    });
+    expect(err).toBeInstanceOf(NotFoundError);
+    expect(err.message).toBe('Unable to resolve stream configuration for this instance');
+    expect(err.details?.instance_id).toBe('abc');
+  });
+
   it('should map 429 to RateLimitError with retry_after_seconds, limit, remaining, reset_at', () => {
     const body = {
       message: 'Too many requests',

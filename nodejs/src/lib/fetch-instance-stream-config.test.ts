@@ -1,9 +1,6 @@
-import type { Instance } from '../client/instances-types.js';
-import { LoxtepHttpClient } from '../http/client.js';
-import {
-  extractStreamConfigFromInstance,
-  fetchInstanceStreamConfig,
-} from './instance-stream-config.js';
+import type { LoxtepHttpClient } from '../http/client.js';
+import { LoxtepHttpClient as HttpClient } from '../http/client.js';
+import { fetchInstanceStreamConfig } from './instance-stream-config.js';
 
 const FULL_CONFIG = {
   Region: 'us-east-1',
@@ -25,7 +22,13 @@ function mockHttp(handlers: Record<string, () => unknown>): LoxtepHttpClient {
       if (key.includes(pattern) || url.includes(pattern)) {
         const body = handler();
         if (body instanceof Error) {
-          return new Response(JSON.stringify({ message: body.message }), { status: 404 });
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: { message: body.message, details: { instance_id: 'inst-1' } },
+            }),
+            { status: 404 }
+          );
         }
         return new Response(JSON.stringify(body), { status: 200 });
       }
@@ -33,7 +36,7 @@ function mockHttp(handlers: Record<string, () => unknown>): LoxtepHttpClient {
     return new Response(JSON.stringify({ message: 'not found' }), { status: 404 });
   };
 
-  return new LoxtepHttpClient({
+  return new HttpClient({
     base_url: 'https://api.loxtep.io',
     use_platform_path_resolution: true,
     credentials: {
@@ -45,53 +48,28 @@ function mockHttp(handlers: Record<string, () => unknown>): LoxtepHttpClient {
 }
 
 describe('fetchInstanceStreamConfig', () => {
-  it('falls back to observe when organizations stream-config is 404', async () => {
+  it('calls organizations stream-config and maps the response', async () => {
     const http = mockHttp({
-      '/organizations/instances/inst-1/stream-config': () => {
-        throw new Error('HTTP 404');
-      },
-      '/observe/stream-config': () => ({ success: true, data: FULL_CONFIG }),
+      '/organizations/instances/inst-1/stream-config': () => ({
+        success: true,
+        data: FULL_CONFIG,
+      }),
     });
 
     const { config, source } = await fetchInstanceStreamConfig(http, 'inst-1');
-    expect(source).toBe('observe');
+    expect(source).toBe('organizations');
     expect(config.LeoEvent).toBe('evt');
   });
 
-  it('uses instance metadata when API endpoints fail', async () => {
+  it('surfaces platform error.message from nested error envelope', async () => {
     const http = mockHttp({
-      'stream-config': () => {
-        throw new Error('HTTP 404');
+      '/organizations/instances/inst-1/stream-config': () => {
+        throw new Error('Unable to resolve stream configuration for this instance');
       },
     });
 
-    const instance: Instance = {
-      instance_id: 'inst-1',
-      organization_id: 'org-1',
-      name: 'prod',
-      api_url: 'https://x',
-      region: 'us-east-1',
-      stack_id: 's',
-      status: 'active',
-      connection_details: {},
-      metadata: { rstreams: FULL_CONFIG },
-      created_at: '',
-      updated_at: '',
-    };
-
-    const { config, source } = await fetchInstanceStreamConfig(http, 'inst-1', { instance });
-    expect(source).toBe('instance-metadata');
-    expect(config.LeoStream).toBe('str');
-  });
-});
-
-describe('extractStreamConfigFromInstance', () => {
-  it('reads metadata.rstreams', () => {
-    const instance = {
-      region: 'us-west-2',
-      metadata: { rstreams: FULL_CONFIG },
-      connection_details: {},
-    } as Instance;
-    expect(extractStreamConfigFromInstance(instance)?.Region).toBe('us-east-1');
+    await expect(fetchInstanceStreamConfig(http, 'inst-1')).rejects.toThrow(
+      'Unable to resolve stream configuration for this instance'
+    );
   });
 });

@@ -102,7 +102,8 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
 
     /**
      * Resolve stream bus configuration for an instance.
-     * Tries organizations stream-config, observe proxy, then inline instance metadata.
+     * Resolve stream bus configuration for an instance via
+     * GET /organizations/instances/{id}/stream-config.
      */
     async get_stream_config(
       instance_id: string,
