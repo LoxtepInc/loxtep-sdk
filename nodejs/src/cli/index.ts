@@ -5,7 +5,7 @@
  * context for AI across heterogeneous systems.
  *
  * Usage: loxtep <command> [options]
- * Commands: login, logout, whoami, init, attach, config, bus, data-products, queue, workflows, observe, triggers, domains, standards, data-contracts
+ * Help is grouped by MCP-aligned SDK facades — see ./help.ts
  */
 
 import { runLogin } from './commands/login.js';
@@ -67,6 +67,7 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
+import { printCliHelp } from './help.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -78,96 +79,7 @@ function getArg(name: string): string | undefined {
 }
 
 function printHelp(): void {
-  console.log(`
-Loxtep — the Enterprise Context Layer.
-Turns organizational knowledge, expertise, and norms into machine-usable context for AI.
-
-Usage: loxtep <command> [options]
-
-Commands:
-  login              Log in (opens browser by default). Use --console for terminal email/password/TOTP login.
-                     Saves to ./.loxtep/credentials.json in the current directory by default (--global for ~/.loxtep instead).
-  logout             Remove stored credentials (project-local if present, else global). --local / --global to force.
-  whoami             Print current user and organization
-  init               Print setup checklist (config + auth + docs pointers)
-  attach [--instance <id>]  Link project to an Instance (writes instance_id + api_url)
-  generate           Generate typed workspace context artifact (.loxtep/generated/index.ts)
-  test <module> --event <file>  Execute a workflow module locally with a sample event (prints action trace)
-  deploy             Compile and deploy workflow modules to the attached Instance
-  config list        Show current config (api_url, organization_id, project_id, instance_id)
-  config paths       Show resolved URLs for auth and a full matrix of LoxtepClient SDK paths → gateway URLs
-  config set <k> <v> Set config key (api_url | auth_path_prefix | api_path_prefix | organization_id | …)
-  config export --from-connector <id> [--format sh|json|env]  Print env exports from SDK connector
-  config export --from-data-product <id> [--format sh|json|env]  Print env exports for SDK/bootstrap
-  bus login          Explain bus vs JWT; placeholder for future RBAC bus session
-  data-products list   List data products
-  data-products get <id> Get data product by id
-  data-products create --name <n> --domain-id <uuid> [--description <text>]  Create data product
-  data-products query <id> <SQL>   Run SQL in data product context (or --file query.sql)
-  data-products tables <id> List tables for data product
-  data-products readiness <id>  Check promotion readiness (prerequisites + progress)
-  data-products promote <id> --target <silver|gold>  Execute medallion tier promotion
-  metrics rate-limits Show rate limit info from last response or /rate-limits
-  metrics log        Log metric (--id <id> --value <n> [--tags k=v,...])
-  queue info <id>    Queue info by data product id
-  queue info --queue <name> Queue info by queue name
-  queue checkpoint <id> --bot <bot-id> Reader checkpoint for data product and bot
-  workflows list     List workflows (requires --project-id or config project_id)
-  workflows get <id> Get workflow by id (with nodes)
-  workflows create   Create workflow (--name, --project-id required; --template-id, --description optional)
-  workflows deploy   Deploy workflow (--project-id required; --instance-id, --version-id, --force optional)
-  triggers list      List triggers (ingest source bindings)
-  triggers get <id>  Get trigger by id
-  triggers create    Create trigger (--name, --type, --key required)
-  triggers test <id> Test trigger
-  domains list       List domains
-  domains get <id>   Get domain by id
-  standards list      List standards (policies)
-  standards get <id>  Get standard by id
-  data-contracts list      List data contracts
-  data-contracts get <id>  Get data contract by id
-  data-contracts create --data-product-id <id> --name <name> [--description <text>]  Create data contract
-  improvements list [--status <s>] [--workflow <name>]  List improvements
-  improvements apply <id>  Apply proposed change to workflow module file
-  improvements reject <id> Reject an improvement
-  activity list [--source <s>] [--actor <a>] [--resource-type <t>] [--from <date>] [--to <date>]  List activity/audit entries
-  instances list                                List Loxtep instances in this organization
-  instances get <id>                            Get instance by id
-  instances create --name <n> --region <region> --type <shared|managed|self-hosted>
-                                                Create an instance (managed: also pass --plan-id + --payment-method-id;
-                                                  self-hosted: also pass --payment-method-id + --cross-account-role-arn
-                                                  + --rstreams-secret-arn + --rstreams-auth-arn [--external-id <ext>])
-  instances deployment-urls                    Step 1 of self-hosted install: print one-click URL + CLI / Terraform snippets + external ID
-                                                  (LOXTEP_ORGANIZATION_ID must be set, or use --org-id)
-  instances register --cross-account-role-arn <arn> [--region <region>]
-                                                Step 2 of self-hosted install: register the user's role ARN at the org level
-                                                  (required before creating a self-hosted instance)
-  instances registration                       Optional check: print the registered role ARN + external ID
-
-Examples:
-  loxtep login
-  loxtep login --console
-  loxtep login --console --email you@ex.com --password '…' --mfa-code 123456
-  loxtep login --global    # always use ~/.loxtep/credentials.json, even inside a project
-  loxtep logout --local    # only clear this project's credentials.json
-  loxtep whoami
-  loxtep data-products list
-  loxtep workflows list --project-id <project-id>
-  loxtep workflows get <workflow-id>
-  loxtep workflows create --name "my-workflow" --project-id <project-id> --template-id <template-id>
-  loxtep workflows deploy --project-id <id> [--instance-id <id>]  (instance_id defaults from config)
-  loxtep triggers list
-  loxtep config export --from-connector <connector-id> --format json
-  loxtep config export --from-data-product <data-product-id>
-  loxtep observe status
-  loxtep connections list
-  loxtep connections get <connection-id>
-  loxtep queue info <data-product-id>
-  loxtep queue checkpoint <data-product-id> --bot <bot-id>
-  loxtep data-products query <data-product-id> "SELECT * FROM t LIMIT 10"
-  loxtep data-products tables <data-product-id>
-  loxtep metrics rate-limits
-`);
+  printCliHelp();
 }
 
 async function main(): Promise<void> {
