@@ -7,6 +7,7 @@
 import { loadConfig } from '../config/load.js';
 import { resolveAutoConfig } from '../config/workspace-config.js';
 import type { LoxtepConfig } from '../config/types.js';
+import { mergeStreamsPartials } from '../config/streams-partial.js';
 
 export interface LoadCliConfigOptions {
   configFilePath?: string;
@@ -37,6 +38,8 @@ export async function loadCliConfig(
     organization_id: base.organization_id ?? auto.organization_id,
     project_id: base.project_id ?? auto.project_id,
     instance_id: base.instance_id ?? auto.instance_id,
+    region: base.region ?? auto.region,
+    streams: mergeStreamsPartials(base.streams, auto.streams),
   };
 
   return {

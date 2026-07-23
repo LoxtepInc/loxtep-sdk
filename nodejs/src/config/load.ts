@@ -4,7 +4,7 @@ import type { LoxtepConfig } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 import { getDefaultConfigPath } from './paths.js';
 import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
-import { parseStreamsPartial } from './streams-partial.js';
+import { mergeStreamsPartials, parseStreamsPartial } from './streams-partial.js';
 
 const ENV_API_URL = 'LOXTEP_API_URL';
 const ENV_AUTH_PATH_PREFIX = 'LOXTEP_AUTH_PATH_PREFIX';
@@ -15,14 +15,6 @@ const ENV_INSTANCE_ID = 'LOXTEP_INSTANCE_ID';
 const ENV_REGION = 'LOXTEP_REGION';
 /** Path to a JSON file with the same shape as the main config `streams` key (PascalCase). Merged on top of `streams` from the primary config file. */
 const ENV_RSTREAMS_CONFIG_FILE = 'LOXTEP_RSTREAMS_CONFIG_FILE';
-
-function mergeStreamsPartials(
-  a?: Partial<ConfigurationResources>,
-  b?: Partial<ConfigurationResources>
-): Partial<ConfigurationResources> | undefined {
-  if (!a && !b) return undefined;
-  return { ...a, ...b };
-}
 
 function readStreamsFromRstreamsFileSync(): Partial<ConfigurationResources> | undefined {
   const p = process.env[ENV_RSTREAMS_CONFIG_FILE]?.trim();

@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.18] - 2026-07-23
+
+### Fixed
+
+- **`loxtep attach`** now fetches `GET /instances/{id}/stream-config` and writes
+  `region` + `streams` (LeoEvent, LeoStream, LeoCron, LeoS3, LeoKinesisStream,
+  LeoFirehoseStream, LeoSettings) into `.loxtep/project.json` so `get_writer` /
+  queue I/O work without manual LEO_* env or `~/.loxtep/config.json` bus setup.
+- **`LoxtepClient.fromWorkspace()`** passes workspace `region` and `streams` into
+  the client constructor.
+- **`loxtep config list`** indicates when streams come from project.json vs global
+  config.
+
 ## [0.7.17] - 2026-07-23
 
 ### Added

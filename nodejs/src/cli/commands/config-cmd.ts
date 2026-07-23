@@ -74,12 +74,16 @@ export async function runConfigList(): Promise<void> {
   console.log('project_id:', config.project_id ?? '(not set)');
   console.log('instance_id:', config.instance_id ?? '(not set)');
   console.log('region:', config.region ?? '(not set; default SigV4 region in HTTP client applies)');
-  if (config.streams && Object.keys(config.streams).length > 0) {
-    console.log('streams: (set in config file; use PascalCase keys, merged with LEO_* env)');
-  } else {
-    console.log('streams:', '(not set; set in ~/.loxtep/config.json or LEO_* env for bus)');
-  }
   const projectFile = resolvedWorkspaceFiles.find(f => f.includes('project.json'));
+  if (config.streams && Object.keys(config.streams).length > 0) {
+    const source = projectFile ? 'from .loxtep/project.json (attach or manual)' : 'from ~/.loxtep/config.json';
+    console.log(`streams: (set — ${source}; PascalCase keys, merged with LEO_* env)`);
+  } else {
+    console.log(
+      'streams:',
+      '(not set; run `loxtep attach` to populate from stream-config, or set ~/.loxtep/config.json / LEO_* env)'
+    );
+  }
   if (projectFile) {
     console.log('workspace:', projectFile);
   } else {

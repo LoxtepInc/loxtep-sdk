@@ -60,10 +60,25 @@ function makeProject(overrides: Partial<Project> = {}): Project {
   };
 }
 
+function makeStreamConfig() {
+  return {
+    Region: 'us-east-1',
+    LeoEvent: 'prod-LeoEvent',
+    LeoStream: 'prod-LeoStream',
+    LeoCron: 'prod-LeoCron',
+    LeoS3: 'prod-LeoS3',
+    LeoKinesisStream: 'prod-LeoKinesis',
+    LeoFirehoseStream: 'prod-LeoFirehose',
+    LeoSettings: 'prod-LeoSettings',
+  };
+}
+
 function mockClient(opts: {
   instances?: Instance[];
   getInstance?: Instance;
   getInstanceError?: Error;
+  streamConfig?: ReturnType<typeof makeStreamConfig>;
+  streamConfigError?: Error;
   project?: Project;
   projectError?: Error;
 }): LoxtepClient {
@@ -75,7 +90,10 @@ function mockClient(opts: {
           if (opts.getInstanceError) throw opts.getInstanceError;
           return opts.getInstance ?? makeInstance();
         },
-        get_stream_config: async () => ({} as any),
+        get_stream_config: async () => {
+          if (opts.streamConfigError) throw opts.streamConfigError;
+          return opts.streamConfig ?? makeStreamConfig();
+        },
       },
       projects: {
         get: async (_id: string) => {
@@ -125,6 +143,9 @@ describe('loxtep attach', () => {
     const written = JSON.parse(readFileSync(filePath, 'utf-8'));
     expect(written.instance_id).toBe('inst_specific');
     expect(written.api_url).toBe('https://specific.api.io');
+    expect(written.region).toBe('us-east-1');
+    expect(written.streams.LeoEvent).toBe('prod-LeoEvent');
+    expect(written.streams.LeoStream).toBe('prod-LeoStream');
   });
 
   it('auto-selects the sole instance when --instance is omitted', async () => {
@@ -181,6 +202,25 @@ describe('loxtep attach', () => {
     expect(result.stderr[0]).toContain('Instance not found');
 
     // File should be byte-unchanged (R1.9)
+    const afterContent = readFileSync(filePath, 'utf-8');
+    expect(afterContent).toBe(originalContent);
+  });
+
+  it('fails when stream-config returns an error, leaving file unchanged (R1.9)', async () => {
+    const dir = makeTmpDir();
+    tmpDirs.push(dir);
+    const filePath = scaffoldProject(dir, { project_id: 'proj_test1' });
+    const originalContent = readFileSync(filePath, 'utf-8');
+
+    const client = mockClient({
+      streamConfigError: new Error('stream-config unavailable'),
+    });
+
+    const result = await runAttach(client, { cwd: dir, instanceId: 'inst_abc123' });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr[0]).toContain('stream bus configuration');
+    expect(result.stderr[0]).toContain('stream-config unavailable');
+
     const afterContent = readFileSync(filePath, 'utf-8');
     expect(afterContent).toBe(originalContent);
   });

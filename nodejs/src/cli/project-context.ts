@@ -22,6 +22,7 @@ import { dirname, join, parse as parsePath } from 'node:path';
 import { z } from 'zod';
 import { ValidationError } from '../errors/validation.js';
 import type { FieldError } from '../errors/types.js';
+import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
 
 /** Workspace config directory name: `.loxtep`. */
 export const PROJECT_DIR_NAME = '.loxtep';
@@ -58,6 +59,13 @@ export interface ProjectConfig {
   instance_id?: string;
   /** Resolved API base URL; written by `attach`. */
   api_url?: string;
+  /** AWS region for SigV4 and stream bus; written by `attach` from stream-config. */
+  region?: string;
+  /**
+   * Stream bus resource names (PascalCase Leo* keys); written by `attach` from
+   * GET /instances/{id}/stream-config so `get_writer` works without LEO_* env.
+   */
+  streams?: Partial<ConfigurationResources>;
   /** Template slug the project was scaffolded from, when applicable. */
   template_slug?: string;
   /** GitHub binding projection; present only for repo-bound projects (R17.2). */
@@ -72,12 +80,27 @@ const ProjectRepositorySchema = z.object({
   branch: z.string().min(1).default('main'),
 });
 
+const ProjectStreamsSchema = z
+  .object({
+    Region: z.string().min(1).optional(),
+    LeoEvent: z.string().min(1).optional(),
+    LeoStream: z.string().min(1).optional(),
+    LeoCron: z.string().min(1).optional(),
+    LeoS3: z.string().min(1).optional(),
+    LeoKinesisStream: z.string().min(1).optional(),
+    LeoFirehoseStream: z.string().min(1).optional(),
+    LeoSettings: z.string().min(1).optional(),
+  })
+  .optional();
+
 /** zod schema for `.loxtep/project.json`. Unknown keys are stripped on parse. */
 export const ProjectConfigSchema = z.object({
   project_id: z.string().min(1, 'project_id is required'),
   organization_id: z.string().min(1).optional(),
   instance_id: z.string().min(1).optional(),
   api_url: z.string().min(1).optional(),
+  region: z.string().min(1).optional(),
+  streams: ProjectStreamsSchema,
   template_slug: z.string().min(1).optional(),
   repository: ProjectRepositorySchema.optional(),
 });
