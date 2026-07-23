@@ -27,7 +27,9 @@ import {
 beforeAll(() => {
   mockRequireCliClient.mockResolvedValue({
     client: {
-      connectors: { get: (...args: unknown[]) => mockConnectorsGet(...args) },
+      connect: {
+        connectors: { get: (...args: unknown[]) => mockConnectorsGet(...args) },
+      },
     },
     config: {},
   });

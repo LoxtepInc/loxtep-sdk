@@ -83,12 +83,14 @@ function makeRejectSuccessClient(improvement: Improvement): {
 } {
   const rejectCalls: string[] = [];
   const client = {
-    improvements: {
-      list: async () => ({ improvements: [improvement], cursor: null }),
-      apply: async (id: string) => ({ id, status: 'applied' as const, updated_at: new Date().toISOString() }),
-      reject: async (id: string) => {
-        rejectCalls.push(id);
-        return { id, status: 'rejected' as const, updated_at: new Date().toISOString() };
+    review: {
+      improvements: {
+        list: async () => ({ improvements: [improvement], cursor: null }),
+        apply: async (id: string) => ({ id, status: 'applied' as const, updated_at: new Date().toISOString() }),
+        reject: async (id: string) => {
+          rejectCalls.push(id);
+          return { id, status: 'rejected' as const, updated_at: new Date().toISOString() };
+        },
       },
     },
   } as unknown as LoxtepClient;
@@ -106,15 +108,17 @@ function makeUnknownIdClient(): {
   const rejectCalls: string[] = [];
   const applyCalls: string[] = [];
   const client = {
-    improvements: {
-      list: async () => ({ improvements: [], cursor: null }),
-      apply: async (id: string) => {
-        applyCalls.push(id);
-        return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
-      },
-      reject: async (id: string) => {
-        rejectCalls.push(id);
-        throw new Error(`No improvement found with id '${id}'`);
+    review: {
+      improvements: {
+        list: async () => ({ improvements: [], cursor: null }),
+        apply: async (id: string) => {
+          applyCalls.push(id);
+          return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+        },
+        reject: async (id: string) => {
+          rejectCalls.push(id);
+          throw new Error(`No improvement found with id '${id}'`);
+        },
       },
     },
   } as unknown as LoxtepClient;
@@ -130,14 +134,16 @@ function makeNonProposedRejectClient(improvement: Improvement): {
 } {
   const rejectCalls: string[] = [];
   const client = {
-    improvements: {
-      list: async () => ({ improvements: [improvement], cursor: null }),
-      apply: async (id: string) => ({ id, status: 'applied' as const, updated_at: new Date().toISOString() }),
-      reject: async (id: string) => {
-        rejectCalls.push(id);
-        throw new Error(
-          `Improvement '${id}' is in status '${improvement.status}', not 'proposed'`
-        );
+    review: {
+      improvements: {
+        list: async () => ({ improvements: [improvement], cursor: null }),
+        apply: async (id: string) => ({ id, status: 'applied' as const, updated_at: new Date().toISOString() }),
+        reject: async (id: string) => {
+          rejectCalls.push(id);
+          throw new Error(
+            `Improvement '${id}' is in status '${improvement.status}', not 'proposed'`
+          );
+        },
       },
     },
   } as unknown as LoxtepClient;
@@ -260,13 +266,15 @@ describe('Feature: ai-first-platform-surface, Property 30: Improvement reject an
 
           const applyCalls: string[] = [];
           const client = {
-            improvements: {
-              list: async () => ({ improvements: [improvement], cursor: null }),
-              apply: async (id: string) => {
-                applyCalls.push(id);
-                return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+            review: {
+              improvements: {
+                list: async () => ({ improvements: [improvement], cursor: null }),
+                apply: async (id: string) => {
+                  applyCalls.push(id);
+                  return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+                },
+                reject: async (id: string) => ({ id, status: 'rejected' as const, updated_at: new Date().toISOString() }),
               },
-              reject: async (id: string) => ({ id, status: 'rejected' as const, updated_at: new Date().toISOString() }),
             },
           } as unknown as LoxtepClient;
 

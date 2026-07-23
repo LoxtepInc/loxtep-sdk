@@ -64,18 +64,20 @@ function mockClient(opts: {
   rejectError?: Error;
 }): LoxtepClient {
   return {
-    improvements: {
-      list: async () => {
-        if (opts.listError) throw opts.listError;
-        return { improvements: opts.improvements ?? [makeImprovement()], cursor: null };
-      },
-      apply: async (id: string) => {
-        if (opts.applyError) throw opts.applyError;
-        return opts.applyResult ?? { id, status: 'applied' as const, updated_at: new Date().toISOString() };
-      },
-      reject: async (id: string) => {
-        if (opts.rejectError) throw opts.rejectError;
-        return opts.rejectResult ?? { id, status: 'rejected' as const, updated_at: new Date().toISOString() };
+    review: {
+      improvements: {
+        list: async () => {
+          if (opts.listError) throw opts.listError;
+          return { improvements: opts.improvements ?? [makeImprovement()], cursor: null };
+        },
+        apply: async (id: string) => {
+          if (opts.applyError) throw opts.applyError;
+          return opts.applyResult ?? { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+        },
+        reject: async (id: string) => {
+          if (opts.rejectError) throw opts.rejectError;
+          return opts.rejectResult ?? { id, status: 'rejected' as const, updated_at: new Date().toISOString() };
+        },
       },
     },
   } as unknown as LoxtepClient;
@@ -107,10 +109,12 @@ describe('loxtep improvements list', () => {
   it('passes status filter to the API', async () => {
     let capturedFilters: any;
     const client = {
-      improvements: {
-        list: async (filters?: any) => {
-          capturedFilters = filters;
-          return { improvements: [], cursor: null };
+      review: {
+        improvements: {
+          list: async (filters?: any) => {
+            capturedFilters = filters;
+            return { improvements: [], cursor: null };
+          },
         },
       },
     } as unknown as LoxtepClient;
@@ -156,13 +160,15 @@ describe('loxtep improvements apply', () => {
 
     let applyCalled = false;
     const client = {
-      improvements: {
-        list: async () => ({ improvements: [improvement], cursor: null }),
-        apply: async (id: string) => {
-          applyCalled = true;
-          return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+      review: {
+        improvements: {
+          list: async () => ({ improvements: [improvement], cursor: null }),
+          apply: async (id: string) => {
+            applyCalled = true;
+            return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+          },
+          reject: async () => ({ id: 'imp_001', status: 'rejected' as const, updated_at: '' }),
         },
-        reject: async () => ({ id: 'imp_001', status: 'rejected' as const, updated_at: '' }),
       },
     } as unknown as LoxtepClient;
 
@@ -210,10 +216,12 @@ describe('loxtep improvements apply', () => {
     const improvement = makeImprovement({ id: 'imp_001', workflow_name: 'missing-workflow' });
     let applyCalled = false;
     const client = {
-      improvements: {
-        list: async () => ({ improvements: [improvement], cursor: null }),
-        apply: async () => { applyCalled = true; return { id: 'imp_001', status: 'applied' as const, updated_at: '' }; },
-        reject: async () => ({ id: 'imp_001', status: 'rejected' as const, updated_at: '' }),
+      review: {
+        improvements: {
+          list: async () => ({ improvements: [improvement], cursor: null }),
+          apply: async () => { applyCalled = true; return { id: 'imp_001', status: 'applied' as const, updated_at: '' }; },
+          reject: async () => ({ id: 'imp_001', status: 'rejected' as const, updated_at: '' }),
+        },
       },
     } as unknown as LoxtepClient;
 
@@ -243,10 +251,12 @@ describe('loxtep improvements apply', () => {
     const improvement = makeImprovement({ id: 'imp_001', workflow_name: 'orders-sync' });
     let applyCalled = false;
     const client = {
-      improvements: {
-        list: async () => ({ improvements: [improvement], cursor: null }),
-        apply: async () => { applyCalled = true; return { id: 'imp_001', status: 'applied' as const, updated_at: '' }; },
-        reject: async () => ({ id: 'imp_001', status: 'rejected' as const, updated_at: '' }),
+      review: {
+        improvements: {
+          list: async () => ({ improvements: [improvement], cursor: null }),
+          apply: async () => { applyCalled = true; return { id: 'imp_001', status: 'applied' as const, updated_at: '' }; },
+          reject: async () => ({ id: 'imp_001', status: 'rejected' as const, updated_at: '' }),
+        },
       },
     } as unknown as LoxtepClient;
 

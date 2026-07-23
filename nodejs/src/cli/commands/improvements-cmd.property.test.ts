@@ -84,20 +84,22 @@ function mockClient(improvement: Improvement): {
 } {
   let _applyCalled = false;
   const client = {
-    improvements: {
-      list: async () => ({
-        improvements: [improvement],
-        cursor: null,
-      }),
-      apply: async (id: string) => {
-        _applyCalled = true;
-        return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+    review: {
+      improvements: {
+        list: async () => ({
+          improvements: [improvement],
+          cursor: null,
+        }),
+        apply: async (id: string) => {
+          _applyCalled = true;
+          return { id, status: 'applied' as const, updated_at: new Date().toISOString() };
+        },
+        reject: async (id: string) => ({
+          id,
+          status: 'rejected' as const,
+          updated_at: new Date().toISOString(),
+        }),
       },
-      reject: async (id: string) => ({
-        id,
-        status: 'rejected' as const,
-        updated_at: new Date().toISOString(),
-      }),
     },
   } as unknown as LoxtepClient;
 

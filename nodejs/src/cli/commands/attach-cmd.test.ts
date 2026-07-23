@@ -68,24 +68,26 @@ function mockClient(opts: {
   projectError?: Error;
 }): LoxtepClient {
   return {
-    instances: {
-      list: async () => ({ items: opts.instances ?? [makeInstance()], pagination: { page: 1, page_size: 20, total: 1, total_pages: 1, has_next: false, has_prev: false } }),
-      get: async (_id: string) => {
-        if (opts.getInstanceError) throw opts.getInstanceError;
-        return opts.getInstance ?? makeInstance();
+    workspace: {
+      instances: {
+        list: async () => ({ items: opts.instances ?? [makeInstance()], pagination: { page: 1, page_size: 20, total: 1, total_pages: 1, has_next: false, has_prev: false } }),
+        get: async (_id: string) => {
+          if (opts.getInstanceError) throw opts.getInstanceError;
+          return opts.getInstance ?? makeInstance();
+        },
+        get_stream_config: async () => ({} as any),
       },
-      get_stream_config: async () => ({} as any),
-    },
-    projects: {
-      get: async (_id: string) => {
-        if (opts.projectError) throw opts.projectError;
-        return opts.project ?? makeProject();
+      projects: {
+        get: async (_id: string) => {
+          if (opts.projectError) throw opts.projectError;
+          return opts.project ?? makeProject();
+        },
+        list: async () => [],
+        create: async () => makeProject(),
+        update: async () => makeProject(),
+        delete: async () => ({ project_id: 'proj_test1', deleted: true }),
+        apply_template: async () => ({} as any),
       },
-      list: async () => [],
-      create: async () => makeProject(),
-      update: async () => makeProject(),
-      delete: async () => ({ project_id: 'proj_test1', deleted: true }),
-      apply_template: async () => ({} as any),
     },
   } as unknown as LoxtepClient;
 }
