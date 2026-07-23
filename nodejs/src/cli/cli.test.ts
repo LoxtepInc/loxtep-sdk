@@ -20,8 +20,8 @@ function runCli(args: string[]): string {
   it('should print help for --help', () => {
     const out = runCli(['--help']);
     expect(out).toContain('Usage: loxtep');
-    expect(out).toContain('Session (client.session · loxtep_session)');
-    expect(out).toContain('Build (client.build · loxtep_build)');
+    expect(out).toContain('Authentication');
+    expect(out).toContain('Build & deploy');
     expect(out).toContain('login');
     expect(out).toContain('config');
     expect(out).toContain('--version');

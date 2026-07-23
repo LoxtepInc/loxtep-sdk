@@ -5,7 +5,7 @@
  * context for AI across heterogeneous systems.
  *
  * Usage: loxtep <command> [options]
- * Help is grouped by MCP-aligned SDK facades — see ./help.ts
+ * Help is grouped by customer-facing command areas — see ./help.ts
  */
 
 import { runLogin } from './commands/login.js';

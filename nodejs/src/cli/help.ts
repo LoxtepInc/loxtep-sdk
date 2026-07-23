@@ -1,5 +1,5 @@
 /**
- * Top-level CLI help, grouped by MCP-aligned SDK facades (v0.7+).
+ * Top-level CLI help — customer-facing command groups (no internal MCP facade names).
  */
 
 export const CLI_HELP = `
@@ -9,15 +9,13 @@ Turns organizational knowledge, expertise, and norms into machine-usable context
 Usage: loxtep <command> [subcommand] [options]
        loxtep --version | loxtep -V
 
-Commands mirror the 10 SDK / MCP facades (see docs/sdk-mcp-mapping.md).
-
-Session (client.session · loxtep_session)
+Authentication
   login              Log in (browser by default; --console for email/password/TOTP)
                      Saves to ./.loxtep/credentials.json by default (--global for ~/.loxtep)
   logout             Remove stored credentials (--local / --global to force scope)
   whoami             Print current user and organization
 
-Workspace (client.workspace · loxtep_workspace)
+Workspace
   init [--template <slug>] [--create-repo | --from-repo <url>]
                      Scaffold .loxtep/project.json + domains/, connectors/, workflows/, data-products/
   attach [--instance <id>]
@@ -26,7 +24,7 @@ Workspace (client.workspace · loxtep_workspace)
   instances list | get <id> | create … | deployment-urls | register … | registration
                      Provision and register runtime instances
 
-Build (client.build · loxtep_build)
+Build & deploy
   test <module> --event <file>
                      Run a workflow module locally (action trace)
   deploy             Compile workflow modules and deploy to the attached instance
@@ -37,32 +35,32 @@ Build (client.build · loxtep_build)
   data-products list | get <id> | create … | readiness <id> | promote <id> --target …
                      Data product CRUD and medallion promotion
 
-Define (client.define · loxtep_define)
+Governance
   domains list | get <id>
-  standards list | get <id>              Governance standards (policies)
+  standards list | get <id>              Standards (policies)
   data-contracts list | get <id> | create …
 
-Review (client.review · loxtep_review)
+Review
   improvements list [--status …] [--workflow <name>]
   improvements apply <id> | reject <id>  Adopt or reject AI-eval workflow improvements
 
-Query (client.query · loxtep_query)
+Analytics
   data-products query <id> "SQL" | --file <path>
   data-products tables <id>              List tables for analytics SQL
 
-Observe (client.observe · loxtep_observe)
-  observe status                         Platform / instance observe snapshot
+Observe
+  observe status                         Platform / instance health snapshot
   queue info <data-product-id> | --queue <name>
   queue checkpoint <id> --bot <bot-id>   Reader checkpoint for a bot
   metrics rate-limits | log --id <id> --value <n>
 
-Context (client.context · loxtep_context)
+Activity
   activity list [--source …] [--actor …] [--resource-type …] [--from …] [--to …]
 
-CLI utilities (bootstrap — not an MCP facade)
+Configuration
   config list | paths | set <key> <value>
   config export --from-connector <id> | --from-data-product <id> [--format sh|json|env]
-  bus login                              Bus vs JWT explainer (placeholder)
+  bus login                              Stream bus vs JWT explainer (placeholder)
 
 Examples:
   pnpm exec loxtep login
