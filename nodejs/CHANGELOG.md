@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-07-23
+
+### Security
+
+- **js-yaml** upgraded to **4.3.0+** ([GHSA-52cp-r559-cp3m](https://github.com/advisories/GHSA-52cp-r559-cp3m) /
+  CVE-2026-59869): fixes quadratic CPU use from chained YAML merge-key (`<<:`) documents.
+
+### Changed
+
+- **leo-sdk** bumped **7.1.12 → 7.1.21** (latest npm; lodash already at 4.18.x upstream).
+- **Dependency overrides** (transitive hardening for npm consumers):
+  - `uuid` → **^11.1.0** (leo-sdk still declares 8.x)
+  - `fast-csv` → **^5.0.7** (drops deprecated `lodash.isequal`; leo-sdk still declares 4.x)
+  - `lodash` → **^4.18.0** (unchanged)
+
 ## [0.7.0] - 2026-07-23
 
 ### Breaking changes — MCP-aligned client facades
