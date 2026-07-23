@@ -332,8 +332,9 @@ export class LoxtepClient {
       auth: { type: 'jwt', token: resolved.token },
       project_id: resolved.project_id,
       instance_id: resolved.instance_id,
-      organization_id: options.organization_id,
-      region: options.region,
+      organization_id: options.organization_id ?? resolved.organization_id,
+      region: options.region ?? resolved.region,
+      streams: resolved.streams,
       fetch_fn: options.fetch_fn,
     });
   }

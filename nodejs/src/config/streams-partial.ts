@@ -30,3 +30,12 @@ export function parseStreamsPartial(value: unknown): Partial<ConfigurationResour
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
+
+/** Merge two partial stream configs; later keys win. */
+export function mergeStreamsPartials(
+  a?: Partial<ConfigurationResources>,
+  b?: Partial<ConfigurationResources>
+): Partial<ConfigurationResources> | undefined {
+  if (!a && !b) return undefined;
+  return { ...a, ...b };
+}

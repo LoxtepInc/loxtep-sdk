@@ -4,8 +4,8 @@
  * Links the project to an existing Instance using the same connection mechanism
  * the Platform_UI uses (client.projects + client.instances / update_project).
  *
- * On success: writes resolved `instance_id` + `api_url` atomically into
- * `.loxtep/project.json`, including a `repository` block when the project is
+ * On success: writes resolved `instance_id` + `api_url` + stream bus `streams`/`region`
+ * atomically into `.loxtep/project.json`, including a `repository` block when the
  * GitHub-bound (R17.2) and omitting it when unbound (R17.3).
  *
  * On failure: exits non-zero, prints the failure reason, and leaves
@@ -23,6 +23,7 @@ import {
   type ProjectConfig,
   type ProjectRepository,
 } from '../project-context.js';
+import { instanceStreamConfigToStreams } from '../../lib/instance-stream-config.js';
 
 export interface AttachOptions {
   /** Explicit instance ID from `--instance <id>`. When omitted, the org's sole instance is used. */
@@ -92,7 +93,23 @@ export async function runAttach(
     };
   }
 
-  // 3. Fetch the project record to read github_* binding fields.
+  // 4. Resolve stream bus resources for this instance (required for get_writer / queue I/O).
+  let streamConfig;
+  try {
+    streamConfig = await client.workspace.instances.get_stream_config(instance.instance_id);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return {
+      exitCode: 1,
+      stdout: [],
+      stderr: [
+        `Attach failed: could not resolve stream bus configuration for instance ${instance.instance_id}: ${reason}`,
+        'Ensure the instance is active and your token can call GET /instances/{id}/stream-config.',
+      ],
+    };
+  }
+
+  // 5. Fetch the project record to read github_* binding fields.
   let projectRecord: Project;
   try {
     projectRecord = await client.workspace.projects.get(project.project_id);
@@ -105,12 +122,15 @@ export async function runAttach(
     };
   }
 
-  // 4. Build the new config with instance_id + api_url and optional repository block.
+  // 6. Build the new config with instance gateway + stream bus bindings.
   const repository = projectToRepository(projectRecord);
+  const streams = instanceStreamConfigToStreams(streamConfig);
   const newConfig: ProjectConfig = {
     ...project,
     instance_id: instance.instance_id,
     api_url: instance.api_url,
+    region: streams.Region || instance.region,
+    streams,
   };
 
   // Include the repository block only when bound (R17.2); omit entirely when unbound (R17.3).
@@ -120,7 +140,7 @@ export async function runAttach(
     delete newConfig.repository;
   }
 
-  // 5. Atomic write via writeProjectConfig (build → validate → write-once).
+  // 7. Atomic write via writeProjectConfig (build → validate → write-once).
   try {
     await writeProjectConfig(projectFilePath, newConfig);
   } catch (err) {
@@ -132,10 +152,12 @@ export async function runAttach(
     };
   }
 
-  // 6. Success output.
+  // 8. Success output.
   const lines: string[] = [
     `Attached to instance "${instance.name}" (${instance.instance_id}).`,
     `  api_url: ${instance.api_url}`,
+    `  region: ${newConfig.region}`,
+    `  streams: LeoEvent, LeoStream, LeoCron, LeoS3, LeoKinesisStream, LeoFirehoseStream, LeoSettings (from stream-config)`,
   ];
   if (repository) {
     lines.push(`  repository: ${repository.url} (${repository.branch})`);

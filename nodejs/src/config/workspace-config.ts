@@ -13,6 +13,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findProjectDir, getProjectFilePath, PROJECT_DIR_NAME, PROJECT_FILE_NAME } from '../cli/project-context.js';
 import { resolveCredentialsPath } from '../cli/credentials.js';
+import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
+import { parseStreamsPartial } from './streams-partial.js';
 
 /**
  * Fields that auto-config resolves from workspace files.
@@ -22,6 +24,8 @@ export interface WorkspaceResolvedFields {
   organization_id?: string;
   project_id?: string;
   instance_id?: string;
+  region?: string;
+  streams?: Partial<ConfigurationResources>;
   token?: string;
 }
 
@@ -75,6 +79,13 @@ export function loadWorkspaceConfig(cwd?: string): WorkspaceConfigResult {
         if (typeof parsed.instance_id === 'string' && parsed.instance_id.trim()) {
           fields.instance_id = parsed.instance_id.trim();
         }
+        if (typeof parsed.region === 'string' && parsed.region.trim()) {
+          fields.region = parsed.region.trim();
+        }
+        const streams = parseStreamsPartial(parsed.streams);
+        if (streams) {
+          fields.streams = streams;
+        }
       }
       resolvedFiles.push(projectFilePath);
     } catch {
@@ -127,6 +138,8 @@ export interface ExplicitConfigFields {
   organization_id?: string;
   project_id?: string;
   instance_id?: string;
+  region?: string;
+  streams?: Partial<ConfigurationResources>;
   token?: string;
 }
 
@@ -137,6 +150,7 @@ const ENV_ORGANIZATION_ID = 'LOXTEP_ORGANIZATION_ID';
 const ENV_API_URL = 'LOXTEP_API_URL';
 const ENV_PROJECT_ID = 'LOXTEP_PROJECT_ID';
 const ENV_INSTANCE_ID = 'LOXTEP_INSTANCE_ID';
+const ENV_REGION = 'LOXTEP_REGION';
 const ENV_TOKEN = 'LOXTEP_TOKEN';
 
 /**
@@ -151,6 +165,10 @@ export interface AutoConfigResult {
   project_id?: string;
   /** Final resolved instance_id. */
   instance_id?: string;
+  /** Final resolved AWS / stream bus region. */
+  region?: string;
+  /** Stream bus resource names from workspace project.json. */
+  streams?: Partial<ConfigurationResources>;
   /** Final resolved auth token. */
   token?: string;
   /** Files that were resolved (for debug log). */
@@ -179,6 +197,8 @@ export function resolveAutoConfig(
     organization_id: explicit?.organization_id || workspace.fields.organization_id,
     project_id: explicit?.project_id || workspace.fields.project_id,
     instance_id: explicit?.instance_id || workspace.fields.instance_id,
+    region: explicit?.region || workspace.fields.region,
+    streams: explicit?.streams || workspace.fields.streams,
     token: explicit?.token || workspace.fields.token,
   };
 
@@ -187,6 +207,7 @@ export function resolveAutoConfig(
   const envOrganizationId = process.env[ENV_ORGANIZATION_ID]?.trim() || undefined;
   const envProjectId = process.env[ENV_PROJECT_ID]?.trim() || undefined;
   const envInstanceId = process.env[ENV_INSTANCE_ID]?.trim() || undefined;
+  const envRegion = process.env[ENV_REGION]?.trim() || undefined;
   const envToken = process.env[ENV_TOKEN]?.trim() || undefined;
 
   return {
@@ -194,6 +215,8 @@ export function resolveAutoConfig(
     organization_id: envOrganizationId || afterExplicit.organization_id,
     project_id: envProjectId || afterExplicit.project_id,
     instance_id: envInstanceId || afterExplicit.instance_id,
+    region: envRegion || afterExplicit.region,
+    streams: afterExplicit.streams,
     token: envToken || afterExplicit.token,
     resolvedFiles: workspace.resolvedFiles,
     missingFiles: workspace.missingFiles,

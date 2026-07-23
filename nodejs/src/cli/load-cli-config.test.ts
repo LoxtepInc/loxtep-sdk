@@ -38,4 +38,26 @@ describe('loadCliConfig', () => {
     expect(config.instance_id).toBe('a9da8b2d-5ef0-44ba-80c9-9039f5b9a8f0');
     expect(workspace_api_url).toBe('https://instance-gateway.example.com/prod/');
   });
+
+  it('merges region and streams from .loxtep/project.json', async () => {
+    const loxtepDir = join(tmpRoot, '.loxtep');
+    await mkdir(loxtepDir, { recursive: true });
+    await writeFile(
+      join(loxtepDir, 'project.json'),
+      JSON.stringify({
+        project_id: 'ed125001-d343-483a-b045-ef2bcaeffb2c',
+        region: 'us-east-1',
+        streams: {
+          Region: 'us-east-1',
+          LeoEvent: 'prod-LeoEvent',
+          LeoStream: 'prod-LeoStream',
+        },
+      })
+    );
+
+    const { config } = await loadCliConfig({ cwd: tmpRoot });
+    expect(config.region).toBe('us-east-1');
+    expect(config.streams?.LeoEvent).toBe('prod-LeoEvent');
+    expect(config.streams?.LeoStream).toBe('prod-LeoStream');
+  });
 });
