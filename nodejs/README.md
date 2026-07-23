@@ -101,18 +101,26 @@ Run these in an **empty directory** you want to turn into a Loxtep workspace.
    Not in a scaffolded folder? Run `pnpm exec loxtep projects list` first, then
    `workflows list --project-id <uuid>`.
 
-   A brand-new org may have **no data products yet** — that's expected. Create
-   and deploy workflows (below, or via MCP/UI) before calling `get_writer`.
+6. **Provision your first source data product (SDK ingest)**
 
-7. **Author, test, and deploy** (when you're ready)
+   See **[SDK-first ingest](./docs/sdk-first-ingest.md)** — generate bundle,
+   save via MCP, deploy, then write:
+
+   ```bash
+   pnpm exec loxtep domains list
+   node node_modules/@loxtep/sdk/docs/examples/generate-ingest-bundle.mjs
+   # … save_workflow_bundle (MCP) + workflows deploy …
+   node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
+   ```
+
+7. **Author code-first workflow modules** (optional, different path)
 
    ```bash
    pnpm exec loxtep test <module> --event ./events/sample.json
    pnpm exec loxtep deploy
    ```
 
-   See **[Code-first CLI guide](./docs/code-first-cli.md)** for workflow
-   modules and templates.
+   See **[Code-first CLI guide](./docs/code-first-cli.md)**.
 
 ### Bootstrap the SDK from your workspace
 
@@ -127,20 +135,20 @@ const { user, organization } = await client.session.get_current_user();
 console.log(user.email, organization?.name);
 ```
 
-### Write and read events (after deploy)
+### Write and read events (after SDK ingest deploy)
 
 `get_writer` / `get_reader` resolve queue, bot, and stream config from
-**deployment metadata**. Use a name from `loxtep data-products list` after
-your workflow is deployed:
+**deployment metadata**. Complete [SDK-first ingest](./docs/sdk-first-ingest.md)
+before streaming:
 
 ```ts
 const client = await LoxtepClient.fromWorkspace();
 
-const writer = await client.get_writer('orders');
-writer.write({ order_id: '1', total: 42.0 });
+const writer = await client.get_writer('app-events');
+writer.write({ event_id: '1', payload: { hello: 'world' } });
 await writer.close();
 
-const reader = await client.get_reader('orders');
+const reader = await client.get_reader('app-events');
 for await (const event of reader) {
   console.log(event);
   break;

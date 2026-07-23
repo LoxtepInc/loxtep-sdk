@@ -58,3 +58,36 @@ export interface DeployResponse {
 }
 
 export type CreateWorkflowInput = FlowCreateInput;
+
+export interface SaveWorkflowBundleInput {
+  files: Record<string, Record<string, unknown>>;
+  dry_run?: boolean;
+}
+
+export interface WorkflowBundleCreatedEntity {
+  entity_type: string;
+  entity_id: string;
+  path: string;
+}
+
+export interface WorkflowBundleValidationError {
+  field: string;
+  message: string;
+  code?: string;
+}
+
+export interface SaveWorkflowBundleResult {
+  success: true;
+  dry_run?: boolean;
+  workflow_id: string;
+  created_entities: WorkflowBundleCreatedEntity[];
+  validation_errors?: WorkflowBundleValidationError[];
+  relationship_errors?: WorkflowBundleValidationError[];
+  topology_errors?: WorkflowBundleValidationError[];
+  validation_error?: string;
+}
+
+export interface SaveWorkflowBundleResponse {
+  success: true;
+  data: SaveWorkflowBundleResult;
+}

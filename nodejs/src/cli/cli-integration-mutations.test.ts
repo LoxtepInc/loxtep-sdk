@@ -2,12 +2,16 @@
  * CLI integration tests — mutating API-backed commands against mock platform POST/PUT.
  */
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   runDataProductsCreate,
   runDataProductsPromote,
   runDataProductsReadiness,
 } from './commands/data-products-cmd.js';
 import { runWorkflowsCreate, runWorkflowsDeploy } from './commands/workflows-cmd.js';
+import { runBundleSave } from './commands/bundle-cmd.js';
+import { runIngestProvision } from './commands/ingest-cmd.js';
 import { runTriggersCreate, runTriggersTest } from './commands/triggers-cmd.js';
 import { runDataContractsCreate } from './commands/data-contracts-cmd.js';
 import {
@@ -87,6 +91,44 @@ describe('CLI integration mutations (mock platform API)', () => {
         opts()
       );
       expectCliSuccess(out, 'deploy-test-001');
+      out.restore();
+    });
+
+    it('bundle save dry run', async () => {
+      const out = captureCliOutput();
+      mkdirSync(join(harness.configDir, '.loxtep'), { recursive: true });
+      const bundlePath = join(harness.configDir, '.loxtep', 'sdk-ingest-bundle.json');
+      writeFileSync(
+        bundlePath,
+        JSON.stringify({
+          project_id: 'project-test-001',
+          files: {
+            'workflow.json': {
+              workflow_id: 'wf-bundle-test',
+              workflow_type: 'ingestion',
+              name: 'Test',
+            },
+          },
+        })
+      );
+      await runBundleSave({ file: bundlePath, dry_run: true }, opts());
+      expectCliSuccess(out, 'wf-bundle-test');
+      out.restore();
+    });
+
+    it('ingest provision dry run', async () => {
+      const out = captureCliOutput();
+      await runIngestProvision(
+        {
+          name: 'app-events',
+          domain_id: MOCK_IDS.domain_id,
+          project_id: 'project-test-001',
+          dry_run: true,
+          write_bundle_file: false,
+        },
+        opts()
+      );
+      expectCliSuccess(out, 'connector-sdk-001');
       out.restore();
     });
 

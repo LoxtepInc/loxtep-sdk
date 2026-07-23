@@ -467,6 +467,24 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
+    if (method === 'POST' && pathname === '/connectors/connectors') {
+      let body: Record<string, unknown> = {};
+      try {
+        body = init?.body ? JSON.parse(String(init.body)) : {};
+      } catch {
+        body = {};
+      }
+      return jsonResponse(
+        successEnvelope({
+          connector_id: 'connector-sdk-001',
+          connector_type: body.connector_type ?? 'sdk',
+          metadata: body.metadata ?? { name: 'SDK Connector' },
+          organization_id: MOCK_IDS.organization_id,
+          status: 'active',
+        })
+      );
+    }
+
     if (method === 'GET' && pathname.startsWith('/dataproducts/dataproducts/templates')) {
       const detail = routeMatch(pathname, /\/dataproducts\/dataproducts\/templates\/([^/?]+)$/);
       if (detail) {
@@ -584,6 +602,33 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           name: body.name ?? 'New Workflow',
           project_id: body.project_id ?? 'project-test-001',
           status: 'inactive',
+        })
+      );
+    }
+
+    if (method === 'POST' && routeMatch(pathname, /\/workflows\/projects\/[^/]+\/workflow-bundle$/)) {
+      let body: Record<string, unknown> = {};
+      try {
+        body = init?.body ? JSON.parse(String(init.body)) : {};
+      } catch {
+        body = {};
+      }
+      const files = (body.files as Record<string, unknown>) ?? {};
+      const workflowJson = files['workflow.json'] as Record<string, unknown> | undefined;
+      const workflowId =
+        typeof workflowJson?.workflow_id === 'string' ? workflowJson.workflow_id : 'wf-bundle-001';
+      return jsonResponse(
+        successEnvelope({
+          success: true,
+          dry_run: body.dry_run === true,
+          workflow_id: workflowId,
+          created_entities: [
+            {
+              entity_type: 'workflow',
+              entity_id: workflowId,
+              path: `workflows/${workflowId}/workflow.json`,
+            },
+          ],
         })
       );
     }

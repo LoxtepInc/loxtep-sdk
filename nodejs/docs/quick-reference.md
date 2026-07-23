@@ -1,8 +1,8 @@
 # SDK Quick Reference Card
 
 Concise cheat sheet for common Loxtep SDK operations (Node.js).
-For full walkthroughs, see the [Getting Started Guide](./getting-started.md)
-or [Code-first CLI guide](./code-first-cli.md).
+For full walkthroughs, see [SDK-first ingest](./sdk-first-ingest.md),
+[Getting Started Guide](./getting-started.md), or [Code-first CLI guide](./code-first-cli.md).
 
 ---
 
@@ -183,10 +183,24 @@ const hits = await client.query.catalog.search({ query: 'orders' });
 Workspace lifecycle (requires `loxtep init` first — see [Code-first CLI guide](./code-first-cli.md)):
 
 ```bash
-pnpm exec loxtep init [--template shopify-orders]
 pnpm exec loxtep login
-pnpm exec loxtep attach --instance prod
+pnpm exec loxtep init
+pnpm exec loxtep attach --instance <instance-id>
 pnpm exec loxtep generate
+```
+
+**SDK-first ingest** (after attach — see [SDK-first ingest](./sdk-first-ingest.md)):
+
+```bash
+pnpm exec loxtep domains list
+node node_modules/@loxtep/sdk/docs/examples/generate-ingest-bundle.mjs
+pnpm exec loxtep workflows deploy --project-id <id> --instance-id <id>
+node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
+```
+
+Code-first workflow modules:
+
+```bash
 pnpm exec loxtep test my-module --event ./events/sample.json
 pnpm exec loxtep deploy
 ```
