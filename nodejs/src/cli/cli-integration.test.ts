@@ -7,6 +7,7 @@ import { runWhoami } from './commands/whoami.js';
 import { runLogin } from './commands/login.js';
 import { runLogout } from './commands/logout.js';
 import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
+import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
 import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
 import {
   runDataContractsList,
@@ -103,6 +104,22 @@ describe('CLI integration (mock platform API)', () => {
       await runLogout({ cwd: harness.configDir });
       expect(out.text).toContain('Logged out');
       expect(await readCredentials(localCreds)).toBeNull();
+      out.restore();
+    });
+  });
+
+  describe('Workspace', () => {
+    it('projects list', async () => {
+      const out = captureCliOutput();
+      await runProjectsList(opts());
+      expectCliSuccess(out, 'project-test-001', 'Test Project');
+      out.restore();
+    });
+
+    it('projects get', async () => {
+      const out = captureCliOutput();
+      await runProjectsGet('project-test-001', opts());
+      expectCliSuccess(out, 'project-test-001', 'Test Project');
       out.restore();
     });
   });

@@ -2,6 +2,8 @@
  * CLI: loxtep data-products list | get | query | tables | create
  */
 
+import { toDataProductListSummary } from '../../client/list-summaries.js';
+import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 import type { DataProductCreateInput } from '../../client/data-products-types.js';
 
@@ -9,12 +11,14 @@ export interface DataProductsCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  debug?: boolean;
 }
 
 export async function runDataProductsList(options: DataProductsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   const result = await client.build.data_products.list({ page_size: 20 });
-  console.log(JSON.stringify(result, null, 2));
+  const summary = mapPaginatedList(result, toDataProductListSummary);
+  printCliListOutput(summary, result, { ...options, label: 'data-products list' });
 }
 
 export async function runDataProductsGet(

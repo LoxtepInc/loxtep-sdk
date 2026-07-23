@@ -1,8 +1,12 @@
 /**
- * `loxtep init [--template <slug>] [--create-repo|--from-repo]`
+ * `loxtep init [--template <slug>] [--project-id <uuid>] [--create-repo|--from-repo]`
  *
  * Scaffolds a new Loxtep project:
  *   - `.loxtep/project.json` + `domains/` + `connectors/` + `workflows/` + `data-products/`
+ *   - Requires authentication to register (or bind) a platform project — no silent
+ *     `proj_local_*` ids that break API commands later.
+ *   - `--project-id <uuid>` binds an existing org project instead of creating one.
+ *   - Re-running `init` after login upgrades a stale local-only `project_id`.
  *   - With `--template <slug>`: resolves from the catalog and materializes full
  *     structure incl. `AGENTS.md` + default `.loxtep/skills/<slug>.yaml`.
  *   - Repo flags → `github_action` on `create_project`:
@@ -19,11 +23,16 @@
  */
 
 import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { CliResult } from '../project-context.js';
 import {
   PROJECT_DIR_NAME,
+  PROJECT_FILE_NAME,
   writeProjectConfig,
+  isLocalProjectId,
+  LOCAL_PROJECT_ID_PREFIX,
+  ProjectConfigSchema,
   type ProjectConfig,
 } from '../project-context.js';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
@@ -95,6 +104,15 @@ export interface InitOptions {
   /** Project name (defaults to directory basename). */
   name?: string;
   /**
+   * Bind an existing platform project (`--project-id <uuid>`) instead of creating one.
+   */
+  projectId?: string;
+  /**
+   * Test-only: scaffold without platform registration (writes a local-only project_id).
+   * Not exposed on the CLI.
+   */
+  offline?: boolean;
+  /**
    * Optional pre-authenticated client. When provided and the project is
    * attached, the init will auto-run generate.
    */
@@ -124,6 +142,138 @@ const STANDARD_DIRS = ['domains', 'connectors', 'workflows', 'data-products'] as
 
 async function ensureDir(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true });
+}
+
+function readExistingProjectConfig(cwd: string): ProjectConfig | undefined {
+  const filePath = join(cwd, PROJECT_DIR_NAME, PROJECT_FILE_NAME);
+  if (!existsSync(filePath)) return undefined;
+  try {
+    const parsed = ProjectConfigSchema.safeParse(JSON.parse(readFileSync(filePath, 'utf-8')));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+type PlatformProjectResolution =
+  | {
+      ok: true;
+      projectId: string;
+      organizationId?: string;
+      /** Human-readable note for stdout (upgrade, bind, idempotent re-init). */
+      note?: string;
+    }
+  | { ok: false; error: string };
+
+async function resolvePlatformProject(options: {
+  cwd: string;
+  client?: LoxtepClient | null;
+  projectId?: string;
+  name?: string;
+  templateSlug?: string;
+  repoResult: Extract<ReturnType<typeof repoFlagsToGithubAction>, { ok: true }>;
+  offline?: boolean;
+}): Promise<PlatformProjectResolution> {
+  const { cwd, client, projectId: explicitProjectId, offline } = options;
+  const existing = readExistingProjectConfig(cwd);
+
+  if (explicitProjectId) {
+    if (!client) {
+      return {
+        ok: false,
+        error: 'Authentication required for --project-id. Run `loxtep login` first.',
+      };
+    }
+    try {
+      const project = await client.workspace.projects.get(explicitProjectId);
+      return {
+        ok: true,
+        projectId: project.project_id,
+        organizationId: project.organization_id,
+        note: `Bound existing platform project ${project.project_id}.`,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        ok: false,
+        error: `Project '${explicitProjectId}' not found or not accessible: ${msg}. Run \`loxtep projects list\`.`,
+      };
+    }
+  }
+
+  if (existing && !isLocalProjectId(existing.project_id)) {
+    if (client) {
+      try {
+        const project = await client.workspace.projects.get(existing.project_id);
+        return {
+          ok: true,
+          projectId: project.project_id,
+          organizationId: project.organization_id,
+          note: `Project already initialized (${project.project_id}).`,
+        };
+      } catch {
+        return {
+          ok: true,
+          projectId: existing.project_id,
+          organizationId: existing.organization_id,
+          note: `Project already initialized (${existing.project_id}).`,
+        };
+      }
+    }
+    return {
+      ok: true,
+      projectId: existing.project_id,
+      organizationId: existing.organization_id,
+      note: `Project already initialized (${existing.project_id}).`,
+    };
+  }
+
+  if (!client) {
+    if (offline) {
+      return {
+        ok: true,
+        projectId: `${LOCAL_PROJECT_ID_PREFIX}${Date.now().toString(36)}`,
+      };
+    }
+    return {
+      ok: false,
+      error:
+        'Authentication required to register a platform project. Run `loxtep login` first, then `loxtep init`. ' +
+        'To bind an existing project: `loxtep init --project-id <uuid>`.',
+    };
+  }
+
+  const projectName = options.name || cwd.split('/').pop() || 'loxtep-project';
+  const createBody: CreateProjectInput = {
+    name: projectName,
+    template_slug: options.templateSlug,
+    github_action: options.repoResult.action,
+  };
+  if (options.repoResult.action === 'create_new' && options.repoResult.repoName) {
+    createBody.github_repo_name = options.repoResult.repoName;
+  }
+  if (options.repoResult.action === 'import_existing' && options.repoResult.importUrl) {
+    createBody.github_import_url = options.repoResult.importUrl;
+  }
+
+  try {
+    const project = await client.workspace.projects.create(createBody);
+    const upgraded = existing != null && isLocalProjectId(existing.project_id);
+    return {
+      ok: true,
+      projectId: project.project_id,
+      organizationId: project.organization_id,
+      note: upgraded
+        ? `Registered platform project ${project.project_id} (replaced local-only project_id).`
+        : `Created platform project ${project.project_id}.`,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      error: `Could not create project on platform: ${msg}`,
+    };
+  }
 }
 
 function buildDefaultAgentsMd(templateSlug: string, template: TemplateSummary): string {
@@ -194,6 +344,16 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
     return { exitCode: 1, stdout: [], stderr: [repoResult.error] };
   }
 
+  // --- Scaffold standard directories first (always) ---
+  for (const dir of STANDARD_DIRS) {
+    await ensureDir(join(cwd, dir));
+  }
+
+  const loxtepDir = join(cwd, PROJECT_DIR_NAME);
+  await ensureDir(loxtepDir);
+
+  const existing = readExistingProjectConfig(cwd);
+
   // --- Resolve template when requested (R1.2, R16.1, R16.2) ---
   let template: TemplateSummary | undefined;
   if (templateSlug && client) {
@@ -219,52 +379,41 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
     }
   }
 
-  // --- Create project on the platform if client is available ---
-  let projectId = `proj_local_${Date.now().toString(36)}`;
-  let organizationId: string | undefined;
+  const platform = await resolvePlatformProject({
+    cwd,
+    client,
+    projectId: options.projectId,
+    name: options.name,
+    templateSlug,
+    repoResult,
+    offline: options.offline,
+  });
 
-  if (client) {
-    try {
-      const projectName = options.name || cwd.split('/').pop() || 'loxtep-project';
-      const createBody: CreateProjectInput = {
-        name: projectName,
-        template_slug: templateSlug,
-        github_action: repoResult.action,
-      };
-      if (repoResult.action === 'create_new' && repoResult.repoName) {
-        createBody.github_repo_name = repoResult.repoName;
-      }
-      if (repoResult.action === 'import_existing' && repoResult.importUrl) {
-        createBody.github_import_url = repoResult.importUrl;
-      }
-      const project = await client.workspace.projects.create(createBody);
-      projectId = project.project_id;
-      organizationId = project.organization_id;
-    } catch (err) {
-      // If project creation fails, proceed with local-only scaffold
-      const msg = err instanceof Error ? err.message : String(err);
-      stderr.push(`Warning: Could not create project on platform: ${msg}`);
-    }
+  if (!platform.ok) {
+    return {
+      exitCode: 1,
+      stdout,
+      stderr: [platform.error],
+    };
   }
 
-  // --- Scaffold standard directories (R1.1) ---
-  for (const dir of STANDARD_DIRS) {
-    await ensureDir(join(cwd, dir));
+  if (platform.note) {
+    stdout.push(platform.note);
   }
 
-  // --- Scaffold .loxtep/ directory + project.json ---
-  const loxtepDir = join(cwd, PROJECT_DIR_NAME);
-  await ensureDir(loxtepDir);
+  const projectId = platform.projectId;
+  const organizationId = platform.organizationId;
 
   const config: ProjectConfig = {
     project_id: projectId,
     ...(organizationId ? { organization_id: organizationId } : {}),
-    ...(templateSlug ? { template_slug: templateSlug } : {}),
-    ...(options.instanceId ? { instance_id: options.instanceId } : {}),
-    ...(options.apiUrl ? { api_url: options.apiUrl } : {}),
+    ...(templateSlug ? { template_slug: templateSlug } : existing?.template_slug ? { template_slug: existing.template_slug } : {}),
+    ...(options.instanceId ? { instance_id: options.instanceId } : existing?.instance_id ? { instance_id: existing.instance_id } : {}),
+    ...(options.apiUrl ? { api_url: options.apiUrl } : existing?.api_url ? { api_url: existing.api_url } : {}),
+    ...(existing?.repository ? { repository: existing.repository } : {}),
   };
 
-  const projectFilePath = join(loxtepDir, 'project.json');
+  const projectFilePath = join(loxtepDir, PROJECT_FILE_NAME);
   await writeProjectConfig(projectFilePath, config);
 
   // --- Template-specific scaffolding (R16.1, R16.2) ---
@@ -323,11 +472,11 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
     }
     stdout.push(...genResult.stdout);
   } else if (!client) {
-    // R16.5: not authenticated — print guidance
     stdout.push('Next steps:');
     stdout.push('  1. loxtep login');
-    stdout.push('  2. loxtep attach --instance <instance-id>');
-    stdout.push('  3. loxtep generate');
+    stdout.push('  2. loxtep init   (register platform project — or init --project-id <uuid>)');
+    stdout.push('  3. loxtep attach --instance <instance-id>');
+    stdout.push('  4. loxtep generate');
   } else if (!isAttached) {
     // Authed but not attached — print attach + generate guidance
     stdout.push('Next steps:');

@@ -10,6 +10,7 @@
  */
 
 import type { LoxtepClient } from '../../client/loxtep-client.js';
+import { toActivityListSummary } from '../../client/list-summaries.js';
 import type { ActivityListFilters, ActivitySource } from '../../client/activity-types.js';
 import type { CliResult } from '../project-context.js';
 
@@ -55,38 +56,15 @@ export async function runActivityListCommand(
     if (options?.limit != null) filters.limit = options.limit;
 
     const result = await client.context.activity.list(filters);
-    const { entries } = result;
-
-    if (entries.length === 0) {
-      return { exitCode: 0, stdout: ['No activity entries found.'], stderr: [] };
-    }
-
-    const lines: string[] = [];
-    for (const entry of entries) {
-      const kindTag = entry.kind === 'action_trace' ? 'TRACE' : 'AUDIT';
-      const outcomeTag = entry.outcome ? ` [${entry.outcome}]` : '';
-      const sourceTag = entry.source ? ` (${entry.source})` : '';
-      lines.push(
-        `${entry.timestamp}  ${kindTag}${outcomeTag}${sourceTag}  ${entry.operation_name}`
-      );
-      if (entry.workflow_name) {
-        lines.push(`  Workflow: ${entry.workflow_name}`);
-      }
-      if (entry.actor) {
-        lines.push(`  Actor: ${entry.actor}`);
-      }
-      if (entry.target_resource) {
-        lines.push(`  Target: ${entry.target_resource}`);
-      }
-      if (entry.resource_type && entry.resource_id) {
-        lines.push(`  Resource: ${entry.resource_type}/${entry.resource_id}`);
-      }
-      if (entry.skill_name) {
-        lines.push(`  Skill: ${entry.skill_name}`);
-      }
-      lines.push('');
-    }
-    return { exitCode: 0, stdout: lines, stderr: [] };
+    const summary = {
+      items: result.entries.map(toActivityListSummary),
+      cursor: result.cursor,
+    };
+    return {
+      exitCode: 0,
+      stdout: [JSON.stringify(summary, null, 2)],
+      stderr: [],
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { exitCode: 1, stdout: [], stderr: [`Failed to list activity: ${message}`] };

@@ -67,6 +67,7 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
+import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
 
@@ -128,6 +129,8 @@ async function main(): Promise<void> {
       const fromRepo = fromRepoIdx >= 0 ? args[fromRepoIdx + 1] : undefined;
       const nameIdx = args.indexOf('--name');
       const name = nameIdx >= 0 ? args[nameIdx + 1] : undefined;
+      const projectIdIdx = args.indexOf('--project-id');
+      const projectId = projectIdIdx >= 0 ? args[projectIdIdx + 1] : undefined;
 
       // Attempt to get an authenticated client (don't fail if not logged in)
       const clientResult = await createCliClient().catch(() => null);
@@ -139,6 +142,7 @@ async function main(): Promise<void> {
         createRepo,
         fromRepo,
         name,
+        projectId,
         client,
       });
 
@@ -173,6 +177,16 @@ async function main(): Promise<void> {
       }
       break;
     }
+    case 'projects':
+      if (sub === 'list') {
+        await runProjectsList({ debug: args.includes('--debug') });
+      } else if (sub === 'get' && args[2]) {
+        await runProjectsGet(args[2], { debug: args.includes('--debug') });
+      } else {
+        console.error('Usage: loxtep projects list | loxtep projects get <id>');
+        process.exitCode = 1;
+      }
+      break;
     case 'bus':
       if (sub === 'login') {
         await runBusLogin();
@@ -215,7 +229,7 @@ async function main(): Promise<void> {
       break;
     case 'data-products':
       if (sub === 'list') {
-        await runDataProductsList();
+        await runDataProductsList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runDataProductsGet(args[2]);
       } else if (sub === 'query' && args[2]) {
@@ -327,7 +341,10 @@ async function main(): Promise<void> {
       break;
     case 'workflows':
       if (sub === 'list') {
-        await runWorkflowsList({ project_id: getArg('--project-id') });
+        await runWorkflowsList({
+          project_id: getArg('--project-id'),
+          debug: args.includes('--debug'),
+        });
       } else if (sub === 'get' && args[2]) {
         await runWorkflowsGet(args[2]);
       } else if (sub === 'create') {
@@ -383,7 +400,7 @@ async function main(): Promise<void> {
       break;
     case 'triggers':
       if (sub === 'list') {
-        await runTriggersList();
+        await runTriggersList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runTriggersGet(args[2]);
       } else if (sub === 'create') {
@@ -415,7 +432,7 @@ async function main(): Promise<void> {
       break;
     case 'domains':
       if (sub === 'list') {
-        await runDomainsList();
+        await runDomainsList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runDomainsGet(args[2]);
       } else {
@@ -425,7 +442,7 @@ async function main(): Promise<void> {
       break;
     case 'standards':
       if (sub === 'list') {
-        await runStandardsList();
+        await runStandardsList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runStandardsGet(args[2]);
       } else {
@@ -435,7 +452,7 @@ async function main(): Promise<void> {
       break;
     case 'data-contracts':
       if (sub === 'list') {
-        await runDataContractsList();
+        await runDataContractsList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runDataContractsGet(args[2]);
       } else if (sub === 'create') {
@@ -463,7 +480,7 @@ async function main(): Promise<void> {
     case 'promises':
       console.warn('Warning: "promises" is deprecated; use "data-contracts" (same behavior).');
       if (sub === 'list') {
-        await runDataContractsList();
+        await runDataContractsList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runDataContractsGet(args[2]);
       } else {

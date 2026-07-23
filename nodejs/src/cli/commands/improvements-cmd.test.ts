@@ -93,17 +93,21 @@ describe('loxtep improvements list', () => {
     });
     const result = await runImprovementsListCommand(client);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.join('\n')).toContain('imp_001');
-    expect(result.stdout.join('\n')).toContain('orders-sync');
-    expect(result.stdout.join('\n')).toContain('imp_002');
-    expect(result.stdout.join('\n')).toContain('users-etl');
+    const parsed = JSON.parse(result.stdout[0]!) as {
+      items: Array<{ id: string; workflow_name: string }>;
+    };
+    expect(parsed.items.map(i => i.id)).toEqual(expect.arrayContaining(['imp_001', 'imp_002']));
+    expect(parsed.items.map(i => i.workflow_name)).toEqual(
+      expect.arrayContaining(['orders-sync', 'users-etl'])
+    );
   });
 
-  it('prints "No improvements found" for empty list', async () => {
+  it('returns empty items array for empty list', async () => {
     const client = mockClient({ improvements: [] });
     const result = await runImprovementsListCommand(client);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout[0]).toContain('No improvements found');
+    const parsed = JSON.parse(result.stdout[0]!) as { items: unknown[] };
+    expect(parsed.items).toEqual([]);
   });
 
   it('passes status filter to the API', async () => {

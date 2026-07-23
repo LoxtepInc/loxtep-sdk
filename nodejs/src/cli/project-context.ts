@@ -110,6 +110,16 @@ const NO_PROJECT_MESSAGE =
 /** Guidance message for an unattached project (R1.10). */
 const NOT_ATTACHED_MESSAGE =
   'Project is not attached to an Instance (missing instance_id/api_url). Run `loxtep attach` first.';
+/** Prefix for offline-only project ids written before platform registration existed. */
+export const LOCAL_PROJECT_ID_PREFIX = 'proj_local_';
+
+/** True when `project_id` was generated locally and never registered on the platform. */
+export function isLocalProjectId(project_id: string): boolean {
+  return project_id.startsWith(LOCAL_PROJECT_ID_PREFIX);
+}
+
+const LOCAL_PROJECT_MESSAGE =
+  'Project is not registered on the platform (local-only project_id). Run `loxtep login` then `loxtep init` to register a platform project, or `loxtep init --project-id <uuid>` to bind an existing one.';
 
 function noProjectFailure(message: string = NO_PROJECT_MESSAGE): PreconditionFailure {
   return { code: 'NO_PROJECT', message };
@@ -201,6 +211,12 @@ export function requireProject(cwd: string): RequireProjectResult {
       failure: noProjectFailure(
         `${projectFilePath} is not a valid project config: ${summarizeIssues(result.error)}. Run \`loxtep init\` to recreate it.`
       ),
+    };
+  }
+  if (isLocalProjectId(result.data.project_id)) {
+    return {
+      ok: false,
+      failure: noProjectFailure(LOCAL_PROJECT_MESSAGE),
     };
   }
   return { ok: true, projectDir, projectFilePath, project: result.data };

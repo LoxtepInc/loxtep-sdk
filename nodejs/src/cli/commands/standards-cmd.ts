@@ -3,19 +3,23 @@
  * Standards = policies (backend). Uses SDK standards surface (GET /governance/standards).
  */
 
+import { toStandardListSummary } from '../../client/list-summaries.js';
+import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface StandardsCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  debug?: boolean;
 }
 
 export async function runStandardsList(options: StandardsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
     const result = await client.define.standards.list();
-    console.log(JSON.stringify(result, null, 2));
+    const summary = mapPaginatedList(result, toStandardListSummary);
+    printCliListOutput(summary, result, { ...options, label: 'standards list' });
   } catch (err) {
     console.error((err as Error).message);
     process.exitCode = 1;

@@ -2,12 +2,15 @@
  * CLI: loxtep workflows list | get <id> | create ... | deploy (backend workflows MS).
  */
 
+import { toWorkflowListSummary } from '../../client/list-summaries.js';
+import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface WorkflowsCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  debug?: boolean;
 }
 
 export async function runWorkflowsList(
@@ -17,13 +20,17 @@ export async function runWorkflowsList(
   const projectId = options.project_id ?? config.project_id;
   if (!projectId) {
     console.error(
-      'Missing project_id. Use: loxtep workflows list --project-id <id> or loxtep config set project_id <id>'
+      'Missing project_id. Run from your workspace after `loxtep init`, or:\n' +
+        '  pnpm exec loxtep config list              # project_id from .loxtep/project.json\n' +
+        '  pnpm exec loxtep projects list            # all projects in your org\n' +
+        '  pnpm exec loxtep workflows list --project-id <uuid>'
     );
     process.exitCode = 1;
     return;
   }
   const result = await client.build.workflows.list({ project_id: projectId, page_size: 50 });
-  console.log(JSON.stringify(result, null, 2));
+  const summary = mapPaginatedList(result, toWorkflowListSummary);
+  printCliListOutput(summary, result, { ...options, label: 'workflows list' });
 }
 
 export async function runWorkflowsGet(

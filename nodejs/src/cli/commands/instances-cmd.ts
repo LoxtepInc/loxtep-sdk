@@ -24,6 +24,7 @@
 
 import { parseInstancesListResponse } from '../../client/instances-list-response.js';
 import { toInstanceListSummaries } from '../../client/instance-list-summary.js';
+import { printCliListOutput } from '../cli-list-output.js';
 import { createCliHttpClient, requireCliClient } from '../create-cli-client.js';
 import type { InstanceCreateInput, InstanceType } from '../../client/instances-types.js';
 
@@ -35,10 +36,6 @@ export interface InstancesCmdOptions {
   debug?: boolean;
   /** For tests: inject fetch to mock API. */
   fetch_fn?: typeof fetch;
-}
-
-function isDebugEnabled(options: InstancesCmdOptions): boolean {
-  return options.debug === true || process.env.LOXTEP_DEBUG === '1';
 }
 
 export async function runInstancesList(options: InstancesCmdOptions = {}): Promise<void> {
@@ -57,13 +54,11 @@ export async function runInstancesList(options: InstancesCmdOptions = {}): Promi
 
     const raw = await cli.http.get<unknown>('/organizations/instances');
 
-    if (isDebugEnabled(options)) {
-      console.error('[loxtep instances debug] GET /organizations/instances response:');
-      console.error(JSON.stringify(raw, null, 2));
-    }
-
     const { items } = parseInstancesListResponse(raw);
-    console.log(JSON.stringify(toInstanceListSummaries(items), null, 2));
+    printCliListOutput(toInstanceListSummaries(items), raw, {
+      ...options,
+      label: 'instances list',
+    });
 
     if (items.length === 0) {
       console.error(

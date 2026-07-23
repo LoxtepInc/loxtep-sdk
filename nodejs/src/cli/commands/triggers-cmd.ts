@@ -2,18 +2,22 @@
  * CLI: loxtep triggers list | triggers get <id> | triggers create ... | triggers test <id>
  */
 
+import { toTriggerListSummary } from '../../client/list-summaries.js';
+import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface TriggersCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  debug?: boolean;
 }
 
 export async function runTriggersList(options: TriggersCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   const result = await client.build.triggers.list({ page_size: 50 });
-  console.log(JSON.stringify(result, null, 2));
+  const summary = mapPaginatedList(result, toTriggerListSummary);
+  printCliListOutput(summary, result, { ...options, label: 'triggers list' });
 }
 
 export async function runTriggersGet(

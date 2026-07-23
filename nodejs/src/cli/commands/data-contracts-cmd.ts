@@ -3,19 +3,23 @@
  * Data contracts (backend). Uses SDK data_contracts surface (GET /dataproducts/datacontracts).
  */
 
+import { toDataContractListSummary } from '../../client/list-summaries.js';
+import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface DataContractsCmdOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  debug?: boolean;
 }
 
 export async function runDataContractsList(options: DataContractsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
     const result = await client.define.data_contracts.list();
-    console.log(JSON.stringify(result, null, 2));
+    const summary = mapPaginatedList(result, toDataContractListSummary);
+    printCliListOutput(summary, result, { ...options, label: 'data-contracts list' });
   } catch (err) {
     console.error((err as Error).message);
     process.exitCode = 1;

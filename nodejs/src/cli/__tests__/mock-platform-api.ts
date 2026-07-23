@@ -616,6 +616,23 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
+    if (
+      method === 'GET' &&
+      (pathname === resolvedPlatformPath('/workflows/projects') ||
+        pathname.startsWith(`${resolvedPlatformPath('/workflows/projects')}?`))
+    ) {
+      return jsonResponse(
+        listEnvelope([
+          {
+            project_id: 'project-test-001',
+            name: 'Test Project',
+            organization_id: MOCK_IDS.organization_id,
+            status: 'active',
+          },
+        ])
+      );
+    }
+
     if (method === 'GET' && routeMatch(pathname, /\/workflows\/projects\/[^/?]+$/)) {
       const detail = routeMatch(pathname, /\/workflows\/projects\/([^/?]+)$/);
       if (detail) {
