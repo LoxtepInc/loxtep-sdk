@@ -67,7 +67,8 @@ workspace exists, the SDK also auto-resolves `api_url`, `project_id`, and
 ## CLI reference (`loxtep`)
 
 Installed with `@loxtep/sdk` (`pnpm exec loxtep <command>` or a global install). Run
-`loxtep --help` for the live list.
+`loxtep --help` for the live list — output is grouped by **MCP-aligned SDK facade**
+(`Session`, `Workspace`, `Build`, `Define`, `Review`, `Query`, `Observe`, `Context`).
 
 ### Lifecycle commands
 

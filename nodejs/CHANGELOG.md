@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.5] - 2026-07-23
+
+### Changed
+
+- **CLI help** (`loxtep --help`) reorganized under **MCP-aligned SDK facades**
+  (Session, Workspace, Build, Define, Review, Query, Observe, Context) instead
+  of a flat command list. Help text lives in `src/cli/help.ts`.
+
 ## [0.7.4] - 2026-07-23
 
 ### Changed
