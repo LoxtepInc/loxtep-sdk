@@ -107,11 +107,11 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
 
     /**
      * Resolve stream bus configuration (DynamoDB tables, Kinesis stream, S3 bucket) for an instance.
-     * Calls GET /instances/{instance_id}/stream-config.
+     * Calls GET /organizations/instances/{instance_id}/stream-config.
      */
     async get_stream_config(instance_id: string): Promise<InstanceStreamConfig> {
       const res = await http.get<{ success: true; data: InstanceStreamConfig }>(
-        `/instances/${encodeURIComponent(instance_id)}/stream-config`
+        `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}/stream-config`
       );
       return res.data;
     },

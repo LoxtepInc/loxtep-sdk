@@ -54,4 +54,16 @@ describe('buildPlatformRequestUrl', () => {
       else delete process.env.LOXTEP_PLATFORM_SEARCH_MS;
     }
   });
+
+  it('routes organizations instance APIs without duplicating the microservice prefix', () => {
+    expect(
+      buildPlatformRequestUrl(host, '/organizations/instances/abc/stream-config')
+    ).toBe('https://apidev.example.com/organizations/instances/abc/stream-config');
+  });
+
+  it('does not treat bare /instances as organizations (wrong attach URL would 403)', () => {
+    expect(buildPlatformRequestUrl(host, '/instances/abc/stream-config')).toBe(
+      'https://apidev.example.com/instances/abc/stream-config'
+    );
+  });
 });
