@@ -18,6 +18,10 @@ function isInstanceRecord(record: Record<string, unknown>): boolean {
   return typeof record.instance_id === 'string' && record.instance_id.trim() !== '';
 }
 
+function toInstance(record: Record<string, unknown>): Instance {
+  return record as unknown as Instance;
+}
+
 /**
  * Parse any supported instance detail API payload into an `Instance`.
  * @throws when the payload does not contain a recognizable instance record.
@@ -30,12 +34,12 @@ export function parseInstanceDetailResponse(raw: unknown): Instance {
   }
 
   if (isInstanceRecord(record)) {
-    return record as Instance;
+    return toInstance(record);
   }
 
   const nested = asRecord(record.instance);
   if (nested && isInstanceRecord(nested)) {
-    return nested as Instance;
+    return toInstance(nested);
   }
 
   if (record.data != null && typeof record.data === 'object') {
