@@ -536,7 +536,7 @@ async function main(): Promise<void> {
     }
     case 'instances': {
       if (sub === 'list') {
-        await runInstancesList();
+        await runInstancesList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runInstancesGet(args[2]);
       } else if (sub === 'create') {

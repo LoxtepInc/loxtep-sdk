@@ -1,5 +1,5 @@
 /**
- * Build LoxtepClient for CLI commands: merged auth + config + dummy SigV4 for API Gateway dev.
+ * Build LoxtepClient for CLI commands: merged auth, JWT, and STS SigV4 from login.
  */
 
 import { loadConfig } from '../config/load.js';
@@ -9,6 +9,8 @@ import { TokenManager } from '../auth/token-manager.js';
 import { refresh, type RefreshResponse, type AwsCredentialsSnake } from '../auth/login.js';
 import { decodeJwtPayload } from '../auth/jwt.js';
 import { LoxtepClient } from '../client/loxtep-client.js';
+import { LoxtepHttpClient } from '../http/client.js';
+import { resolveCliApiUrl } from './resolve-api-url.js';
 
 export interface CreateCliClientOptions {
   configFilePath?: string;
@@ -54,6 +56,105 @@ export interface CliAuthContext {
   refresh_auth: () => Promise<boolean>;
 }
 
+export type CliSigV4Credentials = {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken?: string;
+};
+
+const DUMMY_SIGV4: CliSigV4Credentials = { accessKeyId: 'cli', secretAccessKey: 'cli' };
+
+function isDummySigV4(creds: CliSigV4Credentials): boolean {
+  return creds.accessKeyId === 'cli' && creds.secretAccessKey === 'cli';
+}
+
+/** Load STS credentials from credentials.json (with expiry refresh), or dummy dev fallback. */
+export async function resolveCliSigV4Credentials(
+  options: CreateCliClientOptions = {}
+): Promise<CliSigV4Credentials> {
+  const credsPath = options.credentialsPath ?? resolveCredentialsPath(options.cwd).path;
+  let fileCreds = await readCredentials(credsPath);
+  const cliSigv4: CliSigV4Credentials = fileCreds?.aws_credentials
+    ? {
+        accessKeyId: fileCreds.aws_credentials.access_key_id,
+        secretAccessKey: fileCreds.aws_credentials.secret_access_key,
+        sessionToken: fileCreds.aws_credentials.session_token,
+      }
+    : { ...DUMMY_SIGV4 };
+
+  const expired =
+    fileCreds?.aws_credentials?.expiration &&
+    new Date(fileCreds.aws_credentials.expiration).getTime() < Date.now();
+
+  if (!fileCreds?.aws_credentials || expired) {
+    const authCtxForRefresh = await createCliAuthContext({
+      ...options,
+      on_after_refresh: r => {
+        options.on_after_refresh?.(r);
+        if (r.aws_credentials) {
+          Object.assign(cliSigv4, {
+            accessKeyId: r.aws_credentials.access_key_id,
+            secretAccessKey: r.aws_credentials.secret_access_key,
+            sessionToken: r.aws_credentials.session_token,
+          });
+        }
+      },
+    });
+    if (authCtxForRefresh) {
+      await authCtxForRefresh.refresh_auth();
+      fileCreds = await readCredentials(credsPath);
+      if (fileCreds?.aws_credentials) {
+        Object.assign(cliSigv4, {
+          accessKeyId: fileCreds.aws_credentials.access_key_id,
+          secretAccessKey: fileCreds.aws_credentials.secret_access_key,
+          sessionToken: fileCreds.aws_credentials.session_token,
+        });
+      }
+    }
+  }
+
+  if (isDummySigV4(cliSigv4)) {
+    console.error(
+      '[loxtep] No AWS SigV4 credentials in credentials.json — API calls may return empty responses. ' +
+        'Run `loxtep login` again (browser login should mint STS creds via refresh).'
+    );
+  }
+
+  return cliSigv4;
+}
+
+/** HTTP client for CLI commands: platform URL resolution, JWT, and STS SigV4 from login. */
+export async function createCliHttpClient(
+  options: CreateCliClientOptions = {}
+): Promise<{ http: LoxtepHttpClient; auth: CliAuthContext } | null> {
+  const config = await loadConfig(options.configFilePath);
+  const sigv4 = await resolveCliSigV4Credentials(options);
+  const authCtx = await createCliAuthContext({
+    ...options,
+    on_after_refresh: r => {
+      options.on_after_refresh?.(r);
+      if (r.aws_credentials) {
+        sigv4.accessKeyId = r.aws_credentials.access_key_id;
+        sigv4.secretAccessKey = r.aws_credentials.secret_access_key;
+        sigv4.sessionToken = r.aws_credentials.session_token;
+      }
+    },
+  });
+  if (!authCtx) return null;
+
+  const http = new LoxtepHttpClient({
+    base_url: authCtx.api_url,
+    use_platform_path_resolution: true,
+    get_token: authCtx.get_token,
+    refresh_auth: authCtx.refresh_auth,
+    credentials: sigv4,
+    region: config.region,
+    ...(options.fetch_fn ? { fetch_fn: options.fetch_fn } : {}),
+  });
+
+  return { http, auth: authCtx };
+}
+
 /**
  * Shared CLI auth: proactive refresh near JWT expiry + {@link LoxtepHttpClient} 401 retry via refresh_auth.
  */
@@ -65,7 +166,9 @@ export async function createCliAuthContext(
     credentialsPath: options.credentialsPath,
     cwd: options.cwd,
   });
-  const api_url = (config.api_url || resolved?.api_url_from_mcp || '').replace(/\/$/, '');
+  const api_url = resolveCliApiUrl(config, resolved, {
+    configFilePath: options.configFilePath,
+  });
   if (!api_url || !resolved?.access_token) {
     return null;
   }
@@ -134,58 +237,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
   config: Awaited<ReturnType<typeof loadConfig>>;
 } | null> {
   const config = await loadConfig(options.configFilePath);
-  const credsPath = options.credentialsPath ?? resolveCredentialsPath(options.cwd).path;
-  const fileCreds = await readCredentials(credsPath);
-  const cliSigv4: {
-    accessKeyId: string;
-    secretAccessKey: string;
-    sessionToken?: string;
-  } = fileCreds?.aws_credentials
-    ? {
-        accessKeyId: fileCreds.aws_credentials.access_key_id,
-        secretAccessKey: fileCreds.aws_credentials.secret_access_key,
-        sessionToken: fileCreds.aws_credentials.session_token,
-      }
-    : {
-        accessKeyId: 'cli',
-        secretAccessKey: 'cli',
-      };
-
-  // Check if STS credentials are expired and proactively refresh
-  if (fileCreds?.aws_credentials?.expiration) {
-    const expMs = new Date(fileCreds.aws_credentials.expiration).getTime();
-    if (expMs < Date.now()) {
-      // STS expired — trigger a refresh to get fresh credentials
-      const authCtxForRefresh = await createCliAuthContext(options);
-      if (authCtxForRefresh) {
-        const refreshed = await authCtxForRefresh.refresh_auth();
-        if (refreshed) {
-          // Re-read credentials file to pick up any new aws_credentials from refresh
-          const refreshedCreds = await readCredentials(credsPath);
-          if (refreshedCreds?.aws_credentials) {
-            const exp2 = new Date(refreshedCreds.aws_credentials.expiration || 0).getTime();
-            if (exp2 > Date.now()) {
-              Object.assign(cliSigv4, {
-                accessKeyId: refreshedCreds.aws_credentials.access_key_id,
-                secretAccessKey: refreshedCreds.aws_credentials.secret_access_key,
-                sessionToken: refreshedCreds.aws_credentials.session_token,
-              });
-            }
-          }
-        }
-      }
-      // If still expired after refresh, warn but continue (API calls may still work via JWT)
-      const stillExpired =
-        cliSigv4.accessKeyId === fileCreds.aws_credentials.access_key_id &&
-        expMs < Date.now();
-      if (stillExpired) {
-        console.error(
-          '[loxtep] AWS credentials expired and refresh did not return new ones. ' +
-            'Stream bus writes will fail. Run `pnpm exec loxtep login` to get fresh credentials.'
-        );
-      }
-    }
-  }
+  const cliSigv4 = await resolveCliSigV4Credentials(options);
   const authCtx = await createCliAuthContext({
     ...options,
     on_after_refresh: r => {

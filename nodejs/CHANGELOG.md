@@ -6,6 +6,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.14] - 2026-07-23
+
+### Fixed
+
+- **`instances.get()` / `loxtep attach --instance`** — production returns the
+  instance as `{ success, data: Instance }`, not `{ data: { instance } }`. The
+  SDK now normalizes both shapes (same pattern as `instances list` and
+  `whoami`), fixing `TypeError: Cannot read properties of undefined (reading
+  'instance_id')` on attach.
+
+## [0.7.13] - 2026-07-23
+
+### Changed
+
+- **`loxtep instances list`** prints a pruned summary (`instance_id`, `name`,
+  `api_url`, `region`, `status`, `instance_type`) instead of full API records
+  (no `stack_id`, `connection_details`, or internal metadata). Use
+  `LOXTEP_DEBUG=1 loxtep instances list --debug` for the raw API payload.
+
+### Fixed
+
+- **CLI HTTP auth** — `whoami` and `instances list` no longer use hardcoded dummy
+  SigV4 (`cli`/`cli`). They share `createCliHttpClient`, which loads STS credentials
+  from `credentials.json`, proactively refreshes when missing/expired, and warns when
+  only dummy creds remain (empty HTTP 200 bodies).
+- **`whoami`** — debug prints the resolved request URL; detects empty/non-JSON
+  `{ "message": "OK" }` bodies; fetches organization name when JWT only has
+  `organization_id`.
+
+## [0.7.12] - 2026-07-23
+
+### Fixed
+
+- **`loxtep instances list`** no longer silently returns `[]` when the API uses
+  alternate list shapes (`data` as an array, `data.instances`, double-wrapped
+  envelopes). Empty output now exits non-zero with guidance.
+- **CLI API host resolution** prefers `api_base_url` saved at browser login over
+  the baked-in production default when you have not set `api_url` in config —
+  fixes dev/prod mismatches that returned empty lists and blank `whoami`.
+
 ## [0.7.11] - 2026-07-23
 
 ### Fixed

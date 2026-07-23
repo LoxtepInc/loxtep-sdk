@@ -151,7 +151,11 @@ export async function runAttach(
 async function resolveInstance(client: LoxtepClient, instanceId?: string): Promise<Instance> {
   if (instanceId) {
     try {
-      return await client.workspace.instances.get(instanceId);
+      const instance = await client.workspace.instances.get(instanceId);
+      if (!instance?.instance_id) {
+        throw new Error('empty response from API');
+      }
+      return instance;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(

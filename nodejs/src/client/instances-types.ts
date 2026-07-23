@@ -34,7 +34,8 @@ export interface InstancesListResponse {
 
 export interface InstanceDetailResponse {
   success: true;
-  data: {
+  /** Production returns the instance directly; mocks may wrap `{ instance, organization_id?, deployment_events? }`. */
+  data: Instance | {
     instance: Instance;
     organization_id?: string;
     deployment_events?: unknown[];

@@ -165,15 +165,17 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       if (detail) {
         return jsonResponse(
           successEnvelope({
-            instance: {
-              instance_id: detail[1],
-              name: 'Test Instance',
-              organization_id: MOCK_IDS.organization_id,
-              region: 'us-east-1',
-              status: 'active',
-              api_url: MOCK_PLATFORM_API,
-              metadata: { instance_type: 'shared' },
-            },
+            instance_id: detail[1],
+            name: 'Test Instance',
+            organization_id: MOCK_IDS.organization_id,
+            region: 'us-east-1',
+            status: 'active',
+            api_url: MOCK_PLATFORM_API,
+            stack_id: 'stack-test',
+            connection_details: {},
+            metadata: { instance_type: 'shared' },
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
           })
         );
       }

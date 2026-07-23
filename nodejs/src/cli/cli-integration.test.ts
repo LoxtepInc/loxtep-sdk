@@ -213,7 +213,11 @@ describe('CLI integration (mock platform API)', () => {
   describe('Workspace & instances', () => {
     it('instances list', async () => {
       const out = captureCliOutput();
-      await runInstancesList(opts());
+      await runInstancesList({
+        configFilePath: opts().configFilePath,
+        credentialsPath: opts().credentialsPath,
+        fetch_fn: opts().fetch_fn,
+      });
       expectCliSuccess(out, MOCK_IDS.instance_id);
       out.restore();
     });

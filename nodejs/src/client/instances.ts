@@ -7,10 +7,11 @@
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
+import { parseInstanceDetailResponse } from './instance-detail-response.js';
+import { parseInstancesListResponse } from './instances-list-response.js';
 import type {
   Instance,
   InstancesListResponse,
-  InstanceDetailResponse,
   InstanceCreateInput,
   InstanceCreateResponse,
   DeploymentUrlsResponse,
@@ -94,26 +95,14 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
   return {
     async list() {
       const res = await http.get<unknown>(INSTANCES_BASE);
-      const body = res as Partial<InstancesListResponse> & Partial<InstancesListResponse['data']>;
-      const nested = body.data;
-      const items = (nested?.items ?? body.items ?? []) as Instance[];
-      const pagination = nested?.pagination ??
-        body.pagination ?? {
-          page: 1,
-          page_size: 20,
-          total: items.length,
-          total_pages: 1,
-          has_next: false,
-          has_prev: false,
-        };
-      return { items, pagination };
+      return parseInstancesListResponse(res);
     },
 
     async get(instance_id: string): Promise<Instance> {
-      const res = await http.get<InstanceDetailResponse>(
+      const res = await http.get<unknown>(
         `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}`
       );
-      return res.data.instance;
+      return parseInstanceDetailResponse(res);
     },
 
     /**
