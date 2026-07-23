@@ -56,10 +56,7 @@ export async function runActivityListCommand(
     if (options?.limit != null) filters.limit = options.limit;
 
     const result = await client.context.activity.list(filters);
-    const summary = {
-      items: result.entries.map(toActivityListSummary),
-      cursor: result.cursor,
-    };
+    const summary = result.entries.map(toActivityListSummary);
     return {
       exitCode: 0,
       stdout: [JSON.stringify(summary, null, 2)],

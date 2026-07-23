@@ -4,7 +4,7 @@
  */
 
 import { toStandardListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface StandardsCmdOptions {
@@ -18,7 +18,7 @@ export async function runStandardsList(options: StandardsCmdOptions = {}): Promi
   const { client } = await requireCliClient(options);
   try {
     const result = await client.define.standards.list();
-    const summary = mapPaginatedList(result, toStandardListSummary);
+    const summary = mapListSummaries(result, toStandardListSummary);
     printCliListOutput(summary, result, { ...options, label: 'standards list' });
   } catch (err) {
     console.error((err as Error).message);

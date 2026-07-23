@@ -3,7 +3,7 @@
  */
 
 import { toTriggerListSummary } from '../../client/list-summaries.js';
-import { mapPaginatedList, printCliListOutput } from '../cli-list-output.js';
+import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
 
 export interface TriggersCmdOptions {
@@ -16,7 +16,7 @@ export interface TriggersCmdOptions {
 export async function runTriggersList(options: TriggersCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   const result = await client.build.triggers.list({ page_size: 50 });
-  const summary = mapPaginatedList(result, toTriggerListSummary);
+  const summary = mapListSummaries(result, toTriggerListSummary);
   printCliListOutput(summary, result, { ...options, label: 'triggers list' });
 }
 
