@@ -4,10 +4,11 @@ Author Loxtep workflows as TypeScript in your repo, test them locally, and
 deploy to a runtime instance — without using the Studio UI as your source of
 truth.
 
-For **programmatic stream I/O only** (microservices, scripts, Lambdas that
-call `get_writer` / `get_reader` with manual config), see the
-[Getting Started Guide](./getting-started.md) instead. You do **not** need
-`loxtep init` for that path.
+Start with the [Getting Started Guide](./getting-started.md) if you have not
+yet run `login`, `init`, `attach`, and `generate`.
+
+For **application code** that calls platform APIs or streams events after
+deploy, use `LoxtepClient.fromWorkspace()` (see Getting Started, Step 7–8).
 
 ---
 
@@ -15,9 +16,10 @@ call `get_writer` / `get_reader` with manual config), see the
 
 | Goal | Commands |
 | --- | --- |
-| Write/read events from app code with explicit `LoxtepClient` config | `pnpm add @loxtep/sdk` → `pnpm exec loxtep login` (optional) |
-| Code-first workspace on disk, typed constants, local test, deploy | `init` → `login` → `attach` → `generate` → … → `deploy` |
-| Auto-config client from files in the repo | `init` + `login` + `attach`, then `LoxtepClient.fromWorkspace()` |
+| First-time workspace setup | `login` → `init` → `attach` → `generate` |
+| Author, test, and deploy workflows | … → `test` → `deploy` |
+| App code with auto-config | After attach: `LoxtepClient.fromWorkspace()` |
+| Stream I/O to a data product | After **deploy**: `client.get_writer(name)` |
 
 `loxtep init` creates **`.loxtep/project.json`** and the on-disk project layout.
 Many CLI commands (`generate`, `test`, `deploy`, `attach`) require that file and
@@ -33,8 +35,8 @@ after `init`.
 
 ```text
 pnpm add @loxtep/sdk
-pnpm exec loxtep init [--template <slug>]
 pnpm exec loxtep login
+pnpm exec loxtep init [--template <slug>]
 pnpm exec loxtep attach --instance <name-or-id>
 pnpm exec loxtep generate
 # author workflows under workflows/

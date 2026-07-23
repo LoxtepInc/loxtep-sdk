@@ -4,10 +4,9 @@ Replay events from a data product or from a queue. This is a key differentiator
 for the Loxtep SDK: you can iterate over historical or live events without
 managing checkpoints yourself (or use checkpoints for resumable replay).
 
-Since **v0.7.0**, control-plane data product methods live under
-**`client.build.data_products`**; low-level queue I/O is on **`client.observe`**.
-Live write/read by name uses top-level **`client.get_writer`** /
-**`client.get_reader`**.
+Control-plane data product methods live under **`client.build.data_products`**;
+low-level queue I/O is on **`client.observe`**. Live write/read by name uses
+top-level **`client.get_writer`** / **`client.get_reader`** (after deploy).
 
 ## Replay from a data product
 

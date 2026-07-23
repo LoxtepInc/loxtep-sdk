@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.10] - 2026-07-23
+
+### Fixed
+
+- **`loxtep whoami`** parses the production `{ success, data: { user, organization } }`
+  envelope instead of expecting flat top-level fields (which showed `—` for email/org).
+
+### Added
+
+- **CLI integration test suite** — mock platform API, read-only and mutating command
+  tests, local lifecycle (`init` → `attach` → `generate` → `deploy`), and opt-in
+  staging smoke (`LOXTEP_CLI_SMOKE=1`).
+- **`parseCurrentUserResponse`** shared helper for session/whoami envelope parsing.
+- **`fetch_fn`** on CLI client creation; **`cliOptions`** injection on
+  `generate`, `deploy`, and `test` commands for integration tests.
+
+### Changed
+
+- **README and docs** rewritten for greenfield onboarding:
+  `login` → `init` → `attach` → `generate` before stream I/O or manual client config.
+- **`tsconfig.json`** excludes `**/__tests__/**` from the publish build.
+
 ## [0.7.9] - 2026-07-23
 
 ### Fixed

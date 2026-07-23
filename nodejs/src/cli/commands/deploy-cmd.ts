@@ -281,6 +281,8 @@ async function removeAbsentWorkflows(
 export interface DeployCommandOptions {
   /** Working directory (defaults to process.cwd()). */
   cwd?: string;
+  /** Mock fetch / config paths for integration tests. */
+  cliOptions?: import('../create-cli-client.js').CreateCliClientOptions;
 }
 
 /**
@@ -305,7 +307,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   const { project_id: projectId, instance_id: instanceId } = project;
 
   // 2. Get an authenticated client
-  const clientResult = await requireCliClient();
+  const clientResult = await requireCliClient(options.cliOptions);
   const { client } = clientResult;
 
   // 3. Load workspace context (needed for compilation and validation)

@@ -16,6 +16,8 @@ export interface CreateCliClientOptions {
   customerMcpPath?: string;
   /** Working directory used to resolve project-local credentials (default: `process.cwd()`). */
   cwd?: string;
+  /** Mock or custom fetch for CLI integration tests. */
+  fetch_fn?: typeof fetch;
   /** After refresh, apply STS (or other) side effects; used by {@link createCliClient} for SigV4. */
   on_after_refresh?: (result: RefreshResponse) => void;
 }
@@ -79,7 +81,10 @@ export async function createCliAuthContext(
   const credentialsPath =
     options.credentialsPath ?? resolved.credentials_path ?? resolveCredentialsPath(options.cwd).path;
   const refreshFn = async (apiUrl: string, refreshToken: string) => {
-    const r = await refresh(apiUrl, refreshToken, { auth_path_prefix: config.auth_path_prefix });
+    const r = await refresh(apiUrl, refreshToken, {
+      auth_path_prefix: config.auth_path_prefix,
+      fetchFn: options.fetch_fn,
+    });
     const nextExp =
       r.expires_at != null && r.expires_at !== ''
         ? Math.floor(new Date(r.expires_at).getTime() / 1000)
@@ -217,6 +222,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
           streams: config.streams,
         }
       : {}),
+    ...(options.fetch_fn ? { fetch_fn: options.fetch_fn } : {}),
   });
   return { client, config };
 }

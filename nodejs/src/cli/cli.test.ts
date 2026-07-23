@@ -1,5 +1,6 @@
 /**
- * Basic CLI tests (help, config list). E2E with mock API for login/whoami is in LOX-973.
+ * Basic CLI tests (help, config list). Built-dist smoke only.
+ * Auth integration: cli-auth-flow.test.ts · command registry: cli-command-coverage.test.ts
  */
 
 import { execSync } from 'node:child_process';

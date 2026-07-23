@@ -36,6 +36,13 @@ const GENERATED_ARTIFACT_PATH = '.loxtep/generated/index.ts';
 /** Skills directory relative to the project directory. */
 const SKILLS_DIR = '.loxtep/skills';
 
+export interface GenerateCommandOptions {
+  /** Working directory to resolve the project from (defaults to process.cwd()). */
+  cwd?: string;
+  /** Mock fetch / config paths for integration tests. */
+  cliOptions?: import('../create-cli-client.js').CreateCliClientOptions;
+}
+
 /**
  * Execute the `loxtep generate` command.
  *
@@ -48,8 +55,12 @@ const SKILLS_DIR = '.loxtep/skills';
  * @param cwd - Working directory to resolve the project from (defaults to process.cwd())
  * @returns Structured CLI result for testability
  */
-export async function runGenerateCommand(cwd?: string): Promise<CliResult> {
-  const workingDir = cwd ?? process.cwd();
+export async function runGenerateCommand(
+  cwdOrOptions?: string | GenerateCommandOptions
+): Promise<CliResult> {
+  const options: GenerateCommandOptions =
+    typeof cwdOrOptions === 'string' ? { cwd: cwdOrOptions } : cwdOrOptions ?? {};
+  const workingDir = options.cwd ?? process.cwd();
 
   // 1. Verify preconditions: project exists and is attached (R1.7, R1.10)
   const precondition = requireAttachedProject(workingDir);
@@ -61,7 +72,7 @@ export async function runGenerateCommand(cwd?: string): Promise<CliResult> {
   const { project_id: projectId } = project;
 
   // 2. Get an authenticated client
-  const clientResult = await requireCliClient();
+  const clientResult = await requireCliClient(options.cliOptions);
   const { client } = clientResult;
 
   // 3. Load workspace context from the platform (R1.4, R2.8)

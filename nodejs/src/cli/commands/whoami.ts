@@ -1,21 +1,19 @@
+import { parseCurrentUserResponse, type ParsedCurrentUser } from '../../client/current-user-response.js';
 import { LoxtepHttpClient } from '../../http/client.js';
 import { createCliAuthContext } from '../create-cli-client.js';
 
-/** Response shape from GET /organizations/users/me (snake_case per API). */
-export interface UserMeResponse {
-  user_id?: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  organization_id?: string;
-  organization_name?: string;
-  [key: string]: unknown;
-}
+/** Flattened user context from GET /organizations/users/me. */
+export type UserMeResponse = ParsedCurrentUser;
 
 export interface WhoamiOptions {
-  /** For tests: inject fetch to mock API. */
+  /** For tests: inject fetch to mock API. Prefer over `fetchUser` for integration tests. */
   fetchFn?: typeof fetch;
-  /** For tests: bypass HTTP client and use this fetcher (avoids signer in Jest). */
+  /** Alias for {@link fetchFn} (matches {@link CreateCliClientOptions.fetch_fn}). */
+  fetch_fn?: typeof fetch;
+  /**
+   * For tests only: bypass HTTP and inject a flat user DTO (output formatting).
+   * Does NOT exercise API envelope parsing — use `fetchFn` + mock-platform-api fixtures instead.
+   */
   fetchUser?: () => Promise<UserMeResponse>;
   configFilePath?: string;
   credentialsPath?: string;
@@ -44,14 +42,17 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
             process.exitCode = 1;
             return null;
           }
+          const fetchImpl = options.fetch_fn ?? options.fetchFn ?? fetch;
           const client = new LoxtepHttpClient({
             base_url: authCtx.api_url,
+            use_platform_path_resolution: true,
             get_token: authCtx.get_token,
             refresh_auth: authCtx.refresh_auth,
             credentials: DUMMY_SIGV4,
-            fetch_fn: options.fetchFn ?? fetch,
+            fetch_fn: fetchImpl,
           });
-          return client.get<UserMeResponse>('/organizations/users/me');
+          const raw = await client.get<unknown>('/organizations/users/me');
+          return parseCurrentUserResponse(raw);
         })();
     if (data == null) return;
     const email = data?.email ?? '—';

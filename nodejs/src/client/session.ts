@@ -3,6 +3,7 @@
  * Thin HTTP wrapper; no dedicated microservice module yet.
  */
 
+import { parseCurrentUserResponse } from './current-user-response.js';
 import type { LoxtepHttpClient } from '../http/client.js';
 
 export interface CurrentUser {
@@ -29,11 +30,12 @@ export function createSessionApi(http: LoxtepHttpClient): {
 } {
   return {
     async get_current_user(): Promise<CurrentUser> {
-      return http.get<CurrentUser>('/organizations/users/me');
+      const raw = await http.get<unknown>('/organizations/users/me');
+      return parseCurrentUserResponse(raw);
     },
 
     async get_current_organization(): Promise<CurrentOrganization> {
-      const user = await http.get<CurrentUser>('/organizations/users/me');
+      const user = await this.get_current_user();
       const orgId = user.organization_id;
       if (!orgId) {
         throw new Error('organization_id not available on current user');
