@@ -329,6 +329,8 @@ export interface TestCommandOptions {
   eventFile: string;
   /** Injectable approval prompt function (for testing). */
   promptFn?: (opName: string, target: string) => Promise<{ approved: boolean; timedOut: boolean }>;
+  /** Mock fetch / config paths for integration tests. */
+  cliOptions?: import('../create-cli-client.js').CreateCliClientOptions;
 }
 
 /**
@@ -383,7 +385,7 @@ export async function runTestCommand(options: TestCommandOptions): Promise<CliRe
   }
 
   // 4. Set up HandlerContext + toolbox
-  const clientResult = await requireCliClient();
+  const clientResult = await requireCliClient(options.cliOptions);
   const { client } = clientResult;
 
   const handlerContext: HandlerContext = {

@@ -144,11 +144,10 @@ const client = new LoxtepClient({
 const fromWs = LoxtepClient.fromWorkspace();
 ```
 
-### Client namespaces (v0.7+ MCP facades)
+### Client namespaces (MCP facades)
 
-Since **v0.7.0**, `LoxtepClient` exposes **10 facades** that mirror hosted MCP
-tools. Flat top-level namespaces (`client.data_products`, `client.workflows`, …)
-are **removed**. See [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
+`LoxtepClient` exposes **10 facades** that mirror hosted MCP tools. See
+[`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
 
 | Facade | Nested APIs | Purpose |
 | --- | --- | --- |

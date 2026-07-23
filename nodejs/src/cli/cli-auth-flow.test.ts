@@ -1,29 +1,29 @@
 /**
- * CLI E2E tests with mock API (login, whoami). No real network.
- * Prefer cli-auth-flow.test.ts for login → whoami HTTP integration; keep focused cases here.
+ * CLI auth integration tests — full HTTP path with production-shaped API envelopes.
+ * Catches bugs like whoami reading flat fields when the API returns { success, data: { user, organization } }.
  */
 
 import { runLogin } from './commands/login.js';
 import { runWhoami } from './commands/whoami.js';
-import { writeCredentials, readCredentials } from './credentials.js';
+import { readCredentials, writeCredentials } from './credentials.js';
 import {
   MOCK_PLATFORM_API,
-  authLoginSuccessResponse,
-  createMockPlatformFetch,
+  createAuthFlowMockFetch,
   usersMeSuccessResponse,
+  createMockPlatformFetch,
 } from './__tests__/mock-platform-api.js';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-describe('CLI E2E (mock API)', () => {
+describe('CLI auth flow (mock platform API)', () => {
   let configDir: string;
   let configPath: string;
   let credentialsPath: string;
 
   beforeAll(async () => {
-    configDir = join(tmpdir(), `loxtep-cli-e2e-${Date.now()}`);
+    configDir = join(tmpdir(), `loxtep-cli-auth-${Date.now()}`);
     configPath = join(configDir, 'config.json');
     credentialsPath = join(configDir, 'credentials.json');
     await mkdir(configDir, { recursive: true });
@@ -38,22 +38,11 @@ describe('CLI E2E (mock API)', () => {
     if (existsSync(credentialsPath)) await rm(credentialsPath);
   });
 
-  it('login with mock API writes credentials', async () => {
-    const mockFetch = createMockPlatformFetch(
-      new Map([
-        [
-          '/app/auth/login',
-          () =>
-            new Response(JSON.stringify(authLoginSuccessResponse()), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }),
-        ],
-      ])
-    );
+  it('login then whoami prints user and org from wrapped /users/me response', async () => {
+    const mockFetch = createAuthFlowMockFetch();
 
     await runLogin({
-      email: 'e2e@test.com',
+      email: 'flow@test.com',
       password: 'secret',
       mfa_code: '',
       fetchFn: mockFetch,
@@ -62,36 +51,24 @@ describe('CLI E2E (mock API)', () => {
     });
 
     const creds = await readCredentials(credentialsPath);
-    expect(creds).not.toBeNull();
     expect(creds?.access_token).toBe('mock-access-token');
-  });
-
-  it('whoami formats output when fetchUser injects a flat DTO (output-only unit test)', async () => {
-    await writeCredentials(
-      { access_token: 'mock-token', expires_at: new Date(Date.now() + 3600 * 1000).toISOString() },
-      credentialsPath
-    );
 
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await runWhoami({
       credentialsPath,
       configFilePath: configPath,
-      fetchUser: async () => ({
-        email: 'whoami@test.com',
-        first_name: 'Who',
-        last_name: 'Ami',
-        organization_name: 'Test Org',
-      }),
+      fetchFn: mockFetch,
     });
 
-    const calls = logSpy.mock.calls.flat().join(' ');
-    expect(calls).toContain('whoami@test.com');
-    expect(calls).toContain('Test Org');
+    const output = logSpy.mock.calls.flat().join('\n');
+    expect(output).toContain('cli-user@test.loxtep.com');
+    expect(output).toContain('CLI User');
+    expect(output).toContain('Test Organization');
     logSpy.mockRestore();
   });
 
-  it('whoami unwraps wrapped /users/me API envelope via HTTP', async () => {
+  it('whoami fails visibly when /users/me returns success envelope but empty nested user', async () => {
     await writeCredentials(
       {
         access_token: 'mock-token',
@@ -106,15 +83,13 @@ describe('CLI E2E (mock API)', () => {
         [
           '/organizations/users/me',
           () =>
-            new Response(JSON.stringify(usersMeSuccessResponse({
-              email: 'wrapped@test.com',
-              first_name: 'Wrap',
-              last_name: 'Ped',
-              organization_name: 'Envelope Org',
-            })), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }),
+            new Response(
+              JSON.stringify({
+                success: true,
+                data: { user: {}, organization: {} },
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            ),
         ],
       ])
     );
@@ -127,9 +102,23 @@ describe('CLI E2E (mock API)', () => {
       fetchFn: mockFetch,
     });
 
-    const calls = logSpy.mock.calls.flat().join(' ');
-    expect(calls).toContain('wrapped@test.com');
-    expect(calls).toContain('Envelope Org');
+    const output = logSpy.mock.calls
+      .map(call => call.map(String).join(' '))
+      .join('\n');
+    expect(output).toMatch(/User:\s*—/);
     logSpy.mockRestore();
+  });
+
+  it('uses canonical users/me fixture shape documented in mock-platform-api', () => {
+    const body = usersMeSuccessResponse();
+    expect(body).toEqual(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          user: expect.objectContaining({ email: expect.any(String) }),
+          organization: expect.objectContaining({ name: expect.any(String) }),
+        }),
+      })
+    );
   });
 });

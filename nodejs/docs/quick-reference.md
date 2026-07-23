@@ -1,8 +1,8 @@
 # SDK Quick Reference Card
 
-Concise cheat sheet for common Loxtep SDK operations (Node.js **v0.7+**).
+Concise cheat sheet for common Loxtep SDK operations (Node.js).
 For full walkthroughs, see the [Getting Started Guide](./getting-started.md)
-(programmatic) or [Code-first CLI guide](./code-first-cli.md) (`loxtep init`).
+or [Code-first CLI guide](./code-first-cli.md).
 
 ---
 
@@ -13,7 +13,11 @@ For full walkthroughs, see the [Getting Started Guide](./getting-started.md)
 ```typescript
 import { LoxtepClient } from '@loxtep/sdk';
 
-const client = new LoxtepClient({
+// Recommended after `login` + `init` + `attach`:
+const client = await LoxtepClient.fromWorkspace();
+
+// Explicit config (CI, multi-tenant scripts):
+const explicit = new LoxtepClient({
   api_url: process.env.LOXTEP_API_URL,
   auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
   organization_id: process.env.LOXTEP_ORGANIZATION_ID,
@@ -21,9 +25,6 @@ const client = new LoxtepClient({
   instance_id: process.env.LOXTEP_INSTANCE_ID,
   region: process.env.LOXTEP_REGION,
 });
-
-// Or from workspace files after `loxtep init` + `loxtep login`:
-const wsClient = LoxtepClient.fromWorkspace();
 ```
 
 ### Python
@@ -51,7 +52,7 @@ bus config from deployment metadata.
 ### Node.js
 
 ```typescript
-const writer = await client.get_writer('my-data-product');
+const writer = await client.get_writer('orders'); // deployed data product name
 
 writer.write({ id: 'evt-1', payload: { key: 'value' } });
 writer.write({ id: 'evt-2', payload: { key: 'value' } });

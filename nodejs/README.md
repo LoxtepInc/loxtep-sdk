@@ -1,8 +1,7 @@
 # Loxtep Node.js SDK
 
-Client for the Loxtep API. Since **v0.7.0**, `LoxtepClient` groups APIs under
-**namespaced areas** on the client (no flat top-level namespaces like
-`client.workflows` or `client.data_products`).
+Client for the Loxtep API. `LoxtepClient` groups platform APIs under
+**namespaced areas** on the client:
 
 | Area | SDK namespace | Examples |
 | --- | --- | --- |
@@ -19,36 +18,30 @@ Client for the Loxtep API. Since **v0.7.0**, `LoxtepClient` groups APIs under
 
 **Stream I/O** uses top-level helpers on the client:
 `await client.get_writer('data-product-name')` and
-`await client.get_reader('data-product-name')`.
+`await client.get_reader('data-product-name')` — but only after that data
+product is **deployed** on your attached instance.
 
-**Upgrading from 0.6.x:** replace `client.data_products` →
-`client.build.data_products` (CRUD/stream/replay) or `client.get_writer` /
-`client.get_reader` (recommended write/read path); `client.workflows` →
-`client.build.workflows`; etc.
-
-**Node.js 22+** is the supported runtime (`engines` in `package.json`). **Live**
+**Node.js 22+** is the supported runtime (`engines` in `package.json`). Live
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
 resources (`streams` on `LoxtepClient` and instance env from your stack) and AWS
 credentials for SigV4 on both REST and the bus.
 
 ## Ways to get started
 
-This SDK supports two developer workflows:
-
 | Path | Use case | Entry point |
 |------|----------|-------------|
-| **Programmatic** | Write/read events from application code (microservices, lambdas, scripts) | `LoxtepClient` → `get_writer` / `get_reader` |
-| **Code-first CLI** | Author workflows as TypeScript, test locally, deploy via CI | `loxtep init → attach → generate → test → deploy` |
+| **Code-first CLI** | New project on Loxtep — scaffold, attach, author, deploy | `loxtep init → attach → generate → test → deploy` |
+| **Programmatic** | App code that reads/writes events or calls APIs | `LoxtepClient.fromWorkspace()` after login + attach |
+| **Agent-first (MCP)** | Conversational setup from your IDE | [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills) |
+| **Web UI** | Visual project and workflow management | [app.loxtep.io](https://app.loxtep.io) |
 
-There are also two additional paths that don't require this SDK:
-- **Agent-first (MCP)** — drive Loxtep conversationally from Cursor, Kiro, Claude, etc. See [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills).
-- **Web UI** — visual project setup and management at [app.loxtep.io](https://app.loxtep.io).
-
-All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
+All paths: [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
 
 ---
 
-## Quick start — Programmatic (< 5 min to first stream)
+## Quick start — First run (recommended)
+
+Run these in an **empty directory** you want to turn into a Loxtep workspace.
 
 1. **Install**
 
@@ -56,107 +49,121 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
    pnpm add @loxtep/sdk
    ```
 
-2. **Log in**
+2. **Log in and confirm identity**
 
    ```bash
    pnpm exec loxtep login
+   pnpm exec loxtep whoami
    ```
 
-   A browser window opens — sign in to Loxtep and you're authenticated.
-   Tokens are saved to `./.loxtep/credentials.json` (use `--global` for home dir).
+   Tokens are saved to `./.loxtep/credentials.json` by default (use
+   `--global` for `~/.loxtep/credentials.json`).
 
-   > **CI/headless:** Use `pnpm exec loxtep login --email you@co.com --password ...`
-   > or set `LOXTEP_AUTH_TOKEN` in your environment.
+   > **CI/headless:** `pnpm exec loxtep login --email you@co.com --password …`
+   > or set `LOXTEP_AUTH_TOKEN`.
 
-3. **Create a client, write and read events**
+3. **Scaffold the workspace**
 
-   ```ts
-   import { LoxtepClient } from '@loxtep/sdk';
-
-   const client = new LoxtepClient({
-     api_url: 'https://api.loxtep.com',
-     auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
-   });
-
-   // Write events to a data product (top-level — resolves deployment metadata)
-   const writer = await client.get_writer('shopify_gql_customer');
-   writer.write({
-     customer_id: '123',
-     name: 'Alice',
-     email: 'alice@example.com',
-   });
-   await writer.close();
-
-   // Read events from a data product
-   const reader = await client.get_reader('shopify_gql_customer');
-   for await (const event of reader) {
-     console.log(event);
-   }
+   ```bash
+   pnpm exec loxtep init
+   # optional: pnpm exec loxtep init --template shopify-orders
    ```
 
-   That's it. The SDK resolves the data product's queue, bot identity, and
-   stream bus configuration automatically from the deployment metadata. No
-   manual queue names, no stream config, no bot IDs.
+   Creates `.loxtep/project.json`, `workflows/`, `connectors/`, `domains/`,
+   and `data-products/`.
 
-4. **Stream config from the platform (optional)** — after login,
-   `await client.observe.stream_config()` returns stream resource names
-   needed for the data plane. Merge into
-   `new LoxtepClient({ ...opts, streams: { ...partial } })` with your
-   JWT-backed client. `get_writer` / `get_reader` resolve stream config
-   automatically — this step is only needed for manual bus access via
-   `client.observe.open_reader()`.
+4. **Attach to a runtime instance**
+
+   ```bash
+   pnpm exec loxtep instances list
+   pnpm exec loxtep attach --instance <instance-id>
+   ```
+
+   Writes `instance_id` and `api_url` into `.loxtep/project.json`. Required
+   before `generate`, `test`, and `deploy`.
+
+5. **Generate typed workspace constants**
+
+   ```bash
+   pnpm exec loxtep generate
+   ```
+
+   Emits `.loxtep/generated/index.ts` from live platform metadata.
+
+6. **See what's on the instance**
+
+   ```bash
+   pnpm exec loxtep data-products list
+   pnpm exec loxtep workflows list --project-id <project-id-from-project.json>
+   ```
+
+   A brand-new org may have **no data products yet** — that's expected. Create
+   and deploy workflows (below, or via MCP/UI) before calling `get_writer`.
+
+7. **Author, test, and deploy** (when you're ready)
+
+   ```bash
+   pnpm exec loxtep test <module> --event ./events/sample.json
+   pnpm exec loxtep deploy
+   ```
+
+   See **[Code-first CLI guide](./docs/code-first-cli.md)** for workflow
+   modules and templates.
+
+### Bootstrap the SDK from your workspace
+
+After steps 1–4 above, application code can use auto-config — no hand-built
+client options:
+
+```ts
+import { LoxtepClient } from '@loxtep/sdk';
+
+const client = await LoxtepClient.fromWorkspace();
+const { user, organization } = await client.session.get_current_user();
+console.log(user.email, organization?.name);
+```
+
+### Write and read events (after deploy)
+
+`get_writer` / `get_reader` resolve queue, bot, and stream config from
+**deployment metadata**. Use a name from `loxtep data-products list` after
+your workflow is deployed:
+
+```ts
+const client = await LoxtepClient.fromWorkspace();
+
+const writer = await client.get_writer('orders');
+writer.write({ order_id: '1', total: 42.0 });
+await writer.close();
+
+const reader = await client.get_reader('orders');
+for await (const event of reader) {
+  console.log(event);
+  break;
+}
+```
 
 ---
 
-## Quick start — Code-first CLI (init → deploy)
+## Quick start — Code-first workflow module
 
-For developers who author workflows as TypeScript and want the full local-dev-to-production lifecycle, see the dedicated **[Code-first CLI guide](./docs/code-first-cli.md)**. Quick version:
-
-```bash
-# 1. Install
-pnpm add @loxtep/sdk
-
-# 2. Authenticate
-pnpm exec loxtep login
-
-# 3. Scaffold a project from a template
-pnpm exec loxtep init --template shopify-orders
-
-# 4. Bind to a runtime instance
-pnpm exec loxtep attach --instance prod
-
-# 5. Generate typed workspace constants
-pnpm exec loxtep generate
-
-# 6. Author a workflow (see authoring module docs below)
-
-# 7. Test locally with a sample event
-pnpm exec loxtep test orders-enricher --event ./events/order-created.json
-
-# 8. Deploy to the workflow engine
-pnpm exec loxtep deploy
-```
-
-The `generate` step produces `.loxtep/generated/index.ts` with typed constants for every data product, connector, domain, and queue in your workspace. Import them in your workflow modules for compile-time safety:
+After `init`, `attach`, and `generate`, import typed constants in workflow
+modules:
 
 ```ts
-import { defineDataWorkflow, on } from '@loxtep/sdk'
-import { workspace } from './.loxtep/generated'
+import { defineDataWorkflow, on } from '@loxtep/sdk';
+import { workspace } from './.loxtep/generated';
 
 export default defineDataWorkflow({
   name: 'orders-enricher',
-  triggers: [on.queueEvent(workspace.queues.orders_raw)],
-  async handler(ctx, event) {
-    await ctx.toolbox.dataProducts.upsert({
-      dataProduct: workspace.dataProducts.orders_enriched,
-      domain: workspace.domains.commerce,
-      record: event,
-    })
+  triggers: [on.webhook('/orders')],
+  async handler(_ctx, event) {
+    console.log('received', event);
   },
-})
+});
 ```
 
-See `loxtep init --help`, `loxtep attach --help`, etc. for all flags. The full CLI reference is in the [CLI reference](#cli-reference) section below.
+See `loxtep init --help`, `loxtep attach --help`, etc. CLI reference below.
 
 ---
 
@@ -297,7 +304,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 
 ## Documentation
 
-- **[Getting started](./docs/getting-started.md)** – Zero to first event in under 5 minutes (programmatic; no init).
+- **[Getting started](./docs/getting-started.md)** – Login, init, attach, generate — then stream I/O after deploy.
 - **[Code-first CLI](./docs/code-first-cli.md)** – `loxtep init`, attach, generate, test, deploy.
 - **[Quick reference](./docs/quick-reference.md)** – Single-page cheat sheet.
 - **[Event replay cookbook](./docs/event-replay-cookbook.md)** – Replay events from a data product or queue.
