@@ -5,12 +5,11 @@
 import type { LoxtepHttpClient } from '../http/client.js';
 import type { Instance, InstanceStreamConfig } from '../client/instances-types.js';
 import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
+import { unwrapApiEnvelope } from '../client/current-user-response.js';
 
 const INSTANCES_BASE = '/organizations/instances';
-const OBSERVE_STREAM_CONFIG = '/observe/stream-config';
-const INSTANCE_ID_HEADER = 'x-loxtep-instance-id';
 
-export type InstanceStreamConfigSource = 'organizations' | 'observe' | 'instance-metadata';
+export type InstanceStreamConfigSource = 'organizations';
 
 const STREAM_CONFIG_KEYS: (keyof InstanceStreamConfig)[] = [
   'Region',
@@ -78,7 +77,6 @@ function parseJsonObject(value: unknown): Record<string, unknown> | undefined {
 
 /**
  * Extract stream config embedded on an instance record (shared / legacy paths).
- * Used when dedicated stream-config REST is unavailable (404 before org MS deploy).
  */
 export function extractStreamConfigFromInstance(instance: Instance): InstanceStreamConfig | null {
   const region = instance.region || 'us-east-1';
@@ -102,59 +100,25 @@ export function extractStreamConfigFromInstance(instance: Instance): InstanceStr
 }
 
 /**
- * Resolve stream bus config for an instance. Tries, in order:
- * 1. GET /organizations/instances/{id}/stream-config
- * 2. GET /observe/stream-config (proxied botmon; sends x-loxtep-instance-id)
- * 3. Inline metadata / connection_details on the instance record (when provided)
+ * Resolve stream bus config via the organizations primary endpoint:
+ * GET /organizations/instances/{id}/stream-config
  */
 export async function fetchInstanceStreamConfig(
   http: LoxtepHttpClient,
   instanceId: string,
   options?: { instance?: Instance }
 ): Promise<{ config: InstanceStreamConfig; source: InstanceStreamConfigSource }> {
-  const errors: string[] = [];
-
-  try {
-    const res = await http.get<{ success: true; data: InstanceStreamConfig }>(
-      `${INSTANCES_BASE}/${encodeURIComponent(instanceId)}/stream-config`
-    );
-    const parsed = parseStreamConfigRecord(
-      res.data as unknown as Record<string, unknown>,
-      options?.instance?.region
-    );
-    if (parsed) {
-      return { config: parsed, source: 'organizations' };
-    }
-    errors.push('organizations stream-config returned incomplete data');
-  } catch (err) {
-    errors.push(err instanceof Error ? err.message : String(err));
-  }
-
-  try {
-    const res = await http.get<{ success: true; data: Record<string, string> }>(
-      OBSERVE_STREAM_CONFIG,
-      { headers: { [INSTANCE_ID_HEADER]: instanceId } }
-    );
-    const parsed = parseStreamConfigRecord(res.data, options?.instance?.region);
-    if (parsed) {
-      return { config: parsed, source: 'observe' };
-    }
-    errors.push('observe stream-config returned incomplete data');
-  } catch (err) {
-    errors.push(err instanceof Error ? err.message : String(err));
-  }
-
-  if (options?.instance) {
-    const fromInstance = extractStreamConfigFromInstance(options.instance);
-    if (fromInstance) {
-      return { config: fromInstance, source: 'instance-metadata' };
-    }
-    errors.push('instance record has no embedded rstreams metadata');
-  }
-
-  throw new Error(
-    `Unable to resolve stream bus configuration for instance '${instanceId}' (${errors.join('; ')})`
+  const res = await http.get<{ success: true; data: InstanceStreamConfig }>(
+    `${INSTANCES_BASE}/${encodeURIComponent(instanceId)}/stream-config`
   );
+  const payload = unwrapApiEnvelope(res) as Record<string, unknown>;
+  const parsed = parseStreamConfigRecord(payload, options?.instance?.region);
+  if (!parsed) {
+    throw new Error(
+      `Stream-config response for instance '${instanceId}' is missing required Leo resource names`
+    );
+  }
+  return { config: parsed, source: 'organizations' };
 }
 
 /**

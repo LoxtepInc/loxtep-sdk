@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.21] - 2026-07-23
+
+### Fixed
+
+- **HTTP errors** from the Loxtep API now surface the platform message
+  (`{ success: false, error: { message, details } }`) instead of generic `HTTP 404`.
+- **`instances.get_stream_config` / `loxtep attach`** call only the primary organizations
+  endpoint (`GET /organizations/instances/{id}/stream-config`); client-side observe/metadata
+  fallbacks removed.
+
 ## [0.7.20] - 2026-07-23
 
 ### Fixed
@@ -14,6 +24,11 @@ and this project adheres to
   returns **404** (endpoint not yet deployed): falls back to **`GET /observe/stream-config`**
   with `x-loxtep-instance-id`, then inline `metadata.rstreams` on the instance record.
 - **`instances.get_stream_config`** uses the same resolution chain and returns `{ config, source }`.
+
+### Deprecated in 0.7.21
+
+- Client-side observe/metadata fallbacks introduced in 0.7.20 were removed; fix resolution on
+  the organizations stream-config endpoint instead.
 
 ## [0.7.19] - 2026-07-23
 
