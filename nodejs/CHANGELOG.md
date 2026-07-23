@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.19] - 2026-07-23
+
+### Fixed
+
+- **`instances.get_stream_config`** (and **`loxtep attach`**) called
+  `/instances/{id}/stream-config`, which resolves to a non-existent public route and
+  returned **403 Forbidden**. Now uses
+  `/organizations/instances/{id}/stream-config`, matching the platform API and
+  `DataProductResolver` / `resolve_stream_sdk`.
+
 ## [0.7.18] - 2026-07-23
 
 ### Fixed

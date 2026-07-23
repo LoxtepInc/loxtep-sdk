@@ -104,7 +104,7 @@ export async function runAttach(
       stdout: [],
       stderr: [
         `Attach failed: could not resolve stream bus configuration for instance ${instance.instance_id}: ${reason}`,
-        'Ensure the instance is active and your token can call GET /instances/{id}/stream-config.',
+        'Ensure the instance is active and your token can call GET /organizations/instances/{id}/stream-config.',
       ],
     };
   }

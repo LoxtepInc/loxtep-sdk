@@ -9,7 +9,7 @@ import type { InstanceStreamConfig } from '../client/instances.js';
 export type FullInstanceStreamConfig = InstanceStreamConfig;
 
 /**
- * Convert GET /instances/{id}/stream-config into the `streams` object stored on
+ * Convert GET /organizations/instances/{id}/stream-config into the `streams` object stored on
  * `.loxtep/project.json` and passed to `LoxtepClient` / `resolveStreamsConfiguration`.
  */
 export function instanceStreamConfigToStreams(
