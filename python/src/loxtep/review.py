@@ -1,4 +1,4 @@
-"""Review facade (MCP: loxtep_approvals + improvements)."""
+"""Review facade (MCP: loxtep_review)."""
 
 from __future__ import annotations
 

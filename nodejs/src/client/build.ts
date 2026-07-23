@@ -1,5 +1,5 @@
 /**
- * Build facade (MCP: loxtep_workflows + loxtep_triggers + loxtep_data_products + loxtep_deployments).
+ * Build facade (MCP: loxtep_build).
  * Delegates to workflows, triggers, data_products CRUD, and targets APIs.
  */
 

@@ -188,14 +188,29 @@ for await (const event of reader) {
 
 ## MCP tool surface (hosted at `mcp.loxtep.io`)
 
-The hosted MCP server exposes **19 grouped tools** (area facades). Each call sets
-`operation` to the flat action name plus that action's arguments. The skill
-attribution convention (`_metadata.skill_name`) is optional and used only for
-eval scoring.
+The hosted MCP server exposes **10 job facades** aligned to Connect → Organize → Use.
+Each call sets `operation` to the flat action name plus that action's arguments.
+**Greenfield cutover:** deprecated names such as `loxtep_connectors`, `loxtep_workflows`,
+or `loxtep_data_products` are **not** registered.
 
-**Auth:** OAuth 2.1 + PKCE (all tools). **Scope** column: `project` operations
-require `project_id` in the same payload; `organization` operations may accept an
-optional `domain_id`; `catalog`/`global` need no scoping params.
+| MCP facade | SDK namespace |
+| --- | --- |
+| `loxtep_session` | `client.session` |
+| `loxtep_connect` | `client.connect` |
+| `loxtep_workspace` | `client.workspace` |
+| `loxtep_build` | `client.build` |
+| `loxtep_define` | `client.define` |
+| `loxtep_meaning` | `client.meaning` |
+| `loxtep_review` | `client.review` |
+| `loxtep_query` | `client.query` |
+| `loxtep_observe` | `client.observe` |
+| `loxtep_context` | `client.context` |
+
+Full operation tables: [`sdk-mcp-mapping.md`](docs/sdk-mcp-mapping.md) and
+[loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).
+
+**Auth:** OAuth 2.1 + PKCE (all tools). **Scope:** `project` operations require
+`project_id` in the same payload.
 
 Add the server to any MCP client:
 
@@ -203,326 +218,10 @@ Add the server to any MCP client:
 { "mcpServers": { "loxtep": { "url": "https://mcp.loxtep.io/ai/mcp/stream" } } }
 ```
 
-### `loxtep_session`
-Session and organization context.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `get_current_user` | organization | — | — |
-| `get_current_organization` | organization | — | — |
-
-```json
-{ "operation": "get_current_user" }
-```
-
-### `loxtep_projects`
-Data-mesh projects (repos/workspaces).
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_projects` | organization | — | `domain_id` |
-| `get_project` | organization | `project_id` | — |
-| `create_project` | organization | `name` | `github_action`, `description`, `domain_id` |
-| `update_project` | organization | `project_id` | `name`, `description`, `target_domain_id`, `github_*` |
-| `delete_project` | organization | `project_id` | — |
-
-```json
-{ "operation": "create_project", "name": "commerce-mesh" }
-```
-
-### `loxtep_instances`
-Runtime instances (control-plane / data-plane).
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_instances` | organization | — | — |
-| `create_instance` | organization | `name` (string), `region` (string, e.g. `us-east-1`), `instance_type` (`shared`\|`managed`\|`self-hosted`) | `plan_id` (required for `managed`: `starter`\|`pro`\|`enterprise`), `payment_method_id` (uuid; required for `managed`/`self-hosted`), `connection_details` (object; required for `self-hosted`: `observe_api.{cross_account_role_arn, rstreams_secret_arn, rstreams_auth_arn}`) |
-
-> Payment methods are added in the Loxtep app (Billing/Account), then the saved
-> `payment_method_id` UUID is passed here. `shared` is free; never combine
-> `shared` with a paid `plan_id`.
-
-```json
-{ "operation": "create_instance", "name": "sandbox", "region": "us-east-1", "instance_type": "shared" }
-```
-
-### `loxtep_templates`
-Template catalog.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_templates` | organization | — | — |
-| `get_template` | organization | `template_id` | — |
-| `apply_template` | project | `project_id`, `template_id` | — |
-
-```json
-{ "operation": "list_templates" }
-```
-
-### `loxtep_connectors`
-Org-level connectors.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_connectors` | organization | — | `domain_id` |
-| `list_connector_types` | global | — | — |
-| `create_connector` | organization | `connector_type`, `metadata` | `domain_id` |
-| `get_connector_oauth_url` | organization | `connector_id` | — |
+Example (call tool **`loxtep_connect`**, not `loxtep_connectors`):
 
 ```json
 { "operation": "create_connector", "connector_type": "shopify", "metadata": { "api_key": "…" } }
-```
-
-### `loxtep_triggers`
-Ingest source bindings (project-scoped; backend: connections). Maps to SDK
-`client.triggers`. Formerly `loxtep_connections` — the old facade and
-`*_connection` operations remain as deprecated aliases.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `update_trigger` | project | `project_id`, `connection_id` | `configuration` |
-| `delete_trigger` | project | `project_id`, `connection_id` | — |
-| `list_triggers` | project | `project_id` | — |
-| `get_trigger` | project | `project_id`, `connection_id` | — |
-| `test_trigger` | project | `project_id`, `connection_id` | — |
-
-```json
-{ "operation": "list_triggers", "project_id": "proj_…" }
-```
-
-New trigger entities are authored inside `save_workflow_bundle`
-(`connections/{id}.json` with `connector_id`), same as before.
-
-### `loxtep_workflows`
-Workflows, graph, transforms.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `create_workflow` | project | `project_id`, `name` | `description` |
-| `update_workflow` | project | `project_id`, `workflow_id` | `name`, `description` |
-| `delete_workflow` | project | `project_id`, `workflow_id` | — |
-| `archive_workflow` | project | `project_id`, `workflow_id` | `instance_id`, `force` |
-| `list_workflows` | project | `project_id` | — |
-| `get_workflow` | project | `project_id`, `workflow_id` | — |
-| `get_workflow_graph` | project | `project_id`, `workflow_id` | — |
-| `patch_workflow_graph` | project | `project_id`, `workflow_id`, `ops` | — |
-| `preview_transform` | project | `project_id`, `transform` | `sample` |
-| `create_transformation` | project | `project_id`, `workflow_id`, `transformation` | — |
-| `create_validation` | project | `project_id`, `workflow_id`, `validation` | — |
-
-```json
-{ "operation": "list_workflows", "project_id": "proj_…" }
-```
-
-### `loxtep_data_products`
-Data products and targets (delivery). `kind` is `source` (atomic, domain-owned)
-or `consumer` (composed projection). Target operations map to SDK
-`client.targets`; the older `*_delivery_interface` / `*_consumption` names remain
-as deprecated aliases.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `create_data_product` | project | `project_id`, `name`, `kind` | `domain_id`, `description`, `schema` |
-| `update_data_product` | project | `project_id`, `data_product_id` | fields to change |
-| `delete_data_product` | project | `project_id`, `data_product_id` | — |
-| `list_data_products` | organization | — | `kind`, `domain_id` |
-| `get_data_product` | organization | `data_product_id` | — |
-| `get_data_product_lexicon` | organization | `data_product_id` | — |
-| `get_data_product_sdk_config` | organization | `data_product_id` | — |
-| `list_targets` | organization | — | `data_product_id` |
-| `create_target` | organization | `data_product_id`, `endpoint_url` | `target_type`, `headers`, `secret_token`, `filters`, `method` |
-
-```json
-{ "operation": "create_data_product", "project_id": "proj_…", "name": "orders", "kind": "source" }
-```
-
-### `loxtep_schemas`
-Schema definitions.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `create_schema` | organization | `data_product_id`, `name`, `version`, `format`, `fields[]`, `definition` | `metadata`, `preview` |
-| `update_schema` | organization | `schema_id`, `definition` | — |
-| `delete_schema` | organization | `schema_id` | — |
-| `get_schema` | organization | `schema_id` | — |
-| `list_schema_versions` | organization | `schema_id` | — |
-| `tag_pii_fields` | organization | `schema_version_id`, `field_names` | — |
-
-```json
-{ "operation": "get_schema", "schema_id": "sch_…" }
-```
-
-### `loxtep_quality`
-Quality rules.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `create_quality_rule` | organization | `name`, `definition` | `domain_id` |
-| `update_quality_rule` | organization | `quality_rule_id`, `definition` | — |
-| `delete_quality_rule` | organization | `quality_rule_id` | — |
-| `list_quality_rules` | organization | — | `domain_id` |
-| `get_quality_rule` | organization | `quality_rule_id` | — |
-| `test_quality_rule` | organization | `quality_rule_id`, `sample` | — |
-
-```json
-{ "operation": "list_quality_rules" }
-```
-
-### `loxtep_catalog`
-Catalog, discovery, domains, tags.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `search_catalog` | catalog | `query` | `filters` |
-| `get_evidence` | catalog | `entry_id` | — |
-| `get_lineage_impact` | catalog | `entry_id` | — |
-| `get_governance_flags` | catalog | `entry_id` | — |
-| `run_discovery` | catalog | `target` | — |
-| `get_catalog_entry` | catalog | `entry_id` | — |
-| `list_domains` | catalog | — | — |
-| `list_tags` | catalog | — | — |
-
-```json
-{ "operation": "search_catalog", "query": "customer" }
-```
-
-### `loxtep_analytics`
-Analytics / DuckDB.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `execute_query` | organization | `sql` | `data_product_id` |
-| `list_tables` | organization | — | `data_product_id` |
-| `get_table_schema` | organization | `table` | — |
-| `get_query_results` | organization | `query_id` | — |
-
-```json
-{ "operation": "execute_query", "sql": "SELECT count(*) FROM orders" }
-```
-
-### `loxtep_workspace`
-Snapshots, workspace index, streaming hints.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_versions` | project | `project_id` | — |
-| `create_snapshot` | project | `project_id` | `label` |
-| `restore_version` | project | `project_id`, `version_id` | — |
-| `compare_versions` | project | `project_id`, `from`, `to` | — |
-| `reindex_workspace` | project | `project_id` | — |
-| `get_queue_info` | organization | `data_product_id` | — |
-| `replay_events` | organization | `data_product_id` | `start`, `end` |
-
-```json
-{ "operation": "list_versions", "project_id": "proj_…" }
-```
-
-### `loxtep_ontology`
-Ontology, vocabulary, namespace mappings.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_thesaurus_terms` | organization | — | — |
-| `get_thesaurus_term` | organization | `term_id` | — |
-| `create_thesaurus_term` | organization | `canonical_key` | `aliases` (array of `{path: string}` objects) |
-| `update_thesaurus_term` | organization | `term_id` | `aliases` |
-| `delete_thesaurus_term` | organization | `term_id` | — |
-| `sync_vocabulary` | organization | `vocabulary` | — |
-| `resolve_canonical_key` | organization | `key_or_alias` | — |
-| `get_ontology_relationships` | organization | `concept_id` | — |
-| `create_ontology_concept` | organization | `name` | — |
-| `create_ontology_relationship` | organization | `from`, `to`, `type` | — |
-| `update_ontology_concept` | organization | `concept_id` | — |
-| `delete_ontology_concept` | organization | `concept_id` | — |
-| `register_namespace_mapping` | organization | `namespace`, `mapping` | — |
-| `list_namespace_mappings` | organization | — | — |
-| `get_namespace_mapping` | organization | `namespace` | — |
-
-```json
-{ "operation": "resolve_canonical_key", "key_or_alias": "customer_email" }
-```
-
-### `loxtep_process_intel`
-Process intelligence & unified context retrieval.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `get_entity_context` | organization | `entity_id`, `entity_type` | — |
-| `query_entity_context` | organization | `entity_id`, `entity_type` | — |
-| `create_entity_context` | organization | `entity_id`, `context` | — |
-| `list_decision_traces` | organization | — | `anchor` |
-| `record_decision_trace` | organization | `decision_id`, `procedure_id`, `outcome`, `actor` | `rationale`, `inputs`, `override` |
-| `query_context` | organization | `query` | `backends`, `max_results`, `include_plan` |
-
-```json
-{ "operation": "query_context", "query": "What processes touch the customer entity?" }
-```
-
-### `loxtep_procedures`
-Procedures (process graph).
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `list_procedures` | organization | — | — |
-| `get_procedure` | organization | `procedure_id` | — |
-| `create_procedure` | organization | `name`, `graph` | — |
-| `update_procedure` | organization | `procedure_id`, `graph` | — |
-| `delete_procedure` | organization | `procedure_id` | — |
-| `import_process_graph` | organization | `graph` | — |
-| `export_process_graph` | organization | `procedure_id` | — |
-| `get_procedure_dependencies` | organization | `procedure_id` | — |
-
-```json
-{ "operation": "list_procedures" }
-```
-
-### `loxtep_agent_workspace`
-Agent orchestration workspace (issues/goals/agents — not data-workflow projects).
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `agent_orchestration_create_issue` | organization | `title` | `description` |
-| `agent_orchestration_list_issues` | organization | — | — |
-| `agent_orchestration_get_issue` | organization | `issue_id` | — |
-| `agent_orchestration_create_goal` | organization | `title` | `description` |
-| `agent_orchestration_list_goals` | organization | — | — |
-| `agent_orchestration_get_goal` | organization | `goal_id` | — |
-| `agent_orchestration_list_projects` | organization | — | — |
-| `agent_orchestration_create_project` | organization | `name` | — |
-| `agent_orchestration_get_project` | organization | `project_id` | — |
-| `agent_orchestration_list_agents` | organization | — | — |
-| `agent_orchestration_get_agent` | organization | `agent_id` | — |
-
-```json
-{ "operation": "agent_orchestration_list_issues" }
-```
-
-### `loxtep_semantic_layer`
-Org semantic layer.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `search_semantic_layer` | organization | `query` | `artifact_type` |
-| `get_semantic_artifact` | organization | `artifact_type`, `id` | — |
-| `get_semantic_completeness` | organization | — | `domain_id` |
-
-```json
-{ "operation": "search_semantic_layer", "query": "revenue" }
-```
-
-### `loxtep_deployments`
-Deployment lifecycle.
-
-| Operation | Scope | Required params | Optional params |
-| --- | --- | --- | --- |
-| `deploy_project` | project | `project_id`, `instance_id` | `force_redeploy` |
-| `deploy_workflow` | project | `project_id`, `instance_id`, `workflow_id` | `force_redeploy`, `skip_validation` |
-| `list_deployments` | organization | — | `project_id`, `instance_id`, `workflow_id`, `status`, `orphaned` |
-| `get_deployment` | organization | `deployment_id` | — |
-| `get_runtime_mapping` | project | `project_id` | `workflow_id` |
-
-```json
-{ "operation": "deploy_project", "project_id": "proj_…", "instance_id": "inst_…" }
 ```
 
 ---

@@ -1,4 +1,4 @@
-"""Context facade (MCP: loxtep_process_intel + loxtep_procedures + activity)."""
+"""Context facade (MCP: loxtep_context)."""
 
 from __future__ import annotations
 

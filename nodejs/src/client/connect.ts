@@ -1,5 +1,5 @@
 /**
- * Connect facade (MCP: loxtep_connectors + loxtep_templates).
+ * Connect facade (MCP: loxtep_connect).
  * Delegates to connectors and templates APIs — no HTTP rewrite.
  */
 

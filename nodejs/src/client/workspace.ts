@@ -1,5 +1,5 @@
 /**
- * Workspace facade (MCP: loxtep_projects + loxtep_instances + loxtep_workspace versions).
+ * Workspace facade (MCP: loxtep_workspace).
  * Delegates to projects and instances APIs. Version/snapshot REST is not yet available.
  */
 

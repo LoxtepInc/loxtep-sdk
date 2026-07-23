@@ -1,4 +1,4 @@
-"""Meaning facade (MCP: loxtep_ontology + loxtep_semantic_layer)."""
+"""Meaning facade (MCP: loxtep_meaning)."""
 
 from __future__ import annotations
 

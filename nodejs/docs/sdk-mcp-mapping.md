@@ -4,22 +4,22 @@ This is a **guide for agents**, not an exhaustive OpenAPI listing. MCP stays on
 **HTTP**; the SDK adds **typed REST** and the **stream data plane** for live
 I/O.
 
-The SDK exposes **10 namespaces** that mirror hosted MCP tool facades. Old flat
+The SDK exposes **10 namespaces** that mirror hosted MCP job facades. Old flat
 namespaces (`data_products`, `workflows`, `connectors`, …) are **removed** — no
 deprecation aliases.
 
 | MCP facade | SDK namespace | Nested APIs / notes |
 | --- | --- | --- |
 | `loxtep_session` | `client.session` | `get_current_user`, `get_current_organization`, `logout` |
-| `loxtep_connectors`, `loxtep_templates` | `client.connect` | `.connectors.*`, `.templates.*` |
-| `loxtep_projects`, `loxtep_instances`, `loxtep_workspace` (versions) | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending) |
-| `loxtep_workflows`, `loxtep_triggers`, `loxtep_data_products`, `loxtep_deployments` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, `.get_writer({ bot_id, queue })` escape hatch |
-| `loxtep_schemas`, `loxtep_quality`, catalog domains | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
-| `loxtep_ontology`, `loxtep_semantic_layer` | `client.meaning` | `.thesaurus.*` (ontology/semantic REST split pending) |
-| `loxtep_approvals` | `client.review` | `.approvals.*`, `.improvements.*` |
-| `loxtep_catalog`, `loxtep_analytics` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
-| observe + `loxtep_workspace` queue hints | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer` / metadata |
-| `loxtep_process_intel`, `loxtep_procedures` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*` |
+| `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
+| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending) |
+| `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
+| `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*` (ontology/semantic REST split pending) |
+| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, CDLC and context-mining REST (pending) |
+| `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
+| `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, deployment reads, trust signals |
+| `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*` |
 
 ## Top-level stream I/O
 
@@ -34,8 +34,10 @@ Same on Python: `client.get_writer("orders_raw")`, `client.get_reader("orders_ra
 
 Low-level workflow writer escape hatch: `client.build.get_writer(workflow_id, { bot_id, output_queue_name, … })`.
 
-Vocabulary: MCP uses `loxtep_triggers` (backend: connections) and target operations
-(backend: consumptions).
+Vocabulary: MCP `loxtep_build` trigger operations (backend: connections) and target operations
+(backend: consumptions). Connector OAuth uses `get_oauth_url`; sample capture uses `capture_samples`.
 
 When unsure: **MCP for provisioning and agent tool calls**; **SDK for runtime**
 services running in your infrastructure or CI.
+
+Full MCP operation tables: [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).

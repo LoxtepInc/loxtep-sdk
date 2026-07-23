@@ -1,4 +1,4 @@
-"""Build facade (MCP: loxtep_workflows + loxtep_triggers + loxtep_data_products + loxtep_deployments)."""
+"""Build facade (MCP: loxtep_build)."""
 
 from __future__ import annotations
 

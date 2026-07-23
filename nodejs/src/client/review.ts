@@ -1,5 +1,5 @@
 /**
- * Review facade (MCP: loxtep_approvals + improvements workflow).
+ * Review facade (MCP: loxtep_review).
  * Delegates to approvals and improvements APIs.
  */
 

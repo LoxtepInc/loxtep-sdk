@@ -1,4 +1,4 @@
-"""Workspace facade (MCP: loxtep_projects + loxtep_instances + loxtep_workspace)."""
+"""Workspace facade (MCP: loxtep_workspace)."""
 
 from __future__ import annotations
 
