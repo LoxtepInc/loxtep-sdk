@@ -278,7 +278,8 @@ export async function runConfigExportFromDataProduct(
     LeoSettings: string;
   };
   try {
-    streamConfig = await client.workspace.instances.get_stream_config(bindings.instance_id);
+    const resolved = await client.workspace.instances.get_stream_config(bindings.instance_id);
+    streamConfig = resolved.config;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(

@@ -73,6 +73,10 @@ function makeStreamConfig() {
   };
 }
 
+function streamConfigResult(config = makeStreamConfig()) {
+  return { config, source: 'organizations' as const };
+}
+
 function mockClient(opts: {
   instances?: Instance[];
   getInstance?: Instance;
@@ -92,7 +96,7 @@ function mockClient(opts: {
         },
         get_stream_config: async () => {
           if (opts.streamConfigError) throw opts.streamConfigError;
-          return opts.streamConfig ?? makeStreamConfig();
+          return streamConfigResult(opts.streamConfig ?? makeStreamConfig());
         },
       },
       projects: {
