@@ -43,11 +43,9 @@ writer.write({ id: '1', payload: { name: 'Alice' } });
 await writer.close();
 ```
 
-Since **v0.7.0**, `LoxtepClient` exposes **10 MCP-aligned namespaces**
+Since **v0.7.0**, `LoxtepClient` exposes grouped API areas on the client
 (`session`, `connect`, `workspace`, `build`, `define`, `meaning`, `review`,
-`query`, `observe`, `context`). See [`nodejs/docs/sdk-mcp-mapping.md`](./nodejs/docs/sdk-mcp-mapping.md).
-
-See [`nodejs/README.md`](./nodejs/README.md) for full documentation.
+`query`, `observe`, `context`). See [`nodejs/README.md`](./nodejs/README.md).
 For the code-first workflow (`loxtep init`), see
 [`nodejs/docs/code-first-cli.md`](./nodejs/docs/code-first-cli.md).
 

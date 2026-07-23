@@ -13,9 +13,10 @@
  * 5. Return tokens to caller, shut down server
  */
 
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
 import { URL } from 'node:url';
-import { exec } from 'node:child_process';
+import { exec, type ChildProcess } from 'node:child_process';
 import { platform } from 'node:os';
 
 export interface BrowserLoginOptions {
@@ -27,6 +28,8 @@ export interface BrowserLoginOptions {
   timeout_ms?: number;
   /** If true, don't auto-open the browser — just print the URL. */
   no_open?: boolean;
+  /** For tests: invoked once the callback server is listening (with bound port). */
+  on_listening?: (port: number) => void;
 }
 
 export interface BrowserLoginResult {
@@ -41,6 +44,20 @@ export interface BrowserLoginResult {
   };
 }
 
+const CLOSE_HEADERS = { Connection: 'close' as const };
+
+/** Force-close keep-alive sockets so the CLI process can exit immediately. */
+export function shutdownCallbackServer(server: Server, sockets: Set<Socket>): void {
+  for (const socket of sockets) {
+    socket.destroy();
+  }
+  sockets.clear();
+
+  const maybeCloseAll = server as Server & { closeAllConnections?: () => void };
+  maybeCloseAll.closeAllConnections?.();
+  server.close();
+}
+
 /**
  * Open a URL in the user's default browser.
  */
@@ -48,7 +65,14 @@ function openBrowser(url: string): void {
   const os = platform();
   const cmd =
     os === 'darwin' ? 'open' : os === 'win32' ? 'start' : 'xdg-open';
-  exec(`${cmd} "${url}"`);
+  const child: ChildProcess = exec(`${cmd} "${url}"`);
+  child.unref?.();
+}
+
+function finishResponse(res: ServerResponse, body: string, status = 200): void {
+  res.writeHead(status, { 'Content-Type': 'text/html', ...CLOSE_HEADERS });
+  res.end(body);
+  res.socket?.destroy();
 }
 
 /**
@@ -56,22 +80,37 @@ function openBrowser(url: string): void {
  * Returns tokens on success, throws on timeout or failure.
  */
 export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLoginResult> {
-  const { app_url, timeout_ms = 300_000, no_open = false } = options;
+  const { app_url, timeout_ms = 300_000, no_open = false, on_listening } = options;
 
   return new Promise<BrowserLoginResult>((resolve, reject) => {
     let settled = false;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const sockets = new Set<Socket>();
+
+    const settleSuccess = (result: BrowserLoginResult): void => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      shutdownCallbackServer(server, sockets);
+      resolve(result);
+    };
+
+    const settleFailure = (err: Error): void => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      shutdownCallbackServer(server, sockets);
+      reject(err);
+    };
 
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
       const reqUrl = new URL(req.url ?? '/', `http://localhost`);
 
       if (reqUrl.pathname === '/callback') {
-        // Tokens come as query params from the Loxtep app redirect
         const access_token = reqUrl.searchParams.get('access_token');
         const refresh_token = reqUrl.searchParams.get('refresh_token') ?? undefined;
         const expires_at = reqUrl.searchParams.get('expires_at') ?? undefined;
 
-        // AWS credentials (optional, URL-encoded JSON)
         let aws_credentials: BrowserLoginResult['aws_credentials'] | undefined;
         const awsCredsParam = reqUrl.searchParams.get('aws_credentials');
         if (awsCredsParam) {
@@ -83,36 +122,45 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
         }
 
         if (!access_token) {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html><body><h2>Login failed</h2><p>No access token received. Close this window and try again.</p></body></html>');
+          finishResponse(
+            res,
+            '<html><body><h2>Login failed</h2><p>No access token received. Close this window and try again.</p></body></html>',
+            400
+          );
           return;
         }
 
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(
+        finishResponse(
+          res,
           '<html><body><h2>Login successful!</h2><p>You can close this window and return to your terminal.</p></body></html>'
         );
 
-        settled = true;
-        if (timeoutId) clearTimeout(timeoutId);
-        server.close();
-        resolve({ access_token, refresh_token, expires_at, aws_credentials });
+        settleSuccess({ access_token, refresh_token, expires_at, aws_credentials });
         return;
       }
 
-      // Health check / catch-all
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.writeHead(200, { 'Content-Type': 'text/plain', ...CLOSE_HEADERS });
       res.end('Loxtep SDK login callback server');
+      res.socket?.destroy();
+    });
+
+    server.on('connection', socket => {
+      sockets.add(socket);
+      socket.on('close', () => {
+        sockets.delete(socket);
+      });
     });
 
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address();
       if (!addr || typeof addr === 'string') {
-        reject(new Error('Failed to start callback server'));
+        settleFailure(new Error('Failed to start callback server'));
         return;
       }
 
       const port = addr.port;
+      on_listening?.(port);
+
       const callbackUrl = `http://localhost:${port}/callback`;
       const loginUrl = `${app_url.replace(/\/$/, '')}/auth/mcp?callback_url=${encodeURIComponent(callbackUrl)}`;
 
@@ -128,19 +176,12 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
     });
 
     server.on('error', err => {
-      if (!settled) {
-        settled = true;
-        reject(new Error(`Callback server error: ${err.message}`));
-      }
+      settleFailure(new Error(`Callback server error: ${err.message}`));
     });
 
-    // Timeout
     timeoutId = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        server.close();
-        reject(new Error(`Login timed out after ${timeout_ms / 1000} seconds. Try again.`));
-      }
+      settleFailure(new Error(`Login timed out after ${timeout_ms / 1000} seconds. Try again.`));
     }, timeout_ms);
+    timeoutId.unref?.();
   });
 }

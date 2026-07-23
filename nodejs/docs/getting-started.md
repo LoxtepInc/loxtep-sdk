@@ -324,6 +324,5 @@ Now that you've written and read your first event, explore these resources:
 | [Code-first CLI guide](./code-first-cli.md) | `loxtep init`, attach, generate, test, deploy |
 | [Quick Reference Card](./quick-reference.md) | Single-page cheat sheet for common SDK operations |
 | [Event Replay Cookbook](./event-replay-cookbook.md) | Patterns for replaying and reprocessing historical events |
-| [MCP → SDK Mapping](./sdk-mcp-mapping.md) | How MCP tools map to SDK methods |
 
 See the [SDK README](../README.md) for the full API surface.
