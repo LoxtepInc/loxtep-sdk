@@ -36,6 +36,8 @@ export interface BrowserLoginResult {
   access_token: string;
   refresh_token?: string;
   expires_at?: string;
+  /** API origin returned by the app OAuth callback (e.g. https://api.loxtep.io). */
+  api_base_url?: string;
   aws_credentials?: {
     access_key_id: string;
     secret_access_key: string;
@@ -110,6 +112,7 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
         const access_token = reqUrl.searchParams.get('access_token');
         const refresh_token = reqUrl.searchParams.get('refresh_token') ?? undefined;
         const expires_at = reqUrl.searchParams.get('expires_at') ?? undefined;
+        const api_base_url = reqUrl.searchParams.get('api_base_url')?.replace(/\/$/, '') || undefined;
 
         let aws_credentials: BrowserLoginResult['aws_credentials'] | undefined;
         const awsCredsParam = reqUrl.searchParams.get('aws_credentials');
@@ -135,7 +138,7 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
           '<html><body><h2>Login successful!</h2><p>You can close this window and return to your terminal.</p></body></html>'
         );
 
-        settleSuccess({ access_token, refresh_token, expires_at, aws_credentials });
+        settleSuccess({ access_token, refresh_token, expires_at, api_base_url, aws_credentials });
         return;
       }
 

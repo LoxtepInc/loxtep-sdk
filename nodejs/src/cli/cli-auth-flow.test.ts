@@ -106,6 +106,7 @@ describe('CLI auth flow (mock platform API)', () => {
       .map(call => call.map(String).join(' '))
       .join('\n');
     expect(output).toMatch(/User:\s*—/);
+    expect(process.exitCode).toBe(1);
     logSpy.mockRestore();
   });
 
