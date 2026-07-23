@@ -23,7 +23,10 @@ import {
   type ProjectConfig,
   type ProjectRepository,
 } from '../project-context.js';
-import { instanceStreamConfigToStreams } from '../../lib/instance-stream-config.js';
+import {
+  instanceStreamConfigToStreams,
+  type InstanceStreamConfigSource,
+} from '../../lib/instance-stream-config.js';
 
 export interface AttachOptions {
   /** Explicit instance ID from `--instance <id>`. When omitted, the org's sole instance is used. */
@@ -95,8 +98,13 @@ export async function runAttach(
 
   // 4. Resolve stream bus resources for this instance (required for get_writer / queue I/O).
   let streamConfig;
+  let streamConfigSource: InstanceStreamConfigSource = 'organizations';
   try {
-    streamConfig = await client.workspace.instances.get_stream_config(instance.instance_id);
+    const resolved = await client.workspace.instances.get_stream_config(instance.instance_id, {
+      instance,
+    });
+    streamConfig = resolved.config;
+    streamConfigSource = resolved.source;
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     return {
@@ -104,7 +112,7 @@ export async function runAttach(
       stdout: [],
       stderr: [
         `Attach failed: could not resolve stream bus configuration for instance ${instance.instance_id}: ${reason}`,
-        'Ensure the instance is active and your token can call GET /organizations/instances/{id}/stream-config.',
+        'Tried organizations stream-config, observe stream-config, and inline instance metadata.',
       ],
     };
   }
@@ -157,7 +165,7 @@ export async function runAttach(
     `Attached to instance "${instance.name}" (${instance.instance_id}).`,
     `  api_url: ${instance.api_url}`,
     `  region: ${newConfig.region}`,
-    `  streams: LeoEvent, LeoStream, LeoCron, LeoS3, LeoKinesisStream, LeoFirehoseStream, LeoSettings (from stream-config)`,
+    `  streams: LeoEvent, LeoStream, LeoCron, LeoS3, LeoKinesisStream, LeoFirehoseStream, LeoSettings (from ${streamConfigSource})`,
   ];
   if (repository) {
     lines.push(`  repository: ${repository.url} (${repository.branch})`);

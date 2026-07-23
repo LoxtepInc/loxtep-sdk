@@ -16,6 +16,11 @@ export interface RateLimitInfo {
   retry_after_seconds?: number;
 }
 
+export interface LoxtepHttpRequestOptions {
+  /** Extra headers merged before SigV4 signing (e.g. x-loxtep-instance-id for observe proxy). */
+  headers?: Record<string, string>;
+}
+
 export interface LoxtepHttpClientOptions {
   base_url: string;
   /**
@@ -95,7 +100,8 @@ export class LoxtepHttpClient {
     path: string,
     body?: unknown,
     retryCount = 0,
-    authRetry = 0
+    authRetry = 0,
+    requestOptions?: LoxtepHttpRequestOptions
   ): Promise<T> {
     const pathPart = path.startsWith('http')
       ? path
@@ -105,7 +111,7 @@ export class LoxtepHttpClient {
     const url = new URL(pathPart);
     const bodyString = body !== undefined ? JSON.stringify(body) : undefined;
 
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...(requestOptions?.headers ?? {}) };
     if (this.get_token) {
       const token = await this.get_token();
       if (token) headers['x-jwt-token'] = token;
@@ -132,7 +138,7 @@ export class LoxtepHttpClient {
       if (isNetworkError(err) && retryCount < MAX_RETRIES) {
         const delay = INITIAL_BACKOFF_MS * Math.pow(2, retryCount);
         await new Promise(r => setTimeout(r, delay));
-        return this.request<T>(method, path, body, retryCount + 1, authRetry);
+        return this.request<T>(method, path, body, retryCount + 1, authRetry, requestOptions);
       }
       throw err;
     }
@@ -149,7 +155,7 @@ export class LoxtepHttpClient {
     if (response.status === 401 && authRetry === 0 && this.refresh_auth) {
       const ok = await this.refresh_auth();
       if (ok) {
-        return this.request<T>(method, path, body, retryCount, authRetry + 1);
+        return this.request<T>(method, path, body, retryCount, authRetry + 1, requestOptions);
       }
     }
 
@@ -157,7 +163,7 @@ export class LoxtepHttpClient {
       if (isRetryable(response.status) && retryCount < MAX_RETRIES) {
         const delay = INITIAL_BACKOFF_MS * Math.pow(2, retryCount);
         await new Promise(r => setTimeout(r, delay));
-        return this.request<T>(method, path, body, retryCount + 1, authRetry);
+        return this.request<T>(method, path, body, retryCount + 1, authRetry, requestOptions);
       }
       throw parseHttpError(response.status, parsed, requestId);
     }
@@ -198,19 +204,19 @@ export class LoxtepHttpClient {
     return this.lastRateLimit;
   }
 
-  async get<T = unknown>(path: string): Promise<T> {
-    return this.request<T>('GET', path);
+  async get<T = unknown>(path: string, options?: LoxtepHttpRequestOptions): Promise<T> {
+    return this.request<T>('GET', path, undefined, 0, 0, options);
   }
 
-  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>('POST', path, body);
+  async post<T = unknown>(path: string, body?: unknown, options?: LoxtepHttpRequestOptions): Promise<T> {
+    return this.request<T>('POST', path, body, 0, 0, options);
   }
 
-  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>('PUT', path, body);
+  async put<T = unknown>(path: string, body?: unknown, options?: LoxtepHttpRequestOptions): Promise<T> {
+    return this.request<T>('PUT', path, body, 0, 0, options);
   }
 
-  async delete<T = unknown>(path: string): Promise<T> {
-    return this.request<T>('DELETE', path);
+  async delete<T = unknown>(path: string, options?: LoxtepHttpRequestOptions): Promise<T> {
+    return this.request<T>('DELETE', path, undefined, 0, 0, options);
   }
 }

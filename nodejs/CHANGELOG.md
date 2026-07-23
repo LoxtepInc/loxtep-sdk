@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.20] - 2026-07-23
+
+### Fixed
+
+- **`loxtep attach`** no longer fails when `GET /organizations/instances/{id}/stream-config`
+  returns **404** (endpoint not yet deployed): falls back to **`GET /observe/stream-config`**
+  with `x-loxtep-instance-id`, then inline `metadata.rstreams` on the instance record.
+- **`instances.get_stream_config`** uses the same resolution chain and returns `{ config, source }`.
+
 ## [0.7.19] - 2026-07-23
 
 ### Fixed

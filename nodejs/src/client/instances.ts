@@ -11,6 +11,7 @@ import { parseInstanceDetailResponse } from './instance-detail-response.js';
 import { parseInstancesListResponse } from './instances-list-response.js';
 import type {
   Instance,
+  InstanceStreamConfig,
   InstancesListResponse,
   InstanceCreateInput,
   InstanceCreateResponse,
@@ -20,20 +21,11 @@ import type {
   RegisterInfrastructureResponse,
   GetInfrastructureResponse,
 } from './instances-types.js';
+import { fetchInstanceStreamConfig, type InstanceStreamConfigSource } from '../lib/instance-stream-config.js';
 
 const INSTANCES_BASE = '/organizations/instances';
 
-/** Stream bus resource names resolved from an instance. */
-export interface InstanceStreamConfig {
-  Region: string;
-  LeoEvent: string;
-  LeoStream: string;
-  LeoCron: string;
-  LeoS3: string;
-  LeoKinesisStream: string;
-  LeoFirehoseStream: string;
-  LeoSettings: string;
-}
+export type { InstanceStreamConfig } from './instances-types.js';
 
 /**
  * Normalizes a `/organizations/{id}/deployment-urls` or
@@ -57,7 +49,10 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
     pagination: InstancesListResponse['data']['pagination'];
   }>;
   get: (instance_id: string) => Promise<Instance>;
-  get_stream_config: (instance_id: string) => Promise<InstanceStreamConfig>;
+  get_stream_config: (
+    instance_id: string,
+    options?: { instance?: Instance }
+  ) => Promise<{ config: InstanceStreamConfig; source: InstanceStreamConfigSource }>;
   create: (input: InstanceCreateInput) => Promise<{
     instance_id: string | undefined;
     correlation_id: string | undefined;
@@ -106,14 +101,14 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
     },
 
     /**
-     * Resolve stream bus configuration (DynamoDB tables, Kinesis stream, S3 bucket) for an instance.
-     * Calls GET /organizations/instances/{instance_id}/stream-config.
+     * Resolve stream bus configuration for an instance.
+     * Tries organizations stream-config, observe proxy, then inline instance metadata.
      */
-    async get_stream_config(instance_id: string): Promise<InstanceStreamConfig> {
-      const res = await http.get<{ success: true; data: InstanceStreamConfig }>(
-        `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}/stream-config`
-      );
-      return res.data;
+    async get_stream_config(
+      instance_id: string,
+      options?: { instance?: Instance }
+    ): Promise<{ config: InstanceStreamConfig; source: InstanceStreamConfigSource }> {
+      return fetchInstanceStreamConfig(http, instance_id, options);
     },
 
     /**

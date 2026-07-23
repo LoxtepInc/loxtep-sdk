@@ -17,6 +17,18 @@ export interface Instance {
   updated_at: string;
 }
 
+/** Stream bus resource names resolved from an instance (PascalCase). */
+export interface InstanceStreamConfig {
+  Region: string;
+  LeoEvent: string;
+  LeoStream: string;
+  LeoCron: string;
+  LeoS3: string;
+  LeoKinesisStream: string;
+  LeoFirehoseStream: string;
+  LeoSettings: string;
+}
+
 export interface InstancesListResponse {
   success: true;
   data: {

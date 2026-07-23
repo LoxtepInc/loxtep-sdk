@@ -160,6 +160,54 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
+    if (
+      method === 'GET' &&
+      routeMatch(pathname, /\/organizations\/instances\/[^/]+\/stream-config$/)
+    ) {
+      return jsonResponse(
+        successEnvelope({
+          Region: 'us-east-1',
+          LeoEvent: 'test-LeoEvent',
+          LeoStream: 'test-LeoStream',
+          LeoCron: 'test-LeoCron',
+          LeoS3: 'test-LeoS3',
+          LeoKinesisStream: 'test-LeoKinesisStream',
+          LeoFirehoseStream: 'test-LeoFirehoseStream',
+          LeoSettings: 'test-LeoSettings',
+        })
+      );
+    }
+
+    if (method === 'GET' && routeMatch(pathname, /\/instances\/[^/]+\/stream-config$/)) {
+      return jsonResponse(
+        successEnvelope({
+          Region: 'us-east-1',
+          LeoEvent: 'test-LeoEvent',
+          LeoStream: 'test-LeoStream',
+          LeoCron: 'test-LeoCron',
+          LeoS3: 'test-LeoS3',
+          LeoKinesisStream: 'test-LeoKinesisStream',
+          LeoFirehoseStream: 'test-LeoFirehoseStream',
+          LeoSettings: 'test-LeoSettings',
+        })
+      );
+    }
+
+    if (method === 'GET' && pathname.startsWith(resolvedPlatformPath('/observe/stream-config'))) {
+      return jsonResponse(
+        successEnvelope({
+          Region: 'us-east-1',
+          LeoEvent: 'test-LeoEvent',
+          LeoStream: 'test-LeoStream',
+          LeoCron: 'test-LeoCron',
+          LeoS3: 'test-LeoS3',
+          LeoKinesisStream: 'test-LeoKinesisStream',
+          LeoFirehoseStream: 'test-LeoFirehoseStream',
+          LeoSettings: 'test-LeoSettings',
+        })
+      );
+    }
+
     if (method === 'GET' && pathname.startsWith(resolvedPlatformPath('/organizations/instances'))) {
       const detail = routeMatch(pathname, /\/organizations\/instances\/([^/?]+)$/);
       if (detail) {
@@ -745,39 +793,6 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           external_id: 'ext-test-001',
           region: body.region ?? 'us-east-1',
           registered_at: new Date().toISOString(),
-        })
-      );
-    }
-
-    if (
-      method === 'GET' &&
-      routeMatch(pathname, /\/organizations\/instances\/[^/]+\/stream-config$/)
-    ) {
-      return jsonResponse(
-        successEnvelope({
-          Region: 'us-east-1',
-          LeoEvent: 'test-LeoEvent',
-          LeoStream: 'test-LeoStream',
-          LeoCron: 'test-LeoCron',
-          LeoS3: 'test-LeoS3',
-          LeoKinesisStream: 'test-LeoKinesisStream',
-          LeoFirehoseStream: 'test-LeoFirehoseStream',
-          LeoSettings: 'test-LeoSettings',
-        })
-      );
-    }
-
-    if (method === 'GET' && routeMatch(pathname, /\/instances\/[^/]+\/stream-config$/)) {
-      return jsonResponse(
-        successEnvelope({
-          Region: 'us-east-1',
-          LeoEvent: 'test-LeoEvent',
-          LeoStream: 'test-LeoStream',
-          LeoCron: 'test-LeoCron',
-          LeoS3: 'test-LeoS3',
-          LeoKinesisStream: 'test-LeoKinesisStream',
-          LeoFirehoseStream: 'test-LeoFirehoseStream',
-          LeoSettings: 'test-LeoSettings',
         })
       );
     }
