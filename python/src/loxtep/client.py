@@ -1,34 +1,45 @@
 """
 LoxtepClient (sync) and AsyncLoxtepClient (async).
-Public surface: data_products, targets, workflows, observe, projects, templates, connectors, instances, procedures, domains, standards, data_contracts, triggers, thesaurus, queues, quality, catalog, discovery, schemas, metrics.
+Ten MCP-aligned namespaces: session, connect, workspace, build, define, meaning, review, query, observe, context.
+Top-level get_writer / get_reader delegate to data-products stream logic.
 """
 
 from typing import Any, Callable, Optional
 
+from .activity import AsyncActivityApi, ActivityApi
+from .build import BuildFacade
 from .catalog import AsyncCatalogApi, CatalogApi
-from .triggers import AsyncTriggersApi, TriggersApi
+from .connect import ConnectFacade
 from .connectors import AsyncConnectorsApi, ConnectorsApi
+from .context import ContextFacade
+from .data_contracts import AsyncDataContractsApi, DataContractsApi
 from .data_products import AsyncDataProductsApi, DataProductsApi
-from .targets import AsyncTargetsApi, TargetsApi
-from .instances import AsyncInstancesApi, InstancesApi
-from .procedures import AsyncProceduresApi, ProceduresApi
+from .define import DefineFacade
 from .discovery import AsyncDiscoveryApi, DiscoveryApi
+from .domains import AsyncDomainsApi, DomainsApi
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
+from .improvements import AsyncImprovementsApi, ImprovementsApi
+from .instances import AsyncInstancesApi, InstancesApi
+from .meaning import MeaningFacade
 from .observe import AsyncObserveApi, ObserveApi
-from .workflows import AsyncWorkflowsApi, WorkflowsApi
+from .observe_facade import ObserveFacade
+from .procedures import AsyncProceduresApi, ProceduresApi
 from .process_intelligence import AsyncProcessIntelligenceApi, ProcessIntelligenceApi
 from .projects import AsyncProjectsApi, ProjectsApi
-from .queues import AsyncQueuesApi, QueuesApi
 from .quality import AsyncQualityApi, QualityApi
+from .query import QueryFacade
+from .queues import AsyncQueuesApi, QueuesApi
+from .review import ApprovalsApiStub, ReviewFacade
+from .rstreams import resolve_stream_config
 from .schemas import AsyncSchemasApi, SchemasApi
+from .session import SessionApi
+from .standards import AsyncStandardsApi, StandardsApi
+from .targets import AsyncTargetsApi, TargetsApi
 from .templates import AsyncTemplatesApi, TemplatesApi
 from .thesaurus import AsyncThesaurusApi, ThesaurusApi
-from .improvements import AsyncImprovementsApi, ImprovementsApi
-from .activity import AsyncActivityApi, ActivityApi
-from .domains import AsyncDomainsApi, DomainsApi
-from .standards import AsyncStandardsApi, StandardsApi
-from .data_contracts import AsyncDataContractsApi, DataContractsApi
-from .rstreams import resolve_stream_config
+from .triggers import AsyncTriggersApi, TriggersApi
+from .workspace import WorkspaceFacade
+from .workflows import AsyncWorkflowsApi, WorkflowsApi
 
 
 def _default_get_token() -> Optional[str]:
@@ -36,10 +47,7 @@ def _default_get_token() -> Optional[str]:
 
 
 class LoxtepClient:
-    """
-    Sync Loxtep SDK client.
-    data_products, workflows, projects, connectors, instances, procedures, domains, standards, data_contracts, triggers, targets, thesaurus, queues, quality, catalog, discovery, schemas.
-    """
+    """Sync Loxtep SDK client with ten MCP-aligned namespaces."""
 
     def __init__(
         self,
@@ -63,132 +71,75 @@ class LoxtepClient:
             get_token=self._get_token,
             timeout=timeout,
         )
-        # Resolve stream-bus config (Kinesis/DynamoDB/S3 resource names) from the
-        # `streams` option merged with LEO_* env vars. When writable, data-product
-        # and workflow writers produce to the bus instead of HTTP.
         self._stream_config = resolve_stream_config(streams)
-        self._queues = QueuesApi(self._http)
-        self._triggers = TriggersApi(self._http)
-        self._workflows = WorkflowsApi(self._http, stream_config=self._stream_config)
-        self._observe = ObserveApi(self._http)
-        self._data_products = DataProductsApi(
+        queues = QueuesApi(self._http)
+        triggers = TriggersApi(self._http)
+        workflows = WorkflowsApi(self._http, stream_config=self._stream_config)
+        projects = ProjectsApi(self._http)
+        templates = TemplatesApi(self._http)
+        observe = ObserveApi(self._http)
+        data_products = DataProductsApi(
             self._http,
-            get_queue_metadata=lambda name: self._queues.get_queue_metadata(name),
-            get_reader_checkpoint=lambda name, bot_id: self._queues.get_reader_checkpoint(name, bot_id),
+            get_queue_metadata=lambda name: queues.get_queue_metadata(name),
+            get_reader_checkpoint=lambda name, bot_id: queues.get_reader_checkpoint(name, bot_id),
             stream_config=self._stream_config,
         )
-        self._quality = QualityApi(self._http)
-        self._catalog = CatalogApi(self._http)
-        self._discovery = DiscoveryApi(self._http)
-        self._schemas = SchemasApi(self._http)
-        self._process_intelligence = ProcessIntelligenceApi(self._http)
-        self._projects = ProjectsApi(self._http)
-        self._templates = TemplatesApi(self._http)
-        self._connectors = ConnectorsApi(self._http)
-        self._instances = InstancesApi(self._http)
-        self._procedures = ProceduresApi(self._http)
-        self._targets = TargetsApi(self._http)
-        self._thesaurus = ThesaurusApi(self._http, organization_id)
-        self._improvements = ImprovementsApi(self._http)
-        self._activity = ActivityApi(self._http)
-        self._domains = DomainsApi(self._http)
-        self._standards = StandardsApi(self._http)
-        self._data_contracts = DataContractsApi(self._http)
+        self._data_products = data_products
+
+        self.session = SessionApi(self._http)
+        self.connect = ConnectFacade(
+            connectors=ConnectorsApi(self._http),
+            templates=templates,
+        )
+        self.workspace = WorkspaceFacade(
+            projects=projects,
+            instances=InstancesApi(self._http),
+        )
+        self.build = BuildFacade(
+            workflows=workflows,
+            triggers=triggers,
+            data_products=data_products,
+            targets=TargetsApi(self._http),
+        )
+        self.define = DefineFacade(
+            schemas=SchemasApi(self._http),
+            quality=QualityApi(self._http),
+            standards=StandardsApi(self._http),
+            data_contracts=DataContractsApi(self._http),
+            domains=DomainsApi(self._http),
+        )
+        self.meaning = MeaningFacade(thesaurus=ThesaurusApi(self._http, organization_id))
+        self.review = ReviewFacade(
+            approvals=ApprovalsApiStub(),
+            improvements=ImprovementsApi(self._http),
+        )
+        self.query = QueryFacade(
+            catalog=CatalogApi(self._http),
+            discovery=DiscoveryApi(self._http),
+            _query=data_products.query,
+            _list_tables=data_products.list_tables,
+            _search=data_products.search,
+        )
+        self.observe = ObserveFacade(
+            _status=observe.status,
+            _stream_config=observe.stream_config,
+            _get_queue_metadata=queues.get_queue_metadata,
+            _get_reader_checkpoint=queues.get_reader_checkpoint,
+            _open_reader=queues.open_reader,
+            _open_writer=queues.open_writer,
+        )
+        self.context = ContextFacade(
+            process_intelligence=ProcessIntelligenceApi(self._http),
+            procedures=ProceduresApi(self._http),
+            activity=ActivityApi(self._http),
+        )
         self.metrics = _MetricsStub()
 
-    @property
-    def templates(self) -> TemplatesApi:
-        return self._templates
+    def get_writer(self, name_or_id: str, **options: Any) -> Any:
+        return self._data_products.get_writer(name_or_id, **options)
 
-    @property
-    def connectors(self) -> ConnectorsApi:
-        return self._connectors
-
-    @property
-    def instances(self) -> InstancesApi:
-        return self._instances
-
-    @property
-    def procedures(self) -> ProceduresApi:
-        return self._procedures
-
-    @property
-    def data_products(self) -> DataProductsApi:
-        return self._data_products
-
-    @property
-    def targets(self) -> TargetsApi:
-        """Targets API (delivery sink bindings).
-
-        Manage how data products deliver data to external systems.
-        """
-        return self._targets
-
-    @property
-    def workflows(self) -> WorkflowsApi:
-        return self._workflows
-
-    @property
-    def observe(self) -> ObserveApi:
-        return self._observe
-
-    @property
-    def triggers(self) -> TriggersApi:
-        return self._triggers
-
-    @property
-    def queues(self) -> QueuesApi:
-        return self._queues
-
-    @property
-    def quality(self) -> QualityApi:
-        return self._quality
-
-    @property
-    def catalog(self) -> CatalogApi:
-        return self._catalog
-
-    @property
-    def discovery(self) -> DiscoveryApi:
-        return self._discovery
-
-    @property
-    def schemas(self) -> SchemasApi:
-        return self._schemas
-
-    @property
-    def process_intelligence(self) -> ProcessIntelligenceApi:
-        return self._process_intelligence
-
-    @property
-    def thesaurus(self) -> ThesaurusApi:
-        return self._thesaurus
-
-    @property
-    def improvements(self) -> ImprovementsApi:
-        """Internal / experimental — not part of the documented customer surface."""
-        return self._improvements
-
-    @property
-    def activity(self) -> ActivityApi:
-        """Internal / experimental — not part of the documented customer surface."""
-        return self._activity
-
-    @property
-    def domains(self) -> DomainsApi:
-        return self._domains
-
-    @property
-    def standards(self) -> StandardsApi:
-        return self._standards
-
-    @property
-    def data_contracts(self) -> DataContractsApi:
-        return self._data_contracts
-
-    @property
-    def projects(self) -> ProjectsApi:
-        return self._projects
+    def get_reader(self, name_or_id: str, **options: Any) -> Any:
+        return self._data_products.get_reader(name_or_id, **options)
 
     def get_rate_limits(self) -> Optional[RateLimitInfo]:
         return self._http.get_last_rate_limit()
@@ -212,10 +163,7 @@ class _MetricsStub:
 
 
 class AsyncLoxtepClient:
-    """
-    Async Loxtep SDK client. Use async with.
-    Same surface as LoxtepClient with async methods.
-    """
+    """Async Loxtep SDK client. Same ten namespaces as LoxtepClient."""
 
     def __init__(
         self,
@@ -232,8 +180,6 @@ class AsyncLoxtepClient:
         self.auth = auth or {}
         self.organization_id = organization_id
         self.project_id = project_id
-        # Stream config is resolved for parity; the async writers currently use
-        # the HTTP path (an async bus writer is a planned follow-up).
         self._stream_config = resolve_stream_config(streams)
         token = self.auth.get("token") if isinstance(self.auth, dict) else None
         self._get_token = get_token or (lambda: token if isinstance(token, str) else None)
@@ -242,128 +188,74 @@ class AsyncLoxtepClient:
             get_token=self._get_token,
             timeout=timeout,
         )
-        self._queues = AsyncQueuesApi(self._http)
-        self._triggers = AsyncTriggersApi(self._http)
-        self._workflows = AsyncWorkflowsApi(self._http, stream_config=self._stream_config)
-        self._observe = AsyncObserveApi(self._http)
-        self._data_products = AsyncDataProductsApi(
+        queues = AsyncQueuesApi(self._http)
+        triggers = AsyncTriggersApi(self._http)
+        workflows = AsyncWorkflowsApi(self._http, stream_config=self._stream_config)
+        projects = AsyncProjectsApi(self._http)
+        templates = AsyncTemplatesApi(self._http)
+        observe = AsyncObserveApi(self._http)
+        data_products = AsyncDataProductsApi(
             self._http,
             get_queue_metadata=None,
             get_reader_checkpoint=None,
             stream_config=self._stream_config,
         )
-        self._quality = AsyncQualityApi(self._http)
-        self._catalog = AsyncCatalogApi(self._http)
-        self._discovery = AsyncDiscoveryApi(self._http)
-        self._schemas = AsyncSchemasApi(self._http)
-        self._process_intelligence = AsyncProcessIntelligenceApi(self._http)
-        self._projects = AsyncProjectsApi(self._http)
-        self._templates = AsyncTemplatesApi(self._http)
-        self._connectors = AsyncConnectorsApi(self._http)
-        self._instances = AsyncInstancesApi(self._http)
-        self._procedures = AsyncProceduresApi(self._http)
-        self._targets = AsyncTargetsApi(self._http)
-        self._thesaurus = AsyncThesaurusApi(self._http, organization_id)
-        self._improvements = AsyncImprovementsApi(self._http)
-        self._activity = AsyncActivityApi(self._http)
-        self._domains = AsyncDomainsApi(self._http)
-        self._standards = AsyncStandardsApi(self._http)
-        self._data_contracts = AsyncDataContractsApi(self._http)
+        self._data_products = data_products
+
+        self.session = SessionApi(self._http)  # type: ignore[arg-type]
+        self.connect = ConnectFacade(
+            connectors=AsyncConnectorsApi(self._http),
+            templates=templates,
+        )
+        self.workspace = WorkspaceFacade(
+            projects=projects,
+            instances=AsyncInstancesApi(self._http),
+        )
+        self.build = BuildFacade(
+            workflows=workflows,
+            triggers=triggers,
+            data_products=data_products,
+            targets=AsyncTargetsApi(self._http),
+        )
+        self.define = DefineFacade(
+            schemas=AsyncSchemasApi(self._http),
+            quality=AsyncQualityApi(self._http),
+            standards=AsyncStandardsApi(self._http),
+            data_contracts=AsyncDataContractsApi(self._http),
+            domains=AsyncDomainsApi(self._http),
+        )
+        self.meaning = MeaningFacade(thesaurus=AsyncThesaurusApi(self._http, organization_id))
+        self.review = ReviewFacade(
+            approvals=ApprovalsApiStub(),
+            improvements=AsyncImprovementsApi(self._http),
+        )
+        self.query = QueryFacade(
+            catalog=AsyncCatalogApi(self._http),
+            discovery=AsyncDiscoveryApi(self._http),
+            _query=data_products.query,
+            _list_tables=data_products.list_tables,
+            _search=data_products.search,
+        )
+        self.observe = ObserveFacade(
+            _status=observe.status,
+            _stream_config=observe.stream_config,
+            _get_queue_metadata=queues.get_queue_metadata,
+            _get_reader_checkpoint=queues.get_reader_checkpoint,
+            _open_reader=queues.open_reader,
+            _open_writer=queues.open_writer,
+        )
+        self.context = ContextFacade(
+            process_intelligence=AsyncProcessIntelligenceApi(self._http),
+            procedures=AsyncProceduresApi(self._http),
+            activity=AsyncActivityApi(self._http),
+        )
         self.metrics = _MetricsStub()
 
-    @property
-    def connectors(self) -> AsyncConnectorsApi:
-        return self._connectors
+    async def get_writer(self, name_or_id: str, **options: Any) -> Any:
+        return await self._data_products.get_writer(name_or_id, **options)
 
-    @property
-    def instances(self) -> AsyncInstancesApi:
-        return self._instances
-
-    @property
-    def procedures(self) -> AsyncProceduresApi:
-        return self._procedures
-
-    @property
-    def data_products(self) -> AsyncDataProductsApi:
-        return self._data_products
-
-    @property
-    def targets(self) -> AsyncTargetsApi:
-        """Targets API (delivery sink bindings).
-
-        Manage how data products deliver data to external systems.
-        """
-        return self._targets
-
-    @property
-    def workflows(self) -> AsyncWorkflowsApi:
-        return self._workflows
-
-    @property
-    def observe(self) -> AsyncObserveApi:
-        return self._observe
-
-    @property
-    def triggers(self) -> AsyncTriggersApi:
-        return self._triggers
-
-    @property
-    def queues(self) -> AsyncQueuesApi:
-        return self._queues
-
-    @property
-    def quality(self) -> AsyncQualityApi:
-        return self._quality
-
-    @property
-    def catalog(self) -> AsyncCatalogApi:
-        return self._catalog
-
-    @property
-    def discovery(self) -> AsyncDiscoveryApi:
-        return self._discovery
-
-    @property
-    def schemas(self) -> AsyncSchemasApi:
-        return self._schemas
-
-    @property
-    def process_intelligence(self) -> AsyncProcessIntelligenceApi:
-        return self._process_intelligence
-
-    @property
-    def thesaurus(self) -> AsyncThesaurusApi:
-        return self._thesaurus
-
-    @property
-    def improvements(self) -> AsyncImprovementsApi:
-        """Internal / experimental — not part of the documented customer surface."""
-        return self._improvements
-
-    @property
-    def activity(self) -> AsyncActivityApi:
-        """Internal / experimental — not part of the documented customer surface."""
-        return self._activity
-
-    @property
-    def domains(self) -> AsyncDomainsApi:
-        return self._domains
-
-    @property
-    def standards(self) -> AsyncStandardsApi:
-        return self._standards
-
-    @property
-    def data_contracts(self) -> AsyncDataContractsApi:
-        return self._data_contracts
-
-    @property
-    def projects(self) -> AsyncProjectsApi:
-        return self._projects
-
-    @property
-    def templates(self) -> AsyncTemplatesApi:
-        return self._templates
+    async def get_reader(self, name_or_id: str, **options: Any) -> Any:
+        return await self._data_products.get_reader(name_or_id, **options)
 
     def get_rate_limits(self) -> Optional[RateLimitInfo]:
         return self._http.get_last_rate_limit()

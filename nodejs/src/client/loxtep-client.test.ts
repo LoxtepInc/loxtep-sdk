@@ -21,75 +21,81 @@ describe('LoxtepClient', () => {
     expect(typeof client.metrics.get_reporter).toBe('function');
   });
 
-  it('should expose data_products, workflows, targets, triggers, observe, projects, domains, standards, data_contracts, queues, quality, catalog, discovery, schemas', () => {
+  it('should expose ten MCP-aligned namespaces plus top-level I/O', () => {
     const client = new LoxtepClient({
       url_resolution: 'legacy',
       api_url: 'https://api.example.com',
       auth: { type: 'jwt', token: 'x' },
     });
-    expect(client.data_products).toBeDefined();
-    expect(client.workflows).toBeDefined();
-    expect(client.targets).toBeDefined();
+    expect(client.session).toBeDefined();
+    expect(client.connect).toBeDefined();
+    expect(client.workspace).toBeDefined();
+    expect(client.build).toBeDefined();
+    expect(client.define).toBeDefined();
+    expect(client.meaning).toBeDefined();
+    expect(client.review).toBeDefined();
+    expect(client.query).toBeDefined();
     expect(client.observe).toBeDefined();
-    expect(client.projects).toBeDefined();
-    expect(client.domains).toBeDefined();
-    expect(client.standards).toBeDefined();
-    expect(client.data_contracts).toBeDefined();
-    expect(client.triggers).toBeDefined();
-    expect(client.queues).toBeDefined();
-    expect(client.quality).toBeDefined();
-    expect(client.catalog).toBeDefined();
-    expect(client.discovery).toBeDefined();
-    expect(client.schemas).toBeDefined();
+    expect(client.context).toBeDefined();
+    expect(typeof client.get_writer).toBe('function');
+    expect(typeof client.get_reader).toBe('function');
   });
 
-  it('reflects the redesigned surface: renamed namespaces/methods present, old names gone', () => {
+  it('greenfield surface: old flat namespaces removed', () => {
     const client = new LoxtepClient({
       url_resolution: 'legacy',
       api_url: 'https://api.example.com',
       auth: { type: 'jwt', token: 'x' },
     }) as unknown as Record<string, unknown>;
 
-    // Renamed namespaces present
-    expect(client.triggers).toBeDefined();
-    expect(client.targets).toBeDefined();
-    expect(client.workflows).toBeDefined();
-
-    // Old namespaces removed (clean break, no aliases)
+    expect(client.data_products).toBeUndefined();
+    expect(client.workflows).toBeUndefined();
+    expect(client.triggers).toBeUndefined();
+    expect(client.projects).toBeUndefined();
+    expect(client.connectors).toBeUndefined();
+    expect(client.queues).toBeUndefined();
+    expect(client.domains).toBeUndefined();
     expect(client.flows).toBeUndefined();
     expect(client.connections).toBeUndefined();
-    expect(client.delivery).toBeUndefined();
+  });
 
-    // snake_case methods present on the merged/renamed namespaces
-    const workflows = client.workflows as Record<string, unknown>;
+  it('reflects the redesigned surface: nested APIs and snake_case methods', () => {
+    const client = new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'x' },
+    }) as unknown as Record<string, unknown>;
+
+    const build = client.build as Record<string, unknown>;
+    expect(build.triggers).toBeDefined();
+    expect(build.targets).toBeDefined();
+    expect(build.workflows).toBeDefined();
+
+    const workflows = build.workflows as Record<string, unknown>;
     expect(typeof workflows.list).toBe('function');
     expect(typeof workflows.get_graph).toBe('function');
     expect(typeof workflows.get_writer).toBe('function');
     expect(workflows.listWorkflows).toBeUndefined();
-    expect(workflows.getWorkflowGraph).toBeUndefined();
 
-    const discovery = client.discovery as Record<string, unknown>;
+    const discovery = (client.query as Record<string, unknown>).discovery as Record<string, unknown>;
     expect(typeof discovery.get_evidence).toBe('function');
     expect(typeof discovery.get_lineage_impact).toBe('function');
     expect(typeof discovery.get_governance_flags).toBe('function');
     expect(typeof discovery.run).toBe('function');
-    expect(discovery.getEvidence).toBeUndefined();
 
-    const connectors = client.connectors as Record<string, unknown>;
+    const connectors = (client.connect as Record<string, unknown>).connectors as Record<string, unknown>;
     expect(typeof connectors.get_oauth_url).toBe('function');
-    expect(connectors.getOauthUrl).toBeUndefined();
 
-    const projects = client.projects as Record<string, unknown>;
+    const projects = (client.workspace as Record<string, unknown>).projects as Record<string, unknown>;
     expect(typeof projects.apply_template).toBe('function');
-    expect(projects.applyTemplate).toBeUndefined();
 
-    const thesaurus = client.thesaurus as Record<string, unknown>;
+    const thesaurus = (client.meaning as Record<string, unknown>).thesaurus as Record<string, unknown>;
     expect(typeof thesaurus.list_terms).toBe('function');
     expect(typeof thesaurus.resolve_canonical_key).toBe('function');
 
-    const dataProducts = client.data_products as Record<string, unknown>;
+    const dataProducts = build.data_products as Record<string, unknown>;
     expect(typeof dataProducts.get_usage_map).toBe('function');
-    expect(dataProducts.getUsageMap).toBeUndefined();
+    expect(typeof client.build.get_writer).toBe('function');
   });
 
   it('observe.stream_config calls GET /observe/stream-config', async () => {
@@ -155,7 +161,7 @@ describe('LoxtepClient', () => {
           headers: { 'Content-Type': 'application/json' },
         }),
     });
-    const result = await client.data_products.get(id);
+    const result = await client.build.data_products.get(id);
     expect(result.data_product_id).toBe(id);
     expect(result.name).toBe('Test Asset');
   });
@@ -185,7 +191,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.data_products.list({ page_size: 20 });
+    const result = await client.build.data_products.list({ page_size: 20 });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('A');
     expect(result.pagination.total).toBe(1);
@@ -206,7 +212,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.data_products.search('test');
+    const result = await client.build.data_products.search('test');
     expect(result.results).toHaveLength(1);
     expect(result.results[0].type).toBe('data_product');
     expect(result.totalCount).toBe(1);
@@ -247,7 +253,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.domains.list();
+    const result = await client.define.domains.list();
     expect(result.items).toHaveLength(1);
     expect(result.items[0].domain_id).toBe('dom-1');
     expect(result.items[0].name).toBe('Sales');
@@ -277,7 +283,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.domains.get('dom-1');
+    const result = await client.define.domains.get('dom-1');
     expect(result.domain_id).toBe('dom-1');
     expect(result.name).toBe('Sales');
   });
@@ -320,7 +326,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.standards.list();
+    const result = await client.define.standards.list();
     expect(result.items).toHaveLength(1);
     expect(result.items[0].standard_id).toBe('std-1');
     expect(result.items[0].name).toBe('Freshness');
@@ -353,7 +359,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.standards.get('std-1');
+    const result = await client.define.standards.get('std-1');
     expect(result.standard_id).toBe('std-1');
     expect(result.name).toBe('Freshness');
   });
@@ -397,7 +403,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.data_contracts.list();
+    const result = await client.define.data_contracts.list();
     expect(result.items).toHaveLength(1);
     expect(result.items[0].contract_id).toBe('ct-1');
     expect(result.items[0].name).toBe('SLA');
@@ -431,7 +437,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.data_contracts.get('ct-1');
+    const result = await client.define.data_contracts.get('ct-1');
     expect(result.contract_id).toBe('ct-1');
     expect(result.name).toBe('SLA');
   });
@@ -471,7 +477,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({ success: false }), { status: 404 });
       },
     });
-    const result = await client.triggers.create({
+    const result = await client.build.triggers.create({
       key: 'my-conn',
       name: 'My Connection',
       type: 'api',
@@ -528,7 +534,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({ success: false }), { status: 404 });
       },
     });
-    const result = await client.workflows.list({ project_id: 'proj-1' });
+    const result = await client.build.workflows.list({ project_id: 'proj-1' });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('My Flow');
     expect(result.pagination.total).toBe(1);
@@ -589,7 +595,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({ success: false }), { status: 404 });
       },
     });
-    const result = await client.workflows.get('flow-1');
+    const result = await client.build.workflows.get('flow-1');
     expect(result.workflow_id).toBe('flow-1');
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0].name).toBe('Ingest');
@@ -615,7 +621,7 @@ describe('LoxtepClient', () => {
       streams_sdk: rsdk,
       fetch_fn: async () => new Response(JSON.stringify({}), { status: 404 }),
     });
-    const writer = await client.workflows.get_writer('flow-1', {
+    const writer = await client.build.workflows.get_writer('flow-1', {
       bot_id: 'bot-1',
       project_id: 'proj-123',
       output_queue_name: 'dev-app-ingest',
@@ -644,7 +650,7 @@ describe('LoxtepClient', () => {
       credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
       streams_sdk: rsdk,
     });
-    const writer = await client.workflows.get_writer('flow-1', {
+    const writer = await client.build.workflows.get_writer('flow-1', {
       bot_id: 'bot-1',
       output_queue_name: 'dev-app-ingest',
       validate_definition: true,
@@ -707,7 +713,7 @@ describe('LoxtepClient', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         ),
     });
-    const result = await client.triggers.list({ page_size: 50 });
+    const result = await client.build.triggers.list({ page_size: 50 });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('Conn 1');
     expect(result.pagination.total).toBe(1);
@@ -741,7 +747,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({ success: false }), { status: 400 });
       },
     });
-    const result = await client.data_products.query(id, 'SELECT * FROM t LIMIT 1');
+    const result = await client.build.data_products.query(id, 'SELECT * FROM t LIMIT 1');
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toEqual({ col1: 'a', col2: 1 });
     expect(result.metadata.data_product_id).toBe(id);
@@ -770,7 +776,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({ success: false }), { status: 404 });
       },
     });
-    const result = await client.data_products.list_tables(id);
+    const result = await client.build.data_products.list_tables(id);
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('events');
     expect(result.items[0].schema).toBe('public');
@@ -843,7 +849,7 @@ describe('LoxtepClient', () => {
       streams_sdk: rsdk,
       fetch_fn: async () => new Response(JSON.stringify({}), { status: 404 }),
     });
-    const reader = await client.queues.open_reader({
+    const reader = await client.observe.open_reader({
       bot_id: 'dev-bot-process',
       queue_name: queueName,
     });
@@ -876,7 +882,7 @@ describe('LoxtepClient', () => {
       streams_sdk: rsdk,
       fetch_fn: async () => new Response(JSON.stringify({}), { status: 404 }),
     });
-    const writer = await client.queues.open_writer({
+    const writer = await client.observe.open_writer({
       bot_id: 'dev-bot-process',
       queue_name: 'dev-app-queue',
     });
@@ -911,7 +917,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       },
     });
-    const result = await client.quality.list({
+    const result = await client.define.quality.list({
       data_product_id: '550e8400-e29b-41d4-a716-446655440000',
     });
     expect(result.items).toHaveLength(1);
@@ -937,7 +943,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       },
     });
-    const result = await client.catalog.search('test');
+    const result = await client.query.catalog.search('test');
     expect(result.results).toHaveLength(1);
     expect(result.results![0].name).toBe('Test');
   });
@@ -967,7 +973,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       },
     });
-    const result = await client.quality.create({
+    const result = await client.define.quality.create({
       data_product_id: '550e8400-e29b-41d4-a716-446655440000',
       metric_type: 'completeness',
       value: 0.98,
@@ -993,7 +999,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       },
     });
-    const result = await client.schemas.get(dpId);
+    const result = await client.define.schemas.get(dpId);
     expect(result).not.toBeNull();
     expect(result!.version).toBe('1.0');
   });
@@ -1029,7 +1035,7 @@ describe('LoxtepClient', () => {
         return new Response(JSON.stringify({}), { status: 404 });
       },
     });
-    const result = await client.schemas.list(dpId);
+    const result = await client.define.schemas.list(dpId);
     expect(result.items).toHaveLength(1);
     expect(result.items[0].schema_version_id).toBe('sv1');
     expect(result.items[0].version).toBe('1.0.0');

@@ -13,7 +13,7 @@ export interface DataProductsCmdOptions {
 
 export async function runDataProductsList(options: DataProductsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.data_products.list({ page_size: 20 });
+  const result = await client.build.data_products.list({ page_size: 20 });
   console.log(JSON.stringify(result, null, 2));
 }
 
@@ -22,7 +22,7 @@ export async function runDataProductsGet(
   options: DataProductsCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const asset = await client.data_products.get(dataProductId);
+  const asset = await client.build.data_products.get(dataProductId);
   console.log(JSON.stringify(asset, null, 2));
 }
 
@@ -32,7 +32,7 @@ export async function runDataProductsQuery(
   options: DataProductsCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.data_products.query(dataProductId, sql);
+  const result = await client.build.data_products.query(dataProductId, sql);
   console.log(JSON.stringify(result, null, 2));
 }
 
@@ -41,7 +41,7 @@ export async function runDataProductsTables(
   options: DataProductsCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.data_products.list_tables(dataProductId);
+  const result = await client.build.data_products.list_tables(dataProductId);
   console.log(JSON.stringify(result, null, 2));
 }
 
@@ -50,7 +50,7 @@ export async function runDataProductsCreate(
   options: DataProductsCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const created = await client.data_products.create(body);
+  const created = await client.build.data_products.create(body);
   console.log(JSON.stringify(created, null, 2));
 }
 
@@ -60,7 +60,7 @@ export async function runDataProductsReadiness(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.data_products.readiness(dataProductId);
+    const result = await client.build.data_products.readiness(dataProductId);
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -75,7 +75,7 @@ export async function runDataProductsPromote(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.data_products.promote(dataProductId, targetTier);
+    const result = await client.build.data_products.promote(dataProductId, targetTier);
     if (result.success) {
       console.log(`✅ Promoted to ${result.new_tier}`);
       if (result.entity_iris?.length) {

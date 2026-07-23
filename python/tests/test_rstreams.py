@@ -262,8 +262,8 @@ def test_get_writer_uses_http_when_no_stream_config():
     client = LoxtepClient(api_url="https://api.example.com")
     from unittest.mock import patch
 
-    with patch.object(client.data_products, "_resolve_id", return_value="dp_1"):
-        writer = client.data_products.get_writer("orders")
+    with patch.object(client._data_products, "_resolve_id", return_value="dp_1"):
+        writer = client.get_writer("orders")
     assert isinstance(writer, DataProductWriter)
     client.close()
 
@@ -276,10 +276,10 @@ def test_get_writer_uses_bus_when_stream_config_present():
     from unittest.mock import patch
 
     fake = FakeKinesis()
-    with patch.object(client.data_products, "_resolve_id", return_value="dp_1"), patch.object(
+    with patch.object(client._data_products, "_resolve_id", return_value="dp_1"), patch.object(
         LeoStreamWriter, "_make_client", return_value=fake
     ):
-        writer = client.data_products.get_writer("orders", queue_name="orders-q")
+        writer = client.get_writer("orders", queue_name="orders-q")
     assert isinstance(writer, LeoStreamWriter)
     writer.write({"hello": "world"})
     writer.close()

@@ -12,7 +12,7 @@ export interface TriggersCmdOptions {
 
 export async function runTriggersList(options: TriggersCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.triggers.list({ page_size: 50 });
+  const result = await client.build.triggers.list({ page_size: 50 });
   console.log(JSON.stringify(result, null, 2));
 }
 
@@ -21,7 +21,7 @@ export async function runTriggersGet(
   options: TriggersCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const trigger = await client.triggers.get(triggerId);
+  const trigger = await client.build.triggers.get(triggerId);
   console.log(JSON.stringify(trigger, null, 2));
 }
 
@@ -44,7 +44,7 @@ export async function runTriggersCreate(
     process.exitCode = 1;
     return;
   }
-  const trigger = await client.triggers.create({
+  const trigger = await client.build.triggers.create({
     name,
     type: type as 'database' | 'api' | 'webhook' | 'file',
     key,
@@ -59,6 +59,6 @@ export async function runTriggersTest(
   options: TriggersCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.triggers.test(triggerId);
+  const result = await client.build.triggers.test(triggerId);
   console.log(JSON.stringify(result, null, 2));
 }

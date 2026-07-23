@@ -95,7 +95,7 @@ export async function runAttach(
   // 3. Fetch the project record to read github_* binding fields.
   let projectRecord: Project;
   try {
-    projectRecord = await client.projects.get(project.project_id);
+    projectRecord = await client.workspace.projects.get(project.project_id);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     return {
@@ -151,7 +151,7 @@ export async function runAttach(
 async function resolveInstance(client: LoxtepClient, instanceId?: string): Promise<Instance> {
   if (instanceId) {
     try {
-      return await client.instances.get(instanceId);
+      return await client.workspace.instances.get(instanceId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(
@@ -161,7 +161,7 @@ async function resolveInstance(client: LoxtepClient, instanceId?: string): Promi
   }
 
   // No explicit ID — list all instances and auto-select the sole one.
-  const { items } = await client.instances.list();
+  const { items } = await client.workspace.instances.list();
   if (items.length === 0) {
     throw new Error(
       'No instances found in your organization. Create one first or specify --instance <id>.'

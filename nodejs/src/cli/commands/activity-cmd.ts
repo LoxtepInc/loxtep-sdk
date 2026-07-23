@@ -54,7 +54,7 @@ export async function runActivityListCommand(
     if (options?.to) filters.end = options.to;
     if (options?.limit != null) filters.limit = options.limit;
 
-    const result = await client.activity.list(filters);
+    const result = await client.context.activity.list(filters);
     const { entries } = result;
 
     if (entries.length === 0) {

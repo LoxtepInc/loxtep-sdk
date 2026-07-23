@@ -16,10 +16,10 @@ export async function runQueueInfo(
 ): Promise<void> {
   const { client } = await requireCliClient(opts);
   if (opts.queueName) {
-    const meta = await client.queues.get_queue_metadata(dataProductIdOrQueueName);
+    const meta = await client.observe.get_queue_metadata(dataProductIdOrQueueName);
     console.log(JSON.stringify(meta, null, 2));
   } else {
-    const meta = await client.data_products.get_queue_info(dataProductIdOrQueueName);
+    const meta = await client.build.data_products.get_queue_info(dataProductIdOrQueueName);
     console.log(JSON.stringify(meta, null, 2));
   }
 }
@@ -30,6 +30,6 @@ export async function runQueueCheckpoint(
   options: QueueCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const checkpoint = await client.data_products.get_reader_checkpoint(dataProductId, botId);
+  const checkpoint = await client.build.data_products.get_reader_checkpoint(dataProductId, botId);
   console.log(JSON.stringify(checkpoint, null, 2));
 }

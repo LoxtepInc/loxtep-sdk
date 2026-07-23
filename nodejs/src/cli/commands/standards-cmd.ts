@@ -14,7 +14,7 @@ export interface StandardsCmdOptions {
 export async function runStandardsList(options: StandardsCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.standards.list();
+    const result = await client.define.standards.list();
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -28,7 +28,7 @@ export async function runStandardsGet(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const standard = await client.standards.get(standardId);
+    const standard = await client.define.standards.get(standardId);
     console.log(JSON.stringify(standard, null, 2));
   } catch (err) {
     console.error((err as Error).message);

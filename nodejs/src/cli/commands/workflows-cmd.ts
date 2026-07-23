@@ -22,7 +22,7 @@ export async function runWorkflowsList(
     process.exitCode = 1;
     return;
   }
-  const result = await client.workflows.list({ project_id: projectId, page_size: 50 });
+  const result = await client.build.workflows.list({ project_id: projectId, page_size: 50 });
   console.log(JSON.stringify(result, null, 2));
 }
 
@@ -31,7 +31,7 @@ export async function runWorkflowsGet(
   options: WorkflowsCmdOptions = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const workflow = await client.workflows.get(workflowId);
+  const workflow = await client.build.workflows.get(workflowId);
   console.log(JSON.stringify(workflow, null, 2));
 }
 
@@ -46,7 +46,7 @@ export async function runWorkflowsCreate(
     process.exitCode = 1;
     return;
   }
-  const workflow = await client.workflows.create({
+  const workflow = await client.build.workflows.create({
     project_id: projectId,
     name: params.name,
     description: params.description,
@@ -73,7 +73,7 @@ export async function runWorkflowsDeploy(
     process.exitCode = 1;
     return;
   }
-  const result = await client.workflows.deploy({
+  const result = await client.build.workflows.deploy({
     project_id: params.project_id,
     instance_id: instanceId,
     version_id: params.version_id,

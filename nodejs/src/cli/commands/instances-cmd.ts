@@ -1,7 +1,7 @@
 /**
  * CLI: loxtep instances list | get <id> | create | deployment-urls | register | registration
  *
- * Wraps the `client.instances` SDK namespace. Lifecycle: `list` and `get` are
+ * Wraps the `client.workspace.instances` SDK namespace. Lifecycle: `list` and `get` are
  * read-only; `deployment-urls` + `register` + `registration` drive the
  * self-hosted install flow alongside `create`.
  *
@@ -34,7 +34,7 @@ export interface InstancesCmdOptions {
 export async function runInstancesList(options: InstancesCmdOptions = {}): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const { items } = await client.instances.list();
+    const { items } = await client.workspace.instances.list();
     console.log(JSON.stringify(items, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -48,7 +48,7 @@ export async function runInstancesGet(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const instance = await client.instances.get(instanceId);
+    const instance = await client.workspace.instances.get(instanceId);
     console.log(JSON.stringify(instance, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -62,7 +62,7 @@ export async function runInstancesCreate(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.instances.create(input);
+    const result = await client.workspace.instances.create(input);
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -75,10 +75,10 @@ export async function runInstancesDeploymentUrls(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    // `client.instances.get_deployment_urls` resolves the org id from the
+    // `client.workspace.instances.get_deployment_urls` resolves the org id from the
     // SDK client config (LOXTEP_ORGANIZATION_ID or ~/.loxtep/credentials.json
     // / workspace config). Throws when the org id is unset.
-    const result = await client.instances.get_deployment_urls();
+    const result = await client.workspace.instances.get_deployment_urls();
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -91,7 +91,7 @@ export async function runInstancesRegistration(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.instances.get_infrastructure();
+    const result = await client.workspace.instances.get_infrastructure();
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
@@ -106,7 +106,7 @@ export async function runInstancesRegister(
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   try {
-    const result = await client.instances.register_infrastructure({
+    const result = await client.workspace.instances.register_infrastructure({
       cross_account_role_arn: crossAccountRoleArn,
       ...(region ? { region } : {}),
     });

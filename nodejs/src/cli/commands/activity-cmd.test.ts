@@ -23,8 +23,10 @@ function makeEntry(overrides: Partial<ActivityEntry> = {}): ActivityEntry {
 
 function mockClient(entries: ActivityEntry[] = [], cursor: string | null = null): LoxtepClient {
   return {
-    activity: {
-      list: jest.fn().mockResolvedValue({ entries, cursor }),
+    context: {
+      activity: {
+        list: jest.fn().mockResolvedValue({ entries, cursor }),
+      },
     },
   } as unknown as LoxtepClient;
 }
@@ -86,7 +88,7 @@ describe('runActivityListCommand', () => {
       to: '2025-01-31T23:59:59Z',
       limit: 10,
     });
-    expect(client.activity.list).toHaveBeenCalledWith({
+    expect(client.context.activity.list).toHaveBeenCalledWith({
       source: 'sdk',
       actor: 'user_xyz',
       resource_type: 'workflow',
@@ -106,8 +108,10 @@ describe('runActivityListCommand', () => {
 
   it('returns exit 1 when API call fails', async () => {
     const client = {
-      activity: {
-        list: jest.fn().mockRejectedValue(new Error('Network timeout')),
+      context: {
+        activity: {
+          list: jest.fn().mockRejectedValue(new Error('Network timeout')),
+        },
       },
     } as unknown as LoxtepClient;
     const result = await runActivityListCommand(client);

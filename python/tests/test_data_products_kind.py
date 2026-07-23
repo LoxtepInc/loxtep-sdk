@@ -97,7 +97,7 @@ class TestCreateDataProduct:
                     "kind": "source",
                 },
             }
-            result = client.data_products.create(
+            result = client.build.data_products.create(
                 name="New Source",
                 kind="source",
             )
@@ -119,7 +119,7 @@ class TestCreateDataProduct:
                     "kind": "consumer",
                 },
             }
-            result = client.data_products.create(
+            result = client.build.data_products.create(
                 name="Dashboard",
                 kind="consumer",
                 description="A consumer DP",
@@ -140,7 +140,7 @@ class TestListDataProductsKindFilter:
         client = LoxtepClient(api_url="https://api.example.com")
         with patch.object(client._http, "get") as mock_get:
             mock_get.return_value = {"data": {"items": []}}
-            client.data_products.list()
+            client.build.data_products.list()
         call_path = mock_get.call_args[0][0]
         assert "kind=" not in call_path
         client.close()
@@ -149,7 +149,7 @@ class TestListDataProductsKindFilter:
         client = LoxtepClient(api_url="https://api.example.com")
         with patch.object(client._http, "get") as mock_get:
             mock_get.return_value = {"data": {"items": []}}
-            client.data_products.list(kind="source")
+            client.build.data_products.list(kind="source")
         call_path = mock_get.call_args[0][0]
         assert "kind=source" in call_path
         client.close()
@@ -158,7 +158,7 @@ class TestListDataProductsKindFilter:
         client = LoxtepClient(api_url="https://api.example.com")
         with patch.object(client._http, "get") as mock_get:
             mock_get.return_value = {"data": {"items": []}}
-            client.data_products.list(kind="consumer")
+            client.build.data_products.list(kind="consumer")
         call_path = mock_get.call_args[0][0]
         assert "kind=consumer" in call_path
         client.close()
@@ -181,7 +181,7 @@ class TestGetUsageMap:
                     ],
                 }
             }
-            nodes, edges = client.data_products.get_usage_map()
+            nodes, edges = client.build.data_products.get_usage_map()
         assert len(nodes) == 2
         assert len(edges) == 1
         assert isinstance(nodes[0], UsageMapNode)
@@ -196,7 +196,7 @@ class TestGetUsageMap:
         client = LoxtepClient(api_url="https://api.example.com")
         with patch.object(client._http, "get") as mock_get:
             mock_get.return_value = {"data": {"nodes": [], "edges": []}}
-            nodes, edges = client.data_products.get_usage_map()
+            nodes, edges = client.build.data_products.get_usage_map()
         assert nodes == []
         assert edges == []
         client.close()

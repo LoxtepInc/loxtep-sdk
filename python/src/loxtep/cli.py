@@ -70,7 +70,7 @@ def _cmd_query(data_product_id: str, sql: str) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.data_products.query(data_product_id, sql)
+        result = client.query.query(data_product_id, sql)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -102,7 +102,7 @@ def _cmd_stream(data_product_id: str, start: str | None) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        for event in client.data_products.stream(data_product_id, start=start):
+        for event in client.build.data_products.stream(data_product_id, start=start):
             print(json.dumps(event))
         return 0
     except Exception as e:
@@ -140,7 +140,7 @@ def _cmd_workflows_list(project_id: str | None) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.workflows.list(project_id=pid, page_size=50)
+        result = client.build.workflows.list(project_id=pid, page_size=50)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -176,7 +176,7 @@ def _cmd_workflows_deploy(
         project_id=config.get("project_id"),
     )
     try:
-        result = client.workflows.deploy(
+        result = client.build.workflows.deploy(
             project_id=project_id,
             instance_id=instance_id,
             version_id=version_id,
@@ -243,7 +243,7 @@ def _cmd_projects_list() -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.projects.list(page_size=50)
+        result = client.workspace.projects.list(page_size=50)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -274,7 +274,7 @@ def _cmd_projects_get(project_id: str) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.projects.get(project_id)
+        result = client.workspace.projects.get(project_id)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -305,7 +305,7 @@ def _cmd_templates_list() -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.templates.list(page_size=50)
+        result = client.connect.templates.list(page_size=50)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -336,7 +336,7 @@ def _cmd_templates_get(template_id: str) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        result = client.templates.get(template_id)
+        result = client.connect.templates.get(template_id)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
@@ -368,7 +368,7 @@ def _cmd_replay(data_product_id: str, start: str | None) -> int:
         project_id=config.get("project_id"),
     )
     try:
-        for event in client.data_products.replay(data_product_id, start=start):
+        for event in client.build.data_products.replay(data_product_id, start=start):
             print(json.dumps(event))
         return 0
     except Exception as e:

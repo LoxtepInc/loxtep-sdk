@@ -199,7 +199,7 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
   if (templateSlug && client) {
     try {
       // Try to find by slug search first; the catalog may return by id or name
-      const templates = await client.templates.list({ search: templateSlug });
+      const templates = await client.connect.templates.list({ search: templateSlug });
       template = templates.items.find(
         (t) =>
           t.name === templateSlug ||
@@ -209,7 +209,7 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
       if (!template) {
         // Fallback: try direct get
         try {
-          template = await client.templates.get(templateSlug);
+          template = await client.connect.templates.get(templateSlug);
         } catch {
           // Could not resolve — proceed without template data but record the slug
         }
@@ -237,7 +237,7 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
       if (repoResult.action === 'import_existing' && repoResult.importUrl) {
         createBody.github_import_url = repoResult.importUrl;
       }
-      const project = await client.projects.create(createBody);
+      const project = await client.workspace.projects.create(createBody);
       projectId = project.project_id;
       organizationId = project.organization_id;
     } catch (err) {
