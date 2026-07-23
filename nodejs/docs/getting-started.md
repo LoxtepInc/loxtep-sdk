@@ -4,11 +4,11 @@ Get from zero to your first event in under 5 minutes. This guide walks you
 through installing the Loxtep SDK, authenticating, and writing your first event
 to a data product — all with a single method call.
 
-> **Other paths:** This guide covers the **programmatic SDK** path. Loxtep also
-> supports an [Agent-first (MCP)](https://github.com/LoxtepInc/loxtep-plugins-skills)
-> path for conversational operation, a **Code-first CLI** path
-> (`loxtep init → attach → generate → test → deploy`) for workflow authoring,
-> and a **Web UI** for visual management. See the
+> **Other paths:** This guide covers the **programmatic SDK** path (no
+> `loxtep init` required). For **code-first workflow authoring**, see the
+> [Code-first CLI guide](./code-first-cli.md) (`init → attach → generate → test → deploy`).
+> Loxtep also supports an [Agent-first (MCP)](https://github.com/LoxtepInc/loxtep-plugins-skills)
+> path and a **Web UI** at [app.loxtep.io](https://app.loxtep.io). See the
 > [Loxtep Quickstart](https://docs.loxtep.io/quickstart) for all paths.
 
 ## Table of Contents
@@ -39,13 +39,13 @@ Before you begin, make sure you have:
 ## Step 1: Install the SDK
 
 ```bash
-npm install @loxtep/sdk
+pnpm add @loxtep/sdk
 ```
 
 Or with your preferred package manager:
 
 ```bash
-pnpm add @loxtep/sdk
+npm install @loxtep/sdk
 # or
 yarn add @loxtep/sdk
 ```
@@ -53,7 +53,7 @@ yarn add @loxtep/sdk
 Verify the installation:
 
 ```bash
-npx loxtep --version
+pnpm exec loxtep --version
 ```
 
 ---
@@ -64,7 +64,7 @@ Authenticate with your Loxtep account. This stores credentials locally so the
 SDK can make API calls on your behalf.
 
 ```bash
-npx loxtep login
+pnpm exec loxtep login
 ```
 
 Follow the prompts to enter your email and password. On success you'll see:
@@ -160,7 +160,7 @@ const reader = await client.get_reader('my-data-product', {
 
 ```typescript
 // first-event.ts
-// Run: npx tsx first-event.ts
+// Run: pnpm exec tsx first-event.ts
 
 import { LoxtepClient } from '@loxtep/sdk';
 
@@ -216,7 +216,7 @@ main().catch(console.error);
 
 ```bash
 # List data products in your organization
-npx loxtep data-products list
+pnpm exec loxtep data-products list
 ```
 
 ---
@@ -235,7 +235,7 @@ available after deployment.
 1. Deploy the workflow containing the data product:
 
 ```bash
-npx loxtep deploy <workflow-id>
+pnpm exec loxtep deploy <workflow-id>
 ```
 
 2. Or deploy via the Loxtep UI: **Workflows** → select your workflow → **Deploy**.
@@ -297,7 +297,7 @@ const writer = await client.get_writer('09fa202b-...');
 **Symptom:** `AuthenticationError: No authentication token found`
 
 **Cause:** The SDK cannot find a JWT token. Set `LOXTEP_AUTH_TOKEN` (CLI) or
-`LOXTEP_TOKEN` (programmatic auto-config), or run `npx loxtep login` so
+`LOXTEP_TOKEN` (programmatic auto-config), or run `pnpm exec loxtep login` so
 `./.loxtep/credentials.json` exists (or `~/.loxtep/credentials.json` with
 `--global`).
 
@@ -305,7 +305,7 @@ const writer = await client.get_writer('09fa202b-...');
 
 ```bash
 # Option 1: Log in interactively
-npx loxtep login
+pnpm exec loxtep login
 
 # Option 2: Set the token directly (CLI / manual client bootstrap)
 export LOXTEP_AUTH_TOKEN="your-jwt-token"
@@ -321,6 +321,7 @@ Now that you've written and read your first event, explore these resources:
 
 | Resource | Description |
 |----------|-------------|
+| [Code-first CLI guide](./code-first-cli.md) | `loxtep init`, attach, generate, test, deploy |
 | [Quick Reference Card](./quick-reference.md) | Single-page cheat sheet for common SDK operations |
 | [Event Replay Cookbook](./event-replay-cookbook.md) | Patterns for replaying and reprocessing historical events |
 | [MCP → SDK Mapping](./sdk-mcp-mapping.md) | How MCP tools map to SDK methods |

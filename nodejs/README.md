@@ -54,19 +54,19 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
 1. **Install**
 
    ```bash
-   npm install @loxtep/sdk
+   pnpm add @loxtep/sdk
    ```
 
 2. **Log in**
 
    ```bash
-   npx loxtep login
+   pnpm exec loxtep login
    ```
 
    A browser window opens — sign in to Loxtep and you're authenticated.
    Tokens are saved to `./.loxtep/credentials.json` (use `--global` for home dir).
 
-   > **CI/headless:** Use `npx loxtep login --email you@co.com --password ...`
+   > **CI/headless:** Use `pnpm exec loxtep login --email you@co.com --password ...`
    > or set `LOXTEP_AUTH_TOKEN` in your environment.
 
 3. **Create a client, write and read events**
@@ -111,31 +111,31 @@ All paths are documented in the [Loxtep Quickstart](https://docs.loxtep.io/quick
 
 ## Quick start — Code-first CLI (init → deploy)
 
-For developers who author workflows as TypeScript and want the full local-dev-to-production lifecycle:
+For developers who author workflows as TypeScript and want the full local-dev-to-production lifecycle, see the dedicated **[Code-first CLI guide](./docs/code-first-cli.md)**. Quick version:
 
 ```bash
 # 1. Install
-npm install @loxtep/sdk
+pnpm add @loxtep/sdk
 
 # 2. Authenticate
-npx loxtep login
+pnpm exec loxtep login
 
 # 3. Scaffold a project from a template
-npx loxtep init --template shopify-orders
+pnpm exec loxtep init --template shopify-orders
 
 # 4. Bind to a runtime instance
-npx loxtep attach --instance prod
+pnpm exec loxtep attach --instance prod
 
 # 5. Generate typed workspace constants
-npx loxtep generate
+pnpm exec loxtep generate
 
 # 6. Author a workflow (see authoring module docs below)
 
 # 7. Test locally with a sample event
-npx loxtep test orders-enricher --event ./events/order-created.json
+pnpm exec loxtep test orders-enricher --event ./events/order-created.json
 
 # 8. Deploy to the workflow engine
-npx loxtep deploy
+pnpm exec loxtep deploy
 ```
 
 The `generate` step produces `.loxtep/generated/index.ts` with typed constants for every data product, connector, domain, and queue in your workspace. Import them in your workflow modules for compile-time safety:
@@ -300,13 +300,14 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 
 ## Documentation
 
-- **Getting started** – Zero to first event in under 5 minutes.
-- **Quick reference** – Single-page cheat sheet.
-- **Event replay cookbook** – Replay events from a data product or queue.
-- **MCP + SDK pairing** – One auth story, when MCP vs SDK.
-- **MCP → SDK mapping** – Agent-oriented table.
+- **[Getting started](./docs/getting-started.md)** – Zero to first event in under 5 minutes (programmatic; no init).
+- **[Code-first CLI](./docs/code-first-cli.md)** – `loxtep init`, attach, generate, test, deploy.
+- **[Quick reference](./docs/quick-reference.md)** – Single-page cheat sheet.
+- **[Event replay cookbook](./docs/event-replay-cookbook.md)** – Replay events from a data product or queue.
+- **[MCP + SDK pairing](./docs/sdk-pairing.md)** – One auth story, when MCP vs SDK.
+- **[MCP → SDK mapping](./docs/sdk-mcp-mapping.md)** – Agent-oriented table.
 - **Typed errors** – `import { … } from '@loxtep/sdk/errors'`.
-- **API reference** – `npm run docs` (Typedoc).
+- **API reference** – `pnpm run docs` (Typedoc).
 
 ## CLI reference
 

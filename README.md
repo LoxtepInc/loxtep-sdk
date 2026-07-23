@@ -17,15 +17,16 @@ Official client libraries for the [Loxtep](https://loxtep.com) platform.
 The SDK supports two developer workflows:
 
 - **Programmatic** — write/read events from application code using `LoxtepClient`
-- **Code-first CLI** — author workflows as TypeScript, test locally, deploy: `loxtep init → attach → generate → test → deploy`
+- **Code-first CLI** — author workflows as TypeScript, test locally, deploy:
+  [`loxtep init → attach → generate → test → deploy`](./nodejs/docs/code-first-cli.md)
 
 There are also non-SDK paths: **Agent-first (MCP)** via [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills), and the **Web UI** at [app.loxtep.io](https://app.loxtep.io). All paths are covered in the [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
 
 ### Node.js
 
 ```bash
-npm install @loxtep/sdk
-npx loxtep login
+pnpm add @loxtep/sdk
+pnpm exec loxtep login
 ```
 
 ```ts
@@ -47,6 +48,8 @@ Since **v0.7.0**, `LoxtepClient` exposes **10 MCP-aligned namespaces**
 `query`, `observe`, `context`). See [`nodejs/docs/sdk-mcp-mapping.md`](./nodejs/docs/sdk-mcp-mapping.md).
 
 See [`nodejs/README.md`](./nodejs/README.md) for full documentation.
+For the code-first workflow (`loxtep init`), see
+[`nodejs/docs/code-first-cli.md`](./nodejs/docs/code-first-cli.md).
 
 ### Python
 
