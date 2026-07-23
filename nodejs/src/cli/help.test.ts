@@ -1,15 +1,23 @@
 import { CLI_HELP } from './help.js';
 
 describe('CLI help', () => {
-  it('groups commands under MCP-aligned facade headers', () => {
-    expect(CLI_HELP).toContain('Session (client.session · loxtep_session)');
-    expect(CLI_HELP).toContain('Workspace (client.workspace · loxtep_workspace)');
-    expect(CLI_HELP).toContain('Build (client.build · loxtep_build)');
-    expect(CLI_HELP).toContain('Define (client.define · loxtep_define)');
-    expect(CLI_HELP).toContain('Review (client.review · loxtep_review)');
-    expect(CLI_HELP).toContain('Query (client.query · loxtep_query)');
-    expect(CLI_HELP).toContain('Observe (client.observe · loxtep_observe)');
-    expect(CLI_HELP).toContain('Context (client.context · loxtep_context)');
+  it('groups commands under customer-facing section headers', () => {
+    expect(CLI_HELP).toContain('Authentication');
+    expect(CLI_HELP).toContain('Workspace');
+    expect(CLI_HELP).toContain('Build & deploy');
+    expect(CLI_HELP).toContain('Governance');
+    expect(CLI_HELP).toContain('Review');
+    expect(CLI_HELP).toContain('Analytics');
+    expect(CLI_HELP).toContain('Observe');
+    expect(CLI_HELP).toContain('Activity');
+    expect(CLI_HELP).toContain('Configuration');
+  });
+
+  it('does not expose internal MCP facade names', () => {
+    expect(CLI_HELP).not.toMatch(/loxtep_/);
+    expect(CLI_HELP).not.toMatch(/client\.\w+/);
+    expect(CLI_HELP).not.toContain('MCP');
+    expect(CLI_HELP).not.toContain('facade');
   });
 
   it('lists core lifecycle commands under workspace and build', () => {
