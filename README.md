@@ -36,10 +36,15 @@ const client = new LoxtepClient({
   auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
 });
 
-const writer = await client.data_products.get_writer('my-data-product');
+// Top-level stream I/O (resolves queue, bot, stream config from deployment metadata)
+const writer = await client.get_writer('my-data-product');
 writer.write({ id: '1', payload: { name: 'Alice' } });
 await writer.close();
 ```
+
+Since **v0.7.0**, `LoxtepClient` exposes **10 MCP-aligned namespaces**
+(`session`, `connect`, `workspace`, `build`, `define`, `meaning`, `review`,
+`query`, `observe`, `context`). See [`nodejs/docs/sdk-mcp-mapping.md`](./nodejs/docs/sdk-mcp-mapping.md).
 
 See [`nodejs/README.md`](./nodejs/README.md) for full documentation.
 

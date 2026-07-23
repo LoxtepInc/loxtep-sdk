@@ -99,8 +99,8 @@ const client = new LoxtepClient({
   auth: { type: 'jwt', token: process.env.LOXTEP_TOKEN },
 });
 
-// Write events to a data product by name
-const writer = await client.data_products.get_writer('my-data-product');
+// Write events to a data product by name (top-level — preferred since v0.7.0)
+const writer = await client.get_writer('my-data-product');
 writer.write({ id: '123', name: 'Alice' });
 await writer.close();
 ```
@@ -120,7 +120,7 @@ stream bus, and writes directly to the data product queue.
 You can customize the writer behavior with an options object:
 
 ```typescript
-const writer = await client.data_products.get_writer('my-data-product', {
+const writer = await client.get_writer('my-data-product', {
   bot_id: 'custom-bot-id',   // Override the resolved bot identity
   batch_size: 500,            // Events per batch (default: 100)
   max_retries: 5,             // Retry attempts on failure (default: 3)
@@ -134,7 +134,7 @@ const writer = await client.data_products.get_writer('my-data-product', {
 Reading from a data product is just as simple:
 
 ```typescript
-const reader = await client.data_products.get_reader('my-data-product');
+const reader = await client.get_reader('my-data-product');
 
 for await (const event of reader) {
   console.log('Received:', event);
@@ -147,7 +147,7 @@ reader bot ID of `sdk-reader-{data-product-name}` for checkpoint tracking.
 ### Reader options
 
 ```typescript
-const reader = await client.data_products.get_reader('my-data-product', {
+const reader = await client.get_reader('my-data-product', {
   bot_id: 'my-consumer',     // Custom reader identity for checkpointing
   from: 'z/2024/01/01',      // Start position (default: latest checkpoint)
   batch_size: 200,            // Events per batch (default: 100)
@@ -171,7 +171,7 @@ async function main() {
   });
 
   // Write an event to a data product
-  const writer = await client.data_products.get_writer('my-data-product');
+  const writer = await client.get_writer('my-data-product');
 
   writer.write({
     id: `event-${Date.now()}`,
@@ -183,7 +183,7 @@ async function main() {
   console.log('✓ Event written');
 
   // Read it back
-  const reader = await client.data_products.get_reader('my-data-product', {
+  const reader = await client.get_reader('my-data-product', {
     bot_id: 'quickstart-reader',
   });
 
@@ -287,7 +287,7 @@ const client = new LoxtepClient({
 2. Or use the data product's UUID instead of its name:
 
 ```typescript
-const writer = await client.data_products.get_writer('09fa202b-...');
+const writer = await client.get_writer('09fa202b-...');
 ```
 
 ---
@@ -296,8 +296,9 @@ const writer = await client.data_products.get_writer('09fa202b-...');
 
 **Symptom:** `AuthenticationError: No authentication token found`
 
-**Cause:** The SDK cannot find a JWT token. Neither `LOXTEP_TOKEN` is set
-nor `~/.loxtep/credentials.json` exists.
+**Cause:** The SDK cannot find a JWT token. Set `LOXTEP_AUTH_TOKEN` (CLI) or
+`LOXTEP_TOKEN` (programmatic auto-config), or run `npx loxtep login` so
+`~/.loxtep/credentials.json` exists.
 
 **Fix:**
 
@@ -305,7 +306,9 @@ nor `~/.loxtep/credentials.json` exists.
 # Option 1: Log in interactively
 npx loxtep login
 
-# Option 2: Set the token directly
+# Option 2: Set the token directly (CLI / manual client bootstrap)
+export LOXTEP_AUTH_TOKEN="your-jwt-token"
+# Auto-config via LoxtepClient.fromWorkspace() also reads LOXTEP_TOKEN
 export LOXTEP_TOKEN="your-jwt-token"
 ```
 

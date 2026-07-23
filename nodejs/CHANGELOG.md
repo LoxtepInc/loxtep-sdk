@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-07-23
+
+### Changed
+
+- **Documentation** aligned with **v0.7.0+ MCP facade API**: README, getting
+  started, quick reference, event replay cookbook, and AGENTS guidance now use
+  `client.get_writer` / `client.get_reader` and facade paths
+  (`client.build.*`, `client.observe.*`, etc.) instead of removed flat
+  namespaces (`client.data_products`, `client.workflows`, …).
+- **Module export docs** corrected: import from `@loxtep/sdk` (and
+  `@loxtep/sdk/errors` only for the errors subpath).
+
 ## [0.7.1] - 2026-07-23
 
 ### Security
