@@ -13,6 +13,7 @@ import { writeFile, rename, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
+import { toImprovementListSummary } from '../../client/list-summaries.js';
 import {
   requireProject,
   preconditionToCliResult,
@@ -46,22 +47,15 @@ export async function runImprovementsListCommand(
     }
 
     const result = await client.review.improvements.list(filters);
-    const { improvements } = result;
-
-    if (improvements.length === 0) {
-      return { exitCode: 0, stdout: ['No improvements found.'], stderr: [] };
-    }
-
-    const lines: string[] = [];
-    for (const imp of improvements) {
-      lines.push(`${imp.id}  [${imp.status}]  ${imp.workflow_name}`);
-      if (imp.rationale) {
-        lines.push(`  Rationale: ${imp.rationale}`);
-      }
-      lines.push(`  Created: ${imp.created_at}`);
-      lines.push('');
-    }
-    return { exitCode: 0, stdout: lines, stderr: [] };
+    const summary = {
+      items: result.improvements.map(toImprovementListSummary),
+      cursor: result.cursor,
+    };
+    return {
+      exitCode: 0,
+      stdout: [JSON.stringify(summary, null, 2)],
+      stderr: [],
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { exitCode: 1, stdout: [], stderr: [`Failed to list improvements: ${message}`] };

@@ -60,6 +60,7 @@ describe('Feature: ai-first-platform-surface, Property 1: Templated scaffold com
           const result = await runInitCommand({
             cwd: tmpDir,
             templateSlug: slug,
+            offline: true,
           });
 
           // Command should succeed

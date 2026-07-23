@@ -32,15 +32,17 @@ function mockClient(entries: ActivityEntry[] = [], cursor: string | null = null)
 }
 
 describe('runActivityListCommand', () => {
-  it('returns exit 0 with "No activity entries found." when API returns empty', async () => {
+  it('returns empty items array when API returns no entries', async () => {
     const client = mockClient([]);
     const result = await runActivityListCommand(client);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('No activity entries found.');
+    const parsed = JSON.parse(result.stdout[0]!) as { items: unknown[]; cursor: null };
+    expect(parsed.items).toEqual([]);
+    expect(parsed.cursor).toBeNull();
     expect(result.stderr).toHaveLength(0);
   });
 
-  it('returns formatted entries when API returns data', async () => {
+  it('returns pruned JSON entries when API returns data', async () => {
     const entries: ActivityEntry[] = [
       makeEntry({
         entry_id: 'ent_001',
@@ -68,14 +70,24 @@ describe('runActivityListCommand', () => {
     const result = await runActivityListCommand(client);
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toHaveLength(0);
-    // First entry — action_trace
-    expect(result.stdout.some(l => l.includes('TRACE') && l.includes('succeeded'))).toBe(true);
-    expect(result.stdout.some(l => l.includes('Workflow: sync-orders'))).toBe(true);
-    expect(result.stdout.some(l => l.includes('Target: dp_orders'))).toBe(true);
-    // Second entry — audit
-    expect(result.stdout.some(l => l.includes('AUDIT') && l.includes('mcp'))).toBe(true);
-    expect(result.stdout.some(l => l.includes('Resource: connector/cn_789'))).toBe(true);
-    expect(result.stdout.some(l => l.includes('Skill: data-workflows'))).toBe(true);
+    const parsed = JSON.parse(result.stdout[0]!) as {
+      items: Array<Record<string, unknown>>;
+    };
+    expect(parsed.items[0]).toMatchObject({
+      entry_id: 'ent_001',
+      kind: 'action_trace',
+      workflow_name: 'sync-orders',
+      outcome: 'succeeded',
+      target_resource: 'dp_orders',
+    });
+    expect(parsed.items[1]).toMatchObject({
+      entry_id: 'ent_002',
+      kind: 'audit',
+      source: 'mcp',
+      resource_type: 'connector',
+      resource_id: 'cn_789',
+      skill_name: 'data-workflows',
+    });
   });
 
   it('passes filters to the API client', async () => {

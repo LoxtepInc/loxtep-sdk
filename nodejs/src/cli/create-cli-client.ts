@@ -3,6 +3,7 @@
  */
 
 import { loadConfig } from '../config/load.js';
+import { loadCliConfig } from './load-cli-config.js';
 import { resolveCliAccessToken, type CliAuthSource } from './auth-resolve.js';
 import { writeCredentials, readCredentials, resolveCredentialsPath } from './credentials.js';
 import { TokenManager } from '../auth/token-manager.js';
@@ -234,9 +235,12 @@ export async function createCliAuthContext(
 
 export async function createCliClient(options: CreateCliClientOptions = {}): Promise<{
   client: LoxtepClient;
-  config: Awaited<ReturnType<typeof loadConfig>>;
+  config: Awaited<ReturnType<typeof loadCliConfig>>['config'];
 } | null> {
-  const config = await loadConfig(options.configFilePath);
+  const { config } = await loadCliConfig({
+    configFilePath: options.configFilePath,
+    cwd: options.cwd,
+  });
   const cliSigv4 = await resolveCliSigV4Credentials(options);
   const authCtx = await createCliAuthContext({
     ...options,
@@ -282,7 +286,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
 /** Exit with code 1 if auth or api_url missing. */
 export async function requireCliClient(options: CreateCliClientOptions = {}): Promise<{
   client: LoxtepClient;
-  config: Awaited<ReturnType<typeof loadConfig>>;
+  config: Awaited<ReturnType<typeof loadCliConfig>>['config'];
 }> {
   const r = await createCliClient(options);
   if (!r) {

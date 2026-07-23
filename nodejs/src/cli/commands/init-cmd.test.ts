@@ -11,10 +11,38 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { runInitCommand, repoFlagsToGithubAction } from './init-cmd.js';
 import type { CliResult } from '../project-context.js';
+import { LOCAL_PROJECT_ID_PREFIX } from '../project-context.js';
+
+function mockAuthedClient(overrides: {
+  create?: jest.Mock;
+  get?: jest.Mock;
+} = {}) {
+  return {
+    workspace: {
+      projects: {
+        create:
+          overrides.create ??
+          jest.fn().mockResolvedValue({
+            project_id: 'proj_test_123',
+            organization_id: 'org_test_456',
+          }),
+        get:
+          overrides.get ??
+          jest.fn().mockResolvedValue({
+            project_id: 'proj_test_123',
+            organization_id: 'org_test_456',
+          }),
+      },
+    },
+    connect: {
+      templates: { list: jest.fn().mockResolvedValue({ items: [] }), get: jest.fn() },
+    },
+  } as any;
+}
 
 describe('repoFlagsToGithubAction (pure mapping)', () => {
   it('maps --create-repo to create_new', () => {
@@ -64,8 +92,8 @@ describe('runInitCommand', () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('scaffolds bare project structure (R1.1)', async () => {
-    const result = await runInitCommand({ cwd: tmpDir });
+  it('scaffolds bare project structure when authenticated (R1.1)', async () => {
+    const result = await runInitCommand({ cwd: tmpDir, client: mockAuthedClient() });
 
     expect(result.exitCode).toBe(0);
 
@@ -75,16 +103,84 @@ describe('runInitCommand', () => {
     expect(existsSync(join(tmpDir, 'workflows'))).toBe(true);
     expect(existsSync(join(tmpDir, 'data-products'))).toBe(true);
 
-    // .loxtep/project.json created
+    // .loxtep/project.json created with platform id
     const projectJson = JSON.parse(
       readFileSync(join(tmpDir, '.loxtep', 'project.json'), 'utf-8')
     );
-    expect(projectJson.project_id).toBeDefined();
-    expect(typeof projectJson.project_id).toBe('string');
+    expect(projectJson.project_id).toBe('proj_test_123');
+    expect(projectJson.organization_id).toBe('org_test_456');
+  });
+
+  it('fails without auth instead of writing proj_local_* ids', async () => {
+    const result = await runInitCommand({ cwd: tmpDir });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toContain('Authentication required');
+    expect(existsSync(join(tmpDir, '.loxtep', 'project.json'))).toBe(false);
+    expect(existsSync(join(tmpDir, 'workflows'))).toBe(true);
+  });
+
+  it('binds existing project with --project-id', async () => {
+    const get = jest.fn().mockResolvedValue({
+      project_id: 'ed125001-d343-483a-b045-ef2bcaeffb2c',
+      organization_id: '1e6b719f-c8a2-47f5-93b3-58530e6711d6',
+    });
+    const create = jest.fn();
+    const result = await runInitCommand({
+      cwd: tmpDir,
+      client: mockAuthedClient({ create, get }),
+      projectId: 'ed125001-d343-483a-b045-ef2bcaeffb2c',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(create).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledWith('ed125001-d343-483a-b045-ef2bcaeffb2c');
+    const projectJson = JSON.parse(
+      readFileSync(join(tmpDir, '.loxtep', 'project.json'), 'utf-8')
+    );
+    expect(projectJson.project_id).toBe('ed125001-d343-483a-b045-ef2bcaeffb2c');
+  });
+
+  it('upgrades stale proj_local_* id when re-init after login', async () => {
+    const loxtepDir = join(tmpDir, '.loxtep');
+    await mkdir(loxtepDir, { recursive: true });
+    await writeFile(
+      join(loxtepDir, 'project.json'),
+      JSON.stringify({ project_id: `${LOCAL_PROJECT_ID_PREFIX}abc123` }, null, 2),
+      'utf-8'
+    );
+
+    const create = jest.fn().mockResolvedValue({
+      project_id: 'proj_upgraded_999',
+      organization_id: 'org_upgraded_888',
+    });
+
+    const result = await runInitCommand({
+      cwd: tmpDir,
+      client: mockAuthedClient({ create }),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(create).toHaveBeenCalled();
+    expect(result.stdout.join('\n')).toContain('replaced local-only');
+    const projectJson = JSON.parse(readFileSync(join(loxtepDir, 'project.json'), 'utf-8'));
+    expect(projectJson.project_id).toBe('proj_upgraded_999');
+  });
+
+  it('fails when platform project create fails (no silent local fallback)', async () => {
+    const create = jest.fn().mockRejectedValue(new Error('403 Forbidden'));
+    const result = await runInitCommand({
+      cwd: tmpDir,
+      client: mockAuthedClient({ create }),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toContain('Could not create project');
+    expect(existsSync(join(tmpDir, '.loxtep', 'project.json'))).toBe(false);
   });
 
   it('prints Getting Started and Quick Reference links (R11.7)', async () => {
-    const result = await runInitCommand({ cwd: tmpDir });
+    const result = await runInitCommand({ cwd: tmpDir, client: mockAuthedClient() });
 
     expect(result.exitCode).toBe(0);
     const allOutput = result.stdout.join('\n');
@@ -96,6 +192,7 @@ describe('runInitCommand', () => {
     const result = await runInitCommand({
       cwd: tmpDir,
       templateSlug: 'commerce-mesh',
+      client: mockAuthedClient(),
     });
 
     expect(result.exitCode).toBe(0);
@@ -118,7 +215,15 @@ describe('runInitCommand', () => {
     expect(projectJson.template_slug).toBe('commerce-mesh');
   });
 
-  it('prints login/attach/generate guidance when no client (R16.5)', async () => {
+  it('prints login guidance when init succeeds without client on existing project', async () => {
+    const loxtepDir = join(tmpDir, '.loxtep');
+    await mkdir(loxtepDir, { recursive: true });
+    await writeFile(
+      join(loxtepDir, 'project.json'),
+      JSON.stringify({ project_id: 'proj_existing_001' }, null, 2),
+      'utf-8'
+    );
+
     const result = await runInitCommand({ cwd: tmpDir, client: null });
 
     expect(result.exitCode).toBe(0);
@@ -140,16 +245,12 @@ describe('runInitCommand', () => {
   });
 
   it('fails the whole init when generate fails (R16.4)', async () => {
-    // Simulate authed+attached by providing instanceId and apiUrl
-    const mockClient = {
-      projects: {
-        create: jest.fn().mockResolvedValue({
-          project_id: 'proj_test_123',
-          organization_id: 'org_test_456',
-        }),
-      },
-      templates: { list: jest.fn().mockResolvedValue({ items: [] }), get: jest.fn() },
-    } as any;
+    const mockClient = mockAuthedClient({
+      create: jest.fn().mockResolvedValue({
+        project_id: 'proj_test_123',
+        organization_id: 'org_test_456',
+      }),
+    });
 
     // A generate function that fails
     const failingGenerate = jest.fn().mockResolvedValue({
@@ -173,15 +274,12 @@ describe('runInitCommand', () => {
   });
 
   it('auto-runs generate when authed and attached (R16.3)', async () => {
-    const mockClient = {
-      projects: {
-        create: jest.fn().mockResolvedValue({
-          project_id: 'proj_gen_001',
-          organization_id: 'org_gen_001',
-        }),
-      },
-      templates: { list: jest.fn().mockResolvedValue({ items: [] }), get: jest.fn() },
-    } as any;
+    const mockClient = mockAuthedClient({
+      create: jest.fn().mockResolvedValue({
+        project_id: 'proj_gen_001',
+        organization_id: 'org_gen_001',
+      }),
+    });
 
     // A generate function that succeeds
     const successGenerate = jest.fn().mockResolvedValue({
@@ -206,15 +304,12 @@ describe('runInitCommand', () => {
   });
 
   it('does not run generate when not attached (R16.5 path)', async () => {
-    const mockClient = {
-      projects: {
-        create: jest.fn().mockResolvedValue({
-          project_id: 'proj_no_attach',
-          organization_id: 'org_no_attach',
-        }),
-      },
-      templates: { list: jest.fn().mockResolvedValue({ items: [] }), get: jest.fn() },
-    } as any;
+    const mockClient = mockAuthedClient({
+      create: jest.fn().mockResolvedValue({
+        project_id: 'proj_no_attach',
+        organization_id: 'org_no_attach',
+      }),
+    });
 
     const generateSpy = jest.fn();
 
@@ -235,15 +330,12 @@ describe('runInitCommand', () => {
   });
 
   it('writes instance_id and api_url to project.json when attached (R16.3)', async () => {
-    const mockClient = {
-      projects: {
-        create: jest.fn().mockResolvedValue({
-          project_id: 'proj_cfg_001',
-          organization_id: 'org_cfg_001',
-        }),
-      },
-      templates: { list: jest.fn().mockResolvedValue({ items: [] }), get: jest.fn() },
-    } as any;
+    const mockClient = mockAuthedClient({
+      create: jest.fn().mockResolvedValue({
+        project_id: 'proj_cfg_001',
+        organization_id: 'org_cfg_001',
+      }),
+    });
 
     const successGenerate = jest.fn().mockResolvedValue({
       exitCode: 0,

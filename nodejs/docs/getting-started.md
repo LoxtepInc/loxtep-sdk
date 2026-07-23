@@ -77,8 +77,18 @@ export LOXTEP_AUTH_TOKEN="your-jwt-token"
 
 ## Step 3: Scaffold a Workspace
 
+Log in **before** `init` so the CLI registers a real platform project (not a
+local-only id that breaks `attach` / `generate` later):
+
 ```bash
 pnpm exec loxtep init
+```
+
+Bind an **existing** org project instead of creating one:
+
+```bash
+pnpm exec loxtep init --project-id <project-uuid>
+pnpm exec loxtep projects list   # discover UUIDs
 ```
 
 Optional starter template:
@@ -91,12 +101,35 @@ This creates:
 
 | Path | Purpose |
 | --- | --- |
-| `.loxtep/project.json` | Project identity; updated by `attach` |
+| `.loxtep/project.json` | **Project identity** — includes `project_id` (UUID) registered on the platform |
 | `workflows/` | Workflow modules you author and deploy |
 | `connectors/`, `domains/`, `data-products/` | Code-first resource folders |
 
-`init` can run before or after `login`. Platform project registration happens
-when you're authenticated; local scaffolding always succeeds.
+### What is a project?
+
+A **project** is your Loxtep workspace on the platform: the container for
+workflows, connectors, and deploy targets. `init` registers one in your org and
+writes its `project_id` into `.loxtep/project.json`. Most CLI commands read
+that file automatically when you run them from the workspace directory.
+
+To see your current project id:
+
+```bash
+pnpm exec loxtep config list
+# or
+cat .loxtep/project.json
+```
+
+To list every project in your organization (for example, if you skipped `init`
+or work outside the scaffolded folder):
+
+```bash
+pnpm exec loxtep projects list
+```
+
+If you ran `init` before logging in and have a stale `proj_local_*` id in
+`.loxtep/project.json`, run `loxtep login` then `loxtep init` again — it
+registers a platform project and replaces the local id.
 
 ---
 
@@ -127,10 +160,22 @@ products, connectors, domains, queues, workflows). Re-run after platform changes
 
 ## Step 6: Explore the Platform
 
+Run these **from your workspace directory** (where `.loxtep/project.json` lives)
+after Steps 3–4:
+
 ```bash
-pnpm exec loxtep data-products list
-pnpm exec loxtep workflows list --project-id <project-id>
+pnpm exec loxtep config list          # confirms project_id + instance_id
+pnpm exec loxtep data-products list   # org-wide catalog
+pnpm exec loxtep workflows list       # uses project_id from project.json
 pnpm exec loxtep domains list
+```
+
+If you are not in a scaffolded workspace, list projects first and pass an id
+explicitly:
+
+```bash
+pnpm exec loxtep projects list
+pnpm exec loxtep workflows list --project-id <project-id-from-list>
 ```
 
 On a new account, **data products may be empty** until you create and deploy

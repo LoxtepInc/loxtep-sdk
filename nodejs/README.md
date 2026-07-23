@@ -93,9 +93,13 @@ Run these in an **empty directory** you want to turn into a Loxtep workspace.
 6. **See what's on the instance**
 
    ```bash
+   pnpm exec loxtep config list           # project_id from init
    pnpm exec loxtep data-products list
-   pnpm exec loxtep workflows list --project-id <project-id-from-project.json>
+   pnpm exec loxtep workflows list        # uses project_id from .loxtep/project.json
    ```
+
+   Not in a scaffolded folder? Run `pnpm exec loxtep projects list` first, then
+   `workflows list --project-id <uuid>`.
 
    A brand-new org may have **no data products yet** — that's expected. Create
    and deploy workflows (below, or via MCP/UI) before calling `get_writer`.
@@ -329,6 +333,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `test <module> --event <file>`                       | Run a workflow module locally with sample event(s)                  |
 | `deploy`                                             | Compile modules, validate resources, deploy to workflow engine      |
 | `config list`                                        | Show api_url, organization_id, project_id, instance_id             |
+| `projects list` \| `projects get <id>`               | List org projects (discover project_id)                           |
 | `config paths`                                       | Show resolved URLs for auth and SDK path matrix                    |
 | `config set <key> <value>`                           | Set api_url \| organization_id \| project_id \| instance_id        |
 | `config export --from-data-product <id>`             | Print shell exports / JSON for SDK bootstrap                       |
@@ -363,7 +368,8 @@ Examples:
 loxtep login
 loxtep whoami
 loxtep data-products list
-loxtep workflows list --project-id <project-id>
+loxtep projects list
+loxtep workflows list
 loxtep workflows get <workflow-id>
 loxtep workflows deploy --project-id <id> --instance-id <id>
 loxtep config export --from-connector <connector-id> --format json

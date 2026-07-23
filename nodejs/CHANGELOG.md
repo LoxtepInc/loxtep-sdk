@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.15] - 2026-07-23
+
+### Changed
+
+- **All CLI `list` commands** print pruned summary rows (IDs, names, status, and
+  other fields needed to pick resources or configure workflows) instead of full
+  API records. Affected: `domains`, `data-products`, `workflows`, `triggers`,
+  `standards`, `data-contracts`, `improvements`, and `activity` (plus existing
+  `instances list`). Pagination/cursor metadata is preserved where the API
+  returns it. Use `--debug` or `LOXTEP_DEBUG=1` to dump the raw API payload to
+  stderr.
+- **`loxtep projects list | get <id>`** — discover project UUIDs in your org.
+- **Getting Started** — documents what a project is, where `project_id` comes
+  from (`init` / `config list`), and that `workflows list` uses the workspace
+  project automatically (no `--project-id` required after `init`).
+
+### Fixed
+
+- **`loxtep config list`** and CLI client defaults now merge `.loxtep/project.json`
+  (from `loxtep init` / `attach`) with `~/.loxtep/config.json`. Previously only
+  the global config file was read, so `organization_id`, `project_id`, and
+  `instance_id` showed as `(not set)` even after a successful init+attach.
+  When attach sets a per-instance API gateway URL, `config list` also shows
+  `workspace_api_url` separately from the platform `api_url`.
+- **`loxtep init`** — requires authentication to register (or `--project-id` to
+  bind) a platform project. No more silent `proj_local_*` ids that pass init but
+  fail on `attach`/`generate`. Re-running `init` after login upgrades stale local
+  ids. Lifecycle commands reject local-only `project_id` values with a clear fix.
+
 ## [0.7.14] - 2026-07-23
 
 ### Fixed

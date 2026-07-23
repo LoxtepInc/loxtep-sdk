@@ -80,6 +80,17 @@ describe('project-context', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.failure.code).toBe('NO_PROJECT');
     });
+
+    it('rejects local-only proj_local_* project_id with upgrade guidance', async () => {
+      await writeProjectFile(tmpDir, { project_id: 'proj_local_deadbeef' });
+      const result = requireProject(tmpDir);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.failure.code).toBe('NO_PROJECT');
+        expect(result.failure.message).toMatch(/not registered on the platform/);
+        expect(result.failure.message).toMatch(/init --project-id/);
+      }
+    });
   });
 
   describe('requireAttachedProject', () => {

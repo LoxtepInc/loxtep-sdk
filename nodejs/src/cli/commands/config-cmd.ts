@@ -1,4 +1,7 @@
 import { loadConfig } from '../../config/load.js';
+import { loadCliConfig } from '../load-cli-config.js';
+import { resolveCliApiUrl } from '../resolve-api-url.js';
+import { resolveCliAccessToken } from '../auth-resolve.js';
 import { saveConfig } from '../../config/save.js';
 import type { LoxtepConfig } from '../../config/types.js';
 import { resolveSdkApiPaths } from '../../config/resolve-sdk-urls.js';
@@ -47,8 +50,21 @@ export async function runConfigPaths(): Promise<void> {
  * Run config list: print current config (api_url, organization_id, project_id, instance_id).
  */
 export async function runConfigList(): Promise<void> {
-  const config = await loadConfig();
-  console.log('api_url:', config.api_url || '(not set)');
+  const { config, workspace_api_url, resolvedWorkspaceFiles } = await loadCliConfig();
+  const authResolved = await resolveCliAccessToken({ cwd: process.cwd() });
+  const platformApiUrl = resolveCliApiUrl(config, authResolved);
+
+  console.log('api_url:', platformApiUrl || config.api_url || '(not set)');
+  if (
+    workspace_api_url &&
+    workspace_api_url.replace(/\/$/, '') !== (platformApiUrl || config.api_url || '').replace(/\/$/, '')
+  ) {
+    console.log(
+      'workspace_api_url:',
+      workspace_api_url,
+      '(from .loxtep/project.json — instance gateway set by attach)'
+    );
+  }
   console.log('auth_path_prefix:', config.auth_path_prefix ?? '(default: app, for /auth/login)');
   console.log(
     'api_path_prefix:',
@@ -62,6 +78,15 @@ export async function runConfigList(): Promise<void> {
     console.log('streams: (set in config file; use PascalCase keys, merged with LEO_* env)');
   } else {
     console.log('streams:', '(not set; set in ~/.loxtep/config.json or LEO_* env for bus)');
+  }
+  const projectFile = resolvedWorkspaceFiles.find(f => f.includes('project.json'));
+  if (projectFile) {
+    console.log('workspace:', projectFile);
+  } else {
+    console.log(
+      'workspace:',
+      '(no .loxtep/project.json found — run `loxtep init` in this directory)'
+    );
   }
 }
 

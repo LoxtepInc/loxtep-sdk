@@ -16,11 +16,12 @@ Authentication
   whoami             Print current user and organization
 
 Workspace
-  init [--template <slug>] [--create-repo | --from-repo <url>]
-                     Scaffold .loxtep/project.json + domains/, connectors/, workflows/, data-products/
+  init [--template <slug>] [--project-id <uuid>] [--create-repo | --from-repo <url>]
+                     Scaffold workspace; requires login to register (or bind) a platform project
   attach [--instance <id>]
                      Link project to a runtime instance (writes instance_id + api_url)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
+  projects list | get <id>               List org projects (workspaces) and IDs
   instances list | get <id> | create … | deployment-urls | register … | registration
                      Provision and register runtime instances
 
@@ -66,10 +67,11 @@ Examples:
   pnpm exec loxtep login
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
+  pnpm exec loxtep projects list
+  pnpm exec loxtep workflows list
   pnpm exec loxtep test orders-enricher --event ./events/order.json
   pnpm exec loxtep deploy
   pnpm exec loxtep data-products list
-  pnpm exec loxtep workflows list --project-id <project-id>
   pnpm exec loxtep data-products query <id> "SELECT * FROM t LIMIT 10"
   pnpm exec loxtep queue info <data-product-id>
   pnpm exec loxtep observe status
