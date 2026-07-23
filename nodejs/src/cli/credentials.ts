@@ -1,6 +1,6 @@
 import { readFile, writeFile, rm, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, parse as parsePath } from 'node:path';
 import { getConfigDir } from '../config/paths.js';
 import { findProjectDir, PROJECT_DIR_NAME } from './project-context.js';
 import type { AwsCredentialsSnake } from '../auth/login.js';
@@ -42,51 +42,60 @@ export interface ResolvedCredentialsPath {
   projectDir?: string;
 }
 
-/**
- * Resolve which credentials file to read from: a project-local
- * `<projectDir>/.loxtep/credentials.json` (found by walking up from `cwd`, same
- * search as `.loxtep/project.json`) takes precedence over the global
- * `~/.loxtep/credentials.json`. Falls back to global when no local credentials
- * file exists, even if a project directory was found — e.g. a project was
- * scaffolded/attached but `loxtep login` was never run locally in it.
- */
-export function resolveCredentialsPath(cwd: string = process.cwd()): ResolvedCredentialsPath {
-  const projectDir = findProjectDir(cwd);
-  if (projectDir) {
-    const localPath = getLocalCredentialsPath(projectDir);
-    if (existsSync(localPath)) {
-      return { path: localPath, scope: 'local', projectDir };
+/** Walk from `cwd` upward until `predicate(dir)` is true, or return null. */
+function walkUpFrom(cwd: string, predicate: (dir: string) => boolean): string | null {
+  let dir = cwd;
+  for (;;) {
+    if (predicate(dir)) return dir;
+    const parent = dirname(dir);
+    if (parent === dir || parsePath(dir).root === dir) {
+      if (predicate(parent)) return parent;
+      return null;
     }
+    dir = parent;
   }
-  return { path: getCredentialsPath(), scope: 'global', projectDir: projectDir ?? undefined };
 }
 
 /**
- * Resolve where `loxtep login` should write credentials: local to the current
- * project (if one is found upward from `cwd`) unless `forceScope` says
- * otherwise. Unlike {@link resolveCredentialsPath}, this doesn't require the
- * local file to already exist — it's the write target, not the read fallback.
+ * First directory (from `cwd` upward) that contains `.loxtep/credentials.json`.
+ */
+export function findLocalCredentialsDir(cwd: string = process.cwd()): string | null {
+  return walkUpFrom(cwd, dir => existsSync(getLocalCredentialsPath(dir)));
+}
+
+/**
+ * Resolve which credentials file to read from: walk upward from `cwd` for
+ * `.loxtep/credentials.json`, then fall back to `~/.loxtep/credentials.json`.
+ */
+export function resolveCredentialsPath(cwd: string = process.cwd()): ResolvedCredentialsPath {
+  const localDir = findLocalCredentialsDir(cwd);
+  if (localDir) {
+    return { path: getLocalCredentialsPath(localDir), scope: 'local', projectDir: localDir };
+  }
+  return { path: getCredentialsPath(), scope: 'global', projectDir: findProjectDir(cwd) ?? undefined };
+}
+
+/**
+ * Resolve where `loxtep login` should write credentials: `./.loxtep/credentials.json`
+ * under `cwd` by default (or when `--local` is passed). Use `--global` for
+ * `~/.loxtep/credentials.json`.
  */
 export function resolveCredentialsWriteTarget(
   cwd: string = process.cwd(),
   forceScope?: CredentialsScope
 ): ResolvedCredentialsPath {
-  const projectDir = findProjectDir(cwd) ?? undefined;
   if (forceScope === 'global') {
-    return { path: getCredentialsPath(), scope: 'global', projectDir };
+    return {
+      path: getCredentialsPath(),
+      scope: 'global',
+      projectDir: findProjectDir(cwd) ?? undefined,
+    };
   }
-  if (forceScope === 'local') {
-    if (!projectDir) {
-      throw new Error(
-        'No .loxtep/project.json found in this directory or any parent — cannot scope credentials locally. Run `loxtep init` first, or use --global.'
-      );
-    }
-    return { path: getLocalCredentialsPath(projectDir), scope: 'local', projectDir };
-  }
-  if (projectDir) {
-    return { path: getLocalCredentialsPath(projectDir), scope: 'local', projectDir };
-  }
-  return { path: getCredentialsPath(), scope: 'global', projectDir };
+  return {
+    path: getLocalCredentialsPath(cwd),
+    scope: 'local',
+    projectDir: cwd,
+  };
 }
 
 /**

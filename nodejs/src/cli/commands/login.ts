@@ -30,9 +30,8 @@ export interface LoginOptions {
   /** For tests: credentials file path to write. Takes precedence over --local/--global. */
   credentialsPath?: string;
   /**
-   * Force credentials scope: `local` writes to `<project>/.loxtep/credentials.json`
-   * (requires a project found via `.loxtep/project.json`); `global` writes to
-   * `~/.loxtep/credentials.json`. Default: local when run inside a project, else global.
+   * Force credentials scope: `local` writes to `./.loxtep/credentials.json` under
+   * `cwd` (default); `global` writes to `~/.loxtep/credentials.json`.
    */
   scope?: CredentialsScope;
   /** Working directory used to resolve the project for local scoping (default: `process.cwd()`). */
@@ -117,9 +116,10 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
         },
         credentialsPath
       );
-      if (scope === 'local') {
-        const target = resolveCredentialsWriteTarget(options.cwd, 'local');
-        if (target.projectDir) await ensureLocalCredentialsGitignored(target.projectDir);
+      if (scope === 'local' && options.cwd !== undefined) {
+        await ensureLocalCredentialsGitignored(options.cwd);
+      } else if (scope === 'local') {
+        await ensureLocalCredentialsGitignored(process.cwd());
       }
       const scopeNote = scope === 'local' ? ' (project-local)' : scope === 'global' ? ' (global)' : '';
       console.log(`\nLogged in successfully. Tokens saved to ${credentialsPath}${scopeNote}`);
@@ -178,9 +178,10 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
       },
       credentialsPath
     );
-    if (scope === 'local') {
-      const target = resolveCredentialsWriteTarget(options.cwd, 'local');
-      if (target.projectDir) await ensureLocalCredentialsGitignored(target.projectDir);
+    if (scope === 'local' && options.cwd !== undefined) {
+      await ensureLocalCredentialsGitignored(options.cwd);
+    } else if (scope === 'local') {
+      await ensureLocalCredentialsGitignored(process.cwd());
     }
     const scopeNote = scope === 'local' ? ' (project-local)' : scope === 'global' ? ' (global)' : '';
     console.log(`Logged in successfully. Tokens saved to ${credentialsPath}${scopeNote}`);

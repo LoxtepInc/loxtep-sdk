@@ -86,7 +86,7 @@ Usage: loxtep <command> [options]
 
 Commands:
   login              Log in (opens browser by default). Use --console for terminal email/password/TOTP login.
-                     Saves to <project>/.loxtep/credentials.json when run inside a project (--global for ~/.loxtep instead).
+                     Saves to ./.loxtep/credentials.json in the current directory by default (--global for ~/.loxtep instead).
   logout             Remove stored credentials (project-local if present, else global). --local / --global to force.
   whoami             Print current user and organization
   init               Print setup checklist (config + auth + docs pointers)
