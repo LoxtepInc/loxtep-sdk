@@ -29,9 +29,18 @@ function getSearchMicroserviceFromEnv(): string {
  * Typically the first segment of `path` is the **resource** name in CDK, which is often the same as the
  * microservice id (`dataproducts`, `workflows`, `organizations`, …).
  */
+/** Split path and optional query string (`?…`); query includes the leading `?` when present. */
+function splitPathAndQuery(path: string): { pathname: string; search: string } {
+  const q = path.indexOf('?');
+  if (q < 0) {
+    return { pathname: path, search: '' };
+  }
+  return { pathname: path.slice(0, q), search: path.slice(q) };
+}
+
 export function getGatewayMicroserviceId(path: string): string {
-  const clean = path.split('?')[0] ?? path;
-  const first = clean.replace(/^\//, '').split('/').filter(Boolean)[0] ?? '';
+  const { pathname } = splitPathAndQuery(path);
+  const first = pathname.replace(/^\//, '').split('/').filter(Boolean)[0] ?? '';
   if (first === 'search') {
     return getSearchMicroserviceFromEnv();
   }
@@ -45,40 +54,41 @@ export function getGatewayMicroserviceId(path: string): string {
  * - Most other services: in-service path starts with a microservice segment (e.g. `/workflows/projects`);
  *   public is `…/workflows/projects` (do **not** prepend the microservice again).
  * - One-segment paths (e.g. `/workflows`, `/search`, `/governance`) still need a prefix: `…/workflows/workflow`, `…/graph/search`, `…/governance/governance`.
+ * - Query strings on `path` (e.g. `?page_size=1`) are preserved on the returned URL.
  */
 export function buildPlatformRequestUrl(apiHost: string, path: string): string {
   const host = apiHost.replace(/\/$/, '');
-  const clean = path.split('?')[0] ?? path;
-  const p = clean.startsWith('/') ? clean : `/${clean}`;
+  const { pathname, search } = splitPathAndQuery(path);
+  const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
   if (PATH_ALREADY_HAS_SERVICE_PREFIX.test(p)) {
-    return `${host}${p}`;
+    return `${host}${p}${search}`;
   }
   if (!p || p === '/') {
-    return host;
+    return `${host}${search}`;
   }
   const segments = p.replace(/^\//, '').split('/').filter(Boolean);
   if (segments.length === 0) {
-    return host;
+    return `${host}${search}`;
   }
   const first = segments[0] ?? '';
   const microservice = getGatewayMicroserviceId(p);
 
   if (first === 'dataproducts') {
-    return `${host}/dataproducts/dataproducts${p.slice('/dataproducts'.length)}`;
+    return `${host}/dataproducts/dataproducts${p.slice('/dataproducts'.length)}${search}`;
   }
 
   if (segments.length === 1) {
-    if (!microservice) return `${host}${p}`;
-    return `${host}/${microservice}${p}`;
+    if (!microservice) return `${host}${p}${search}`;
+    return `${host}/${microservice}${p}${search}`;
   }
 
   if (first === microservice) {
-    return `${host}${p}`;
+    return `${host}${p}${search}`;
   }
   if (microservice) {
-    return `${host}/${microservice}${p}`;
+    return `${host}/${microservice}${p}${search}`;
   }
-  return `${host}${p}`;
+  return `${host}${p}${search}`;
 }
 
 /**

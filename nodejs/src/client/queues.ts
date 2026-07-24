@@ -153,9 +153,34 @@ export function createQueuesApi(
     },
 
     async get_reader_checkpoint(queue_name: string, bot_id: string): Promise<ReaderCheckpoint> {
-      const qs = new URLSearchParams({ queue_name, bot_id }).toString();
-      const res = await http.get<ReaderCheckpoint>(`/observe/queues/checkpoint?${qs}`);
-      return res;
+      // No dedicated /observe/queues/checkpoint route — derive from queue metadata.
+      const meta = await this.get_queue_metadata(queue_name);
+      const fromCheckpoints = (meta.checkpoints ?? []).find(
+        c => (c.bot_id ?? '') === bot_id || (c as { reader_id?: string }).reader_id === bot_id
+      );
+      if (fromCheckpoints) {
+        return {
+          bot_id,
+          queue_name,
+          checkpoint: String(fromCheckpoints.checkpoint ?? ''),
+          updated_at: fromCheckpoints.updated_at,
+          ...fromCheckpoints,
+        };
+      }
+      const fromReaders = (meta.readers ?? []).find(r => (r.bot_id ?? '') === bot_id);
+      if (fromReaders) {
+        return {
+          bot_id,
+          queue_name,
+          checkpoint: String(fromReaders.checkpoint ?? ''),
+          ...fromReaders,
+        };
+      }
+      return {
+        bot_id,
+        queue_name,
+        checkpoint: '',
+      };
     },
 
     async open_reader(params: {

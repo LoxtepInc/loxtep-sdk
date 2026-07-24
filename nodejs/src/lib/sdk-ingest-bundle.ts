@@ -24,6 +24,8 @@ export interface SdkIngestPackageParams {
   /** When set, include a schema-valid local connector file. */
   connector?: Connector | LocalConnectorStub;
   include_connector_file?: boolean;
+  /** When true, set storage.iceberg_enabled on the source data product. */
+  iceberg_enabled?: boolean;
 }
 
 export interface LocalConnectorStub {
@@ -155,6 +157,9 @@ export function buildSdkIngestLocalPackage(
     created_at: now,
     updated_at: now,
   };
+  if (params.iceberg_enabled) {
+    dataProduct.storage = { iceberg_enabled: true };
+  }
   if (params.user_id) {
     dataProduct.owner = { user_id: params.user_id };
   }

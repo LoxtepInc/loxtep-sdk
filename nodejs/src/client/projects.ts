@@ -34,6 +34,8 @@ export function createProjectsApi(http: LoxtepHttpClient): {
   delete: (project_id: string) => Promise<{ project_id: string; deleted: boolean }>;
   apply_template: (project_id: string, body: ApplyTemplateInput) => Promise<ApplyTemplateResult>;
   repository: (project_id: string) => Promise<RepositoryBinding>;
+  /** POST /workflows/projects/:id/reindex — refresh customer_workspace_entity_index. */
+  reindex: (project_id: string) => Promise<unknown>;
 } {
   return {
     async list(filters?: ProjectsListFilters): Promise<ProjectsListResponse['data']> {
@@ -105,6 +107,14 @@ export function createProjectsApi(http: LoxtepHttpClient): {
         last_commit_sha: project.github_last_commit_sha ?? '',
         last_sync_at: project.github_last_sync_at ?? '',
       };
+    },
+
+    async reindex(project_id: string): Promise<unknown> {
+      const res = await http.post<{ success: true; data?: unknown }>(
+        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/reindex`,
+        {}
+      );
+      return res.data ?? res;
     },
   };
 }

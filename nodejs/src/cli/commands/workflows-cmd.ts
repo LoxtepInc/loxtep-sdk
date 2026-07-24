@@ -43,7 +43,14 @@ export async function runWorkflowsGet(
 }
 
 export async function runWorkflowsCreate(
-  params: { name: string; project_id: string; template_id?: string; description?: string },
+  params: {
+    name: string;
+    project_id: string;
+    template_id?: string;
+    description?: string;
+    workflow_type?: 'ingestion' | 'enrichment' | 'delivery';
+    domain_id?: string;
+  },
   options: WorkflowsCmdOptions = {}
 ): Promise<void> {
   const { client, config } = await requireCliClient(options);
@@ -53,11 +60,28 @@ export async function runWorkflowsCreate(
     process.exitCode = 1;
     return;
   }
+
+  let domainId = params.domain_id;
+  if (!domainId) {
+    const domains = await client.define.domains.list({ page_size: 1 });
+    domainId = domains.items?.[0]?.domain_id;
+  }
+  if (!domainId) {
+    console.error(
+      'Missing domain_id. Pass --domain-id <uuid> or create a domain first (`loxtep domains create`).'
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const workflowType = params.workflow_type ?? 'ingestion';
   const workflow = await client.build.workflows.create({
     project_id: projectId,
     name: params.name,
     description: params.description,
     template_id: params.template_id,
+    workflow_type: workflowType,
+    domain_id: domainId,
   });
   console.log(JSON.stringify(workflow, null, 2));
 }

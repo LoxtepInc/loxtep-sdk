@@ -8,6 +8,7 @@ import type { QueueRef } from './types';
  */
 function createMockClient() {
   return {
+    project_id: 'proj_test_123',
     get_writer: jest.fn(),
     build: {
       data_products: {
@@ -223,7 +224,7 @@ describe('toolbox', () => {
 
       const result = await toolbox.connections.list();
 
-      expect(client.build.triggers.list).toHaveBeenCalled();
+      expect(client.build.triggers.list).toHaveBeenCalledWith({ project_id: 'proj_test_123' });
       expect(result).toEqual(items);
     });
 
@@ -245,7 +246,9 @@ describe('toolbox', () => {
 
       const result = await toolbox.connections.get('conn_1');
 
-      expect(client.build.triggers.get).toHaveBeenCalledWith('conn_1');
+      expect(client.build.triggers.get).toHaveBeenCalledWith('conn_1', {
+        project_id: 'proj_test_123',
+      });
       expect(result).toEqual(conn);
     });
 
@@ -263,7 +266,9 @@ describe('toolbox', () => {
 
       const result = await toolbox.connections.test('conn_1');
 
-      expect(client.build.triggers.test).toHaveBeenCalledWith('conn_1');
+      expect(client.build.triggers.test).toHaveBeenCalledWith('conn_1', {
+        project_id: 'proj_test_123',
+      });
       expect(result).toEqual(testResult);
     });
 

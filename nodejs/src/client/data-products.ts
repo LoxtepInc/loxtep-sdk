@@ -180,26 +180,73 @@ export function createDataProductsApi(
     },
 
     async query(id: string, sql: string): Promise<DataProductQueryResult> {
-      const res = await http.post<{ success: true; data: DataProductQueryResult }>(
-        '/dataproducts/query',
-        { data_product_id: id, sql }
-      );
-      const payload = (res as { data?: DataProductQueryResult }).data;
-      if (!payload) {
-        return { items: [], metadata: { data_product_id: id } };
+      // JWT path: warehouse execute (analytics:execute). Avoid /dataproducts/query (API-key only).
+      const res = await http.post<{
+        success?: true;
+        data?: {
+          status?: string;
+          rows?: Record<string, unknown>[];
+          row_count?: number;
+          total_count?: number;
+          execution_time_ms?: number;
+          error?: string;
+        };
+        status?: string;
+        rows?: Record<string, unknown>[];
+        row_count?: number;
+        total_count?: number;
+        execution_time_ms?: number;
+        error?: string;
+      }>('/dataproducts/warehouse/execute', {
+        sql,
+        data_product_ids_hint: [id],
+      });
+      const body = (res as { data?: typeof res }).data ?? res;
+      if (body.status === 'failed') {
+        throw new Error(body.error || 'Warehouse query failed');
       }
-      return payload;
+      const rows = body.rows ?? [];
+      return {
+        items: rows,
+        metadata: {
+          data_product_id: id,
+          total_rows: body.total_count ?? body.row_count ?? rows.length,
+          returned_rows: body.row_count ?? rows.length,
+          query_time_ms: body.execution_time_ms,
+        },
+      };
     },
 
     async list_tables(id: string): Promise<DataProductListTablesResult> {
-      const res = await http.get<{ success: true; data: DataProductListTablesResult }>(
-        `/dataproducts/${encodeURIComponent(id)}/tables`
-      );
-      const payload = (res as { data?: DataProductListTablesResult }).data;
-      if (!payload) {
-        return { items: [] };
-      }
-      return payload;
+      // JWT path: warehouse tables list, filtered to this data product.
+      const res = await http.get<{
+        success?: true;
+        data?: {
+          tables?: Array<{
+            name: string;
+            sql_name?: string;
+            data_product_id?: string;
+            [key: string]: unknown;
+          }>;
+          count?: number;
+        };
+        tables?: Array<{
+          name: string;
+          sql_name?: string;
+          data_product_id?: string;
+          [key: string]: unknown;
+        }>;
+      }>('/dataproducts/warehouse/tables');
+      const payload = (res as { data?: { tables?: unknown[] } }).data ?? res;
+      const tables = (payload as { tables?: Array<Record<string, unknown>> }).tables ?? [];
+      const items = tables
+        .filter(t => !t.data_product_id || t.data_product_id === id)
+        .map(t => ({
+          name: String(t.sql_name ?? t.name ?? ''),
+          schema: typeof t.medallion === 'string' ? t.medallion : undefined,
+          ...t,
+        }));
+      return { items };
     },
 
     async get_queue_info(id: string): Promise<QueueMetadata> {

@@ -40,7 +40,10 @@ import {
   runWorkflowsDeploy,
 } from './commands/workflows-cmd.js';
 import { runBundleSave } from './commands/bundle-cmd.js';
-import { runIngestProvision } from './commands/ingest-cmd.js';
+import { runIngestCreate } from './commands/ingest-cmd.js';
+import { runTransformCreate } from './commands/transform-cmd.js';
+import { runDeliveryCreate } from './commands/delivery-cmd.js';
+import { runPush } from './commands/push-cmd.js';
 import { runLint } from './commands/lint-cmd.js';
 import { runConnectorsList } from './commands/connectors-cmd.js';
 import { runObserveStatus } from './commands/observe-cmd.js';
@@ -74,6 +77,7 @@ import {
 import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
+import { notifyCliUpdateAvailable } from './update-notifier.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -89,16 +93,27 @@ function printHelp(): void {
 }
 
 async function main(): Promise<void> {
-  if (!command || command === '--help' || command === '-h') {
-    printHelp();
-    return;
-  }
+  // Kick off update check early; await in finally so network time overlaps work.
+  const updateCheck = notifyCliUpdateAvailable();
 
-  if (command === '--version' || command === '-V' || command === 'version') {
-    printCliVersion();
-    return;
-  }
+  try {
+    if (!command || command === '--help' || command === '-h') {
+      printHelp();
+      return;
+    }
 
+    if (command === '--version' || command === '-V' || command === 'version') {
+      printCliVersion();
+      return;
+    }
+
+    await runCommand();
+  } finally {
+    await updateCheck;
+  }
+}
+
+async function runCommand(): Promise<void> {
   switch (command) {
     case 'login': {
       const emailIdx = args.indexOf('--email');
@@ -364,9 +379,15 @@ async function main(): Promise<void> {
         const projectId = getArg('--project-id');
         const templateId = getArg('--template-id');
         const description = getArg('--description');
+        const workflowType = getArg('--workflow-type') as
+          | 'ingestion'
+          | 'enrichment'
+          | 'delivery'
+          | undefined;
+        const domainId = getArg('--domain-id');
         if (!name || !projectId) {
           console.error(
-            'Usage: loxtep workflows create --name <name> --project-id <id> [--template-id <id>] [--description <text>]'
+            'Usage: loxtep workflows create --name <name> --project-id <id> [--workflow-type ingestion|enrichment|delivery] [--domain-id <id>] [--template-id <id>] [--description <text>]'
           );
           process.exitCode = 1;
         } else {
@@ -375,6 +396,8 @@ async function main(): Promise<void> {
             project_id: projectId,
             template_id: templateId,
             description,
+            workflow_type: workflowType,
+            domain_id: domainId,
           });
         }
       } else if (sub === 'deploy') {
@@ -415,8 +438,11 @@ async function main(): Promise<void> {
       }
       break;
     case 'ingest':
-      if (sub === 'provision') {
-        await runIngestProvision({
+      if (sub === 'create' || sub === 'provision') {
+        if (sub === 'provision') {
+          console.error('Note: `loxtep ingest provision` is deprecated; use `loxtep ingest create`.');
+        }
+        await runIngestCreate({
           name: getArg('--name'),
           domain_id: getArg('--domain-id'),
           workflow_name: getArg('--workflow-name'),
@@ -426,13 +452,72 @@ async function main(): Promise<void> {
           dry_run: args.includes('--dry-run'),
           deploy: args.includes('--deploy'),
           no_deploy: args.includes('--no-deploy'),
+          iceberg: args.includes('--iceberg'),
         });
       } else {
         console.error(
-          'Usage: loxtep ingest provision [--name app-events] [--domain-id <id>] [--connector-id <id>] [--dry-run] [--deploy]'
+          'Usage: loxtep ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>] [--iceberg] [--dry-run] [--deploy]'
         );
         process.exitCode = 1;
       }
+      break;
+    case 'transform':
+      if (sub === 'create') {
+        const from = getArg('--from');
+        if (!from) {
+          console.error(
+            'Usage: loxtep transform create --from <upstream-dp> [--name cleaned-…] [--domain-id <id>] [--dry-run]'
+          );
+          process.exitCode = 1;
+        } else {
+          await runTransformCreate({
+            from,
+            name: getArg('--name'),
+            project_id: getArg('--project-id'),
+            domain_id: getArg('--domain-id'),
+            dry_run: args.includes('--dry-run'),
+          });
+        }
+      } else {
+        console.error(
+          'Usage: loxtep transform create --from <upstream-dp> [--name cleaned-…] [--dry-run]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    case 'delivery':
+      if (sub === 'create') {
+        const from = getArg('--from');
+        const connectorId = getArg('--connector-id');
+        if (!from || !connectorId) {
+          console.error(
+            'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--name …] [--dry-run]'
+          );
+          process.exitCode = 1;
+        } else {
+          await runDeliveryCreate({
+            from,
+            connector_id: connectorId,
+            name: getArg('--name'),
+            project_id: getArg('--project-id'),
+            domain_id: getArg('--domain-id'),
+            dry_run: args.includes('--dry-run'),
+          });
+        }
+      } else {
+        console.error(
+          'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--name …] [--dry-run]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    case 'push':
+      await runPush({
+        project_id: getArg('--project-id'),
+        workflow_id: getArg('--workflow-id'),
+        dry_run: args.includes('--dry-run'),
+        skip_reindex: args.includes('--skip-reindex'),
+      });
       break;
     case 'connectors':
       if (sub === 'list') {
@@ -452,17 +537,27 @@ async function main(): Promise<void> {
       break;
     case 'triggers':
       if (sub === 'list') {
-        await runTriggersList({ debug: args.includes('--debug') });
+        await runTriggersList({
+          debug: args.includes('--debug'),
+          project_id: getArg('--project-id'),
+          workflow_id: getArg('--workflow-id'),
+        });
       } else if (sub === 'get' && args[2]) {
-        await runTriggersGet(args[2]);
+        await runTriggersGet(args[2], {
+          project_id: getArg('--project-id'),
+          workflow_id: getArg('--workflow-id'),
+        });
       } else if (sub === 'create') {
         const name = getArg('--name');
         const type = getArg('--type');
         const key = getArg('--key');
         const data = getArg('--data');
-        if (!name || !type || !key) {
+        const projectId = getArg('--project-id');
+        const workflowId = getArg('--workflow-id');
+        if (!name || !type || !key || !projectId || !workflowId) {
           console.error(
-            'Usage: loxtep triggers create --name <name> --type <database|api|webhook|file> --key <key> [--data <json>]'
+            'Usage: loxtep triggers create --project-id <id> --workflow-id <id> --name <name> --type <database|api|webhook|file> --key <key> [--data <json>]\n' +
+              'Prefer: loxtep ingest create'
           );
           process.exitCode = 1;
         } else {
@@ -471,13 +566,18 @@ async function main(): Promise<void> {
             type,
             key,
             data: data ?? '{}',
+            project_id: projectId,
+            workflow_id: workflowId,
           });
         }
       } else if (sub === 'test' && args[2]) {
-        await runTriggersTest(args[2]);
+        await runTriggersTest(args[2], {
+          project_id: getArg('--project-id'),
+          workflow_id: getArg('--workflow-id'),
+        });
       } else {
         console.error(
-          'Usage: loxtep triggers list | get <id> | create --name <name> --type <type> --key <key> | test <id>'
+          'Usage: loxtep triggers list [--project-id <id>] | get <id> --project-id <id> | create --project-id <id> --workflow-id <id> --name … | test <id>'
         );
         process.exitCode = 1;
       }

@@ -66,4 +66,24 @@ describe('buildPlatformRequestUrl', () => {
       'https://apidev.example.com/instances/abc/stream-config'
     );
   });
+
+  it('preserves query strings on the built URL', () => {
+    expect(buildPlatformRequestUrl(host, '/organizations/domains?page_size=1')).toBe(
+      'https://apidev.example.com/organizations/domains?page_size=1'
+    );
+    expect(
+      buildPlatformRequestUrl(
+        host,
+        '/dataproducts/x/contracts?data_product_id=11111111-1111-1111-1111-111111111111'
+      )
+    ).toBe(
+      'https://apidev.example.com/dataproducts/dataproducts/x/contracts?data_product_id=11111111-1111-1111-1111-111111111111'
+    );
+    expect(buildPlatformRequestUrl(host, '/ai/mcp/tools?limit=10')).toBe(
+      'https://apidev.example.com/ai/mcp/tools?limit=10'
+    );
+    expect(buildPlatformRequestUrl(host, '/observe/bots?namespace=lx')).toBe(
+      'https://apidev.example.com/app/observe/bots?namespace=lx'
+    );
+  });
 });
