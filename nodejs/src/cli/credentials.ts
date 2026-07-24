@@ -1,4 +1,4 @@
-import { readFile, writeFile, rm, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rm, mkdir, chmod } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, dirname, parse as parsePath } from 'node:path';
 import { getConfigDir } from '../config/paths.js';
@@ -173,7 +173,12 @@ export async function writeCredentials(creds: CliCredentials, filePath?: string)
   if (merged.aws_credentials) {
     payload.aws_credentials = merged.aws_credentials;
   }
-  await writeFile(path, JSON.stringify(payload, null, 2), 'utf-8');
+  await writeFile(path, JSON.stringify(payload, null, 2), {
+    encoding: 'utf-8',
+    mode: 0o600,
+  });
+  // mode on writeFile only applies for newly created files; tighten existing ones too
+  await chmod(path, 0o600);
 }
 
 /** Remove credentials file (logout). */

@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.26] - 2026-07-24
+
+### Added
+
+- **CLI stage creates:** `loxtep ingest create` (alias `provision`), `transform create`,
+  `delivery create` (`workflow_type: delivery`), `loxtep push` (bundle + reindex).
+- **`--iceberg`** on ingest create → `storage.iceberg_enabled` on the source DP.
+- **`projects.reindex`** client method for post-push index refresh.
+- **Targets / triggers API** uses project entities
+  (`/workflows/projects/{project_id}/entities/.../connections`), not the removed
+  consumptions or `/workflows/connections` routes.
+
+### Changed
+
+- Hard cutover terminology: delivery workflows use `workflow_type: delivery`;
+  ingest = trigger connection, delivery = target connection.
+
+## [0.7.25] - 2026-07-24
+
+### Fixed
+
+- **`buildPlatformRequestUrl`** preserves query strings (`?page_size=…`, filters).
+  Default URL resolution previously stripped them, silently defeating pagination
+  and filtered list/search calls.
+- **`login --console`** persists `api_base_url` into `credentials.json` (same as
+  browser OAuth), so later commands do not fall back to prod when `LOXTEP_API_URL`
+  is unset.
+- **`credentials.json`** is written/chmod'd to mode `0600`.
+- **HTTP 400 parsing** also reads `field_errors` nested under the platform
+  `error` envelope.
+
 ## [0.7.24] - 2026-07-24
 
 ### Added

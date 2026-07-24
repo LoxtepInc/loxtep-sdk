@@ -465,9 +465,9 @@ describe('LoxtepClient', () => {
       fetch_fn: async (url: string | URL | Request, init?: RequestInit) => {
         const u = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
         if (
-          u.includes('/workflows/connections') &&
-          init?.method === 'POST' &&
-          !u.includes('/test')
+          u.includes('/workflows/projects/') &&
+          u.includes('/entities/connections/') &&
+          (init?.method === 'PUT' || init?.method === 'put')
         ) {
           return new Response(JSON.stringify({ success: true, data: mockConnection }), {
             status: 200,
@@ -478,6 +478,8 @@ describe('LoxtepClient', () => {
       },
     });
     const result = await client.build.triggers.create({
+      project_id: 'proj-1',
+      workflow_id: 'wf-1',
       key: 'my-conn',
       name: 'My Connection',
       type: 'api',
@@ -679,41 +681,43 @@ describe('LoxtepClient', () => {
       api_url: 'https://api.example.com',
       auth: { type: 'jwt', token: 'x' },
       credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
-      fetch_fn: async () =>
-        new Response(
-          JSON.stringify({
-            success: true,
-            data: {
-              items: [
-                {
-                  connection_id: 'conn-1',
-                  key: 'k1',
-                  name: 'Conn 1',
-                  type: 'webhook',
-                  status: 'active',
-                  data: '',
-                  configuration: {},
-                  metadata: {},
-                  verified: false,
-                  draft: false,
-                  created_at: '2025-01-01T00:00:00Z',
-                  updated_at: '2025-01-01T00:00:00Z',
-                },
-              ],
-              pagination: {
-                page: 1,
-                page_size: 50,
-                total: 1,
-                total_pages: 1,
-                has_next: false,
-                has_prev: false,
+      fetch_fn: async (url: string | URL | Request) => {
+        const u =
+          typeof url === 'string'
+            ? url
+            : url instanceof URL
+              ? url.toString()
+              : (url as Request).url;
+        if (u.includes('/workflows/projects/') && u.includes('/entities') && !u.includes('/connections/')) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                connections: [
+                  {
+                    connection_id: 'conn-1',
+                    key: 'k1',
+                    name: 'Conn 1',
+                    type: 'webhook',
+                    status: 'active',
+                    data: '',
+                    configuration: {},
+                    metadata: {},
+                    verified: false,
+                    draft: false,
+                    created_at: '2025-01-01T00:00:00Z',
+                    updated_at: '2025-01-01T00:00:00Z',
+                  },
+                ],
               },
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        ),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
     });
-    const result = await client.build.triggers.list({ page_size: 50 });
+    const result = await client.build.triggers.list({ project_id: 'proj-1', page_size: 50 });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('Conn 1');
     expect(result.pagination.total).toBe(1);
@@ -728,18 +732,18 @@ describe('LoxtepClient', () => {
       credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
       fetch_fn: async (url: string, init?: RequestInit) => {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        if (url.includes('/dataproducts/query') && body.data_product_id === id) {
+        if (
+          url.includes('/dataproducts/warehouse/execute') &&
+          Array.isArray(body.data_product_ids_hint) &&
+          body.data_product_ids_hint.includes(id)
+        ) {
           return new Response(
             JSON.stringify({
-              success: true,
-              data: {
-                items: [{ col1: 'a', col2: 1 }],
-                metadata: {
-                  data_product_id: id,
-                  returned_rows: 1,
-                  query_time_ms: 10,
-                },
-              },
+              status: 'completed',
+              rows: [{ col1: 'a', col2: 1 }],
+              row_count: 1,
+              total_count: 1,
+              execution_time_ms: 10,
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );
@@ -762,13 +766,18 @@ describe('LoxtepClient', () => {
       auth: { type: 'jwt', token: 'x' },
       credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
       fetch_fn: async (url: string) => {
-        if (url.includes(`/dataproducts/${id}/tables`)) {
+        if (url.includes('/dataproducts/warehouse/tables')) {
           return new Response(
             JSON.stringify({
-              success: true,
-              data: {
-                items: [{ name: 'events', schema: 'public' }],
-              },
+              tables: [
+                {
+                  name: 'events',
+                  sql_name: 'events',
+                  data_product_id: id,
+                  medallion: 'public',
+                },
+              ],
+              count: 1,
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );

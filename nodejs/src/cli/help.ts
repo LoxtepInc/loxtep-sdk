@@ -27,21 +27,27 @@ Workspace
 
 Build & deploy
   connectors list [--type sdk]
-                     List org connectors (reuse SDK connector before provision)
-  ingest provision [--name app-events] [--domain-id <id>] [--connector-id <id>]
-                     [--dry-run] [--deploy]
-                     Reuse/create SDK connector + write local workflow JSON package
+                     List org connectors (reuse SDK connector before create)
+  ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>]
+                     [--iceberg] [--dry-run] [--deploy]
+                     Trigger + source DP local package (alias: ingest provision)
+  transform create --from <dp> [--name cleaned-…] [--dry-run]
+                     Enrichment workflow stub (upstream DP → consumer DP)
+  delivery create --from <dp> --connector-id <id> [--name …] [--dry-run]
+                     Delivery workflow (DP → target connection); workflow_type: delivery
   lint [--workflow <id>]
                      Validate local entity JSON (schemas + relationships)
+  push [--workflow-id <id>] [--dry-run] [--skip-reindex]
+                     Upload local workflows via save_workflow_bundle + reindex
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
                      Persist a workflow entity bundle JSON to the project workspace
   test <module> --event <file>
                      Run a workflow module locally (action trace)
   deploy [--dry-run] Compile workflow modules and deploy (lint preflight first)
   workflows list | get <id> | create … | deploy …
-                     List, inspect, create, and deploy workflows (--project-id or config)
+                     List/create/deploy workflows (--project-id; create also --workflow-type, --domain-id)
   triggers list | get <id> | create … | test <id>
-                     Ingest trigger bindings
+                     Ingest trigger bindings (project entities; --project-id required)
   data-products list | get <id> | create … | readiness <id> | promote <id> --target …
                      Data product CRUD and medallion promotion
 
@@ -76,8 +82,11 @@ Examples:
   pnpm exec loxtep login
   pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
   pnpm exec loxtep connectors list --type sdk
-  pnpm exec loxtep ingest provision --name app-events
+  pnpm exec loxtep ingest create --name app-events
+  pnpm exec loxtep transform create --from app-events --name cleaned-events
+  pnpm exec loxtep delivery create --from cleaned-events --connector-id <id>
   pnpm exec loxtep lint
+  pnpm exec loxtep push
   pnpm exec loxtep deploy --dry-run
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate

@@ -1,6 +1,6 @@
 /**
  * Trigger API types (ingest-side source bindings). snake_case per backend conventions.
- * Backend: workflows microservice GET/POST /workflows/connections, etc.
+ * Backend: project entities (`/workflows/projects/{project_id}/entities/.../connections`).
  * ("connections" is the backend term; the SDK surface names these `triggers`.)
  */
 
@@ -33,6 +33,8 @@ export const TRIGGER_STATUSES = {
 export interface Trigger {
   connection_id: string;
   organization_id?: string | null;
+  project_id?: string;
+  workflow_id?: string;
   key: string;
   name: string;
   type: string;
@@ -53,6 +55,10 @@ export interface Trigger {
 
 /** Input for triggers.create(). */
 export interface TriggerCreateInput {
+  /** Required — connections live under a project workspace. */
+  project_id: string;
+  /** Required — connection nodes are workflow-scoped. */
+  workflow_id: string;
   key: string;
   name: string;
   type: string;
@@ -66,6 +72,8 @@ export interface TriggerCreateInput {
 
 /** Input for triggers.update(). */
 export interface TriggerUpdateInput {
+  project_id?: string;
+  workflow_id?: string;
   key?: string;
   name?: string;
   type?: string;
@@ -79,6 +87,9 @@ export interface TriggerUpdateInput {
 
 /** Filters for triggers.list(). */
 export interface TriggersListFilters {
+  /** Required — list is project-scoped via entities API. */
+  project_id?: string;
+  workflow_id?: string;
   page?: number;
   page_size?: number;
   search?: string;

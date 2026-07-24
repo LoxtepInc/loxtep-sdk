@@ -96,6 +96,21 @@ describe('parseHttpError', () => {
     expect(err.details?.message).toContain('metadata.instance_id');
   });
 
+  it('should read field_errors nested under error envelope', () => {
+    const err = parseHttpError(400, {
+      success: false,
+      error: {
+        message: 'Validation Error',
+        field_errors: [{ field: 'metadata.instance_id', message: 'Required for multi-instance orgs' }],
+      },
+    });
+    expect(err).toBeInstanceOf(ValidationError);
+    const validation = err as ValidationError;
+    expect(validation.field_errors).toEqual([
+      { field: 'metadata.instance_id', message: 'Required for multi-instance orgs' },
+    ]);
+  });
+
   it('should map unknown status to LoxtepError', () => {
     const err = parseHttpError(503, { message: 'Service unavailable' });
     expect(err).toBeInstanceOf(LoxtepError);

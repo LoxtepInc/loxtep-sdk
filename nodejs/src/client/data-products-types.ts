@@ -172,7 +172,7 @@ export interface DataProductCreateInput {
   [key: string]: unknown;
 }
 
-/** Result of data_products.query(id, sql). Backend: POST /dataproducts/query or analytics query. */
+/** Result of data_products.query(id, sql). Backend: POST /dataproducts/warehouse/execute (JWT). */
 export interface DataProductQueryResult {
   items: Record<string, unknown>[];
   metadata: {
@@ -193,7 +193,7 @@ export interface DataProductTableInfo {
   [key: string]: unknown;
 }
 
-/** Result of data_products.list_tables(id). Backend: GET /dataproducts/:id/tables. */
+/** Result of data_products.list_tables(id). Backend: GET /dataproducts/warehouse/tables. */
 export interface DataProductListTablesResult {
   items: DataProductTableInfo[];
 }

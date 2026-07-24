@@ -1,6 +1,7 @@
 /**
- * CLI: loxtep ingest provision — reuse/create SDK connector, write local workflow package.
- * Default: local files only (no save_workflow_bundle / deploy). Use --deploy to publish.
+ * CLI: loxtep ingest create — reuse/create SDK connector, write local workflow package.
+ * Alias: `loxtep ingest provision` (deprecated).
+ * Default: local files only (no save_workflow_bundle / deploy). Use --deploy to push+deploy.
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -36,7 +37,7 @@ function writePackageFiles(
   return written;
 }
 
-export async function runIngestProvision(
+export async function runIngestCreate(
   params: {
     name?: string;
     domain_id?: string;
@@ -49,6 +50,8 @@ export async function runIngestProvision(
     deploy?: boolean;
     /** @deprecated Default is already no deploy; kept for CLI compat. */
     no_deploy?: boolean;
+    /** Enable Iceberg storage flag on the source data product. */
+    iceberg?: boolean;
   },
   options: IngestCmdOptions = {}
 ): Promise<void> {
@@ -118,7 +121,7 @@ export async function runIngestProvision(
       console.error('Creating SDK connector…');
       const connectorMetadata: Record<string, unknown> = {
         name: `${dataProductName} SDK`,
-        created_by: 'loxtep-ingest-provision',
+        created_by: 'loxtep-ingest-create',
         project_id: projectId,
         instance_id: instanceId,
       };
@@ -145,6 +148,7 @@ export async function runIngestProvision(
     user_id: user.user_id,
     connector,
     include_connector_file: includeConnectorFile,
+    iceberg_enabled: params.iceberg === true,
   });
 
   const schemaErrors = validateSdkIngestPackageFiles(pkg.files);
@@ -167,13 +171,16 @@ export async function runIngestProvision(
           workflow_id: pkg.workflow_id,
           data_product_id: pkg.data_product_id,
           data_product_name: pkg.data_product_name,
+          iceberg_enabled: params.iceberg === true,
           files: Object.keys(pkg.files),
         },
         null,
         2
       )
     );
-    console.error('Dry run OK — no files written. Re-run without --dry-run to write the local package.');
+    console.error(
+      'Dry run OK — no files written. Re-run without --dry-run to write the local package.'
+    );
     return;
   }
 
@@ -196,6 +203,7 @@ export async function runIngestProvision(
 
   let saveResult: unknown;
   let deployResult: unknown;
+  let reindexResult: unknown;
 
   if (shouldDeploy) {
     const flatFiles: Record<string, Record<string, unknown>> = {
@@ -212,6 +220,15 @@ export async function runIngestProvision(
       dry_run: false,
     });
 
+    console.error('Reindexing project workspace…');
+    try {
+      reindexResult = await client.workspace.projects.reindex(projectId);
+    } catch (err) {
+      console.error(
+        `Warning: reindex failed (${err instanceof Error ? err.message : String(err)}).`
+      );
+    }
+
     console.error('Deploying project to instance…');
     deployResult = await client.build.workflows.deploy({
       project_id: projectId,
@@ -227,8 +244,10 @@ export async function runIngestProvision(
         workflow_id: pkg.workflow_id,
         data_product_id: pkg.data_product_id,
         data_product_name: pkg.data_product_name,
+        iceberg_enabled: params.iceberg === true,
         files: written,
         save: saveResult,
+        reindex: reindexResult,
         deploy: deployResult,
       },
       null,
@@ -239,12 +258,15 @@ export async function runIngestProvision(
   if (!shouldDeploy) {
     console.error(`
 Local package ready for "${dataProductName}".
-Next: \`loxtep lint\` then \`loxtep deploy\` (or re-run with --deploy).
+Next: \`loxtep lint\` → \`loxtep push\` → \`loxtep deploy\` (or re-run with --deploy).
 Use get_writer('${dataProductName}') after deploy (see docs/sdk-first-ingest.md).
 `);
   } else {
     console.error(`
-Provisioned "${dataProductName}". Use get_writer('${dataProductName}') in your app (see docs/sdk-first-ingest.md).
+Created "${dataProductName}". Use get_writer('${dataProductName}') in your app (see docs/sdk-first-ingest.md).
 `);
   }
 }
+
+/** @deprecated Use runIngestCreate — provision alias for 1–2 releases. */
+export const runIngestProvision = runIngestCreate;
