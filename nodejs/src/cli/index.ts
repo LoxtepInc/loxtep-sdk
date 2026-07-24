@@ -77,6 +77,7 @@ import {
 import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
+import { notifyCliUpdateAvailable } from './update-notifier.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -92,16 +93,27 @@ function printHelp(): void {
 }
 
 async function main(): Promise<void> {
-  if (!command || command === '--help' || command === '-h') {
-    printHelp();
-    return;
-  }
+  // Kick off update check early; await in finally so network time overlaps work.
+  const updateCheck = notifyCliUpdateAvailable();
 
-  if (command === '--version' || command === '-V' || command === 'version') {
-    printCliVersion();
-    return;
-  }
+  try {
+    if (!command || command === '--help' || command === '-h') {
+      printHelp();
+      return;
+    }
 
+    if (command === '--version' || command === '-V' || command === 'version') {
+      printCliVersion();
+      return;
+    }
+
+    await runCommand();
+  } finally {
+    await updateCheck;
+  }
+}
+
+async function runCommand(): Promise<void> {
   switch (command) {
     case 'login': {
       const emailIdx = args.indexOf('--email');

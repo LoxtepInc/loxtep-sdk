@@ -10,6 +10,9 @@ and this project adheres to
 
 ### Added
 
+- **CLI update notifier:** after each command, if a newer `@loxtep/sdk` is on npm,
+  print an upgrade hint to stderr (cached 24h under `~/.loxtep/update-check.json`).
+  Opt out: `LOXTEP_NO_UPDATE_NOTIFIER=1` / `NO_UPDATE_NOTIFIER=1`, or any truthy `CI`.
 - **CLI stage creates:** `loxtep ingest create` (alias `provision`), `transform create`,
   `delivery create` (`workflow_type: delivery`), `loxtep push` (bundle + reindex).
 - **`--iceberg`** on ingest create → `storage.iceberg_enabled` on the source DP.
