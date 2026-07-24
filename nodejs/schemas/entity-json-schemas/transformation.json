@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/transformation.json",
+  "title": "Transformation Entity",
+  "description": "JSON Schema for Transformation entity in customer workspace. Transformations are pure functions that mutate/enrich events within a workflow flow. Each transformation references its workflow via workflow_id and its upstream entity (connection or previous transformation) via upstream_entity_id.",
+  "type": "object",
+  "required": [
+    "transformation_id",
+    "organization_id",
+    "project_id",
+    "workflow_id",
+    "name",
+    "transform_type",
+    "operation_config",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "transformation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the transformation"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this transformation"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this transformation"
+    },
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow this transformation belongs to"
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Reference to the upstream entity in the flow graph (connection or previous transformation). Null only when this is the first transformation directly after the trigger connection."
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "enum": ["connections", "transformations", null],
+      "description": "Entity type of the upstream entity (connections or transformations)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Transformation name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Transformation description"
+    },
+    "transform_type": {
+      "type": "string",
+      "enum": [
+        "drop_fields",
+        "select_fields",
+        "rename_field",
+        "drop_null_fields",
+        "drop_duplicates",
+        "flatten",
+        "explode_array",
+        "array_to_column",
+        "capitalize",
+        "format_timestamp",
+        "add_current_timestamp",
+        "parse_json",
+        "xml_to_json",
+        "extract_json_path",
+        "regex_extractor",
+        "concatenate_columns",
+        "derived_columns",
+        "fill_missing_values",
+        "detect_sensitive_data",
+        "evaluate_data_quality",
+        "change_schema",
+        "filter",
+        "batch",
+        "delay",
+        "split",
+        "execute_code_function",
+        "crypto",
+        "formatter",
+        "assign_identifier",
+        "remove_null_events",
+        "map",
+        "enrich",
+        "add_fields",
+        "rename_fields",
+        "custom"
+      ],
+      "description": "Type of transformation operation"
+    },
+    "operation_config": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Transformation-specific configuration parameters",
+      "examples": [
+        {
+          "fields": ["field1", "field2"]
+        },
+        {
+          "condition": "status === 'active'"
+        },
+        {
+          "field": "name",
+          "case": "upper"
+        }
+      ]
+    },
+    "input_schema": {
+      "type": ["object", "null"],
+      "description": "Optional: JSON Schema of input events (for validation and type checking). Any JSON Schema object.",
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": ["object", "null"],
+      "description": "Optional: JSON Schema of output events after transformation (typically inferred). Any JSON Schema object.",
+      "additionalProperties": true
+    },
+    "order": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Default execution order when used in workflows (lower = earlier)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the transformation"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the transformation"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the transformation"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when transformation was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when transformation was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when transformation was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

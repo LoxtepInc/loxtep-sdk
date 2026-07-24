@@ -112,14 +112,14 @@ describe('CLI integration (mock platform API)', () => {
     it('projects list', async () => {
       const out = captureCliOutput();
       await runProjectsList(opts());
-      expectCliSuccess(out, 'project-test-001', 'Test Project');
+      expectCliSuccess(out, MOCK_IDS.project_id, 'Test Project');
       out.restore();
     });
 
     it('projects get', async () => {
       const out = captureCliOutput();
-      await runProjectsGet('project-test-001', opts());
-      expectCliSuccess(out, 'project-test-001', 'Test Project');
+      await runProjectsGet(MOCK_IDS.project_id, opts());
+      expectCliSuccess(out, MOCK_IDS.project_id, 'Test Project');
       out.restore();
     });
   });

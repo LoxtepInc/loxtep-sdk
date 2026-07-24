@@ -170,6 +170,8 @@ from your application:
 
 ```bash
 pnpm exec loxtep ingest provision --name app-events
+pnpm exec loxtep lint
+pnpm exec loxtep deploy
 pnpm exec loxtep data-products list
 ```
 

@@ -1,0 +1,310 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/connection.json",
+  "title": "Connection Entity",
+  "description": "JSON Schema for Connection entity in customer workspace. Connections are configured instances of connectors with credentials and settings.",
+  "type": "object",
+  "required": [
+    "connection_id",
+    "organization_id",
+    "project_id",
+    "key",
+    "name",
+    "type",
+    "status"
+  ],
+  "properties": {
+    "connection_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the connection"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this connection"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this connection"
+    },
+    "workflow_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Workflow this connection belongs to; null for project-level/draft connections"
+    },
+    "connector_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Reference to the connector definition this connection uses; null for project-level/draft connections"
+    },
+    "sync_entity": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z0-9-_]+$",
+      "description": "For API poll connectors: which entity (e.g. orders, customers) this connection syncs. Must match connector supported_entities when present."
+    },
+    "key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9-_]+$",
+      "description": "Unique key for the connection within the organization"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Display name for the connection"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Connection description"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Connection type: database, api, webhook, file, or connector type (e.g. spotify, shopify)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "inactive", "error"],
+      "description": "Connection status"
+    },
+    "credential_fields": {
+      "type": "object",
+      "description": "Encrypted credential fields for the connection (structure depends on connector auth_type)",
+      "properties": {
+        "api_key": {
+          "type": ["string", "null"],
+          "description": "API key (encrypted)"
+        },
+        "api_secret": {
+          "type": ["string", "null"],
+          "description": "API secret (encrypted)"
+        },
+        "oauth_access_token": {
+          "type": ["string", "null"],
+          "description": "OAuth access token (encrypted)"
+        },
+        "oauth_refresh_token": {
+          "type": ["string", "null"],
+          "description": "OAuth refresh token (encrypted)"
+        },
+        "oauth_expires_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "OAuth token expiration time"
+        },
+        "username": {
+          "type": ["string", "null"],
+          "description": "Username for basic auth (encrypted)"
+        },
+        "password": {
+          "type": ["string", "null"],
+          "description": "Password for basic auth (encrypted)"
+        },
+        "bearer_token": {
+          "type": ["string", "null"],
+          "description": "Bearer token (encrypted)"
+        },
+        "custom_credentials": {
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom credential fields (encrypted)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "credential_parameter_store_refs": {
+      "type": "object",
+      "description": "SSM Parameter Store paths for OAuth/credentials (keyed by credential name)",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Connection configuration (non-sensitive settings)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the connection"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the connection has been verified/tested"
+    },
+    "draft": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this connection is still in draft state"
+    },
+    "last_tested": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connection was last tested"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the connection"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the connection"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connection was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connection was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connection was deleted (soft delete)"
+    },
+    "ingestion_config": {
+      "type": ["object", "null"],
+      "description": "Structured ingestion settings (schedule, batch, polling). Extensible per connection type.",
+      "properties": {
+        "schedule": {
+          "type": ["string", "null"],
+          "description": "Cron expression (LeoCron `time`) or platform-supported schedule string for this connection's registered bot. Distinct from `polling_interval_ms`, which is a millisecond gap for application-level throttling between requests—not the Leo schedule field."
+        },
+        "runtime_memory_mb": {
+          "description": "Shared runtimes tier for trigger registration (256–2048). Defaults to 256 when unset. LeoCron `lambdaName`: `w-{org4}-{inst4}-bot-connectors-{mb}-rtime`; bot id: `w-{org4}-{inst4}-{workflow4}-bot-connectors-{mb}-{container_id}`. Instance `connection_details.runtimes_stack_identifier` may override the org/instance middle segment (CDK `microserviceIdentifier` = `w-{that middle}`).",
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "enum": [256, 512, 1024, 2048] }
+          ]
+        },
+        "fetch_action_key": {
+          "type": ["string", "null"],
+          "description": "Declarative connector package action key used for polling fetches (e.g. shopify_get_orders). Often matches sync_plan entity fetch_action_key."
+        },
+        "batch_size": {
+          "type": ["integer", "null"],
+          "description": "Batch size for polling (default 100)"
+        },
+        "polling_interval_ms": {
+          "type": ["integer", "null"],
+          "description": "Polling interval in milliseconds"
+        },
+        "max_retries": {
+          "type": ["integer", "null"],
+          "description": "Max retries on failure"
+        },
+        "timeout_ms": {
+          "type": ["integer", "null"],
+          "description": "Request/timeout in milliseconds"
+        }
+      },
+      "additionalProperties": true
+    },
+    "runtime_status": {
+      "type": ["string", "null"],
+      "enum": ["not_deployed", "deploying", "running", "paused", "error", null],
+      "description": "Deployment state of the connection's bot (written at deploy time)"
+    },
+    "auth_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "oauth2",
+        "api_key",
+        "webhook",
+        "data_product_rbac",
+        "none",
+        null
+      ],
+      "description": "Authentication type for the connection (optional, backwards compat)."
+    },
+    "ingestion_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "polling",
+        "webhook",
+        "data_product",
+        "database_cdc",
+        "file",
+        "api_sdk",
+        "stream",
+        "other",
+        null
+      ],
+      "description": "How data is ingested (optional)."
+    },
+    "export_type": {
+      "type": ["string", "null"],
+      "enum": ["file", "database", "stream", "api_sdk", "other", null],
+      "description": "How data is exported (optional)."
+    },
+    "source_schema": {
+      "type": ["object", "null"],
+      "description": "Source schema reference (optional)."
+    },
+    "destination_schema": {
+      "type": ["object", "null"],
+      "description": "Destination schema reference (optional)."
+    },
+    "retry_policy": {
+      "type": ["object", "null"],
+      "description": "Retry policy (max_retries, backoff, etc.).",
+      "properties": {
+        "max_retries": { "type": ["integer", "null"] },
+        "backoff_ms": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "timeout": {
+      "type": ["integer", "null"],
+      "description": "Timeout in milliseconds (optional)."
+    },
+    "concurrency": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Concurrency limit (optional)."
+    },
+    "batch_size": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Batch size for sync (optional)."
+    },
+    "connector_mode": {
+      "type": ["string", "null"],
+      "enum": ["inbound", "outbound", "bidirectional", null],
+      "description": "For enrichment workflows: mid-flow connection must be 'bidirectional'. For ingestion head use 'inbound'; for consumption tail use 'outbound'. Must match connector supported_directions."
+    }
+  },
+  "upstream_entity_id": {
+    "type": ["string", "null"],
+    "format": "uuid",
+    "description": "Upstream entity in the flow graph (e.g. data-product in consumption flows). Null for source connections."
+  },
+  "upstream_entity_type": {
+    "type": ["string", "null"],
+    "enum": [
+      "connections",
+      "transformations",
+      "validations",
+      "data-products",
+      null
+    ],
+    "description": "Entity type of the upstream entity."
+  },
+  "additionalProperties": false
+}

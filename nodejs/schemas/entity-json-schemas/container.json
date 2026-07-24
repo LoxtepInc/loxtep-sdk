@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/container.json",
+  "title": "Container Entity",
+  "description": "JSON Schema for Container entity in customer workspace. A container represents one logical node that maps to one or more bots/queues at runtime. It wraps another project entity (connection, transformation, validation, data-product, export).",
+  "type": "object",
+  "required": [
+    "container_id",
+    "organization_id",
+    "project_id",
+    "workflow_id",
+    "wrapped_entity_type",
+    "wrapped_entity_id"
+  ],
+  "properties": {
+    "container_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique identifier for the container (e.g. conn-a1b2c3d4, xfm-e5f6g7h8)"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this container"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this container"
+    },
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow this container belongs to"
+    },
+    "wrapped_entity_type": {
+      "type": "string",
+      "enum": [
+        "connections",
+        "transformations",
+        "validations",
+        "data-products",
+        "exports",
+        "workflows"
+      ],
+      "description": "Entity type of the wrapped project entity"
+    },
+    "wrapped_entity_id": {
+      "type": "string",
+      "description": "Entity ID of the wrapped project entity (e.g. connection_id, transformation_id)"
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Optional runtime slice written at deploy time; when present, project is self-describing",
+      "properties": {
+        "bot_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "rstreams bot IDs registered for this container"
+        },
+        "queue_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "rstreams queue names for this container"
+        }
+      }
+    }
+  }
+}

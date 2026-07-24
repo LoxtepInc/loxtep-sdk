@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/export.json",
+  "title": "Export Entity",
+  "description": "JSON Schema for Export entity in customer workspace. Exports define reusable export configurations for data products.",
+  "type": "object",
+  "required": [
+    "export_id",
+    "organization_id",
+    "data_product_id",
+    "name",
+    "format",
+    "compression",
+    "destination",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "export_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the export configuration"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this export"
+    },
+    "data_product_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the data product this export applies to"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Export configuration name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Export description"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["csv", "parquet", "json", "jsonl", "avro"],
+      "description": "Export file format"
+    },
+    "compression": {
+      "type": "string",
+      "enum": ["none", "gzip", "snappy", "zstd"],
+      "default": "none",
+      "description": "Compression type"
+    },
+    "destination": {
+      "type": "string",
+      "enum": ["download", "s3", "gcs", "azure_blob"],
+      "description": "Export destination type"
+    },
+    "destination_config": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Destination-specific configuration (S3 bucket, GCS path, etc.)"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0,
+      "description": "Field names to include in export (empty = all fields)"
+    },
+    "date_filter": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Date range filter configuration"
+    },
+    "schedule": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "description": "Schedule configuration for recurring exports (cron expression)"
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional export options (delimiter, headers, etc.)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the export"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the export"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the export"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when export was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when export was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when export was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

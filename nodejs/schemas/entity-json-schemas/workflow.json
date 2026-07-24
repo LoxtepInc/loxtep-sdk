@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/workflow.json",
+  "title": "Workflow Entity",
+  "description": "JSON Schema for the root workflow entity in customer workspace. A workflow is a flow. Flow nodes (connection, transformation, validation, data product) reference the workflow via workflow_id and point upstream via upstream_entity_id; the workflow does not store node IDs. template_id identifies the flow starter template used to create this flow (e.g. blank, webhook-ingestion), distinct from connector catalog templates.",
+  "type": "object",
+  "required": [
+    "workflow_id",
+    "organization_id",
+    "project_id",
+    "name",
+    "template_id",
+    "workflow_type",
+    "domain_id",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the workflow"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this workflow"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this workflow"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Workflow display name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Workflow description"
+    },
+    "template_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow starter template identifier used when this flow was created (e.g. blank, webhook-ingestion). Distinct from connector catalog templates."
+    },
+    "workflow_type": {
+      "type": "string",
+      "enum": ["ingestion", "enrichment", "consumption"],
+      "description": "Type of flow: ingestion (ingest from external sources), enrichment (transform/join data), consumption (expose or consume data products)."
+    },
+    "domain_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Domain this workflow belongs to (required)."
+    },
+    "segments": {
+      "type": "array",
+      "default": [],
+      "description": "Visual groupings of nodes in the graph editor.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "description": "Unique identifier for the segment"
+          },
+          "name": { "type": "string", "description": "Display name" },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Optional description"
+          },
+          "node_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Entity IDs of nodes in this segment"
+          },
+          "color": {
+            "type": ["string", "null"],
+            "description": "Optional color for UI"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "trigger": {
+      "type": ["object", "null"],
+      "description": "Workflow trigger configuration (event, schedule, or connector).",
+      "properties": {
+        "event": {
+          "type": ["string", "null"],
+          "description": "Event-based trigger (e.g. webhook, queue)"
+        },
+        "schedule": {
+          "type": ["string", "null"],
+          "description": "Cron or interval for scheduled execution"
+        },
+        "connector": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "Connector ID for connector-driven triggers"
+        }
+      },
+      "additionalProperties": false
+    },
+    "configuration": {
+      "type": "object",
+      "description": "Workflow configuration (schedule, batch_size, etc.). Flow nodes are discovered by workflow_id and upstream_entity_id; the workflow does not store connection_id or transformation_ids.",
+      "properties": {
+        "schedule": {
+          "type": ["string", "null"],
+          "description": "Cron expression for scheduled execution (optional)"
+        },
+        "batch_size": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Number of events to process per batch"
+        }
+      },
+      "additionalProperties": false
+    },
+    "deployment": {
+      "type": ["object", "null"],
+      "description": "Deployment information (set when workflow is deployed)",
+      "properties": {
+        "instance_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "lambda_functions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "paused", "error", "pending", "inactive"],
+      "description": "Workflow status"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Workflow metrics (events processed, error rate, etc.)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the workflow"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the workflow"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the workflow"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when workflow was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when workflow was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when workflow was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/domain.json",
+  "title": "Domain Entity",
+  "description": "JSON Schema for Domain entity in customer workspace. Domains are logical, business-oriented subdivisions for organizing Data Products.",
+  "type": "object",
+  "required": [
+    "domain_id",
+    "organization_id",
+    "name",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "domain_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the domain"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this domain"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Domain name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Domain description"
+    },
+    "owner_user_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID of the domain owner"
+    },
+    "parent_domain_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Parent domain ID for hierarchical organization"
+    },
+    "is_council": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this is the Data Council domain"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the domain"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when domain was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when domain was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when domain was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

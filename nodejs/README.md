@@ -105,6 +105,8 @@ Run these in an **empty directory** you want to turn into a Loxtep workspace.
 
    ```bash
    pnpm exec loxtep ingest provision --name app-events
+   pnpm exec loxtep lint
+   pnpm exec loxtep deploy
    pnpm exec loxtep data-products list
    ```
 
@@ -335,7 +337,10 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `init --create-repo [name]`                          | Scaffold + create a new GitHub repo (private default)              |
 | `init --from-repo <url>`                             | Scaffold + import from an existing repo                            |
 | `attach --instance <name-or-id>`                     | Bind project to a runtime instance                                 |
-| `ingest provision [--name]`                          | Create a data product on your instance (ready for `get_writer`)    |
+| `connectors list [--type]`                           | List org connectors (filter e.g. `--type sdk`)                     |
+| `ingest provision [--name]`                          | Write local SDK ingest package (reuse/create connector; no deploy) |
+| `lint [--workflow]`                                  | Validate local entity JSON (schemas + relationships)               |
+| `deploy [--dry-run]`                                 | Lint preflight, then compile/deploy (or lint-only with `--dry-run`)|
 | `generate`                                           | Codegen typed workspace constants to `.loxtep/generated/index.ts`  |
 | `test <module> --event <file>`                       | Run a workflow module locally with sample event(s)                  |
 | `deploy`                                             | Compile modules, validate resources, deploy to workflow engine      |

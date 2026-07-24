@@ -7,17 +7,20 @@ import { buildPlatformRequestUrl } from '../../config/platform-request-url.js';
 
 export const MOCK_PLATFORM_API = 'https://api.test.loxtep.com';
 
-/** Stable IDs returned by the default mock catalog. */
+/** Stable IDs returned by the default mock catalog (UUID-shaped for entity schemas). */
 export const MOCK_IDS = {
-  user_id: 'user-test-001',
-  organization_id: 'org-test-001',
-  domain_id: 'domain-test-001',
-  instance_id: 'instance-test-001',
-  data_product_id: 'dp-test-001',
-  workflow_id: 'wf-test-001',
-  trigger_id: 'trigger-test-001',
-  standard_id: 'standard-test-001',
-  contract_id: 'contract-test-001',
+  user_id: '11111111-1111-4111-8111-111111111111',
+  organization_id: '22222222-2222-4222-8222-222222222222',
+  domain_id: '33333333-3333-4333-8333-333333333333',
+  instance_id: '44444444-4444-4444-8444-444444444444',
+  data_product_id: '55555555-5555-4555-8555-555555555555',
+  workflow_id: '66666666-6666-4666-8666-666666666666',
+  trigger_id: '77777777-7777-4777-8777-777777777777',
+  standard_id: '88888888-8888-4888-8888-888888888888',
+  contract_id: '99999999-9999-4999-8999-999999999999',
+  connector_sdk_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  connector_shopify_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  project_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   queue_name: 'test-env-queue-orders',
   bot_id: 'test-env-bot-reader',
 } as const;
@@ -321,7 +324,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
             data_product_id: detail[1],
             name: 'Orders',
             organization_id: MOCK_IDS.organization_id,
-            project_id: 'project-test-001',
+            project_id: MOCK_IDS.project_id,
             status: 'active',
             storage: { rstreams_queue: MOCK_IDS.queue_name },
             deployment_bindings: {
@@ -369,7 +372,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           successEnvelope({
             workflow_id: detail[1],
             name: 'Ingest Orders',
-            project_id: 'project-test-001',
+            project_id: MOCK_IDS.project_id,
             status: 'active',
           })
         );
@@ -379,7 +382,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           {
             workflow_id: MOCK_IDS.workflow_id,
             name: 'Ingest Orders',
-            project_id: 'project-test-001',
+            project_id: MOCK_IDS.project_id,
             status: 'active',
           },
         ])
@@ -504,18 +507,60 @@ export function createDefaultPlatformRoutes(): RouteHandler {
     }
 
     if (method === 'GET' && pathname.startsWith('/connectors/connectors')) {
-      return jsonResponse(
-        listEnvelope([
-          {
-            connector_id: 'connector-test-001',
+      const detail = routeMatch(pathname, /\/connectors\/connectors\/([^/?]+)$/);
+      if (detail) {
+        const connectorId = detail[1];
+        if (connectorId === MOCK_IDS.connector_sdk_id || connectorId === 'connector-sdk-001') {
+          return jsonResponse(
+            successEnvelope({
+              connector_id: MOCK_IDS.connector_sdk_id,
+              connector_type: 'sdk',
+              metadata: { name: 'SDK Connector', instance_id: MOCK_IDS.instance_id },
+              organization_id: MOCK_IDS.organization_id,
+              created_at: '2026-01-01T00:00:00.000Z',
+              updated_at: '2026-01-01T00:00:00.000Z',
+            })
+          );
+        }
+        return jsonResponse(
+          successEnvelope({
+            connector_id: connectorId,
             connector_type: 'shopify',
             metadata: { name: 'Shopify' },
-          },
-        ])
-      );
+            organization_id: MOCK_IDS.organization_id,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+          })
+        );
+      }
+
+      const qs = pathname.includes('?') ? pathname.slice(pathname.indexOf('?')) : '';
+      const connectorType = new URLSearchParams(qs).get('connector_type');
+
+      const shopify = {
+        connector_id: MOCK_IDS.connector_shopify_id,
+        connector_type: 'shopify',
+        metadata: { name: 'Shopify' },
+        organization_id: MOCK_IDS.organization_id,
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
+      };
+      const sdk = {
+        connector_id: MOCK_IDS.connector_sdk_id,
+        connector_type: 'sdk',
+        metadata: { name: 'SDK Connector', instance_id: MOCK_IDS.instance_id },
+        organization_id: MOCK_IDS.organization_id,
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
+      };
+
+      const items =
+        connectorType === 'sdk' ? [sdk] : connectorType === 'shopify' ? [shopify] : [shopify, sdk];
+
+      return jsonResponse(listEnvelope(items));
     }
 
-    if (method === 'POST' && pathname === '/connectors/connectors') {
+    if (method === 'POST' && (pathname === '/connectors/connectors' || pathname.startsWith('/connectors/connectors?'))) {
       let body: Record<string, unknown> = {};
       try {
         body = init?.body ? JSON.parse(String(init.body)) : {};
@@ -524,10 +569,12 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       }
       return jsonResponse(
         successEnvelope({
-          connector_id: 'connector-sdk-001',
+          connector_id: MOCK_IDS.connector_sdk_id,
           connector_type: body.connector_type ?? 'sdk',
           metadata: body.metadata ?? { name: 'SDK Connector' },
           organization_id: MOCK_IDS.organization_id,
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-01-01T00:00:00.000Z',
           status: 'active',
         })
       );
@@ -648,7 +695,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
         successEnvelope({
           workflow_id: 'wf-created-001',
           name: body.name ?? 'New Workflow',
-          project_id: body.project_id ?? 'project-test-001',
+          project_id: body.project_id ?? MOCK_IDS.project_id,
           status: 'inactive',
         })
       );
@@ -686,7 +733,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
         successEnvelope({
           deployment_id: 'deploy-test-001',
           status: 'in_progress',
-          project_id: 'project-test-001',
+          project_id: MOCK_IDS.project_id,
           instance_id: MOCK_IDS.instance_id,
         })
       );
@@ -717,7 +764,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       return jsonResponse(
         listEnvelope([
           {
-            project_id: 'project-test-001',
+            project_id: MOCK_IDS.project_id,
             name: 'Test Project',
             organization_id: MOCK_IDS.organization_id,
             status: 'active',

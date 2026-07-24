@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/workflow-graph.json",
+  "title": "Workflow Graph",
+  "description": "Materialized read-only graph view for a workflow (flow). Built from per-entity S3 files; not a writable entity type.",
+  "type": "object",
+  "required": [
+    "workflow_id",
+    "organization_id",
+    "project_id",
+    "version",
+    "built_at",
+    "workflow",
+    "nodes",
+    "edges",
+    "connectors",
+    "deployment",
+    "metadata"
+  ],
+  "properties": {
+    "workflow_id": { "type": "string", "format": "uuid" },
+    "organization_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string", "format": "uuid" },
+    "version": { "type": "integer", "minimum": 1 },
+    "built_at": { "type": "string", "format": "date-time" },
+    "applied_template_digest": { "type": ["string", "null"] },
+    "workflow": {
+      "type": "object",
+      "description": "Full workflow.json entity snapshot"
+    },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["entity_type", "entity_id", "data"],
+        "properties": {
+          "entity_type": { "type": "string" },
+          "entity_id": { "type": "string", "format": "uuid" },
+          "upstream_entity_id": { "type": ["string", "null"] },
+          "deployment_status": {
+            "type": "string",
+            "enum": ["undeployed", "deployed", "stale"]
+          },
+          "container_id": { "type": ["string", "null"] },
+          "data": { "type": "object" }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "type"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "type": { "type": "string", "enum": ["upstream"] }
+        }
+      }
+    },
+    "connectors": {
+      "type": "object",
+      "additionalProperties": { "type": "object" }
+    },
+    "deployment": {
+      "type": "object",
+      "required": [
+        "deployment_id",
+        "deployed_at",
+        "version_id",
+        "microservice_id",
+        "runtime_mapping"
+      ],
+      "properties": {
+        "deployment_id": { "type": ["string", "null"], "format": "uuid" },
+        "deployed_at": { "type": ["string", "null"], "format": "date-time" },
+        "version_id": { "type": ["string", "null"], "format": "uuid" },
+        "microservice_id": { "type": ["string", "null"] },
+        "runtime_mapping": {
+          "type": "object",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "container_id": { "type": "string" },
+                  "entity_id": { "type": "string" },
+                  "entity_type": { "type": "string" },
+                  "bot_ids": { "type": "array", "items": { "type": "string" } },
+                  "queue_ids": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "all_bot_ids": { "type": "array", "items": { "type": "string" } },
+            "all_queue_ids": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "node_count": { "type": "integer" },
+        "entity_type_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "requires_redeployment": { "type": "boolean" }
+      }
+    }
+  }
+}

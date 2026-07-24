@@ -193,6 +193,7 @@ pnpm exec loxtep generate
 
 ```bash
 pnpm exec loxtep ingest provision --name app-events
+pnpm exec loxtep lint && pnpm exec loxtep deploy
 ```
 
 See [Write to a data product](./sdk-first-ingest.md).

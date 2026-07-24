@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/schema.json",
+  "title": "Schema Entity",
+  "description": "JSON Schema for Schema entity in customer workspace. Schemas define the structural definition of events or tables in a Data Product.",
+  "type": "object",
+  "required": [
+    "schema_id",
+    "organization_id",
+    "data_product_id",
+    "name",
+    "version",
+    "format",
+    "fields",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the schema"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this schema"
+    },
+    "data_product_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the data product this schema belongs to"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Schema name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Schema description"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Schema version (semantic versioning, e.g., 1.0.0)"
+    },
+    "version_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Sequential version number (1, 2, 3, ...)"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["json-schema", "avro", "protobuf", "custom"],
+      "description": "Schema format"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "required"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "date",
+              "datetime",
+              "timestamp",
+              "object",
+              "array",
+              "uuid",
+              "json",
+              "enum"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "nullable": {
+            "type": "boolean",
+            "default": false
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "constraints": {
+            "type": ["object", "null"],
+            "additionalProperties": true
+          },
+          "is_pii": {
+            "type": ["boolean", "null"]
+          },
+          "pii_type": {
+            "type": ["string", "null"],
+            "enum": [
+              "email",
+              "phone",
+              "ssn",
+              "name",
+              "address",
+              "financial",
+              "health",
+              "other"
+            ]
+          },
+          "fields": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/properties/fields/items"
+            },
+            "description": "Nested fields for object/array types"
+          },
+          "enum_values": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "description": "Schema field definitions"
+    },
+    "raw_schema": {
+      "type": ["string", "null"],
+      "description": "Original schema definition (JSON, Avro, etc.) as string"
+    },
+    "is_backwards_compatible": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this version is backwards compatible with previous versions"
+    },
+    "breaking_changes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "List of breaking changes from previous version"
+    },
+    "migration_notes": {
+      "type": ["string", "null"],
+      "maxLength": 2000,
+      "description": "Migration notes for consumers"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "archived"],
+      "description": "Schema status"
+    },
+    "published_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when schema was published"
+    },
+    "deprecated_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when schema was deprecated"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the schema"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the schema"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the schema"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when schema was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when schema was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when schema was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

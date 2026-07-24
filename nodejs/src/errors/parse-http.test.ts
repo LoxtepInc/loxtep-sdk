@@ -82,6 +82,20 @@ describe('parseHttpError', () => {
     expect(validation.field_errors).toEqual([{ field: 'name', message: 'Required' }]);
   });
 
+  it('should prefer string details over generic Validation Error title', () => {
+    const err = parseHttpError(400, {
+      success: false,
+      error: {
+        message: 'Validation Error',
+        details:
+          'SDK connector requires metadata.instance_id when the organization has multiple instances.',
+      },
+    });
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.message).toContain('metadata.instance_id');
+    expect(err.details?.message).toContain('metadata.instance_id');
+  });
+
   it('should map unknown status to LoxtepError', () => {
     const err = parseHttpError(503, { message: 'Service unavailable' });
     expect(err).toBeInstanceOf(LoxtepError);

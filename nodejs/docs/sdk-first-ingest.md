@@ -22,19 +22,33 @@ You should see `project_id` and `instance_id` from `attach`.
 
 ---
 
-## Phase 2 — Create your data product
+## Phase 2 — Create your data product (local package)
 
 Pick a name your app will use (example: `app-events`):
 
 ```bash
+pnpm exec loxtep connectors list --type sdk   # optional: see existing SDK connectors
 pnpm exec loxtep ingest provision --name app-events
+pnpm exec loxtep lint
 ```
 
-That is all you need for SDK writes — one command, one name.
+`ingest provision` reuses an existing SDK connector when one exists (or creates one),
+then writes a **local** workflow package under `connectors/` and `workflows/<id>/`.
+It does **not** deploy by default. Validate with `loxtep lint`, then publish:
+
+```bash
+pnpm exec loxtep deploy --dry-run   # lint only
+pnpm exec loxtep deploy             # lint + compile/deploy modules
+# or: pnpm exec loxtep ingest provision --name app-events --deploy
+```
+
+That local package is what you iterate on; deploy pushes it to your instance.
 
 ---
 
 ## Phase 3 — Confirm it exists
+
+After deploy:
 
 ```bash
 pnpm exec loxtep data-products list
@@ -90,6 +104,8 @@ pnpm exec loxtep login
 pnpm exec loxtep init
 pnpm exec loxtep attach --instance <instance-id>
 pnpm exec loxtep ingest provision --name app-events
+pnpm exec loxtep lint
+pnpm exec loxtep deploy
 pnpm exec loxtep data-products list
 ```
 
@@ -102,7 +118,7 @@ Then `get_writer('app-events')` in your app.
 | What you see | What to do |
 | ------------ | ---------- |
 | Data product not found | Run `data-products list`. Check the name matches `get_writer('…')` exactly. |
-| Not ready to accept writes | Run `ingest provision` again for that name. Make sure you ran `attach` first. |
+| Not ready to accept writes | Run `ingest provision`, then `deploy` (or `ingest provision --deploy`). Make sure you ran `attach` first. |
 | Multiple products with the same name | Pass the data product id to `get_writer`, or ensure `attach` points at the right instance. |
 | No domain available | Create a domain in the Loxtep UI, or pass `--domain-id` to `ingest provision`. |
 
