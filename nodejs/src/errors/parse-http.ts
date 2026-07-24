@@ -123,10 +123,26 @@ export function parseHttpError(
       });
     }
     case 400: {
-      const field_errors = Array.isArray(safe.field_errors)
-        ? (safe.field_errors as Array<{ field: string; message: string }>).filter(
-            e => typeof e?.field === 'string' && typeof e?.message === 'string'
-          )
+      const nested = safe.error;
+      const nestedRecord =
+        nested && typeof nested === 'object' ? (nested as Record<string, unknown>) : undefined;
+      const rawFieldErrors =
+        (Array.isArray(safe.field_errors) ? safe.field_errors : undefined) ??
+        (Array.isArray(nestedRecord?.field_errors) ? nestedRecord.field_errors : undefined) ??
+        (Array.isArray(safe.errors) ? safe.errors : undefined);
+      const field_errors = Array.isArray(rawFieldErrors)
+        ? (rawFieldErrors as Array<{ field?: string; message?: string; path?: string }>)
+            .map(e => {
+              const field =
+                typeof e?.field === 'string'
+                  ? e.field
+                  : typeof e?.path === 'string'
+                    ? e.path
+                    : undefined;
+              const msg = typeof e?.message === 'string' ? e.message : undefined;
+              return field && msg ? { field, message: msg } : null;
+            })
+            .filter((e): e is { field: string; message: string } => e !== null)
         : [];
       return new ValidationError(message, field_errors, { details, request_id: reqId });
     }

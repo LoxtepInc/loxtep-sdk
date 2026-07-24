@@ -1,4 +1,4 @@
-import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile, rm, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -7,6 +7,7 @@ import {
   resolveCredentialsWriteTarget,
   getLocalCredentialsPath,
   getCredentialsPath,
+  writeCredentials,
 } from './credentials.js';
 import { getProjectFilePath } from './project-context.js';
 
@@ -63,5 +64,18 @@ describe('credentials path resolution', () => {
 
     const target = resolveCredentialsWriteTarget(cwd);
     expect(target.path).toBe(getLocalCredentialsPath(cwd));
+  });
+
+  it('writeCredentials creates credentials.json with mode 0600', async () => {
+    const path = join(root, '.loxtep', 'credentials.json');
+    await writeCredentials(
+      {
+        access_token: 'tok',
+        api_base_url: 'https://apidev.example.com',
+      },
+      path
+    );
+    const mode = (await stat(path)).mode & 0o777;
+    expect(mode).toBe(0o600);
   });
 });

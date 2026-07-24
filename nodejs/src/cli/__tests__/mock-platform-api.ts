@@ -312,13 +312,38 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
+    // JWT warehouse analytics (SDK query / list_tables) — must run before /dataproducts/dataproducts catch-all
+    if (method === 'GET' && pathname.includes('/warehouse/tables')) {
+      return jsonResponse({
+        tables: [
+          {
+            name: 'orders',
+            sql_name: 'orders',
+            data_product_id: MOCK_IDS.data_product_id,
+            medallion: 'bronze',
+          },
+        ],
+        count: 1,
+      });
+    }
+    if (method === 'POST' && pathname.includes('/warehouse/execute')) {
+      return jsonResponse({
+        status: 'completed',
+        columns: ['id'],
+        rows: [{ id: 'order-1' }],
+        row_count: 1,
+        total_count: 1,
+        execution_time_ms: 5,
+      });
+    }
+
     if (method === 'GET' && pathname.startsWith('/dataproducts/dataproducts')) {
       const tables = routeMatch(pathname, /\/dataproducts\/dataproducts\/([^/?]+)\/tables$/);
       if (tables) {
         return jsonResponse(successEnvelope({ items: [{ name: 'orders', columns: ['id'] }] }));
       }
       const detail = routeMatch(pathname, /\/dataproducts\/dataproducts\/([^/?]+)$/);
-      if (detail && detail[1] !== 'datacontracts' && detail[1] !== 'query') {
+      if (detail && detail[1] !== 'datacontracts' && detail[1] !== 'query' && detail[1] !== 'warehouse') {
         return jsonResponse(
           successEnvelope({
             data_product_id: detail[1],
@@ -350,6 +375,73 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           ])
         );
       }
+    }
+
+    // Project entities (triggers/targets connections)
+    if (method === 'GET' && /\/workflows\/projects\/[^/]+\/entities$/.test(pathname)) {
+      return jsonResponse(
+        successEnvelope({
+          connections: [
+            {
+              connection_id: MOCK_IDS.trigger_id,
+              name: 'Shopify',
+              type: 'api',
+              status: 'active',
+              key: 'shopify',
+              data: '{}',
+              configuration: {},
+              metadata: {},
+              verified: false,
+              draft: false,
+              created_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          ],
+          workflows: [],
+          domains: [],
+          transformations: [],
+          validations: [],
+          data_products: [],
+          schemas: [],
+          contracts: [],
+          quality_rules: [],
+          exports: [],
+        })
+      );
+    }
+    if (
+      (method === 'GET' || method === 'PUT' || method === 'DELETE') &&
+      /\/workflows\/projects\/[^/]+\/entities\/connections\//.test(pathname)
+    ) {
+      const idMatch = pathname.match(/\/connections\/([^/?]+)/);
+      const connectionId = idMatch?.[1] ?? MOCK_IDS.trigger_id;
+      if (method === 'DELETE') {
+        return jsonResponse(successEnvelope({ deleted: true }));
+      }
+      let body: Record<string, unknown> = {};
+      if (method === 'PUT' && init?.body) {
+        try {
+          body = JSON.parse(String(init.body));
+        } catch {
+          body = {};
+        }
+      }
+      return jsonResponse(
+        successEnvelope({
+          connection_id: method === 'PUT' ? 'trigger-created-001' : connectionId,
+          name: (body.name as string) ?? 'Shopify',
+          type: (body.type as string) ?? 'api',
+          status: 'active',
+          key: (body.key as string) ?? 'shopify',
+          data: '{}',
+          configuration: {},
+          metadata: {},
+          verified: false,
+          draft: false,
+          created_at: '2025-01-01T00:00:00Z',
+          updated_at: '2025-01-01T00:00:00Z',
+        })
+      );
     }
 
     if (method === 'POST' && pathname.startsWith('/dataproducts/dataproducts/query')) {

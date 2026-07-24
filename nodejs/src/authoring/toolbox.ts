@@ -271,7 +271,11 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
   const connections: ToolboxConnections = {
     async list(): Promise<Trigger[]> {
       try {
-        const result = await client.build.triggers.list();
+        const projectId = client.project_id;
+        if (!projectId) {
+          throw new Error('project_id required on LoxtepClient for connections.list');
+        }
+        const result = await client.build.triggers.list({ project_id: projectId });
         return result.items;
       } catch (err: unknown) {
         throw new ToolboxOperationError(
@@ -285,7 +289,11 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async get(connectionId: string): Promise<Trigger> {
       try {
-        return await client.build.triggers.get(connectionId);
+        const projectId = client.project_id;
+        if (!projectId) {
+          throw new Error('project_id required on LoxtepClient for connections.get');
+        }
+        return await client.build.triggers.get(connectionId, { project_id: projectId });
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'connections',
@@ -298,7 +306,11 @@ export function createToolbox(options: CreateToolboxOptions): Toolbox {
 
     async test(connectionId: string): Promise<TriggerTestResult> {
       try {
-        return await client.build.triggers.test(connectionId);
+        const projectId = client.project_id;
+        if (!projectId) {
+          throw new Error('project_id required on LoxtepClient for connections.test');
+        }
+        return await client.build.triggers.test(connectionId, { project_id: projectId });
       } catch (err: unknown) {
         throw new ToolboxOperationError(
           'connections',

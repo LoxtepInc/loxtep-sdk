@@ -143,7 +143,13 @@ describe('CLI integration mutations (mock platform API)', () => {
     it('triggers create', async () => {
       const out = captureCliOutput();
       await runTriggersCreate(
-        { name: 'Webhook In', type: 'webhook', key: 'webhook-in' },
+        {
+          name: 'Webhook In',
+          type: 'webhook',
+          key: 'webhook-in',
+          project_id: MOCK_IDS.project_id,
+          workflow_id: MOCK_IDS.workflow_id,
+        },
         opts()
       );
       expectCliSuccess(out, 'trigger-created-001');
@@ -152,7 +158,11 @@ describe('CLI integration mutations (mock platform API)', () => {
 
     it('triggers test', async () => {
       const out = captureCliOutput();
-      await runTriggersTest(MOCK_IDS.trigger_id, opts());
+      await runTriggersTest(MOCK_IDS.trigger_id, {
+        ...opts(),
+        project_id: MOCK_IDS.project_id,
+        workflow_id: MOCK_IDS.workflow_id,
+      });
       expectCliSuccess(out, 'success');
       out.restore();
     });

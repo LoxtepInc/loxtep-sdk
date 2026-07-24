@@ -216,6 +216,7 @@ async function deploySingleWorkflow(
   projectId: string,
   instanceId: string,
   compiled: CompiledWorkflow,
+  domainId: string,
 ): Promise<WorkflowDeployResult> {
   try {
     let workflowId = compiled.workflow_id;
@@ -225,6 +226,8 @@ async function deploySingleWorkflow(
       const created = await client.build.workflows.create({
         name: compiled.name,
         project_id: projectId,
+        workflow_type: 'ingestion',
+        domain_id: domainId,
       });
       workflowId = created.workflow_id;
     }
@@ -479,8 +482,24 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
     }
   } else {
     // For non-repo-bound projects: deploy each module individually
+    const domainId = normalized.domains[0]?.data.id;
+    if (!domainId) {
+      return {
+        exitCode: 1,
+        stdout: [],
+        stderr: [
+          'Deploy failed: no domain found for this project. Create a domain first (`loxtep domains create`).',
+        ],
+      };
+    }
     for (const { compiled } of compiledModules) {
-      const result = await deploySingleWorkflow(client, projectId, instanceId, compiled);
+      const result = await deploySingleWorkflow(
+        client,
+        projectId,
+        instanceId,
+        compiled,
+        domainId
+      );
       deployResults.push(result);
     }
 

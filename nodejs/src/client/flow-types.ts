@@ -76,6 +76,10 @@ export interface FlowCreateInput {
   project_id: string;
   name: string;
   description?: string;
+  /** Required by backend POST /workflows. */
+  workflow_type: 'ingestion' | 'enrichment' | 'delivery';
+  /** Required by backend POST /workflows (project domain). */
+  domain_id: string;
   connection_id?: string;
   template_id?: string;
   configuration?: Record<string, unknown>;
