@@ -41,6 +41,8 @@ import {
 } from './commands/workflows-cmd.js';
 import { runBundleSave } from './commands/bundle-cmd.js';
 import { runIngestProvision } from './commands/ingest-cmd.js';
+import { runLint } from './commands/lint-cmd.js';
+import { runConnectorsList } from './commands/connectors-cmd.js';
 import { runObserveStatus } from './commands/observe-cmd.js';
 import {
   runTriggersList,
@@ -159,9 +161,17 @@ async function main(): Promise<void> {
     case 'test':
       await runTest();
       break;
-    case 'deploy':
-      await runDeploy();
+    case 'deploy': {
+      const dryRun = args.includes('--dry-run');
+      await runDeploy({ dry_run: dryRun });
       break;
+    }
+    case 'lint': {
+      await runLint({
+        workflow_id: getArg('--workflow'),
+      });
+      break;
+    }
     case 'attach': {
       const { requireCliClient } = await import('./create-cli-client.js');
       const authResult = await requireCliClient();
@@ -412,13 +422,23 @@ async function main(): Promise<void> {
           workflow_name: getArg('--workflow-name'),
           project_id: getArg('--project-id'),
           instance_id: getArg('--instance-id'),
+          connector_id: getArg('--connector-id'),
           dry_run: args.includes('--dry-run'),
+          deploy: args.includes('--deploy'),
           no_deploy: args.includes('--no-deploy'),
         });
       } else {
         console.error(
-          'Usage: loxtep ingest provision [--name app-events] [--domain-id <id>] [--dry-run] [--no-deploy]'
+          'Usage: loxtep ingest provision [--name app-events] [--domain-id <id>] [--connector-id <id>] [--dry-run] [--deploy]'
         );
+        process.exitCode = 1;
+      }
+      break;
+    case 'connectors':
+      if (sub === 'list') {
+        await runConnectorsList({ type: getArg('--type') }, { debug: args.includes('--debug') });
+      } else {
+        console.error('Usage: loxtep connectors list [--type sdk]');
         process.exitCode = 1;
       }
       break;

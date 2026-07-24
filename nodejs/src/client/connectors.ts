@@ -53,8 +53,23 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
       if (filters?.organization_id) params.organization_id = filters.organization_id;
       if (filters?.connector_type) params.connector_type = filters.connector_type;
       const qs = buildQueryString(params);
-      const res = await http.get<ConnectorsListResponse>(`${CONNECTORS_BASE}${qs}`);
-      return { items: res.items, pagination: res.pagination };
+      const res = await http.get<
+        | ConnectorsListResponse
+        | {
+            success: true;
+            data: {
+              items: Connector[];
+              pagination: ConnectorsListResponse['pagination'];
+            };
+          }
+      >(`${CONNECTORS_BASE}${qs}`);
+      const nested = (res as { data?: { items?: Connector[]; pagination?: ConnectorsListResponse['pagination'] } })
+        .data;
+      if (nested?.items) {
+        return { items: nested.items, pagination: nested.pagination! };
+      }
+      const flat = res as ConnectorsListResponse;
+      return { items: flat.items ?? [], pagination: flat.pagination };
     },
 
     async get(connector_id: string): Promise<Connector> {

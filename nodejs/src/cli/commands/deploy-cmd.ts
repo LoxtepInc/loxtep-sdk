@@ -33,6 +33,7 @@ import type { DataWorkflowModule } from '../../authoring/types.js';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
 import type { NormalizedContext } from '../../codegen/types.js';
 import type { Instance } from '../../client/instances-types.js';
+import { formatLintResult, runLintCheck } from './lint-cmd.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -281,6 +282,8 @@ async function removeAbsentWorkflows(
 export interface DeployCommandOptions {
   /** Working directory (defaults to process.cwd()). */
   cwd?: string;
+  /** When true, run entity-package lint only (no compile/deploy). */
+  dry_run?: boolean;
   /** Mock fetch / config paths for integration tests. */
   cliOptions?: import('../create-cli-client.js').CreateCliClientOptions;
 }
@@ -305,6 +308,31 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
 
   const { projectDir, project } = precondition;
   const { project_id: projectId, instance_id: instanceId } = project;
+
+  // 1b. Entity-package lint preflight (same engine as `loxtep lint`)
+  const lint = runLintCheck({ cwd: projectDir });
+  if (!lint.ok) {
+    return {
+      exitCode: 1,
+      stdout: [],
+      stderr: [
+        'Deploy refused: local entity package failed lint.',
+        ...formatLintResult(lint),
+      ],
+    };
+  }
+
+  if (options.dry_run) {
+    const lintLines =
+      lint.files_checked > 0
+        ? formatLintResult(lint)
+        : ['Lint skipped (no local entity JSON package).'];
+    return {
+      exitCode: 0,
+      stdout: ['Deploy dry-run: lint only.', ...lintLines],
+      stderr: [],
+    };
+  }
 
   // 2. Get an authenticated client
   const clientResult = await requireCliClient(options.cliOptions);
@@ -566,8 +594,8 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
  * CLI entry point for `loxtep deploy`.
  * Prints output and sets process.exitCode from the structured result.
  */
-export async function runDeploy(): Promise<void> {
-  const result = await runDeployCommand();
+export async function runDeploy(params: { dry_run?: boolean } = {}): Promise<void> {
+  const result = await runDeployCommand({ dry_run: params.dry_run });
   for (const line of result.stdout) {
     console.log(line);
   }

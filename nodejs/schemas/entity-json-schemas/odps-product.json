@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/odps-product.json",
+  "title": "ODPS v4.1 Data Product Document",
+  "x-canonical-json-schema": "https://opendataproducts.org/v4.1/schema/odps.json",
+  "description": "Open Data Products Standard (ODPS) v4.1 root document (`product.*`). Authoritative JSON Schema: https://opendataproducts.org/v4.1/schema/odps.json . Loxtep platform types and mapping: platform-backend/_core/src/types/odps/ and .kiro/specs/odps-data-product-standard. Platform-specific fields live under `product.custom.loxtep` (medallion, storage, ingestion, organization_id, domain_id, project_id, workflow_id, etc.). For strict full-schema validation in toolchains that resolve remote $ref, compose with allOf + $ref to x-canonical-json-schema (requires network or bundled copy).",
+  "type": "object",
+  "required": ["product"],
+  "additionalProperties": false,
+  "properties": {
+    "product": {
+      "type": "object",
+      "required": ["details"],
+      "additionalProperties": true,
+      "properties": {
+        "details": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Localized product details; keys MUST be valid BCP-47 language tags (e.g. en, fr-CA). At least one locale required.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": true,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable product name for this locale"
+              },
+              "description": { "type": "string" },
+              "status": {
+                "type": "string",
+                "description": "Lifecycle status (e.g. draft, active, deprecated, archived)"
+              },
+              "tags": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "type": { "type": "string" },
+              "governanceProfile": {
+                "type": "string",
+                "description": "e.g. public, internal, confidential, restricted"
+              }
+            }
+          }
+        },
+        "dataHolder": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "businessDomain": {
+              "type": "string",
+              "description": "Business domain identifier (Loxtep: domain_id UUID)"
+            },
+            "dataProductOwner": {
+              "type": "string",
+              "description": "Owner identifier (Loxtep: user_id UUID)"
+            },
+            "email": { "type": "string" }
+          }
+        },
+        "dataAccess": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "outputPorts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "dataQuality": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "declarative": {
+              "type": "object",
+              "additionalProperties": { "type": "number" }
+            },
+            "executable": { "type": "object", "additionalProperties": true }
+          }
+        },
+        "SLA": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "declarative": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["dimension", "value"],
+                "additionalProperties": true,
+                "properties": {
+                  "dimension": { "type": "string" },
+                  "value": { "type": ["string", "number"] },
+                  "unit": { "type": "string" }
+                }
+              }
+            },
+            "executable": { "type": "object", "additionalProperties": true }
+          }
+        },
+        "contract": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "contractId": { "type": "string" },
+            "contractVersion": { "type": "string" },
+            "contractStatus": { "type": "string" }
+          }
+        },
+        "pricingPlans": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "license": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "name": { "type": "string" },
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "productStrategy": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "objectives": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "kpis": {
+              "type": "array",
+              "items": { "type": "object", "additionalProperties": true }
+            },
+            "strategicAlignment": { "type": "string" }
+          }
+        },
+        "custom": {
+          "type": "object",
+          "description": "Open extension; Loxtep uses `custom.loxtep` for platform fields.",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

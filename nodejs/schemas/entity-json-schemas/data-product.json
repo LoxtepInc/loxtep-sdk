@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/data-product.json",
+  "title": "Data Product Entity",
+  "description": "JSON Schema for Data Product entity in customer workspace (Studio / S3 graph). Flow-graph fields (workflow_id, upstream_entity_id, etc.) describe placement in the workflow canvas. The canonical interoperable catalog and API representation is ODPS v4.1 (Open Data Products Standard): include `odps_document` aligned with https://opendataproducts.org/v4.1/schema/odps.json — see `odps-product.json` and .kiro/specs/odps-data-product-standard in the Loxtep repo.",
+  "type": "object",
+  "required": [
+    "data_product_id",
+    "organization_id",
+    "workflow_id",
+    "name",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "data_product_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the data product"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this data product"
+    },
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reference to the workflow that produces this data product"
+    },
+    "domain_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Optional reference to the domain this data product belongs to"
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Reference to the upstream entity in the flow graph (last transformation, validation, or connection before this data product; source data product in an enrichment flow)"
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "connections",
+        "transformations",
+        "validations",
+        "data-products",
+        null
+      ],
+      "description": "Entity type of the upstream entity"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Data product name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 2000,
+      "description": "Data product description"
+    },
+    "owner": {
+      "type": "object",
+      "required": ["user_id"],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "User ID of the data product owner"
+        },
+        "team": {
+          "type": ["string", "null"],
+          "description": "Team name (optional)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "archived"],
+      "description": "Data product status"
+    },
+    "governance": {
+      "type": "object",
+      "required": ["classification"],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "pii_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "compliance_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GDPR", "CCPA", "HIPAA", "SOX", "PCI_DSS"]
+          },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "classification": "internal",
+        "pii_fields": [],
+        "compliance_requirements": [],
+        "tags": []
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the data product"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the data product"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the data product"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when data product was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when data product was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when data product was deleted (soft delete)"
+    },
+    "odps_document": {
+      "description": "Canonical ODPS v4.1 document (`{ product: ... }`). Preferred for platform catalog, governance, and ecosystem interoperability. Validated in the dataproducts API; Loxtep-specific fields under product.custom.loxtep.",
+      "allOf": [
+        { "$ref": "https://loxtep.io/schemas/entity/odps-product.json" }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -15,18 +15,47 @@ import type { ApiErrorBody, RateLimitErrorBody } from './types.js';
  * @param request_id - Optional request ID from headers
  * @returns Instance of the corresponding error class
  */
-function extractPlatformErrorMessage(body: Record<string, unknown>): string | undefined {
-  if (typeof body.message === 'string' && body.message.length > 0) {
-    return body.message;
-  }
-  const nested = body.error;
-  if (nested && typeof nested === 'object') {
-    const nestedRecord = nested as Record<string, unknown>;
-    if (typeof nestedRecord.message === 'string' && nestedRecord.message.length > 0) {
-      return nestedRecord.message;
+const GENERIC_ERROR_TITLES = new Set([
+  'validation error',
+  'validation failed',
+  'bad request',
+  'an unknown error occurred.',
+  'an error occurred',
+]);
+
+function isGenericErrorTitle(message: string): boolean {
+  return GENERIC_ERROR_TITLES.has(message.trim().toLowerCase());
+}
+
+/** Prefer a concrete string detail over a generic title like "Validation Error". */
+function preferConcreteMessage(
+  title: string | undefined,
+  detailCandidate: unknown
+): string | undefined {
+  if (typeof detailCandidate === 'string' && detailCandidate.trim().length > 0) {
+    if (!title || isGenericErrorTitle(title)) {
+      return detailCandidate.trim();
     }
   }
-  return undefined;
+  return title;
+}
+
+function extractPlatformErrorMessage(body: Record<string, unknown>): string | undefined {
+  const nested = body.error;
+  const nestedRecord =
+    nested && typeof nested === 'object' ? (nested as Record<string, unknown>) : undefined;
+
+  const title =
+    (typeof body.message === 'string' && body.message.length > 0 ? body.message : undefined) ??
+    (typeof nestedRecord?.message === 'string' && nestedRecord.message.length > 0
+      ? nestedRecord.message
+      : undefined);
+
+  const stringDetails =
+    (typeof body.details === 'string' ? body.details : undefined) ??
+    (typeof nestedRecord?.details === 'string' ? nestedRecord.details : undefined);
+
+  return preferConcreteMessage(title, stringDetails);
 }
 
 function extractPlatformErrorDetails(
@@ -35,11 +64,17 @@ function extractPlatformErrorDetails(
   if (body.details && typeof body.details === 'object') {
     return body.details as Record<string, unknown>;
   }
+  if (typeof body.details === 'string' && body.details.length > 0) {
+    return { message: body.details };
+  }
   const nested = body.error;
   if (nested && typeof nested === 'object') {
     const nestedDetails = (nested as Record<string, unknown>).details;
     if (nestedDetails && typeof nestedDetails === 'object') {
       return nestedDetails as Record<string, unknown>;
+    }
+    if (typeof nestedDetails === 'string' && nestedDetails.length > 0) {
+      return { message: nestedDetails };
     }
   }
   return undefined;

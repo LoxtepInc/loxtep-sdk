@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.24] - 2026-07-24
+
+### Added
+
+- **Vendored entity JSON schemas** under `schemas/entity-json-schemas/` with Ajv
+  `validateEntity()` for offline validation. Sync from platform with
+  `pnpm run sync:entity-schemas -- /path/to/loxtep`.
+- **`loxtep connectors list [--type sdk]`** — API-backed connector listing.
+- **`loxtep lint [--workflow <id>]`** — offline schema + relationship lint of the
+  local entity package.
+- **`loxtep deploy --dry-run`** — lint-only preflight (same engine as `loxtep lint`).
+
+### Changed
+
+- **`loxtep ingest provision`** is local-first: reuse/create an SDK connector via
+  API, write `connectors/` + `workflows/<id>/` JSON, validate, then stop. No
+  `save_workflow_bundle` / deploy by default. Pass `--deploy` to publish; use
+  `--connector-id` to force reuse; `--dry-run` validates without writing files.
+
+## [0.7.23] - 2026-07-24
+
+### Fixed
+
+- **`loxtep ingest provision`** now sends `metadata.instance_id` (and `project_id` /
+  `region` when known) when creating the SDK connector. Multi-instance orgs were
+  getting a opaque `ValidationError: Validation Error` because the platform
+  requires an explicit instance for SDK connectors.
+- **HTTP 400 parsing** prefers a string `error.details` over a generic title like
+  `"Validation Error"`, so CLI failures show the real platform reason.
+
 ## [0.7.22] - 2026-07-24
 
 ### Changed

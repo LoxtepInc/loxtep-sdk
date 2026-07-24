@@ -26,13 +26,18 @@ Workspace
                      Provision and register runtime instances
 
 Build & deploy
-  ingest provision [--name app-events] [--domain-id <id>] [--dry-run] [--no-deploy]
-                     SDK connector + workflow bundle + deploy (CLI-only path)
+  connectors list [--type sdk]
+                     List org connectors (reuse SDK connector before provision)
+  ingest provision [--name app-events] [--domain-id <id>] [--connector-id <id>]
+                     [--dry-run] [--deploy]
+                     Reuse/create SDK connector + write local workflow JSON package
+  lint [--workflow <id>]
+                     Validate local entity JSON (schemas + relationships)
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
                      Persist a workflow entity bundle JSON to the project workspace
   test <module> --event <file>
                      Run a workflow module locally (action trace)
-  deploy             Compile workflow modules and deploy to the attached instance
+  deploy [--dry-run] Compile workflow modules and deploy (lint preflight first)
   workflows list | get <id> | create … | deploy …
                      List, inspect, create, and deploy workflows (--project-id or config)
   triggers list | get <id> | create … | test <id>
@@ -70,7 +75,10 @@ Configuration
 Examples:
   pnpm exec loxtep login
   pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
+  pnpm exec loxtep connectors list --type sdk
   pnpm exec loxtep ingest provision --name app-events
+  pnpm exec loxtep lint
+  pnpm exec loxtep deploy --dry-run
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
   pnpm exec loxtep projects list

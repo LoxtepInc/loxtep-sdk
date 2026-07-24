@@ -61,7 +61,7 @@ describe('CLI local integration (mock platform API)', () => {
     await mkdir(loxtepDir, { recursive: true });
     await writeFile(
       join(loxtepDir, 'project.json'),
-      JSON.stringify({ project_id: 'project-test-001' }, null, 2),
+      JSON.stringify({ project_id: MOCK_IDS.project_id }, null, 2),
       'utf-8'
     );
 

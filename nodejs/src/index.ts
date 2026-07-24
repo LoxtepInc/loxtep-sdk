@@ -14,5 +14,17 @@ export * from './types/index.js';
 export * from './codegen/index.js';
 export * from './skills/index.js';
 export * from './authoring/index.js';
-export { buildSdkIngestBundle } from './lib/sdk-ingest-bundle.js';
-export type { SdkIngestBundleParams, SdkIngestBundleResult } from './lib/sdk-ingest-bundle.js';
+export { buildSdkIngestBundle, buildSdkIngestLocalPackage } from './lib/sdk-ingest-bundle.js';
+export type {
+  SdkIngestBundleParams,
+  SdkIngestBundleResult,
+  SdkIngestPackageParams,
+  SdkIngestPackageResult,
+} from './lib/sdk-ingest-bundle.js';
+export {
+  EntityType,
+  validateEntity,
+  validateEntityOrThrow,
+} from './lib/entity-json-schemas/index.js';
+export { lintLocalPackage, hasLocalEntityPackage } from './lib/workspace-lint.js';
+export type { LintIssue, LintResult } from './lib/workspace-lint.js';

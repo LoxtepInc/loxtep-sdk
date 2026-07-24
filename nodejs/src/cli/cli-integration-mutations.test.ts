@@ -12,6 +12,7 @@ import {
 import { runWorkflowsCreate, runWorkflowsDeploy } from './commands/workflows-cmd.js';
 import { runBundleSave } from './commands/bundle-cmd.js';
 import { runIngestProvision } from './commands/ingest-cmd.js';
+import { runConnectorsList } from './commands/connectors-cmd.js';
 import { runTriggersCreate, runTriggersTest } from './commands/triggers-cmd.js';
 import { runDataContractsCreate } from './commands/data-contracts-cmd.js';
 import {
@@ -74,7 +75,7 @@ describe('CLI integration mutations (mock platform API)', () => {
     it('workflows create', async () => {
       const out = captureCliOutput();
       await runWorkflowsCreate(
-        { name: 'New Flow', project_id: 'project-test-001' },
+        { name: 'New Flow', project_id: MOCK_IDS.project_id },
         opts()
       );
       expectCliSuccess(out, 'wf-created-001');
@@ -85,7 +86,7 @@ describe('CLI integration mutations (mock platform API)', () => {
       const out = captureCliOutput();
       await runWorkflowsDeploy(
         {
-          project_id: 'project-test-001',
+          project_id: MOCK_IDS.project_id,
           instance_id: MOCK_IDS.instance_id,
         },
         opts()
@@ -101,7 +102,7 @@ describe('CLI integration mutations (mock platform API)', () => {
       writeFileSync(
         bundlePath,
         JSON.stringify({
-          project_id: 'project-test-001',
+          project_id: MOCK_IDS.project_id,
           files: {
             'workflow.json': {
               workflow_id: 'wf-bundle-test',
@@ -116,19 +117,26 @@ describe('CLI integration mutations (mock platform API)', () => {
       out.restore();
     });
 
+    it('connectors list sdk', async () => {
+      const out = captureCliOutput();
+      await runConnectorsList({ type: 'sdk' }, opts());
+      expectCliSuccess(out, MOCK_IDS.connector_sdk_id, 'sdk');
+      out.restore();
+    });
+
     it('ingest provision dry run', async () => {
       const out = captureCliOutput();
       await runIngestProvision(
         {
           name: 'app-events',
           domain_id: MOCK_IDS.domain_id,
-          project_id: 'project-test-001',
+          project_id: MOCK_IDS.project_id,
+          instance_id: MOCK_IDS.instance_id,
           dry_run: true,
-          write_bundle_file: false,
         },
         opts()
       );
-      expectCliSuccess(out, 'connector-sdk-001');
+      expectCliSuccess(out, MOCK_IDS.connector_sdk_id);
       out.restore();
     });
 
@@ -208,7 +216,7 @@ describe('CLI integration mutations (mock platform API)', () => {
       await mkdir(join(projectDir, '.loxtep'), { recursive: true });
       await writeFile(
         join(projectDir, '.loxtep', 'project.json'),
-        JSON.stringify({ project_id: 'project-test-001' }, null, 2),
+        JSON.stringify({ project_id: MOCK_IDS.project_id }, null, 2),
         'utf-8'
       );
       await writeFile(

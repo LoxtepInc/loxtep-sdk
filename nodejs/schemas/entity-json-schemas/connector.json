@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/connector.json",
+  "title": "Connector Entity",
+  "description": "JSON Schema for Connector entity in customer workspace. Connectors define reusable integration templates (e.g., Shopify, Stripe, HubSpot).",
+  "type": "object",
+  "required": [
+    "connector_id",
+    "organization_id",
+    "connector_type",
+    "name",
+    "description",
+    "category",
+    "auth_type",
+    "version",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "connector_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the connector"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this connector definition"
+    },
+    "connector_type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9-_]+$",
+      "description": "Connector type identifier (e.g., 'shopify', 'stripe', 'hubspot')"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Display name for the connector"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Connector description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "e_commerce",
+        "crm",
+        "marketing",
+        "finance",
+        "database",
+        "file_storage",
+        "analytics",
+        "communication",
+        "productivity",
+        "custom"
+      ],
+      "description": "Connector category"
+    },
+    "icon_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "URL to connector icon"
+    },
+    "documentation_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "URL to connector documentation"
+    },
+    "auth_type": {
+      "type": "string",
+      "enum": ["oauth2", "api_key", "basic", "bearer", "custom", "none"],
+      "description": "Authentication type required for this connector"
+    },
+    "oauth_config": {
+      "type": ["object", "null"],
+      "description": "OAuth2 configuration (required if auth_type is oauth2)",
+      "properties": {
+        "authorization_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "token_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "response_type": {
+          "type": ["string", "null"]
+        },
+        "grant_type": {
+          "type": ["string", "null"]
+        },
+        "additional_params": {
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supported_directions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["inbound", "outbound", "bidirectional"]
+      },
+      "minItems": 1,
+      "description": "Data sync directions supported by this connector"
+    },
+    "supported_entities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0,
+      "description": "Entity types supported by this connector (e.g., ['orders', 'customers', 'products'])"
+    },
+    "supports_webhooks": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this connector supports webhook-based sync"
+    },
+    "supports_polling": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this connector supports polling-based sync"
+    },
+    "required_scopes": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      },
+      "description": "OAuth scopes required for this connector"
+    },
+    "required_permissions": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      },
+      "description": "Permissions required for this connector"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Connector version (semantic versioning)"
+    },
+    "is_beta": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this connector is in beta"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the connector"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connector was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connector was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when connector was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

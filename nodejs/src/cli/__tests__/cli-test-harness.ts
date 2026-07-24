@@ -53,7 +53,7 @@ export async function createCliTestHarness(
   const config = {
     api_url: MOCK_PLATFORM_API,
     organization_id: MOCK_IDS.organization_id,
-    project_id: 'project-test-001',
+    project_id: MOCK_IDS.project_id,
     instance_id: MOCK_IDS.instance_id,
     ...configOverrides,
   };
@@ -110,7 +110,7 @@ export async function createLocalProjectHarness(
   await mkdir(loxtepDir, { recursive: true });
 
   const projectConfig = {
-    project_id: 'project-test-001',
+    project_id: MOCK_IDS.project_id,
     organization_id: MOCK_IDS.organization_id,
     instance_id: MOCK_IDS.instance_id,
     api_url: MOCK_PLATFORM_API,

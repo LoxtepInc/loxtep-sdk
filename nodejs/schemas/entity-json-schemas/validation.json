@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/validation.json",
+  "title": "Validation Entity",
+  "description": "JSON Schema for Validation entity in customer workspace. Validations are rules that assert data quality and reject invalid events within a workflow flow. Each validation references its workflow via workflow_id and the upstream entity it applies to via upstream_entity_id.",
+  "type": "object",
+  "required": [
+    "validation_id",
+    "organization_id",
+    "project_id",
+    "workflow_id",
+    "name",
+    "validation_type",
+    "rules",
+    "severity",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "validation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the validation"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this validation"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this validation"
+    },
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow this validation belongs to"
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Reference to the upstream entity this validation applies to (connection, transformation, or data product)"
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "enum": ["connections", "transformations", "data-products", null],
+      "description": "Entity type of the upstream entity"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Validation name"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Validation description"
+    },
+    "validation_type": {
+      "type": "string",
+      "enum": [
+        "schema",
+        "business_rule",
+        "data_quality",
+        "pii_check",
+        "completeness",
+        "format"
+      ],
+      "description": "Type of validation"
+    },
+    "schema_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Org domain schema reference; deploy resolves latest active version into rules.schema when rules.schema is empty"
+    },
+    "schema_version_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Pinned org domain schema version; deploy resolves definition into rules.schema when rules.schema is empty"
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Validation rules (structure depends on validation_type). For validation_type schema, rules.schema holds the JSON Schema; rules.schema_id may reference org registry instead.",
+      "examples": [
+        {
+          "schema": {
+            "type": "object",
+            "description": "JSON Schema for validation"
+          }
+        },
+        {
+          "condition": "field > 100",
+          "message": "Field must be greater than 100"
+        },
+        {
+          "required_fields": ["email", "name"],
+          "completeness_threshold": 0.95
+        }
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["error", "warning", "info"],
+      "description": "Severity level when validation fails"
+    },
+    "error_message": {
+      "type": ["string", "null"],
+      "maxLength": 500,
+      "description": "Custom error message when validation fails"
+    },
+    "order": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Default execution order when used in workflows (lower = earlier)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the validation"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who created the validation"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User ID who last updated the validation"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when validation was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when validation was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when validation was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}
