@@ -36,14 +36,13 @@ pnpm exec loxtep attach --instance <instance-id>
 pnpm exec loxtep generate
 ```
 
-**SDK-first ingest** (provision a source data product + write events):
+**Create a data product and write from your app:**
 
 ```bash
-pnpm exec loxtep domains list
-node node_modules/@loxtep/sdk/docs/examples/generate-ingest-bundle.mjs
-# save_workflow_bundle via Loxtep MCP, then deploy + write — see:
-# nodejs/docs/sdk-first-ingest.md
+pnpm exec loxtep ingest provision --name app-events
 ```
+
+See [Write to a data product](./nodejs/docs/sdk-first-ingest.md).
 
 Explore what exists on the instance:
 

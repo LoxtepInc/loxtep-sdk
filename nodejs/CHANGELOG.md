@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.22] - 2026-07-24
+
+### Changed
+
+- **`sdk-first-ingest.md`** — rewritten for the developer mental model (workspace
+  → attach → create data product → `get_writer`); removed internal platform jargon.
+- **Docs / READMEs** — removed `node_modules/@loxtep/sdk/docs/examples/*.mjs` run
+  instructions and deleted the example scripts; write path is inline `get_writer` +
+  `write()` in application code only.
+- **CLI help** — `loxtep --help`, `ingest provision`, and `config init` no longer
+  point readers at `node_modules/.../docs` or example scripts.
+
 ## [0.7.21] - 2026-07-23
 
 ### Fixed

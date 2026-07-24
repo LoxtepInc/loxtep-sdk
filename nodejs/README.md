@@ -101,17 +101,15 @@ Run these in an **empty directory** you want to turn into a Loxtep workspace.
    Not in a scaffolded folder? Run `pnpm exec loxtep projects list` first, then
    `workflows list --project-id <uuid>`.
 
-6. **Provision your first source data product (SDK ingest)**
-
-   See **[SDK-first ingest](./docs/sdk-first-ingest.md)** — generate bundle,
-   save via MCP, deploy, then write:
+6. **Create a data product and write from your app**
 
    ```bash
-   pnpm exec loxtep domains list
-   node node_modules/@loxtep/sdk/docs/examples/generate-ingest-bundle.mjs
-   # … save_workflow_bundle (MCP) + workflows deploy …
-   node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
+   pnpm exec loxtep ingest provision --name app-events
+   pnpm exec loxtep data-products list
    ```
+
+   Then use `get_writer` in your application — see
+   **[Write to a data product](./docs/sdk-first-ingest.md)**.
 
 7. **Author code-first workflow modules** (optional, different path)
 
@@ -135,17 +133,15 @@ const { user, organization } = await client.session.get_current_user();
 console.log(user.email, organization?.name);
 ```
 
-### Write and read events (after SDK ingest deploy)
+### Write and read events
 
-`get_writer` / `get_reader` resolve queue, bot, and stream config from
-**deployment metadata**. Complete [SDK-first ingest](./docs/sdk-first-ingest.md)
-before streaming:
+After you create a data product on your attached instance:
 
 ```ts
 const client = await LoxtepClient.fromWorkspace();
 
 const writer = await client.get_writer('app-events');
-writer.write({ event_id: '1', payload: { hello: 'world' } });
+writer.write({ hello: 'world' });
 await writer.close();
 
 const reader = await client.get_reader('app-events');
@@ -154,6 +150,8 @@ for await (const event of reader) {
   break;
 }
 ```
+
+See [Write to a data product](./docs/sdk-first-ingest.md).
 
 ---
 
@@ -337,6 +335,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `init --create-repo [name]`                          | Scaffold + create a new GitHub repo (private default)              |
 | `init --from-repo <url>`                             | Scaffold + import from an existing repo                            |
 | `attach --instance <name-or-id>`                     | Bind project to a runtime instance                                 |
+| `ingest provision [--name]`                          | Create a data product on your instance (ready for `get_writer`)    |
 | `generate`                                           | Codegen typed workspace constants to `.loxtep/generated/index.ts`  |
 | `test <module> --event <file>`                       | Run a workflow module locally with sample event(s)                  |
 | `deploy`                                             | Compile modules, validate resources, deploy to workflow engine      |

@@ -134,8 +134,7 @@ export async function runIngestProvision(
 
   if (!params.no_deploy && instanceId) {
     console.error(`
-Next: write events with get_writer('${dataProductName}') or:
-  LOXTEP_DATA_PRODUCT_NAME=${dataProductName} node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
+Provisioned "${dataProductName}". Use get_writer('${dataProductName}') in your app (see docs/sdk-first-ingest.md).
 `);
   }
 }
