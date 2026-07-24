@@ -454,6 +454,6 @@ export async function runInit(): Promise<void> {
      From a data product: loxtep config export --from-data-product <uuid>
 
   Auth precedence: LOXTEP_AUTH_TOKEN env var → ./.loxtep/credentials.json (walk up from cwd) → ~/.loxtep/credentials.json.
-  Docs: package docs/sdk-pairing.md and docs/sdk-control-vs-data-plane.md (npm pack path: node_modules/@loxtep/sdk/docs/...).
+  Docs: github.com/LoxtepInc/loxtep-sdk/tree/main/nodejs/docs (sdk-pairing.md, getting-started.md, sdk-first-ingest.md).
 `);
 }

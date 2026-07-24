@@ -54,8 +54,8 @@ bus config from deployment metadata.
 ```typescript
 const writer = await client.get_writer('orders'); // deployed data product name
 
-writer.write({ id: 'evt-1', payload: { key: 'value' } });
-writer.write({ id: 'evt-2', payload: { key: 'value' } });
+writer.write({ order_id: 'ord-1', status: 'placed' });
+writer.write({ order_id: 'ord-2', status: 'shipped' });
 
 await writer.close(); // flushes all buffered events
 ```
@@ -65,8 +65,8 @@ await writer.close(); // flushes all buffered events
 ```python
 writer = await client.get_writer("my-data-product")
 
-writer.write({"id": "evt-1", "payload": {"key": "value"}})
-writer.write({"id": "evt-2", "payload": {"key": "value"}})
+writer.write({"order_id": "ord-1", "status": "placed"})
+writer.write({"order_id": "ord-2", "status": "shipped"})
 
 await writer.close()  # flushes all buffered events
 ```
@@ -189,14 +189,13 @@ pnpm exec loxtep attach --instance <instance-id>
 pnpm exec loxtep generate
 ```
 
-**SDK-first ingest** (after attach — see [SDK-first ingest](./sdk-first-ingest.md)):
+**Create a data product and write from your app** (after attach):
 
 ```bash
-pnpm exec loxtep domains list
-node node_modules/@loxtep/sdk/docs/examples/generate-ingest-bundle.mjs
-pnpm exec loxtep workflows deploy --project-id <id> --instance-id <id>
-node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
+pnpm exec loxtep ingest provision --name app-events
 ```
+
+See [Write to a data product](./sdk-first-ingest.md).
 
 Code-first workflow modules:
 

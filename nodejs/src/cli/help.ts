@@ -71,9 +71,6 @@ Examples:
   pnpm exec loxtep login
   pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
   pnpm exec loxtep ingest provision --name app-events
-  pnpm exec loxtep bundle save --dry-run
-  pnpm exec loxtep workflows deploy --project-id <id> --instance-id <id>
-  node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
   pnpm exec loxtep projects list

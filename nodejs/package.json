@@ -1,6 +1,6 @@
 {
   "name": "@loxtep/sdk",
-  "version": "0.7.21",
+  "version": "0.7.22",
   "description": "Loxtep SDK for Node.js — the Enterprise Context Layer: data products, workflows, projects, queues, and machine-usable context for AI",
   "author": "Loxtep <engineering@loxtep.io>",
   "homepage": "https://loxtep.io",

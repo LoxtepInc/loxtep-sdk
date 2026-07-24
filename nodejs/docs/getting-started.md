@@ -163,29 +163,17 @@ products, connectors, domains, queues, workflows). Re-run after platform changes
 
 ---
 
-## Step 6: Your first data product (SDK ingest)
+## Step 6: Create a data product and write from your app
 
-After `attach`, the usual greenfield goal is: **provision a source data product
-on your instance, then call `get_writer` from your app.**
-
-`get_writer` needs **deployment metadata** (queues and bots created at deploy
-time). Creating a catalog row alone is not enough.
-
-**Recommended:** follow **[SDK-first ingest](./sdk-first-ingest.md)** end to end.
-Short version:
+After `attach`, create a data product on that instance, then call `get_writer`
+from your application:
 
 ```bash
-pnpm exec loxtep domains list
-
-# One command: SDK connector + workflow bundle + deploy (no MCP)
 pnpm exec loxtep ingest provision --name app-events
-
 pnpm exec loxtep data-products list
-node node_modules/@loxtep/sdk/docs/examples/write-events.mjs
 ```
 
-Do **not** expect `pnpm exec loxtep data-products create` alone to enable
-streaming — it registers catalog metadata without runtime bindings.
+See **[Write to a data product](./sdk-first-ingest.md)** for the full flow and code sample.
 
 ---
 

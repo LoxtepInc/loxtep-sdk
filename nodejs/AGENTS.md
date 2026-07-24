@@ -170,7 +170,7 @@ metadata for live stream I/O (preferred over calling nested APIs directly).
 ```typescript
 // Resolve queue, bot_id, and stream config automatically from deployment metadata
 const writer = await client.get_writer('orders_raw');
-writer.write({ id: 'evt-1', payload: { sku: 'ABC', qty: 2 } });
+writer.write({ sku: 'ABC', qty: 2 });
 await writer.close();
 
 const reader = await client.get_reader('orders_raw');
