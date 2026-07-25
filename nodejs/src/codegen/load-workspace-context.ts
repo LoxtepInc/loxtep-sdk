@@ -15,13 +15,34 @@
 import type { LoxtepClient } from '../client/loxtep-client.js';
 import type { WorkspaceContext } from './types.js';
 
+/** Platform list endpoints cap `page_size` at 100; requesting more is a validation error. */
+const MAX_PAGE_SIZE = 100;
+
+/**
+ * Fetch every page from a `list()`-style API and return the flattened items.
+ * Stops once a page comes back shorter than `MAX_PAGE_SIZE` (i.e. the last page).
+ */
+async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<{ items: T[] }>
+): Promise<T[]> {
+  const all: T[] = [];
+  let page = 1;
+  for (;;) {
+    const { items } = await fetchPage(page);
+    all.push(...items);
+    if (items.length < MAX_PAGE_SIZE) break;
+    page += 1;
+  }
+  return all;
+}
+
 /**
  * Fetch all workspace resources from the control plane and assemble them into
  * a WorkspaceContext. The client must be configured with a valid project_id.
  *
- * All list calls use large page sizes to fetch the complete resource set.
- * Pagination is handled by fetching the maximum page size; projects with
- * extremely large resource counts may need future iteration.
+ * List calls are paginated at the platform's max page size (100) and looped
+ * until a short page is returned, so the full resource set is fetched
+ * regardless of how many pages it spans.
  *
  * @param client - An authenticated LoxtepClient instance
  * @param projectId - The project to scope the context to
@@ -35,20 +56,21 @@ export async function loadWorkspaceContext(
   // Fetch all resource types concurrently for performance.
   // Project-scoped resources (workflows) use projectId directly.
   // Org-scoped resources (data products, connectors, domains) fetch all available.
-  const [
-    dataProductsResult,
-    connectorsResult,
-    domainsResult,
-    workflowsResult,
-  ] = await Promise.all([
-    client.build.data_products.list({ page: 1, page_size: 1000 }),
-    client.connect.connectors.list({ page: 1, page_size: 1000 }),
-    client.define.domains.list({ page: 1, page_size: 1000 }),
-    client.build.workflows.list({ project_id: projectId, page: 1, page_size: 1000 }),
+  const [dataProductsItems, connectorsItems, domainsItems, workflowItems] = await Promise.all([
+    fetchAllPages(page =>
+      client.build.data_products.list({ page, page_size: MAX_PAGE_SIZE })
+    ),
+    fetchAllPages(page =>
+      client.connect.connectors.list({ page, page_size: MAX_PAGE_SIZE })
+    ),
+    fetchAllPages(page => client.define.domains.list({ page, page_size: MAX_PAGE_SIZE })),
+    fetchAllPages(page =>
+      client.build.workflows.list({ project_id: projectId, page, page_size: MAX_PAGE_SIZE })
+    ),
   ]);
   // `flows` and `workflows` are the same backend entity; the WorkspaceContext
   // keeps both collections for the generated artifact, sourced from one fetch.
-  const flowsResult = workflowsResult;
+  const flowItems = workflowItems;
 
   // Fetch queues from the observe endpoint (instance-level).
   // The observe.status() returns bot/queue info for the configured instance.
@@ -64,9 +86,7 @@ export async function loadWorkspaceContext(
   }
 
   // Map data products to workspace context shape
-  const dataProducts: WorkspaceContext['dataProducts'] = (
-    dataProductsResult?.items ?? []
-  ).map(dp => ({
+  const dataProducts: WorkspaceContext['dataProducts'] = dataProductsItems.map(dp => ({
     name: dp.name,
     id: dp.data_product_id,
     domain: dp.domain_id ?? null,
@@ -74,9 +94,7 @@ export async function loadWorkspaceContext(
   }));
 
   // Map connectors to workspace context shape
-  const connectors: WorkspaceContext['connectors'] = (
-    connectorsResult?.items ?? []
-  ).map(c => ({
+  const connectors: WorkspaceContext['connectors'] = connectorsItems.map(c => ({
     type: c.connector_type,
     id: c.connector_id,
     connection_id: null, // Connectors at org-level don't have a project connection_id
@@ -84,7 +102,6 @@ export async function loadWorkspaceContext(
   }));
 
   // Map domains to workspace context shape
-  const domainsItems = domainsResult?.items ?? [];
   const domains: WorkspaceContext['domains'] = domainsItems.map(d => ({
     name: d.name,
     id: d.domain_id,
@@ -94,14 +111,12 @@ export async function loadWorkspaceContext(
   }));
 
   // Map flows to workspace context shape
-  const flowItems = flowsResult?.items ?? [];
   const flows: WorkspaceContext['flows'] = flowItems.map(f => ({
     name: f.name,
     id: f.workflow_id,
   }));
 
   // Map workflows to workspace context shape
-  const workflowItems = workflowsResult?.items ?? [];
   const workflows: WorkspaceContext['workflows'] = workflowItems.map(w => ({
     name: w.name,
     id: w.workflow_id,

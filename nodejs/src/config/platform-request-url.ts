@@ -20,6 +20,29 @@ const MICROSERVICE_OVERRIDES: Readonly<Record<string, string>> = {
   'rate-limits': 'app',
 };
 
+/**
+ * Sibling resources that live directly under the `dataproducts` microservice root
+ * (`platform-backend/dataproducts/api/<name>/...`), as opposed to being nested one level
+ * deeper under the `dataproducts` *resource* itself (`platform-backend/dataproducts/api/dataproducts/...`,
+ * which is what the `/dataproducts/dataproducts/...` doubling in `buildPlatformRequestUrl` is for).
+ * A path like `/dataproducts/datacontracts` must NOT be doubled — the real route is
+ * `/dataproducts/datacontracts`, not `/dataproducts/dataproducts/datacontracts`.
+ */
+const DATAPRODUCTS_SIBLING_RESOURCES: ReadonlySet<string> = new Set([
+  'datacontracts',
+  'quality-metrics',
+  'quality-rules',
+  'templates',
+  'warehouse',
+  'alerts',
+  'lineage',
+  'exports',
+  'connector-packages',
+  'openmetadata',
+  'agents',
+  'ai',
+]);
+
 function getSearchMicroserviceFromEnv(): string {
   return process.env.LOXTEP_PLATFORM_SEARCH_MS?.trim() || 'graph';
 }
@@ -50,7 +73,10 @@ export function getGatewayMicroserviceId(path: string): string {
 /**
  * Build a full request URL for a shared control-plane host.
  * - `/ai/…`, `/graph/…`: `path` is already a full public path from the host root.
- * - `/dataproducts/…`: SDK paths are in-service; public routes are `…/dataproducts/dataproducts/…`.
+ * - `/dataproducts/…`: SDK paths for the `dataproducts` resource itself are in-service; public
+ *   routes are `…/dataproducts/dataproducts/…`. Sibling resources that live directly under the
+ *   `dataproducts` microservice root (`datacontracts`, `quality-metrics`, `templates`, `warehouse`,
+ *   …— see `DATAPRODUCTS_SIBLING_RESOURCES`) are NOT doubled: `…/dataproducts/datacontracts`.
  * - Most other services: in-service path starts with a microservice segment (e.g. `/workflows/projects`);
  *   public is `…/workflows/projects` (do **not** prepend the microservice again).
  * - One-segment paths (e.g. `/workflows`, `/search`, `/governance`) still need a prefix: `…/workflows/workflow`, `…/graph/search`, `…/governance/governance`.
@@ -74,6 +100,10 @@ export function buildPlatformRequestUrl(apiHost: string, path: string): string {
   const microservice = getGatewayMicroserviceId(p);
 
   if (first === 'dataproducts') {
+    const second = segments[1];
+    if (second && DATAPRODUCTS_SIBLING_RESOURCES.has(second)) {
+      return `${host}${p}${search}`;
+    }
     return `${host}/dataproducts/dataproducts${p.slice('/dataproducts'.length)}${search}`;
   }
 
