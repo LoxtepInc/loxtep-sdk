@@ -212,6 +212,42 @@ reader saw all 6, including the new one, with the correct payload. No data loss,
   re-run this pass (out of scope for a targeted regression retest) — no reason to expect
   regressions there.
 
+## Follow-up fix: `loxtep deploy` didn't activate SDK-first workflows (v0.7.28)
+
+Fixed in this branch: `deploy-cmd.ts` only ever looked for flat `.ts`/`.js` files under
+`workflows/` (the code-first-cli flow's shape). SDK-first packages
+(`ingest`/`transform`/`delivery create`, `push`) write `workflows/<id>/workflow.json`
+*directories* instead — invisible to that scan — so `deploy` printed `No workflow modules found
+in workflows/. Nothing to deploy.` even after a successful `provision`/`lint`/`push`. Added
+`deployLocalEntityWorkflows()`, which pushes (`save_workflow_bundle`) + reindexes + activates
+(`workflows.deploy`) any local JSON-entity packages when no `.ts`/`.js` modules are found —
+the same three-call sequence `loxtep ingest create --deploy` already used successfully. `loxtep
+deploy` alone now finishes the job for both flows; unit + integration tests added
+(`deploy-cmd.test.ts`, `cli-local-integration.test.ts`).
+
+**Live verification turned up two issues outside this repo's scope, not fixed here:**
+
+1. **Backend regression blocks confirming end-to-end materialization right now.**
+   `client.build.workflows.get(id)` 500s on *any* workflow_id on the dev environment
+   (`apidev.loxtep.io`) — including workflows that materialized successfully hours earlier in the
+   original test session — with a leaked raw SQL error: `Undefined binding(s) detected when
+   compiling FIRST. Undefined column(s): [workflow_id] query: select * from "workflows" where
+   "workflow_id" = ? and "deleted_at" is null limit ?`. This is the same *class* of bug as the
+   original report's #6 (leaked SQL), but on a different endpoint, and it reproduces identically
+   through the already-proven-working `ingest create --deploy` path — not something introduced by
+   this fix. With this endpoint down, deploy's activation call returns `{status: "requested",
+   message: "Project deployment requested"}` (async) but the data product never materializes
+   within ~1 minute of polling, for either the new `deploy` branch or the reference
+   `ingest --deploy` path. Root cause is backend-side; needs a platform-team fix, not an SDK
+   change. The write/read round-trip against the *previously*-materialized `app-events` data
+   product (from the original session) still works, confirming the core promise is unaffected.
+2. **New SDK bug found via the `triggers.create()` coverage check:** `client.build.triggers.create()`
+   (`nodejs/src/client/triggers.ts:128-158`) builds its PUT body without an `organization_id`
+   field, but the backend's connection entity schema requires one — every call 400s with
+   `Entity validation failed: must have required property 'organization_id'`, regardless of what
+   the caller passes (the method doesn't accept an `organization_id` param at all). Not fixed
+   here — flagged as a new, separate finding since it wasn't part of the approved fix scope.
+
 ## Fix verification (post-retest)
 
 All three new bugs (A, B, C) were fixed in this branch and re-verified live against dev with a

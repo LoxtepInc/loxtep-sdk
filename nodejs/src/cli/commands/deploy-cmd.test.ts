@@ -8,16 +8,22 @@
  * - Deploy target resolution by instance type (R14.4, R14.5)
  * - Resource validation logic
  * - Module discovery
+ * - SDK-first JSON-entity workflow package push+activate (deployLocalEntityWorkflows)
  */
 
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   discoverModuleFiles,
   resolveDeployTarget,
   validateReferencedResources,
+  deployLocalEntityWorkflows,
   type CompileError,
   type MissingRefError,
   type DeployTarget,
 } from './deploy-cmd.js';
+import { LoxtepClient } from '../../client/loxtep-client.js';
 import type { CompiledWorkflow } from '../../authoring/compiler.js';
 import type { NormalizedContext } from '../../codegen/types.js';
 import type { Instance } from '../../client/instances-types.js';
@@ -178,5 +184,148 @@ describe('discoverModuleFiles', () => {
   it('returns empty array when workflows/ does not exist', () => {
     const result = discoverModuleFiles('/tmp/nonexistent_project_' + Date.now());
     expect(result).toEqual([]);
+  });
+});
+
+// ─── deployLocalEntityWorkflows ──────────────────────────────────────────────
+
+describe('deployLocalEntityWorkflows', () => {
+  let projectDir: string;
+
+  beforeEach(() => {
+    projectDir = mkdtempSync(join(tmpdir(), 'deploy-cmd-json-entity-'));
+  });
+
+  afterEach(() => {
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  function writeLocalWorkflowPackage(workflowId: string): void {
+    const root = join(projectDir, 'workflows', workflowId);
+    mkdirSync(join(root, 'connections'), { recursive: true });
+    writeFileSync(
+      join(root, 'workflow.json'),
+      JSON.stringify({ workflow_id: workflowId, name: 'SDK Ingest', workflow_type: 'ingestion' })
+    );
+    writeFileSync(
+      join(root, 'connections', 'conn-1.json'),
+      JSON.stringify({ connection_id: 'conn-1', key: 'sdk-input', type: 'sdk' })
+    );
+  }
+
+  function makeClient(handlers: {
+    bundleOk?: (workflowId: string) => boolean;
+    reindexCalled: { count: number };
+    deployCalled: { count: number };
+  }): LoxtepClient {
+    return new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'test-token' },
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      fetch_fn: async (url: string | URL | Request, init?: RequestInit) => {
+        const u = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+
+        if (u.includes('/workflow-bundle')) {
+          const body = init?.body ? (JSON.parse(String(init.body)) as { files?: Record<string, unknown> }) : {};
+          const workflowJson = body.files?.['workflow.json'] as { workflow_id?: string } | undefined;
+          const ok = handlers.bundleOk ? handlers.bundleOk(workflowJson?.workflow_id ?? '') : true;
+          if (!ok) {
+            return new Response(
+              JSON.stringify({ success: false, error: { message: 'Bundle rejected' } }),
+              { status: 400, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          return new Response(
+            JSON.stringify({ success: true, data: { success: true, workflow_id: workflowJson?.workflow_id } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/reindex')) {
+          handlers.reindexCalled.count += 1;
+          return new Response(
+            JSON.stringify({ success: true, data: { project_id: 'proj-1', enqueued: true } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.endsWith('/deploy')) {
+          handlers.deployCalled.count += 1;
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: { deployment_id: 'deploy-001', status: 'in_progress' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+  }
+
+  it('returns empty pushed list and does not call reindex/deploy when no local workflows exist', async () => {
+    const reindexCalled = { count: 0 };
+    const deployCalled = { count: 0 };
+    const client = makeClient({ reindexCalled, deployCalled });
+
+    const result = await deployLocalEntityWorkflows(client, projectDir, 'proj-1', 'inst-1');
+
+    expect(result.pushed).toEqual([]);
+    expect(result.trackingHandle).toBeUndefined();
+    expect(reindexCalled.count).toBe(0);
+    expect(deployCalled.count).toBe(0);
+  });
+
+  it('pushes, reindexes once, and activates once for a local JSON-entity workflow package', async () => {
+    writeLocalWorkflowPackage('wf-json-1');
+    const reindexCalled = { count: 0 };
+    const deployCalled = { count: 0 };
+    const client = makeClient({ reindexCalled, deployCalled });
+
+    const result = await deployLocalEntityWorkflows(client, projectDir, 'proj-1', 'inst-1');
+
+    expect(result.pushed).toEqual([{ workflow_id: 'wf-json-1', ok: true }]);
+    expect(reindexCalled.count).toBe(1);
+    expect(deployCalled.count).toBe(1);
+    expect(result.trackingHandle).toEqual({ run_id: 'deploy-001', status: 'in_progress' });
+  });
+
+  it('reports per-workflow push failures and skips reindex/deploy when all fail', async () => {
+    writeLocalWorkflowPackage('wf-bad');
+    const reindexCalled = { count: 0 };
+    const deployCalled = { count: 0 };
+    const client = makeClient({ bundleOk: () => false, reindexCalled, deployCalled });
+
+    const result = await deployLocalEntityWorkflows(client, projectDir, 'proj-1', 'inst-1');
+
+    expect(result.pushed).toEqual([
+      { workflow_id: 'wf-bad', ok: false, error: expect.any(String) },
+    ]);
+    expect(reindexCalled.count).toBe(0);
+    expect(deployCalled.count).toBe(0);
+    expect(result.trackingHandle).toBeUndefined();
+  });
+
+  it('still reindexes and activates when at least one of multiple workflows pushes successfully', async () => {
+    writeLocalWorkflowPackage('wf-good');
+    writeLocalWorkflowPackage('wf-bad');
+    const reindexCalled = { count: 0 };
+    const deployCalled = { count: 0 };
+    const client = makeClient({
+      bundleOk: id => id === 'wf-good',
+      reindexCalled,
+      deployCalled,
+    });
+
+    const result = await deployLocalEntityWorkflows(client, projectDir, 'proj-1', 'inst-1');
+
+    expect(result.pushed).toEqual(
+      expect.arrayContaining([
+        { workflow_id: 'wf-good', ok: true },
+        { workflow_id: 'wf-bad', ok: false, error: expect.any(String) },
+      ])
+    );
+    expect(reindexCalled.count).toBe(1);
+    expect(deployCalled.count).toBe(1);
   });
 });
