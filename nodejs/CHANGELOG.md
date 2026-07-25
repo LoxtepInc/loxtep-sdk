@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.27] - 2026-07-24
+
+### Fixed
+
+- **Workspace context loads** paginate at the platform max page size (100)
+  instead of requesting `1000` in a single call, which exceeded the platform
+  ceiling and silently dropped results past the cap. Affects `loxtep generate`
+  and any client that resolves the full workspace context.
+- **`buildPlatformRequestUrl`** scopes the `/dataproducts` URL-doubling fix to
+  the `/dataproducts` resource itself, instead of rewriting every sibling path
+  that shares the prefix (e.g. `/dataproducts/<id>/tables`).
+- **Ajv loader** resolves the vendored schema validator relative to the
+  `validate-entity` module, not the process entry point, so `validateEntity()`
+  works under `pnpm`'s symlinked node layout.
+
 ## [0.7.26] - 2026-07-24
 
 ### Added
