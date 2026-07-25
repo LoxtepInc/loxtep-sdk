@@ -77,16 +77,23 @@ export function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
+/** Bold yellow — applied per-line so embedded ANSI codes never split a matched substring. */
+function boldYellow(line: string): string {
+  return `\x1b[1m\x1b[33m${line}\x1b[0m`;
+}
+
 export function formatUpdateAvailableMessage(
   currentVersion: string,
   latestVersion: string,
-  packageName: string = NPM_PACKAGE_NAME
+  packageName: string = NPM_PACKAGE_NAME,
+  useColor: boolean = Boolean(process.stderr.isTTY)
 ): string {
-  return [
-    `Update available: ${packageName}@${latestVersion} (current: ${currentVersion})`,
+  const lines = [
+    `⚠ Update available: ${packageName}@${latestVersion} (current: ${currentVersion})`,
     `  Upgrade: npm install -g ${packageName}@latest`,
     `  Or:      pnpm add -g ${packageName}@latest`,
-  ].join('\n');
+  ];
+  return (useColor ? lines.map(boldYellow) : lines).join('\n');
 }
 
 async function readCache(path: string): Promise<UpdateCheckCache | null> {
@@ -186,5 +193,27 @@ export async function notifyCliUpdateAvailable(
     }
   } catch {
     // Never fail the CLI because of an update check.
+  }
+}
+
+/**
+ * Module-level handle to the in-flight update check started by `startUpdateCheck()`, so any
+ * early-exit path elsewhere in the CLI (e.g. `requireCliClient`'s `process.exit(1)` when
+ * credentials are missing) can wait for it before terminating the process. A bare
+ * `process.exit()` skips pending promises and `finally` blocks up the call stack, so without
+ * this the notice would silently never print for any command that hits an early guard.
+ */
+let pendingUpdateCheck: Promise<void> | null = null;
+
+/** Kick off the update check and remember it so `waitForUpdateCheck()` can await it later. */
+export function startUpdateCheck(deps: UpdateNotifierDeps = {}): Promise<void> {
+  pendingUpdateCheck = notifyCliUpdateAvailable(deps);
+  return pendingUpdateCheck;
+}
+
+/** Await the in-flight update check (if one was started), so its notice has a chance to print. */
+export async function waitForUpdateCheck(): Promise<void> {
+  if (pendingUpdateCheck) {
+    await pendingUpdateCheck;
   }
 }

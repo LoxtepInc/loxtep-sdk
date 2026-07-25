@@ -10,6 +10,8 @@ import {
   formatUpdateAvailableMessage,
   isNewerVersion,
   shouldSkipUpdateCheck,
+  startUpdateCheck,
+  waitForUpdateCheck,
 } from './update-notifier.js';
 
 describe('update-notifier', () => {
@@ -160,6 +162,48 @@ describe('update-notifier', () => {
       const msg = formatUpdateAvailableMessage('0.7.26', '0.8.0');
       expect(msg).toContain('npm install -g @loxtep/sdk@latest');
       expect(msg).toContain('pnpm add -g @loxtep/sdk@latest');
+    });
+
+    it('is plain text when color is disabled (non-TTY)', () => {
+      const msg = formatUpdateAvailableMessage('0.7.26', '0.8.0', '@loxtep/sdk', false);
+      expect(msg).not.toContain('\x1b[');
+      expect(msg).toContain('Update available: @loxtep/sdk@0.8.0 (current: 0.7.26)');
+    });
+
+    it('wraps each line in bold yellow when color is enabled, without splitting matched substrings', () => {
+      const msg = formatUpdateAvailableMessage('0.7.26', '0.8.0', '@loxtep/sdk', true);
+      expect(msg).toContain('\x1b[1m\x1b[33m');
+      expect(msg).toContain('npm install -g @loxtep/sdk@latest');
+      expect(msg).toContain('pnpm add -g @loxtep/sdk@latest');
+    });
+  });
+
+  describe('startUpdateCheck / waitForUpdateCheck', () => {
+    // pendingUpdateCheck is module-level state — this case must run before any
+    // startUpdateCheck() call in this suite to genuinely exercise the "never started" path.
+    it('waitForUpdateCheck resolves immediately when no check was started yet', async () => {
+      await expect(waitForUpdateCheck()).resolves.toBeUndefined();
+    });
+
+    it('waitForUpdateCheck resolves once the check started by startUpdateCheck completes', async () => {
+      const cachePath = join(cacheDir, 'update-check.json');
+      const fetchFn = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ version: '9.9.9' }),
+      } as Response);
+      const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      await startUpdateCheck({
+        currentVersion: '0.7.26',
+        cachePath,
+        fetchFn,
+        env: {},
+      });
+      await waitForUpdateCheck();
+
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
     });
   });
 });
