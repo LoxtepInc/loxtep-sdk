@@ -77,7 +77,7 @@ import {
 import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
-import { notifyCliUpdateAvailable } from './update-notifier.js';
+import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -93,8 +93,11 @@ function printHelp(): void {
 }
 
 async function main(): Promise<void> {
-  // Kick off update check early; await in finally so network time overlaps work.
-  const updateCheck = notifyCliUpdateAvailable();
+  // Kick off update check early; await in finally so network time overlaps work. Stored in the
+  // update-notifier module so early-exit paths elsewhere (e.g. requireCliClient's
+  // process.exit(1) when not logged in) can wait for it too — a bare process.exit() skips this
+  // finally block entirely, which used to silently swallow the notice for any pre-auth command.
+  const updateCheck = startUpdateCheck();
 
   try {
     if (!command || command === '--help' || command === '-h') {

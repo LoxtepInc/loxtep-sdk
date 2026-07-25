@@ -12,6 +12,7 @@ import { decodeJwtPayload } from '../auth/jwt.js';
 import { LoxtepClient } from '../client/loxtep-client.js';
 import { LoxtepHttpClient } from '../http/client.js';
 import { resolveCliApiUrl } from './resolve-api-url.js';
+import { waitForUpdateCheck } from './update-notifier.js';
 
 export interface CreateCliClientOptions {
   configFilePath?: string;
@@ -293,6 +294,10 @@ export async function requireCliClient(options: CreateCliClientOptions = {}): Pr
     console.error(
       'Missing api_url or access token. Run: pnpm exec loxtep login'
     );
+    // Let the in-flight update check (if any) print its notice before the hard exit below —
+    // process.exit() skips pending promises and finally blocks up the call stack, so without
+    // this the notice would never print for any command run without valid credentials.
+    await waitForUpdateCheck();
     process.exit(1);
     return r as never;
   }

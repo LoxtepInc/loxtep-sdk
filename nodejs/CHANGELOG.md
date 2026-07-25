@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.29] - 2026-07-25
+
+### Fixed
+
+- **Update-available notice** is now styled (bold yellow, `⚠` marker) instead of
+  plain text, so it's harder to miss among other CLI output.
+- **Update-available notice now prints on every command**, not just ones that
+  succeed. `requireCliClient()`'s `process.exit(1)` (hit on any command run
+  without valid login) used to hard-kill the process before `main()`'s
+  `finally` block could await the pending update check, silently dropping the
+  notice. Added `startUpdateCheck()`/`waitForUpdateCheck()` so early-exit
+  paths can wait for it too.
+
 ## [0.7.28] - 2026-07-25
 
 ### Fixed
