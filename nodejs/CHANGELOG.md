@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.28] - 2026-07-25
+
+### Fixed
+
+- **`loxtep deploy`** now recognizes and activates local `workflows/<id>/workflow.json`
+  packages (the `ingest`/`transform`/`delivery create` output), not just flat
+  `.ts`/`.js` modules. Previously it printed `No workflow modules found in
+  workflows/. Nothing to deploy.` for SDK-first projects even after a
+  successful `provision`/`lint`/`push`, silently no-op'ing the documented
+  golden path (`provision → lint → deploy`). It now pushes
+  (`save_workflow_bundle`) + reindexes + activates (`workflows.deploy`) any
+  local JSON-entity packages when no `.ts`/`.js` modules are found — the same
+  sequence `loxtep ingest create --deploy` already used successfully.
+
 ## [0.7.27] - 2026-07-24
 
 ### Fixed
