@@ -14,6 +14,11 @@
  * 10. Compute removal set and remove absent workflows (R3.7)
  * 11. Surface async deploy status via `async_runs` tracking handle (R18.5)
  *
+ * If no flat `.ts`/`.js` modules are found in `workflows/` (steps 2–11 above), falls back to
+ * `deployLocalEntityWorkflows()`: pushes+activates any `workflows/<id>/workflow.json` JSON-entity
+ * packages instead (the SDK-first ingest/transform/delivery flow's output, which the `.ts`/`.js`
+ * discovery step doesn't see).
+ *
  * Requirements: 1.6, 1.8, 1.11, 3.4, 3.5, 3.6, 3.7, 14.4, 14.5, 17.11, 18.5
  */
 
@@ -34,6 +39,7 @@ import type { LoxtepClient } from '../../client/loxtep-client.js';
 import type { NormalizedContext } from '../../codegen/types.js';
 import type { Instance } from '../../client/instances-types.js';
 import { formatLintResult, runLintCheck } from './lint-cmd.js';
+import { listLocalWorkflowIds, collectFlatBundle } from './push-cmd.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -112,6 +118,72 @@ async function loadModuleFromFile(filePath: string): Promise<DataWorkflowModule 
   } catch {
     return null;
   }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SDK-first (JSON-entity) workflow packages
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Result of pushing+activating the local JSON-entity workflow packages. */
+export interface LocalEntityDeployResult {
+  pushed: Array<{ workflow_id: string; ok: boolean; error?: string }>;
+  trackingHandle?: DeployTrackingHandle;
+}
+
+/**
+ * Push and activate local `workflows/<id>/workflow.json` packages (the SDK-first ingest/
+ * transform/delivery flow's output — structurally invisible to `discoverModuleFiles`, which
+ * only looks for flat `.ts`/`.js` files). Reuses the same `save_workflow_bundle` → reindex →
+ * `workflows.deploy` sequence `loxtep ingest create --deploy` already uses successfully; this
+ * lets `loxtep deploy` alone finish the job after `ingest`/`transform`/`delivery create` (with
+ * or without an intervening `loxtep push`, since `save_workflow_bundle` is an idempotent upsert).
+ */
+export async function deployLocalEntityWorkflows(
+  client: LoxtepClient,
+  projectDir: string,
+  projectId: string,
+  instanceId: string
+): Promise<LocalEntityDeployResult> {
+  const workflowIds = listLocalWorkflowIds(projectDir);
+  const pushed: Array<{ workflow_id: string; ok: boolean; error?: string }> = [];
+
+  for (const workflowId of workflowIds) {
+    try {
+      const files = collectFlatBundle(projectDir, workflowId);
+      await client.build.workflows.save_workflow_bundle(projectId, {
+        files,
+        dry_run: false,
+      });
+      pushed.push({ workflow_id: workflowId, ok: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      pushed.push({ workflow_id: workflowId, ok: false, error: message });
+    }
+  }
+
+  if (!pushed.some(p => p.ok)) {
+    return { pushed };
+  }
+
+  try {
+    await client.workspace.projects.reindex(projectId);
+  } catch {
+    // Non-fatal: deploy activation below may still succeed once the index catches up.
+  }
+
+  let trackingHandle: DeployTrackingHandle | undefined;
+  try {
+    const result = await client.build.workflows.deploy({
+      project_id: projectId,
+      instance_id: instanceId,
+    });
+    trackingHandle = { run_id: result.deployment_id, status: result.status };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    trackingHandle = { run_id: 'unknown', status: `failed: ${message}` };
+  }
+
+  return { pushed, trackingHandle };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -359,11 +431,53 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   // 4. Discover and load all workflow modules from workflows/
   const moduleFiles = discoverModuleFiles(projectDir);
   if (moduleFiles.length === 0) {
-    return {
-      exitCode: 0,
-      stdout: ['No workflow modules found in workflows/. Nothing to deploy.'],
-      stderr: [],
-    };
+    // No flat .ts/.js modules (code-first-cli flow) — check for SDK-first JSON-entity
+    // workflow packages (workflows/<id>/workflow.json) before giving up.
+    const localWorkflowIds = listLocalWorkflowIds(projectDir);
+    if (localWorkflowIds.length === 0) {
+      return {
+        exitCode: 0,
+        stdout: ['No workflow modules found in workflows/. Nothing to deploy.'],
+        stderr: [],
+      };
+    }
+
+    const { pushed, trackingHandle } = await deployLocalEntityWorkflows(
+      client,
+      projectDir,
+      projectId,
+      instanceId
+    );
+    const failed = pushed.filter(p => !p.ok);
+    const succeeded = pushed.filter(p => p.ok);
+
+    const outputLines: string[] = [];
+    if (succeeded.length > 0) {
+      outputLines.push(`Pushed ${succeeded.length} local workflow package(s):`);
+      for (const p of succeeded) {
+        outputLines.push(`  ~ ${p.workflow_id}`);
+      }
+    }
+    if (trackingHandle) {
+      outputLines.push('');
+      outputLines.push(
+        `Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`
+      );
+      outputLines.push('Poll status with: loxtep workflows deploy --status <run_id>');
+    }
+
+    if (failed.length > 0) {
+      return {
+        exitCode: 1,
+        stdout: outputLines,
+        stderr: [
+          'Some local workflow packages failed to push (previous versions remain running):',
+          ...failed.map(p => `  ${p.workflow_id}: ${p.error}`),
+        ],
+      };
+    }
+
+    return { exitCode: 0, stdout: outputLines, stderr: [] };
   }
 
   // 5. Compile all modules (R1.11: collect compile errors with file:line)

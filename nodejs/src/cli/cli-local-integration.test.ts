@@ -2,8 +2,8 @@
  * CLI integration tests — local project lifecycle (init, attach, generate, deploy, test).
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { runInitCommand } from './commands/init-cmd.js';
 import { runAttach } from './commands/attach-cmd.js';
@@ -13,6 +13,7 @@ import { runTestCommand } from './commands/test-cmd.js';
 import { runLogout } from './commands/logout.js';
 import { runConfigExportFromDataProduct } from './commands/config-cmd.js';
 import { createCliClient } from './create-cli-client.js';
+import { buildSdkIngestLocalPackage } from '../lib/sdk-ingest-bundle.js';
 import {
   createLocalProjectHarness,
   writeMinimalWorkflowModule,
@@ -104,6 +105,42 @@ describe('CLI local integration (mock platform API)', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.join('\n')).toContain('Deploy target');
     expect(result.stdout.join('\n')).toMatch(/Created|Updated/);
+  });
+
+  it('deploy pushes and activates a local JSON-entity workflow package (SDK-first ingest flow)', async () => {
+    const pkg = buildSdkIngestLocalPackage({
+      organization_id: MOCK_IDS.organization_id,
+      project_id: MOCK_IDS.project_id,
+      domain_id: MOCK_IDS.domain_id,
+      connector_id: MOCK_IDS.connector_sdk_id,
+      data_product_name: 'app-events',
+      include_connector_file: false,
+    });
+    for (const [relPath, entity] of Object.entries(pkg.files)) {
+      const full = join(harness.projectDir, relPath);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, JSON.stringify(entity, null, 2));
+    }
+
+    const result = await runDeployCommand({
+      cwd: harness.projectDir,
+      cliOptions: harness.cliOptions,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.join('\n')).not.toContain('Nothing to deploy');
+    expect(result.stdout.join('\n')).toContain(pkg.workflow_id);
+    expect(result.stdout.join('\n')).toContain('Deployment tracking');
+  });
+
+  it('deploy reports nothing to do when workflows/ has neither modules nor JSON packages', async () => {
+    const result = await runDeployCommand({
+      cwd: harness.projectDir,
+      cliOptions: harness.cliOptions,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.join('\n')).toContain('No workflow modules found in workflows/. Nothing to deploy.');
   });
 
   it('test runs handler locally and prints trace', async () => {

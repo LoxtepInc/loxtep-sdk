@@ -38,7 +38,7 @@ It does **not** deploy by default. Validate with `loxtep lint`, then publish:
 
 ```bash
 pnpm exec loxtep deploy --dry-run   # lint only
-pnpm exec loxtep deploy             # lint + compile/deploy modules
+pnpm exec loxtep deploy             # lint, then push + activate the local package
 # or: pnpm exec loxtep ingest provision --name app-events --deploy
 ```
 

@@ -820,6 +820,15 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
+    if (method === 'POST' && routeMatch(pathname, /\/workflows\/projects\/[^/]+\/reindex$/)) {
+      return jsonResponse(
+        successEnvelope({
+          project_id: MOCK_IDS.project_id,
+          enqueued: true,
+        })
+      );
+    }
+
     if (method === 'POST' && routeMatch(pathname, /\/workflows\/projects\/[^/]+\/deploy$/)) {
       return jsonResponse(
         successEnvelope({

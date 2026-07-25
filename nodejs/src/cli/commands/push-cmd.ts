@@ -16,7 +16,12 @@ export interface PushCmdOptions {
   cwd?: string;
 }
 
-function listLocalWorkflowIds(projectDir: string): string[] {
+/**
+ * Find local workflow packages under `workflows/<id>/` (SDK-first entity-JSON layout, as
+ * written by `ingest`/`transform`/`delivery create`) — as opposed to the code-first-cli
+ * flow's flat `.ts`/`.js` module files, which `deploy-cmd.ts` discovers separately.
+ */
+export function listLocalWorkflowIds(projectDir: string): string[] {
   const workflowsRoot = join(projectDir, 'workflows');
   if (!existsSync(workflowsRoot)) return [];
   return readdirSync(workflowsRoot, { withFileTypes: true })
@@ -25,7 +30,7 @@ function listLocalWorkflowIds(projectDir: string): string[] {
     .filter(id => existsSync(join(workflowsRoot, id, 'workflow.json')));
 }
 
-function collectFlatBundle(
+export function collectFlatBundle(
   projectDir: string,
   workflowId: string
 ): Record<string, Record<string, unknown>> {
