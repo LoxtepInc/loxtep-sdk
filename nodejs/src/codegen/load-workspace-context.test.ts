@@ -369,6 +369,81 @@ describe('loadWorkspaceContext', () => {
     expect(ctx.queues[2]).toEqual({ name: 'q3', id: 'q3' });
   });
 
+  it('never requests a page_size above the platform max (100) and paginates across multiple pages', async () => {
+    const requestedPageSizes: number[] = [];
+    const totalDataProducts = 105; // forces a second page at page_size=100
+
+    const client = new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'test-token' },
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      fetch_fn: async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+        const parsed = new URL(u);
+        const page = Number(parsed.searchParams.get('page') ?? '1');
+        const pageSize = Number(parsed.searchParams.get('page_size') ?? '0');
+
+        if (u.includes('/dataproducts') && !u.includes('/query') && !u.includes('/tables')) {
+          requestedPageSizes.push(pageSize);
+          const start = (page - 1) * pageSize;
+          const items = Array.from(
+            { length: Math.max(0, Math.min(pageSize, totalDataProducts - start)) },
+            (_, i) => ({
+              data_product_id: `dp-${start + i}`,
+              name: `dp-${start + i}`,
+              organization_id: 'org-1',
+              kind: 'source',
+              description: '',
+              status: 'active',
+              owner: { user_id: 'u-1' },
+              created_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            })
+          );
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                items,
+                pagination: { page, page_size: pageSize, total: totalDataProducts, total_pages: 2, has_next: start + items.length < totalDataProducts, has_prev: page > 1 },
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/connectors/connectors')) {
+          return new Response(
+            JSON.stringify({ success: true, items: [], pagination: { page: 1, page_size: pageSize, total: 0, total_pages: 1, has_next: false, has_prev: false } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/organizations/domains')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { items: [], pagination: { page: 1, page_size: pageSize, total: 0, total_pages: 1, has_next: false, has_prev: false } } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/workflows/workflows')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { items: [], pagination: { page: 1, page_size: pageSize, total: 0, total_pages: 1 } } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/observe/bots')) {
+          return new Response(JSON.stringify({ success: true, data: { queues: [] } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+
+    const ctx = await loadWorkspaceContext(client, 'proj-1');
+
+    expect(ctx.dataProducts).toHaveLength(totalDataProducts);
+    expect(requestedPageSizes.every(size => size <= 100)).toBe(true);
+    expect(requestedPageSizes).toEqual([100, 100]); // page 1 (100 items) + page 2 (5 items)
+  });
+
   it('conforms to the WorkspaceContext interface shape', async () => {
     const client = createMockClient({
       dataProducts: [{ data_product_id: 'dp-1', name: 'test', schema: { type: 'object', properties: { id: { type: 'string' } } } }],

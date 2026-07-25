@@ -289,8 +289,8 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
-    if (method === 'GET' && pathname.startsWith('/dataproducts/dataproducts/datacontracts')) {
-      const detail = routeMatch(pathname, /\/dataproducts\/dataproducts\/datacontracts\/([^/?]+)$/);
+    if (method === 'GET' && pathname.startsWith('/dataproducts/datacontracts')) {
+      const detail = routeMatch(pathname, /\/dataproducts\/datacontracts\/([^/?]+)$/);
       if (detail) {
         return jsonResponse(
           successEnvelope({
@@ -672,8 +672,8 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
-    if (method === 'GET' && pathname.startsWith('/dataproducts/dataproducts/templates')) {
-      const detail = routeMatch(pathname, /\/dataproducts\/dataproducts\/templates\/([^/?]+)$/);
+    if (method === 'GET' && pathname.startsWith('/dataproducts/templates')) {
+      const detail = routeMatch(pathname, /\/dataproducts\/templates\/([^/?]+)$/);
       if (detail) {
         return jsonResponse(
           successEnvelope({
@@ -730,7 +730,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       );
     }
 
-    if (method === 'POST' && pathname === '/dataproducts/dataproducts/datacontracts') {
+    if (method === 'POST' && pathname === '/dataproducts/datacontracts') {
       let body: Record<string, unknown> = {};
       try {
         body = init?.body ? JSON.parse(String(init.body)) : {};

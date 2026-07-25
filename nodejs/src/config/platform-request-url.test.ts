@@ -16,6 +16,33 @@ describe('buildPlatformRequestUrl', () => {
     );
   });
 
+  it('doubles dataproducts for the dataproducts resource itself (id, usage-map)', () => {
+    expect(buildPlatformRequestUrl(host, '/dataproducts/11111111-1111-1111-1111-111111111111')).toBe(
+      'https://apidev.example.com/dataproducts/dataproducts/11111111-1111-1111-1111-111111111111'
+    );
+    expect(buildPlatformRequestUrl(host, '/dataproducts/usage-map')).toBe(
+      'https://apidev.example.com/dataproducts/dataproducts/usage-map'
+    );
+  });
+
+  it('does not double dataproducts for sibling resources under the dataproducts microservice', () => {
+    expect(buildPlatformRequestUrl(host, '/dataproducts/datacontracts')).toBe(
+      'https://apidev.example.com/dataproducts/datacontracts'
+    );
+    expect(buildPlatformRequestUrl(host, '/dataproducts/quality-metrics')).toBe(
+      'https://apidev.example.com/dataproducts/quality-metrics'
+    );
+    expect(buildPlatformRequestUrl(host, '/dataproducts/templates')).toBe(
+      'https://apidev.example.com/dataproducts/templates'
+    );
+    expect(buildPlatformRequestUrl(host, '/dataproducts/warehouse/tables')).toBe(
+      'https://apidev.example.com/dataproducts/warehouse/tables'
+    );
+    expect(buildPlatformRequestUrl(host, '/dataproducts/warehouse/execute')).toBe(
+      'https://apidev.example.com/dataproducts/warehouse/execute'
+    );
+  });
+
   it('does not double-prefix when the path already has the microservice and more segments', () => {
     expect(buildPlatformRequestUrl(host, '/workflows/projects')).toBe(
       'https://apidev.example.com/workflows/projects'

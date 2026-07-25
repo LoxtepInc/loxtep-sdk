@@ -2,13 +2,20 @@
  * Offline entity validation against vendored JSON Schemas (Ajv).
  * Schemas live in `nodejs/schemas/entity-json-schemas/` (shipped with the npm package).
  *
- * Ajv is loaded via `ajv-loader.cjs` so Jest (CJS) does not need `import.meta` or ESM ajv.
+ * Ajv is loaded via `ajv-loader.cjs`, required by *relative path* below (not located by
+ * searching `process.argv`/`process.cwd()`). A relative `require`/`import` always resolves
+ * against this file's own location, so it finds the right sibling `ajv-loader.cjs` (in `src/`
+ * under Jest, in `dist/` when published) and — critically — `ajv-loader.cjs`'s own
+ * `require('ajv')` then resolves through `@loxtep/sdk`'s own `node_modules`, regardless of
+ * the caller's cwd/entry point or package manager (this used to break under pnpm's strict
+ * `node_modules` when the SDK was imported as a library rather than run as the CLI).
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { EntityType, ENTITY_SCHEMA_FILES } from './types.js';
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- CJS interop, see comment above.
+import ajvLoader = require('./ajv-loader.cjs');
 
 type AjvErrorObject = {
   instancePath?: string;
@@ -33,50 +40,11 @@ type AjvConstructor = new (opts?: {
   validateFormats?: boolean;
 }) => AjvInstance;
 
-function findPackageRootCandidates(): string[] {
-  const roots: string[] = [process.cwd()];
-  const entry = process.argv[1];
-  if (entry) {
-    let dir = dirname(entry);
-    for (let i = 0; i < 8; i++) {
-      roots.push(dir);
-      const parent = dirname(dir);
-      if (parent === dir) break;
-      dir = parent;
-    }
-  }
-  return roots;
-}
-
-function loadAjv(): { Ajv: AjvConstructor; addFormats: (ajv: AjvInstance) => void } {
-  for (const root of findPackageRootCandidates()) {
-    for (const rel of [
-      'src/lib/entity-json-schemas/ajv-loader.cjs',
-      'dist/lib/entity-json-schemas/ajv-loader.cjs',
-    ]) {
-      const loaderPath = join(root, rel);
-      if (!existsSync(loaderPath)) continue;
-      const req = createRequire(loaderPath);
-      return req(loaderPath) as {
-        Ajv: AjvConstructor;
-        addFormats: (ajv: AjvInstance) => void;
-      };
-    }
-  }
-
-  // Last resort: resolve ajv from cwd package.json (dev / monorepo).
-  const req = createRequire(join(process.cwd(), 'package.json'));
-  const ajvMod = req('ajv') as { Ajv?: AjvConstructor; default?: AjvConstructor } & AjvConstructor;
-  const formatsMod = req('ajv-formats') as
-    | ((ajv: AjvInstance) => void)
-    | { default: (ajv: AjvInstance) => void };
-  return {
-    Ajv: ajvMod.Ajv ?? ajvMod.default ?? ajvMod,
-    addFormats: typeof formatsMod === 'function' ? formatsMod : formatsMod.default,
-  };
-}
-
-const { Ajv: AjvCtor, addFormats } = loadAjv();
+const { Ajv: AjvCtor, addFormats, packageRoot } = ajvLoader as {
+  Ajv: AjvConstructor;
+  addFormats: (ajv: AjvInstance) => void;
+  packageRoot: string;
+};
 
 export interface EntityValidationError {
   path: string;
@@ -93,19 +61,11 @@ let ajvInstance: AjvInstance | null = null;
 const validatorCache = new Map<EntityType, ValidateFunction>();
 
 function resolveSchemasDir(): string {
-  const candidates = findPackageRootCandidates().map(root =>
-    join(root, 'schemas', 'entity-json-schemas')
-  );
-  candidates.push(join(process.cwd(), 'nodejs', 'schemas', 'entity-json-schemas'));
-
-  for (const dir of candidates) {
-    if (existsSync(join(dir, 'workflow.json'))) {
-      return dir;
-    }
+  const dir = join(packageRoot, 'schemas', 'entity-json-schemas');
+  if (existsSync(join(dir, 'workflow.json'))) {
+    return dir;
   }
-  throw new Error(
-    `Entity JSON schemas not found. Expected schemas/entity-json-schemas (tried: ${candidates.join(', ')})`
-  );
+  throw new Error(`Entity JSON schemas not found. Expected ${dir}`);
 }
 
 function getAjv(): AjvInstance {
