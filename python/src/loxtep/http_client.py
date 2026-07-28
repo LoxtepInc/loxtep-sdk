@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional
 import httpx
 
 from .errors import parse_http_error
+from .gateway_url import build_platform_request_url
 
 MAX_RETRIES = 2
 INITIAL_BACKOFF = 1.0
@@ -41,10 +42,12 @@ class LoxtepHttpClient:
         get_token: Optional[Callable[[], str]] = None,
         *,
         timeout: float = 30.0,
+        use_platform_path_resolution: bool = True,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._get_token = get_token
         self._timeout = timeout
+        self._use_platform_path_resolution = use_platform_path_resolution
         self._last_rate_limit: Optional[RateLimitInfo] = None
         self._client = httpx.Client(timeout=timeout)
 
@@ -82,6 +85,13 @@ class LoxtepHttpClient:
                 retry_after_seconds=retry_seconds,
             )
 
+    def _build_url(self, path: str) -> str:
+        if path.startswith("http"):
+            return path
+        if self._use_platform_path_resolution:
+            return build_platform_request_url(self._base_url, path)
+        return f"{self._base_url}{path}" if path.startswith("/") else f"{self._base_url}/{path}"
+
     def _request(
         self,
         method: str,
@@ -89,7 +99,7 @@ class LoxtepHttpClient:
         body: Optional[dict[str, Any]] = None,
         retry_count: int = 0,
     ) -> Any:
-        url = f"{self._base_url}{path}" if path.startswith("/") else f"{self._base_url}/{path}"
+        url = self._build_url(path)
         resp = self._client.request(
             method,
             url,
@@ -137,10 +147,12 @@ class AsyncLoxtepHttpClient:
         get_token: Optional[Callable[[], Any]] = None,
         *,
         timeout: float = 30.0,
+        use_platform_path_resolution: bool = True,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._get_token = get_token
         self._timeout = timeout
+        self._use_platform_path_resolution = use_platform_path_resolution
         self._last_rate_limit: Optional[RateLimitInfo] = None
         self._client = httpx.AsyncClient(timeout=timeout)
 
@@ -179,6 +191,13 @@ class AsyncLoxtepHttpClient:
                 retry_after_seconds=retry_seconds,
             )
 
+    def _build_url(self, path: str) -> str:
+        if path.startswith("http"):
+            return path
+        if self._use_platform_path_resolution:
+            return build_platform_request_url(self._base_url, path)
+        return f"{self._base_url}{path}" if path.startswith("/") else f"{self._base_url}/{path}"
+
     async def _request(
         self,
         method: str,
@@ -186,7 +205,7 @@ class AsyncLoxtepHttpClient:
         body: Optional[dict[str, Any]] = None,
         retry_count: int = 0,
     ) -> Any:
-        url = f"{self._base_url}{path}" if path.startswith("/") else f"{self._base_url}/{path}"
+        url = self._build_url(path)
         resp = await self._client.request(
             method,
             url,

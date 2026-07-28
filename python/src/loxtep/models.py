@@ -75,44 +75,69 @@ class UsageMap(BaseModel):
 # Delivery Interface
 # ---------------------------------------------------------------------------
 
-TargetType = Literal[
-    "webhook",
-    "api_endpoint",
-    "export",
-    "database_sync",
-    "bi_connect",
-    "event_stream",
-]
-"""Discriminator for the delivery pattern used by a target."""
+# NOTE: `TargetType`/the old `consumptions`-backed `Target` shape were removed. The
+# `/dataproducts/{id}/consumptions` architecture they described no longer exists on the
+# backend — targets (and triggers) are now workflow "connection" entities under the
+# project entities API (`/workflows/projects/{project_id}/entities`), matching the
+# Node SDK's `Trigger`/`Target` interfaces (see nodejs/src/client/trigger-types.ts,
+# target-types.ts). Kept as pydantic models here (rather than plain dicts, unlike Node)
+# for consistency with the rest of this SDK's typed surface.
+
+
+class Trigger(BaseModel):
+    """An ingest-side source binding (workflow connection node).
+
+    Backend: project entities API (`/workflows/projects/{project_id}/entities`).
+    ("connections" is the backend term; the SDK surface names these `triggers`.)
+    """
+
+    connection_id: str = Field(..., description="Unique identifier for the trigger")
+    organization_id: Optional[str] = Field(default=None, description="Owning organization")
+    project_id: Optional[str] = Field(default=None, description="Project the connection belongs to")
+    workflow_id: Optional[str] = Field(default=None, description="Workflow the connection node belongs to")
+    key: str = Field(..., description="Connection key")
+    name: str = Field(..., description="Human-readable name")
+    type: str = Field(..., description="Connection type (database, api, webhook, file)")
+    status: str = Field(default="active", description="Current status (active, inactive, error)")
+    data: str = Field(default="{}", description="Opaque connection data payload")
+    configuration: dict[str, Any] = Field(default_factory=dict, description="Type-specific configuration")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    verified: bool = Field(default=False, description="Whether connectivity has been verified")
+    draft: bool = Field(default=True, description="Whether this connection is still a draft")
+    last_tested: Optional[str] = Field(default=None, description="ISO timestamp of last connectivity test")
+    created_by: Optional[str] = Field(default=None)
+    updated_by: Optional[str] = Field(default=None)
+    created_at: str = Field(default="", description="ISO timestamp of creation")
+    updated_at: str = Field(default="", description="ISO timestamp of last update")
+    deleted_at: Optional[str] = Field(default=None)
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
 
 
 class Target(BaseModel):
-    """A target record (delivery sink binding, stored in the `consumptions` table).
+    """A delivery-side connector binding (workflow connection node at the tail of a
+    delivery workflow). Parallel to `Trigger` (ingest-head connections).
 
-    A target defines how a data product makes its data available to external
-    systems. Backed by the "consumption" record — the database table retains
-    the old name for migration safety.
+    Backend: project entities (`/workflows/projects/{project_id}/entities/.../connections`).
+    Does NOT call `/dataproducts/{id}/consumptions` (that architecture was removed).
     """
 
-    consumption_id: str = Field(..., description="Unique identifier for the target")
-    data_product_id: str = Field(..., description="The data product this target belongs to")
-    organization_id: str = Field(..., description="Owning organization")
-    target_type: TargetType = Field(
-        ...,
-        alias="delivery_type",
-        description="The delivery pattern: webhook, api_endpoint, export, database_sync, bi_connect, event_stream",
-    )
-    delivery_method: str = Field(default="", description="Delivery method identifier")
-    status: str = Field(default="active", description="Current status (active, paused, failed, etc.)")
-    is_active: bool = Field(default=True, description="Whether this delivery interface is currently active")
-    endpoint_url: Optional[str] = Field(default=None, description="Target endpoint URL (for webhook/api_endpoint)")
-    method: str = Field(default="POST", description="HTTP method (default POST)")
-    name: Optional[str] = Field(default=None, description="Human-readable name")
-    description: Optional[str] = Field(default=None, description="Description of this delivery interface")
-    headers: dict[str, Any] = Field(default_factory=dict, description="Custom HTTP headers")
-    filters: dict[str, Any] = Field(default_factory=dict, description="Event/data filters")
-    configuration: dict[str, Any] = Field(default_factory=dict, description="Pattern-specific configuration")
+    connection_id: str = Field(..., description="Unique identifier for the target")
+    organization_id: Optional[str] = Field(default=None, description="Owning organization")
+    project_id: Optional[str] = Field(default=None, description="Project the connection belongs to")
+    workflow_id: Optional[str] = Field(default=None, description="Workflow the connection node belongs to")
+    connector_id: Optional[str] = Field(default=None, description="Bound connector id")
+    connector_type: Optional[str] = Field(default=None, description="Bound connector type")
+    key: str = Field(..., description="Connection key")
+    name: str = Field(..., description="Human-readable name")
+    type: str = Field(..., description="Connection type")
+    status: str = Field(default="active", description="Current status (active, inactive, error)")
+    direction: str = Field(default="outbound", description="Delivery direction (targets are outbound)")
+    data: str = Field(default="{}", description="Opaque connection data payload")
+    configuration: dict[str, Any] = Field(default_factory=dict, description="Type-specific configuration")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    verified: bool = Field(default=False, description="Whether connectivity has been verified")
+    draft: bool = Field(default=True, description="Whether this connection is still a draft")
     created_at: str = Field(default="", description="ISO timestamp of creation")
     updated_at: str = Field(default="", description="ISO timestamp of last update")
 

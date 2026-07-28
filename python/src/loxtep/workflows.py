@@ -8,13 +8,16 @@ The former ``flows`` namespace has been folded in here (same backend entity).
 should use ``data_products.get_writer``.
 """
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from urllib.parse import quote
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 
 WORKFLOWS_BASE = "/workflows/workflows"
 PROJECTS_BASE = "/workflows/projects"
+
+WorkflowType = Literal["ingestion", "enrichment", "delivery"]
+"""Required by backend POST /workflows (nodejs/src/client/flow-types.ts FlowCreateInput)."""
 
 
 def _query_string(params: dict[str, Any]) -> str:
@@ -75,11 +78,23 @@ class WorkflowsApi:
         name: str,
         project_id: str,
         *,
+        workflow_type: WorkflowType,
+        domain_id: str,
+        connection_id: Optional[str] = None,
         template_id: Optional[str] = None,
         description: Optional[str] = None,
         configuration: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        body: dict[str, Any] = {"name": name, "project_id": project_id}
+        """Create a workflow. `workflow_type` and `domain_id` are required by the
+        backend (`POST /workflows`) — omitting them 500s with a raw DB error."""
+        body: dict[str, Any] = {
+            "name": name,
+            "project_id": project_id,
+            "workflow_type": workflow_type,
+            "domain_id": domain_id,
+        }
+        if connection_id is not None:
+            body["connection_id"] = connection_id
         if template_id is not None:
             body["template_id"] = template_id
         if description is not None:
@@ -193,11 +208,23 @@ class AsyncWorkflowsApi:
         name: str,
         project_id: str,
         *,
+        workflow_type: WorkflowType,
+        domain_id: str,
+        connection_id: Optional[str] = None,
         template_id: Optional[str] = None,
         description: Optional[str] = None,
         configuration: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        body: dict[str, Any] = {"name": name, "project_id": project_id}
+        """Create a workflow. `workflow_type` and `domain_id` are required by the
+        backend (`POST /workflows`) — omitting them 500s with a raw DB error."""
+        body: dict[str, Any] = {
+            "name": name,
+            "project_id": project_id,
+            "workflow_type": workflow_type,
+            "domain_id": domain_id,
+        }
+        if connection_id is not None:
+            body["connection_id"] = connection_id
         if template_id is not None:
             body["template_id"] = template_id
         if description is not None:

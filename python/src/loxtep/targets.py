@@ -1,251 +1,362 @@
 """
-Targets API — delivery sink bindings for data products.
+Targets API — delivery-side connector bindings (workflow connection nodes at the
+tail of a delivery workflow). Parallel to triggers (ingest-head connections).
 
-A target defines how a data product makes its data available to external
-systems via webhooks, API endpoints, exports, database syncs, BI connections,
-or event streams. Backend endpoint: /dataproducts/{id}/consumptions.
+Backend: project entities (`/workflows/projects/{project_id}/entities/.../connections`).
+Prefer `save_workflow_bundle` / `loxtep delivery create` for new delivery flows.
 
-list, get, create, update, delete.
+Does NOT call `/dataproducts/:id/consumptions` (that architecture was removed).
 """
 
-from typing import Any, Optional
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Optional, Union
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
-from .models import Target, TargetType
+from .models import Target
 
 
-def _base_path(data_product_id: str) -> str:
-    return f"/dataproducts/{data_product_id}/consumptions"
+def _require_project_id(project_id: Optional[str], action: str) -> str:
+    if not project_id:
+        raise ValueError(
+            f"targets.{action} requires project_id. Pass project_id / config.project_id, "
+            "or use save_workflow_bundle."
+        )
+    return project_id
 
 
-def _query_string(params: dict[str, Any]) -> str:
-    parts = [f"{k}={v}" for k, v in params.items() if v is not None]
-    return "?" + "&".join(parts) if parts else ""
+def _entities_base(project_id: str) -> str:
+    return f"/workflows/projects/{project_id}/entities"
 
 
-def _parse_target(data: dict[str, Any]) -> Target:
-    """Parse a raw API response dict into a Target model."""
-    return Target.model_validate(data)
+def _connection_path(project_id: str, connection_id: str, workflow_id: Optional[str] = None) -> str:
+    qs = f"?workflow_id={workflow_id}" if workflow_id else ""
+    return f"{_entities_base(project_id)}/connections/{connection_id}{qs}"
 
 
-def _parse_target_list(data: Any) -> list[Target]:
-    """Parse API list response into a list of Target models."""
-    if isinstance(data, list):
-        return [_parse_target(item) for item in data]
-    if isinstance(data, dict):
-        items = data.get("items", data.get("data", []))
-        if isinstance(items, list):
-            return [_parse_target(item) for item in items]
-    return []
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _paginate(items: list[Target], page: int, page_size: int) -> dict[str, Any]:
+    total = len(items)
+    total_pages = max(1, -(-total // page_size))
+    start = (page - 1) * page_size
+    sliced = items[start : start + page_size]
+    return {
+        "items": sliced,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        },
+    }
+
+
+def _filter_targets(
+    items: list[Target],
+    *,
+    direction: Optional[str] = None,
+    search: Optional[str] = None,
+    type: Optional[Union[str, list[str]]] = None,
+    status: Optional[Union[str, list[str]]] = None,
+    workflow_id: Optional[str] = None,
+) -> list[Target]:
+    result = items
+    if direction is not None:
+        result = [
+            t
+            for t in result
+            if t.direction == direction
+            or (t.configuration or {}).get("direction") == direction
+            or (t.metadata or {}).get("direction") == direction
+        ]
+    if search:
+        q = search.lower()
+        result = [t for t in result if q in t.name.lower() or q in t.key.lower()]
+    if type is not None:
+        types = type if isinstance(type, list) else [type]
+        result = [t for t in result if t.type in types]
+    if status is not None:
+        statuses = status if isinstance(status, list) else [status]
+        result = [t for t in result if t.status in statuses]
+    if workflow_id is not None:
+        result = [t for t in result if (t.workflow_id or "") == workflow_id]
+    return result
+
+
+def _build_create_body(
+    *,
+    project_id: str,
+    workflow_id: str,
+    key: Optional[str],
+    name: str,
+    type: str,
+    connector_id: Optional[str] = None,
+    connector_type: Optional[str] = None,
+    status: Optional[str] = None,
+    direction: Optional[str] = None,
+    data: Optional[str] = None,
+    configuration: Optional[dict[str, Any]] = None,
+    metadata: Optional[dict[str, Any]] = None,
+    verified: Optional[bool] = None,
+    draft: Optional[bool] = None,
+) -> tuple[str, dict[str, Any]]:
+    connection_id = str(uuid.uuid4())
+    now = _now()
+    direction = direction or "outbound"
+    body = {
+        "connection_id": connection_id,
+        "project_id": project_id,
+        "workflow_id": workflow_id,
+        "connector_id": connector_id,
+        "connector_type": connector_type,
+        "key": key or name,
+        "name": name,
+        "type": type,
+        "status": status or "active",
+        "direction": direction,
+        "data": data or "{}",
+        "configuration": {**(configuration or {}), "direction": direction},
+        "metadata": {**(metadata or {}), "direction": direction},
+        "verified": bool(verified),
+        "draft": True if draft is None else draft,
+        "created_at": now,
+        "updated_at": now,
+    }
+    return connection_id, body
 
 
 class TargetsApi:
-    """Sync delivery interfaces surface.
-
-    Provides CRUD operations for delivery interfaces on data products.
-    Endpoint: /dataproducts/{data_product_id}/consumptions
-    """
+    """Sync targets surface (parallel to triggers — same connections entity)."""
 
     def __init__(self, http: LoxtepHttpClient) -> None:
         self._http = http
 
+    def get(self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None) -> Target:
+        pid = _require_project_id(project_id, "get")
+        res = self._http.get(_connection_path(pid, id, workflow_id))
+        data = res.get("data", res) if isinstance(res, dict) else res
+        return Target.model_validate(data)
+
     def list(
         self,
-        data_product_id: str,
         *,
+        project_id: Optional[str] = None,
+        workflow_id: Optional[str] = None,
+        direction: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20,
-        status: Optional[str] = None,
-        is_active: Optional[bool] = None,
-    ) -> list[Target]:
-        """List delivery interfaces for a data product.
-
-        Args:
-            data_product_id: The data product ID.
-            page: Page number (default 1).
-            page_size: Items per page (default 20).
-            status: Optional status filter.
-            is_active: Optional active state filter.
-
-        Returns:
-            List of Target instances.
-        """
-        params: dict[str, Any] = {"page": page, "page_size": page_size}
-        if status is not None:
-            params["status"] = status
-        if is_active is not None:
-            params["is_active"] = str(is_active).lower()
-        qs = _query_string(params)
-        res = self._http.get(f"{_base_path(data_product_id)}{qs}")
+        page_size: int = 50,
+        search: Optional[str] = None,
+        type: Optional[Union[str, list[str]]] = None,
+        status: Optional[Union[str, list[str]]] = None,
+    ) -> dict[str, Any]:
+        pid = _require_project_id(project_id, "list")
+        res = self._http.get(_entities_base(pid))
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target_list(data)
-
-    def get(self, data_product_id: str, target_id: str) -> Target:
-        """Get a single delivery interface by ID.
-
-        Args:
-            data_product_id: The data product ID.
-            target_id: The delivery interface (consumption) ID.
-
-        Returns:
-            A Target instance.
-        """
-        res = self._http.get(f"{_base_path(data_product_id)}/{target_id}")
-        data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target(data)
+        raw_items = data.get("connections", []) if isinstance(data, dict) else []
+        items = [Target.model_validate(item) for item in raw_items]
+        items = _filter_targets(
+            items, direction=direction, search=search, type=type, status=status, workflow_id=workflow_id
+        )
+        return _paginate(items, page, page_size)
 
     def create(
         self,
-        data_product_id: str,
-        target_type: TargetType = "webhook",
-        **kwargs: Any,
+        *,
+        project_id: str,
+        workflow_id: str,
+        name: str,
+        type: str,
+        key: Optional[str] = None,
+        connector_id: Optional[str] = None,
+        connector_type: Optional[str] = None,
+        status: Optional[str] = None,
+        direction: Optional[str] = None,
+        data: Optional[str] = None,
+        configuration: Optional[dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        verified: Optional[bool] = None,
+        draft: Optional[bool] = None,
     ) -> Target:
-        """Create a new delivery interface.
-
-        Args:
-            data_product_id: The data product ID.
-            target_type: The type of delivery interface (default "webhook").
-            **kwargs: Additional fields (endpoint_url, method, headers, filters, etc.)
-
-        Returns:
-            The created Target instance.
-        """
-        body: dict[str, Any] = {"delivery_type": target_type, **kwargs}
-        res = self._http.post(_base_path(data_product_id), body)
-        data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target(data)
+        if not workflow_id:
+            raise ValueError(
+                "targets.create requires workflow_id. Prefer loxtep delivery create / save_workflow_bundle."
+            )
+        connection_id, body = _build_create_body(
+            project_id=project_id,
+            workflow_id=workflow_id,
+            key=key,
+            name=name,
+            type=type,
+            connector_id=connector_id,
+            connector_type=connector_type,
+            status=status,
+            direction=direction,
+            data=data,
+            configuration=configuration,
+            metadata=metadata,
+            verified=verified,
+            draft=draft,
+        )
+        res = self._http.put(_connection_path(project_id, connection_id, workflow_id), body)
+        result = res.get("data", res) if isinstance(res, dict) else res
+        return Target.model_validate(result or body)
 
     def update(
         self,
-        data_product_id: str,
-        target_id: str,
-        **kwargs: Any,
+        id: str,
+        *,
+        project_id: Optional[str] = None,
+        workflow_id: Optional[str] = None,
+        **fields: Any,
     ) -> Target:
-        """Update an existing delivery interface.
+        pid = _require_project_id(project_id, "update")
+        existing = self.get(id, project_id=pid, workflow_id=workflow_id)
+        merged = existing.model_dump()
+        merged.update(fields)
+        merged["connection_id"] = id
+        merged["project_id"] = pid
+        merged["updated_at"] = _now()
+        res = self._http.put(
+            _connection_path(pid, id, workflow_id or existing.workflow_id),
+            merged,
+        )
+        result = res.get("data", res) if isinstance(res, dict) else res
+        return Target.model_validate(result or merged)
 
-        Args:
-            data_product_id: The data product ID.
-            target_id: The delivery interface (consumption) ID.
-            **kwargs: Fields to update.
+    def delete(self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None) -> None:
+        pid = _require_project_id(project_id, "delete")
+        qs = f"?workflow_id={workflow_id}" if workflow_id else ""
+        self._http.delete(f"{_entities_base(pid)}/connections/{id}{qs}")
 
-        Returns:
-            The updated Target instance.
-        """
-        res = self._http.put(f"{_base_path(data_product_id)}/{target_id}", kwargs)
-        data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target(data)
-
-    def delete(self, data_product_id: str, target_id: str) -> None:
-        """Delete a delivery interface.
-
-        Args:
-            data_product_id: The data product ID.
-            target_id: The delivery interface (consumption) ID.
-        """
-        self._http.delete(f"{_base_path(data_product_id)}/{target_id}")
+    def test(self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None) -> dict[str, Any]:
+        target = self.get(id, project_id=project_id, workflow_id=workflow_id)
+        return {
+            "success": True,
+            "message": f'Target "{target.name}" loaded. Use MCP test_trigger for live connectivity checks.',
+            "connection_id": id,
+            "tested_at": _now(),
+        }
 
 
 class AsyncTargetsApi:
-    """Async delivery interfaces surface.
-
-    Provides async CRUD operations for delivery interfaces on data products.
-    Endpoint: /dataproducts/{data_product_id}/consumptions
-    """
+    """Async targets surface (parallel to triggers — same connections entity)."""
 
     def __init__(self, http: AsyncLoxtepHttpClient) -> None:
         self._http = http
 
+    async def get(
+        self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None
+    ) -> Target:
+        pid = _require_project_id(project_id, "get")
+        res = await self._http.get(_connection_path(pid, id, workflow_id))
+        data = res.get("data", res) if isinstance(res, dict) else res
+        return Target.model_validate(data)
+
     async def list(
         self,
-        data_product_id: str,
         *,
+        project_id: Optional[str] = None,
+        workflow_id: Optional[str] = None,
+        direction: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20,
-        status: Optional[str] = None,
-        is_active: Optional[bool] = None,
-    ) -> list[Target]:
-        """List delivery interfaces for a data product.
-
-        Args:
-            data_product_id: The data product ID.
-            page: Page number (default 1).
-            page_size: Items per page (default 20).
-            status: Optional status filter.
-            is_active: Optional active state filter.
-
-        Returns:
-            List of Target instances.
-        """
-        params: dict[str, Any] = {"page": page, "page_size": page_size}
-        if status is not None:
-            params["status"] = status
-        if is_active is not None:
-            params["is_active"] = str(is_active).lower()
-        qs = _query_string(params)
-        res = await self._http.get(f"{_base_path(data_product_id)}{qs}")
+        page_size: int = 50,
+        search: Optional[str] = None,
+        type: Optional[Union[str, list[str]]] = None,
+        status: Optional[Union[str, list[str]]] = None,
+    ) -> dict[str, Any]:
+        pid = _require_project_id(project_id, "list")
+        res = await self._http.get(_entities_base(pid))
         data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target_list(data)
-
-    async def get(self, data_product_id: str, target_id: str) -> Target:
-        """Get a single delivery interface by ID.
-
-        Args:
-            data_product_id: The data product ID.
-            target_id: The delivery interface (consumption) ID.
-
-        Returns:
-            A Target instance.
-        """
-        res = await self._http.get(f"{_base_path(data_product_id)}/{target_id}")
-        data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target(data)
+        raw_items = data.get("connections", []) if isinstance(data, dict) else []
+        items = [Target.model_validate(item) for item in raw_items]
+        items = _filter_targets(
+            items, direction=direction, search=search, type=type, status=status, workflow_id=workflow_id
+        )
+        return _paginate(items, page, page_size)
 
     async def create(
         self,
-        data_product_id: str,
-        target_type: TargetType = "webhook",
-        **kwargs: Any,
+        *,
+        project_id: str,
+        workflow_id: str,
+        name: str,
+        type: str,
+        key: Optional[str] = None,
+        connector_id: Optional[str] = None,
+        connector_type: Optional[str] = None,
+        status: Optional[str] = None,
+        direction: Optional[str] = None,
+        data: Optional[str] = None,
+        configuration: Optional[dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        verified: Optional[bool] = None,
+        draft: Optional[bool] = None,
     ) -> Target:
-        """Create a new delivery interface.
-
-        Args:
-            data_product_id: The data product ID.
-            target_type: The type of delivery interface (default "webhook").
-            **kwargs: Additional fields (endpoint_url, method, headers, filters, etc.)
-
-        Returns:
-            The created Target instance.
-        """
-        body: dict[str, Any] = {"delivery_type": target_type, **kwargs}
-        res = await self._http.post(_base_path(data_product_id), body)
-        data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target(data)
+        if not workflow_id:
+            raise ValueError(
+                "targets.create requires workflow_id. Prefer loxtep delivery create / save_workflow_bundle."
+            )
+        connection_id, body = _build_create_body(
+            project_id=project_id,
+            workflow_id=workflow_id,
+            key=key,
+            name=name,
+            type=type,
+            connector_id=connector_id,
+            connector_type=connector_type,
+            status=status,
+            direction=direction,
+            data=data,
+            configuration=configuration,
+            metadata=metadata,
+            verified=verified,
+            draft=draft,
+        )
+        res = await self._http.put(_connection_path(project_id, connection_id, workflow_id), body)
+        result = res.get("data", res) if isinstance(res, dict) else res
+        return Target.model_validate(result or body)
 
     async def update(
         self,
-        data_product_id: str,
-        target_id: str,
-        **kwargs: Any,
+        id: str,
+        *,
+        project_id: Optional[str] = None,
+        workflow_id: Optional[str] = None,
+        **fields: Any,
     ) -> Target:
-        """Update an existing delivery interface.
+        pid = _require_project_id(project_id, "update")
+        existing = await self.get(id, project_id=pid, workflow_id=workflow_id)
+        merged = existing.model_dump()
+        merged.update(fields)
+        merged["connection_id"] = id
+        merged["project_id"] = pid
+        merged["updated_at"] = _now()
+        res = await self._http.put(
+            _connection_path(pid, id, workflow_id or existing.workflow_id),
+            merged,
+        )
+        result = res.get("data", res) if isinstance(res, dict) else res
+        return Target.model_validate(result or merged)
 
-        Args:
-            data_product_id: The data product ID.
-            target_id: The delivery interface (consumption) ID.
-            **kwargs: Fields to update.
+    async def delete(
+        self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None
+    ) -> None:
+        pid = _require_project_id(project_id, "delete")
+        qs = f"?workflow_id={workflow_id}" if workflow_id else ""
+        await self._http.delete(f"{_entities_base(pid)}/connections/{id}{qs}")
 
-        Returns:
-            The updated Target instance.
-        """
-        res = await self._http.put(f"{_base_path(data_product_id)}/{target_id}", kwargs)
-        data = res.get("data", res) if isinstance(res, dict) else res
-        return _parse_target(data)
-
-    async def delete(self, data_product_id: str, target_id: str) -> None:
-        """Delete a delivery interface.
-
-        Args:
-            data_product_id: The data product ID.
-            target_id: The delivery interface (consumption) ID.
-        """
-        await self._http.delete(f"{_base_path(data_product_id)}/{target_id}")
+    async def test(
+        self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None
+    ) -> dict[str, Any]:
+        target = await self.get(id, project_id=project_id, workflow_id=workflow_id)
+        return {
+            "success": True,
+            "message": f'Target "{target.name}" loaded. Use MCP test_trigger for live connectivity checks.',
+            "connection_id": id,
+            "tested_at": _now(),
+        }

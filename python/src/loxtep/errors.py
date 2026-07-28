@@ -116,6 +116,61 @@ class RateLimitError(LoxtepError):
         self.reset_at = reset_at or ""
 
 
+_GENERIC_ERROR_TITLES = {
+    "validation error",
+    "validation failed",
+    "bad request",
+    "an unknown error occurred.",
+    "an error occurred",
+}
+
+
+def _is_generic_error_title(message: str) -> bool:
+    return message.strip().lower() in _GENERIC_ERROR_TITLES
+
+
+def _prefer_concrete_message(title: Optional[str], detail_candidate: Any) -> Optional[str]:
+    """Prefer a concrete string detail over a generic title like "Validation Error"."""
+    if isinstance(detail_candidate, str) and detail_candidate.strip():
+        if not title or _is_generic_error_title(title):
+            return detail_candidate.strip()
+    return title
+
+
+def _extract_platform_error_message(body: dict[str, Any]) -> Optional[str]:
+    nested = body.get("error")
+    nested_record = nested if isinstance(nested, dict) else None
+
+    title = None
+    if isinstance(body.get("message"), str) and body["message"]:
+        title = body["message"]
+    elif nested_record and isinstance(nested_record.get("message"), str) and nested_record["message"]:
+        title = nested_record["message"]
+
+    string_details = None
+    if isinstance(body.get("details"), str):
+        string_details = body["details"]
+    elif nested_record and isinstance(nested_record.get("details"), str):
+        string_details = nested_record["details"]
+
+    return _prefer_concrete_message(title, string_details)
+
+
+def _extract_platform_error_details(body: dict[str, Any]) -> Optional[dict[str, Any]]:
+    if isinstance(body.get("details"), dict):
+        return body["details"]
+    if isinstance(body.get("details"), str) and body["details"]:
+        return {"message": body["details"]}
+    nested = body.get("error")
+    if isinstance(nested, dict):
+        nested_details = nested.get("details")
+        if isinstance(nested_details, dict):
+            return nested_details
+        if isinstance(nested_details, str) and nested_details:
+            return {"message": nested_details}
+    return None
+
+
 def parse_http_error(
     status_code: int,
     body: Any,
@@ -123,8 +178,8 @@ def parse_http_error(
 ) -> LoxtepError:
     """Map HTTP status and body to the appropriate Loxtep error."""
     safe = body if isinstance(body, dict) else {}
-    message = safe.get("message") if isinstance(safe.get("message"), str) else f"HTTP {status_code}"
-    details = safe.get("details") if isinstance(safe.get("details"), dict) else None
+    message = _extract_platform_error_message(safe) or f"HTTP {status_code}"
+    details = _extract_platform_error_details(safe)
     req_id = safe.get("request_id") if isinstance(safe.get("request_id"), str) else request_id
 
     if status_code == 401:
@@ -153,12 +208,22 @@ def parse_http_error(
             request_id=req_id,
         )
     if status_code == 400:
-        raw = safe.get("field_errors")
-        field_errors = (
-            [e for e in raw if isinstance(e, dict) and "field" in e and "message" in e]
-            if isinstance(raw, list)
-            else []
-        )
+        nested = safe.get("error")
+        nested_record = nested if isinstance(nested, dict) else None
+        raw_field_errors = safe.get("field_errors")
+        if not isinstance(raw_field_errors, list):
+            raw_field_errors = nested_record.get("field_errors") if nested_record else None
+        if not isinstance(raw_field_errors, list):
+            raw_field_errors = safe.get("errors")
+        field_errors: list[dict[str, str]] = []
+        if isinstance(raw_field_errors, list):
+            for e in raw_field_errors:
+                if not isinstance(e, dict):
+                    continue
+                field = e.get("field") if isinstance(e.get("field"), str) else e.get("path")
+                msg = e.get("message") if isinstance(e.get("message"), str) else None
+                if isinstance(field, str) and isinstance(msg, str):
+                    field_errors.append({"field": field, "message": msg})
         return ValidationError(message, field_errors, details=details, request_id=req_id)
 
     code = safe.get("code") if isinstance(safe.get("code"), str) else "UNKNOWN_ERROR"

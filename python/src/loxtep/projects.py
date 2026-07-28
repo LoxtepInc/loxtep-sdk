@@ -172,6 +172,18 @@ class ProjectsApi:
             "last_sync_at": p.get("github_last_sync_at", ""),
         }
 
+    def reindex(self, project_id: str) -> Any:
+        """POST /workflows/projects/:id/reindex — refresh customer_workspace_entity_index.
+
+        Required after `save_workflow_bundle`/direct S3 writes before `deploy` will see
+        the new entities: the deploy bot reads from this index table, not S3 directly,
+        and a bundle save alone doesn't refresh it (E2E_TEST_REPORT.md finding #12 —
+        `deploy` reported "No workflow modules found" until this was called).
+        """
+        path = f"{PROJECTS_BASE}/{quote(project_id)}/reindex"
+        res = self._http.post(path, {})
+        return _data(res)
+
 
 class AsyncProjectsApi:
     """Async projects surface."""
@@ -322,3 +334,12 @@ class AsyncProjectsApi:
             "last_commit_sha": p.get("github_last_commit_sha", ""),
             "last_sync_at": p.get("github_last_sync_at", ""),
         }
+
+    async def reindex(self, project_id: str) -> Any:
+        """POST /workflows/projects/:id/reindex — refresh customer_workspace_entity_index.
+
+        See ``ProjectsApi.reindex`` for why this is needed before ``deploy``.
+        """
+        path = f"{PROJECTS_BASE}/{quote(project_id)}/reindex"
+        res = await self._http.post(path, {})
+        return _data(res)
