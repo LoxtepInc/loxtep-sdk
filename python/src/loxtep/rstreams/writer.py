@@ -58,7 +58,7 @@ class StreamBusUnavailableError(RuntimeError):
     """Raised when the stream bus cannot be used (missing boto3 or config)."""
 
 
-class LeoStreamWriter:
+class LoxtepStreamWriter:
     """Buffered Kinesis writer. `write(obj)` buffers; `close()` flushes.
 
     Batching mirrors the Node SDK defaults: flush when the buffer reaches
@@ -191,7 +191,7 @@ class LeoStreamWriter:
         self._closed = True
 
     # --- context manager sugar ---
-    def __enter__(self) -> "LeoStreamWriter":
+    def __enter__(self) -> "LoxtepStreamWriter":
         return self
 
     def __exit__(self, *args: Any) -> None:
@@ -228,12 +228,12 @@ class LeoStreamWriter:
         )
 
 
-class AsyncLeoStreamWriter:
-    """Async facade over `LeoStreamWriter`; runs the sync boto3 calls in a
+class AsyncLoxtepStreamWriter:
+    """Async facade over `LoxtepStreamWriter`; runs the sync boto3 calls in a
     thread (boto3 is synchronous). Same batching/retry semantics."""
 
     def __init__(self, config: StreamConfig, bot_id: str, queue: str, **kwargs: Any) -> None:
-        self._writer = LeoStreamWriter(config, bot_id, queue, **kwargs)
+        self._writer = LoxtepStreamWriter(config, bot_id, queue, **kwargs)
 
     async def write(self, business_object: Any, *, event_source_timestamp: Optional[int] = None) -> None:
         # Buffering is in-memory/cheap; the flush (network) may run here.
@@ -244,7 +244,7 @@ class AsyncLeoStreamWriter:
     async def close(self) -> None:
         await asyncio.to_thread(self._writer.close)
 
-    async def __aenter__(self) -> "AsyncLeoStreamWriter":
+    async def __aenter__(self) -> "AsyncLoxtepStreamWriter":
         return self
 
     async def __aexit__(self, *args: Any) -> None:

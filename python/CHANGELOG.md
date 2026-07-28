@@ -80,6 +80,18 @@ end-to-end test that found several critical/high bugs. See the Node.js repo's
   command set (`query`, `stream`, `replay`, `workflows list/deploy`, `observe status`,
   `projects`, `templates`, `config export`) doesn't reimplement. One CLI implementation,
   not one per language — matches the existing `login` delegation pattern.
+- **Breaking — removed "Leo" branding from public stream classes.** `LeoStreamWriter` →
+  `LoxtepStreamWriter`, `AsyncLeoStreamWriter` → `AsyncLoxtepStreamWriter`,
+  `LeoStreamReader` → `LoxtepStreamReader`, `AsyncLeoStreamReader` →
+  `AsyncLoxtepStreamReader` (`loxtep.rstreams`, and the classes actually returned by
+  `get_writer()`/`get_reader()`). "Leo" is the name of the internal streaming engine
+  (leo-sdk/rStreams) the platform's event bus is built on — an implementation detail
+  that had leaked into customer-visible type names/error messages. Matches the Node.js
+  SDK's own convention of exporting `LoxtepStreamRuntime`, not `LeoStreamRuntime`, while
+  keeping the internal module still named `rstreams`. Real backend resource/env-var
+  names that legitimately use "Leo" (`LEO_*` env vars, the `LeoStream`/`LeoCron`/etc.
+  DynamoDB table names in `StreamConfig`, the `storage.rstreams_queue` API field) are
+  unaffected — those are wire-format contracts, not SDK branding.
 
 ## [Unreleased] — API surface redesign (parity with Node.js SDK)
 

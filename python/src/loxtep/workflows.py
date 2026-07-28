@@ -139,9 +139,9 @@ class WorkflowsApi:
         """
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_writable", False) and queue_name:
-            from .rstreams import LeoStreamWriter
+            from .rstreams import LoxtepStreamWriter
 
-            return LeoStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
+            return LoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
         return WorkflowWriter(workflow_id=workflow_id, http=self._http)
 
 
@@ -265,9 +265,9 @@ class AsyncWorkflowsApi:
         ``data_products.get_writer``. Uses the Kinesis bus when configured."""
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_writable", False) and queue_name:
-            from .rstreams import AsyncLeoStreamWriter
+            from .rstreams import AsyncLoxtepStreamWriter
 
-            return AsyncLeoStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
+            return AsyncLoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
         return AsyncWorkflowWriter(workflow_id=workflow_id, http=self._http)
 
 
