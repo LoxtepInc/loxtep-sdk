@@ -1,5 +1,11 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+# Upper-bound setuptools below 75: somewhere between 75.6 and 75.9, setuptools flips
+# its default Metadata-Version from 2.1 to 2.2, and >=77 to 2.4 (PEP 639
+# license-expression support). Older twine/pkginfo installs can't parse those newer
+# spec versions — they misreport it as "Metadata is missing required fields: Name,
+# Version" even though the fields are present. Pinning <75 keeps builds at the
+# universally-readable Metadata-Version 2.1 (verified: setuptools 74.1.3 → 2.1).
+requires = ["setuptools>=61,<75", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
