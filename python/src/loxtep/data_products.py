@@ -252,14 +252,14 @@ class DataProductsApi:
         """Return a writer bound to the data product (resolves name→id).
 
         When the client is configured with stream-bus config (`streams=` or
-        LEO_* env), returns a `LeoStreamWriter` that produces to Kinesis (the
+        LEO_* env), returns a `LoxtepStreamWriter` that produces to Kinesis (the
         performant path, matching the Node.js SDK). Otherwise returns an
         HTTP-based writer.
         """
         dp_id = self._resolve_id(id_or_name)
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_writable", False):
-            from .rstreams import LeoStreamWriter
+            from .rstreams import LoxtepStreamWriter
 
             queue = queue_name or self._resolve_queue_name(dp_id)
             if not queue:
@@ -267,7 +267,7 @@ class DataProductsApi:
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
                     "or ensure the data product is deployed (storage.rstreams_queue)."
                 )
-            return LeoStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
+            return LoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
         return DataProductWriter(dp_id, self._http)
 
     def get_reader(
@@ -287,7 +287,7 @@ class DataProductsApi:
         dp_id = self._resolve_id(id_or_name)
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_readable", False):
-            from .rstreams import LeoStreamReader
+            from .rstreams import LoxtepStreamReader
 
             queue = queue_name or self._resolve_queue_name(dp_id)
             if not queue:
@@ -296,7 +296,7 @@ class DataProductsApi:
                     "or ensure the data product is deployed (storage.rstreams_queue)."
                 )
             return iter(
-                LeoStreamReader(
+                LoxtepStreamReader(
                     cfg,
                     bot_id or f"sdk-reader-{id_or_name}",
                     queue,
@@ -537,7 +537,7 @@ class AsyncDataProductsApi:
         dp_id = await self._resolve_id(id_or_name)
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_writable", False):
-            from .rstreams import AsyncLeoStreamWriter
+            from .rstreams import AsyncLoxtepStreamWriter
 
             queue = queue_name or await self._resolve_queue_name(dp_id)
             if not queue:
@@ -545,7 +545,7 @@ class AsyncDataProductsApi:
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
                     "or ensure the data product is deployed (storage.rstreams_queue)."
                 )
-            return AsyncLeoStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
+            return AsyncLoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
         return AsyncDataProductWriter(dp_id, self._http)
 
     async def get_reader(
@@ -562,7 +562,7 @@ class AsyncDataProductsApi:
         dp_id = await self._resolve_id(id_or_name)
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_readable", False):
-            from .rstreams import AsyncLeoStreamReader
+            from .rstreams import AsyncLoxtepStreamReader
 
             queue = queue_name or await self._resolve_queue_name(dp_id)
             if not queue:
@@ -570,7 +570,7 @@ class AsyncDataProductsApi:
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
                     "or ensure the data product is deployed (storage.rstreams_queue)."
                 )
-            return AsyncLeoStreamReader(
+            return AsyncLoxtepStreamReader(
                 cfg, bot_id or f"sdk-reader-{id_or_name}", queue, start=start, batch_size=batch_size
             )
         return self.stream(dp_id, start=start, batch_size=batch_size)

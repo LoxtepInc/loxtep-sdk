@@ -7,7 +7,7 @@ reconstructing per-event ids — matching the Node.js SDK / leo-sdk read path
 (the modern ``leoEvent.v >= 2`` path).
 
 Supports optional LeoCron checkpoint persistence (`auto_checkpoint=` /
-`.checkpoint()`) and an async facade (`AsyncLeoStreamReader`).
+`.checkpoint()`) and an async facade (`AsyncLoxtepStreamReader`).
 
 Documented follow-ups (perf / historical edges): snapshot/archive queue
 transitions, and S3 byte-range/offset fast-read (whole objects are read, which
@@ -56,7 +56,7 @@ def _map_event(raw: dict[str, Any], eid: str) -> dict[str, Any]:
     }
 
 
-class LeoStreamReader:
+class LoxtepStreamReader:
     """Iterable reader over a queue on the stream bus.
 
     Iterate it directly (``for event in reader``) to yield mapped events
@@ -225,12 +225,12 @@ class LeoStreamReader:
             start = last_end + " "
 
 
-class AsyncLeoStreamReader:
-    """Async facade over `LeoStreamReader`; runs the sync boto3 iteration in a
+class AsyncLoxtepStreamReader:
+    """Async facade over `LoxtepStreamReader`; runs the sync boto3 iteration in a
     thread (boto3 is synchronous). Async-iterate it (``async for``)."""
 
     def __init__(self, config: StreamConfig, bot_id: str, queue: str, **kwargs: Any) -> None:
-        self._reader = LeoStreamReader(config, bot_id, queue, **kwargs)
+        self._reader = LoxtepStreamReader(config, bot_id, queue, **kwargs)
 
     async def __aiter__(self) -> AsyncIterator[dict[str, Any]]:
         it = iter(self._reader)
