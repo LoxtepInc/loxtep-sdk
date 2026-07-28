@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-07-28
+
+### Added
+
+- **`LoxtepClient.from_workspace()` / `AsyncLoxtepClient.from_workspace()`** —
+  port of Node `fromWorkspace()`: env > explicit kwargs > `.loxtep/project.json`
+  + credentials (project-local then `~/.loxtep`). Loads `region` and `streams`
+  from attach so `get_writer` works without manual `LEO_*` env.
+- **`loxtep.workspace_config`** — `load_workspace_config` / `resolve_auto_config` /
+  `require_auto_config`.
+- **Docs** — [sdk-first-ingest.md](docs/sdk-first-ingest.md) (Python app write path;
+  Node CLI for lifecycle).
+
+### Changed
+
+- **`require_auto_config()`** — validation errors for missing `api_url` / token live in
+  `workspace_config` (shared by sync + async `from_workspace`).
+- **Shared fixtures** — `from_workspace` / workspace_config tests load
+  `shared/fixtures/workspace/` so Node and Python stay on the same attach contract.
+
 ## [0.4.0] — Bug-fix parity with Node.js SDK (E2E_TEST_REPORT.md follow-up)
 
 Ports the fixes made to the Node.js SDK (`@loxtep/sdk` 0.7.24–0.7.29) in response to an

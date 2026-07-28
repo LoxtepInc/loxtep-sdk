@@ -95,11 +95,23 @@ Platform overview: [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
 ### Python
 
 ```bash
-pip install loxtep
-loxtep login
+# Lifecycle: use the Node CLI (login / init / attach / ingest provision / deploy)
+pnpm add @loxtep/sdk && pnpm exec loxtep login && pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
+
+pip install 'loxtep[streams]'
 ```
 
-See [`python/README.md`](./python/README.md).
+```python
+from loxtep import LoxtepClient
+
+client = LoxtepClient.from_workspace()
+writer = client.get_writer("app-events")
+writer.write({"user_id": "u_1", "action": "signup"})
+writer.close()
+```
+
+See [`python/docs/sdk-first-ingest.md`](./python/docs/sdk-first-ingest.md) and
+[`python/README.md`](./python/README.md).
 
 ## Repository structure
 
