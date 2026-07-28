@@ -181,12 +181,35 @@ class DataProductsApi:
         return self._http.get(f"/search{qs}")
 
     def query(self, id: str, sql: str) -> dict[str, Any]:
-        res = self._http.post("/dataproducts/query", {"data_product_id": id, "sql": sql})
-        return res.get("data", {"items": [], "metadata": {"data_product_id": id}})
+        # JWT path: warehouse execute (analytics:execute). Avoid /dataproducts/query (API-key only).
+        res = self._http.post(
+            "/dataproducts/warehouse/execute", {"sql": sql, "data_product_ids_hint": [id]}
+        )
+        body = _unwrap(res)
+        if isinstance(body, dict) and body.get("status") == "failed":
+            raise RuntimeError(body.get("error") or "Warehouse query failed")
+        rows = body.get("rows", []) if isinstance(body, dict) else []
+        return {
+            "items": rows,
+            "metadata": {
+                "data_product_id": id,
+                "total_rows": body.get("total_count", body.get("row_count", len(rows))),
+                "returned_rows": body.get("row_count", len(rows)),
+                "query_time_ms": body.get("execution_time_ms"),
+            },
+        }
 
     def list_tables(self, id: str) -> dict[str, Any]:
-        res = self._http.get(f"/dataproducts/{id}/tables")
-        return res.get("data", {"items": []})
+        # JWT path: warehouse tables list, filtered to this data product.
+        res = self._http.get("/dataproducts/warehouse/tables")
+        body = _unwrap(res)
+        tables = body.get("tables", []) if isinstance(body, dict) else []
+        items = [
+            {"name": t.get("sql_name") or t.get("name") or "", "schema": t.get("medallion"), **t}
+            for t in tables
+            if not t.get("data_product_id") or t.get("data_product_id") == id
+        ]
+        return {"items": items}
 
     def get_queue_info(self, id: str) -> dict[str, Any]:
         if self._get_queue_metadata:
@@ -430,12 +453,35 @@ class AsyncDataProductsApi:
         return await self._http.get(f"/search{qs}")
 
     async def query(self, id: str, sql: str) -> dict[str, Any]:
-        res = await self._http.post("/dataproducts/query", {"data_product_id": id, "sql": sql})
-        return res.get("data", {"items": [], "metadata": {"data_product_id": id}})
+        # JWT path: warehouse execute (analytics:execute). Avoid /dataproducts/query (API-key only).
+        res = await self._http.post(
+            "/dataproducts/warehouse/execute", {"sql": sql, "data_product_ids_hint": [id]}
+        )
+        body = _unwrap(res)
+        if isinstance(body, dict) and body.get("status") == "failed":
+            raise RuntimeError(body.get("error") or "Warehouse query failed")
+        rows = body.get("rows", []) if isinstance(body, dict) else []
+        return {
+            "items": rows,
+            "metadata": {
+                "data_product_id": id,
+                "total_rows": body.get("total_count", body.get("row_count", len(rows))),
+                "returned_rows": body.get("row_count", len(rows)),
+                "query_time_ms": body.get("execution_time_ms"),
+            },
+        }
 
     async def list_tables(self, id: str) -> dict[str, Any]:
-        res = await self._http.get(f"/dataproducts/{id}/tables")
-        return res.get("data", {"items": []})
+        # JWT path: warehouse tables list, filtered to this data product.
+        res = await self._http.get("/dataproducts/warehouse/tables")
+        body = _unwrap(res)
+        tables = body.get("tables", []) if isinstance(body, dict) else []
+        items = [
+            {"name": t.get("sql_name") or t.get("name") or "", "schema": t.get("medallion"), **t}
+            for t in tables
+            if not t.get("data_product_id") or t.get("data_product_id") == id
+        ]
+        return {"items": items}
 
     async def get_queue_info(self, id: str) -> dict[str, Any]:
         if self._get_queue_metadata and callable(self._get_queue_metadata):

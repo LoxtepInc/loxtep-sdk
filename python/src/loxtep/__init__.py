@@ -8,6 +8,7 @@ queues, metrics.
 
 from .client import AsyncLoxtepClient, LoxtepClient
 from .targets import AsyncTargetsApi, TargetsApi
+from .triggers import AsyncTriggersApi, TriggersApi
 from .errors import (
     AuthenticationError,
     AuthorizationError,
@@ -19,11 +20,17 @@ from .errors import (
     parse_http_error,
 )
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
+from .sdk_ingest_bundle import (
+    SDK_INGEST_TEMPLATE_ID,
+    build_sdk_ingest_bundle,
+    build_sdk_ingest_local_package,
+    to_local_connector_entity,
+)
 from .models import (
     DataProduct,
     DataProductKind,
     Target,
-    TargetType,
+    Trigger,
     UsageMap,
     UsageMapEdge,
     UsageMapNode,
@@ -46,10 +53,16 @@ __all__ = [
     "DataProduct",
     "DataProductKind",
     "Target",
-    "TargetType",
+    "Trigger",
     "TargetsApi",
     "AsyncTargetsApi",
+    "TriggersApi",
+    "AsyncTriggersApi",
     "UsageMap",
     "UsageMapEdge",
     "UsageMapNode",
+    "SDK_INGEST_TEMPLATE_ID",
+    "build_sdk_ingest_bundle",
+    "build_sdk_ingest_local_package",
+    "to_local_connector_entity",
 ]

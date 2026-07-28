@@ -6,6 +6,81 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Bug-fix parity with Node.js SDK (E2E_TEST_REPORT.md follow-up)
+
+Ports the fixes made to the Node.js SDK (`@loxtep/sdk` 0.7.24–0.7.29) in response to an
+end-to-end test that found several critical/high bugs. See the Node.js repo's
+`E2E_TEST_REPORT.md` / `E2E_RETEST_REPORT.md` for the original findings.
+
+### Fixed
+
+- **Critical — gateway URL routing.** Added `loxtep.gateway_url.build_platform_request_url`
+  (port of `nodejs/src/config/platform-request-url.ts`) and wired it into
+  `LoxtepHttpClient`/`AsyncLoxtepHttpClient` (on by default via
+  `use_platform_path_resolution=True`). Fixes `/dataproducts` routes not being prefixed
+  correctly against the shared gateway host, while correctly *not* doubling sibling
+  resources (`datacontracts`, `quality-metrics`, `templates`, `warehouse`, etc.) and
+  preserving query strings.
+- **High — error detail swallowing.** `parse_http_error` now extracts messages/details
+  from the nested `{success, error: {...}}` platform envelope, prefers a concrete string
+  `details` over generic titles like "Validation Error", and reads `field_errors` from
+  `field_errors`, `error.field_errors`, or `errors` (with `field`/`path` fallback for the
+  field name) instead of only a bare top-level `field_errors` array.
+- **High — stale triggers/targets routes.** `TriggersApi`/`TargetsApi` (sync + async)
+  rewritten onto the project entities API
+  (`/workflows/projects/{project_id}/entities/connections/...`), matching
+  `nodejs/src/client/triggers.ts`/`targets.ts`. The old `/workflows/connections` and
+  `/dataproducts/{id}/consumptions` routes were removed on the backend. **Breaking:**
+  `Target` model fields changed from the `consumptions`-table shape
+  (`consumption_id`, `target_type`/`delivery_type`, `is_active`, `endpoint_url`, ...) to
+  the connection-entity shape (`connection_id`, `type`, `direction`, `verified`,
+  `draft`, ...); both APIs now require `project_id` (and `workflow_id` for `create`).
+  Added a parallel `Trigger` model.
+- **Medium — data_products warehouse routes.** `query()`/`list_tables()` moved off the
+  API-key-only `/dataproducts/query` / `/dataproducts/{id}/tables` onto the JWT-compatible
+  `/dataproducts/warehouse/execute` / `/dataproducts/warehouse/tables`, matching
+  `nodejs/src/client/data-products.ts`.
+- **Critical — SDK ingest bundle missing `template_id`.** Added
+  `loxtep.sdk_ingest_bundle` (port of `nodejs/src/lib/sdk-ingest-bundle.ts`):
+  `build_sdk_ingest_bundle`/`build_sdk_ingest_local_package` now set
+  `template_id=SDK_INGEST_TEMPLATE_ID` on the generated workflow entity, which the
+  backend's `save_workflow_bundle` schema requires.
+- **Medium — headless login environment.** `load_config()`/`load_credentials()` now
+  read `api_base_url` from `credentials.json` as an `api_url` fallback (env → config
+  file → credentials `api_base_url`), matching Node's `resolveCliApiUrl` precedence —
+  previously a dev/staging login's target host was silently lost, and later calls fell
+  back to the production default.
+- **Medium — local-first credentials resolution.** `load_credentials()`/
+  `get_token_from_env_or_file()`/`load_config()` now accept an optional `cwd` and walk
+  up from it for a project-local `.loxtep/credentials.json` before falling back to the
+  global `~/.loxtep/credentials.json`, matching Node's `resolveCredentialsPath`
+  (`nodejs/src/cli/credentials.ts`). Previously Python only ever read the global file,
+  so a project-scoped `loxtep login` (no `--global`, the Node CLI default) was silently
+  ignored by every Python-side command run from that project.
+- **Codegen parity (`loxtep generate`).** Added a native Python `generate` command
+  (`codegen.py`, `project_context.py`) that emits `.loxtep/generated/__init__.py`
+  (typed `DATA_PRODUCTS`/`CONNECTORS`/`DOMAINS`/`QUEUES`/`FLOWS`/`WORKFLOWS`/`WORKSPACE`
+  dict constants) instead of delegating to the Node CLI, which would otherwise write a
+  TypeScript file (`.loxtep/generated/index.ts`) into a Python project. Ports
+  `nodejs/src/codegen/{load-workspace-context,normalize,emit,write-artifact}.ts` and the
+  attached-project precondition from `nodejs/src/cli/project-context.ts` — the first time
+  Python's CLI reads `.loxtep/project.json` at all (every other command previously relied
+  solely on global config/env).
+- **High — workflow creation.** `WorkflowsApi.create()`/`AsyncWorkflowsApi.create()` now
+  require `workflow_type` and `domain_id` (the backend 500s with a raw DB error without
+  them), matching `nodejs/src/client/flow-types.ts` `FlowCreateInput`.
+- **High — deploy visibility.** Added `ProjectsApi.reindex()`/`AsyncProjectsApi.reindex()`
+  (`POST /workflows/projects/:id/reindex`) — required after saving a workflow bundle and
+  before `deploy` will see the new entities; the deploy path reads from an index table
+  that a bundle save alone doesn't refresh.
+- **CLI parity.** `loxtep` (Python CLI) now delegates any command it doesn't natively
+  implement to the canonical Node.js CLI (`npx loxtep ...`) instead of failing with an
+  "invalid choice" error — covers `ingest`, `deploy`, `transform`, `push`, `delivery`,
+  `workflows create`, and everything else Node's CLI supports that Python's thin native
+  command set (`query`, `stream`, `replay`, `workflows list/deploy`, `observe status`,
+  `projects`, `templates`, `config export`) doesn't reimplement. One CLI implementation,
+  not one per language — matches the existing `login` delegation pattern.
+
 ## [Unreleased] — API surface redesign (parity with Node.js SDK)
 
 Clean breaks (no deprecated aliases). Mirrors the Node.js SDK redesign so both
