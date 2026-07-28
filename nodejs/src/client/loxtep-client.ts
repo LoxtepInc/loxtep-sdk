@@ -40,8 +40,7 @@ import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
 import type { RStreamsSdk } from '../rstreams/leo-runtime.js';
 import { DataProductResolver } from './data-product-resolver.js';
-import { resolveAutoConfig, type ExplicitConfigFields } from '../config/workspace-config.js';
-import { ValidationError } from '../errors/validation.js';
+import { requireAutoConfig, resolveAutoConfig, type ExplicitConfigFields } from '../config/workspace-config.js';
 import type { FlowWriter } from './flow-types.js';
 import type { StreamEvent } from './data-products-types.js';
 
@@ -289,7 +288,7 @@ export class LoxtepClient {
       token: options.token,
     };
 
-    const resolved = resolveAutoConfig(explicit, options.cwd);
+    const resolved = requireAutoConfig(resolveAutoConfig(explicit, options.cwd));
 
     if (resolved.resolvedFiles.length > 0) {
       debugLog(
@@ -299,37 +298,9 @@ export class LoxtepClient {
       debugLog('[loxtep] Auto-config: no workspace configuration files found');
     }
 
-    if (!resolved.api_url) {
-      const missingProjectFile = resolved.missingFiles.find(f => f.includes('project.json'));
-      if (missingProjectFile) {
-        throw new ValidationError(
-          `Cannot auto-configure: required file is missing: ${missingProjectFile}`,
-          [{ field: 'api_url', message: `File not found: ${missingProjectFile}` }]
-        );
-      }
-      throw new ValidationError(
-        'Cannot auto-configure: api_url could not be resolved from workspace files, environment, or explicit config',
-        [{ field: 'api_url', message: 'No api_url available' }]
-      );
-    }
-
-    if (!resolved.token) {
-      const missingCredFile = resolved.missingFiles.find(f => f.includes('credentials.json'));
-      if (missingCredFile) {
-        throw new ValidationError(
-          `Cannot auto-configure: required file is missing: ${missingCredFile}`,
-          [{ field: 'token', message: `File not found: ${missingCredFile}` }]
-        );
-      }
-      throw new ValidationError(
-        'Cannot auto-configure: auth token could not be resolved from workspace files, environment, or explicit config',
-        [{ field: 'token', message: 'No auth token available' }]
-      );
-    }
-
     return new LoxtepClient({
-      api_url: resolved.api_url,
-      auth: { type: 'jwt', token: resolved.token },
+      api_url: resolved.api_url!,
+      auth: { type: 'jwt', token: resolved.token! },
       project_id: resolved.project_id,
       instance_id: resolved.instance_id,
       organization_id: options.organization_id ?? resolved.organization_id,
