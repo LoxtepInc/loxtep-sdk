@@ -4,7 +4,7 @@ Ten MCP-aligned namespaces: session, connect, workspace, build, define, meaning,
 Top-level get_writer / get_reader delegate to data-products stream logic.
 """
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from .activity import AsyncActivityApi, ActivityApi
 from .build import BuildFacade
@@ -39,11 +39,57 @@ from .templates import AsyncTemplatesApi, TemplatesApi
 from .thesaurus import AsyncThesaurusApi, ThesaurusApi
 from .triggers import AsyncTriggersApi, TriggersApi
 from .workspace import WorkspaceFacade
+from .workspace_config import require_auto_config, resolve_auto_config, streams_with_region
 from .workflows import AsyncWorkflowsApi, WorkflowsApi
 
 
 def _default_get_token() -> Optional[str]:
     return None
+
+
+def _client_from_auto_config(
+    *,
+    cwd: Optional[str] = None,
+    api_url: Optional[str] = None,
+    project_id: Optional[str] = None,
+    instance_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+    region: Optional[str] = None,
+    token: Optional[str] = None,
+    streams: Optional[Mapping[str, Any]] = None,
+    timeout: float = 30.0,
+    async_client: bool = False,
+) -> Any:
+    """Shared resolution for ``from_workspace`` (sync + async)."""
+    explicit: dict[str, Any] = {}
+    if api_url:
+        explicit["api_url"] = api_url
+    if project_id:
+        explicit["project_id"] = project_id
+    if instance_id:
+        explicit["instance_id"] = instance_id
+    if organization_id:
+        explicit["organization_id"] = organization_id
+    if region:
+        explicit["region"] = region
+    if token:
+        explicit["token"] = token
+    if streams:
+        explicit["streams"] = dict(streams)
+
+    resolved = require_auto_config(resolve_auto_config(explicit, cwd))
+    merged_streams = streams_with_region(resolved.streams, resolved.region)
+    ctor = AsyncLoxtepClient if async_client else LoxtepClient
+    return ctor(
+        api_url=resolved.api_url,
+        auth={"type": "jwt", "token": resolved.token},
+        organization_id=resolved.organization_id,
+        project_id=resolved.project_id,
+        instance_id=resolved.instance_id,
+        region=resolved.region,
+        streams=merged_streams,
+        timeout=timeout,
+    )
 
 
 class LoxtepClient:
@@ -56,6 +102,8 @@ class LoxtepClient:
         *,
         organization_id: Optional[str] = None,
         project_id: Optional[str] = None,
+        instance_id: Optional[str] = None,
+        region: Optional[str] = None,
         get_token: Optional[Callable[[], Optional[str]]] = None,
         timeout: float = 30.0,
         streams: Optional[dict[str, Any]] = None,
@@ -64,6 +112,8 @@ class LoxtepClient:
         self.auth = auth or {}
         self.organization_id = organization_id
         self.project_id = project_id
+        self.instance_id = instance_id
+        self.region = region
         token = self.auth.get("token") if isinstance(self.auth, dict) else None
         self._get_token = get_token or (lambda: token if isinstance(token, str) else None)
         self._http = LoxtepHttpClient(
@@ -71,7 +121,7 @@ class LoxtepClient:
             get_token=self._get_token,
             timeout=timeout,
         )
-        self._stream_config = resolve_stream_config(streams)
+        self._stream_config = resolve_stream_config(streams_with_region(streams, region) or streams)
         queues = QueuesApi(self._http)
         triggers = TriggersApi(self._http)
         workflows = WorkflowsApi(self._http, stream_config=self._stream_config)
@@ -135,6 +185,38 @@ class LoxtepClient:
         )
         self.metrics = _MetricsStub()
 
+    @classmethod
+    def from_workspace(
+        cls,
+        *,
+        cwd: Optional[str] = None,
+        api_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+        instance_id: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        region: Optional[str] = None,
+        token: Optional[str] = None,
+        streams: Optional[Mapping[str, Any]] = None,
+        timeout: float = 30.0,
+    ) -> "LoxtepClient":
+        """Build a client from ``.loxtep/project.json`` + credentials (env wins).
+
+        Precedence: ``LOXTEP_*`` env vars > explicit kwargs > workspace files.
+        Raises ``ValidationError`` when ``api_url`` or auth token cannot be resolved.
+        """
+        return _client_from_auto_config(
+            cwd=cwd,
+            api_url=api_url,
+            project_id=project_id,
+            instance_id=instance_id,
+            organization_id=organization_id,
+            region=region,
+            token=token,
+            streams=streams,
+            timeout=timeout,
+            async_client=False,
+        )
+
     def get_writer(self, name_or_id: str, **options: Any) -> Any:
         return self._data_products.get_writer(name_or_id, **options)
 
@@ -172,6 +254,8 @@ class AsyncLoxtepClient:
         *,
         organization_id: Optional[str] = None,
         project_id: Optional[str] = None,
+        instance_id: Optional[str] = None,
+        region: Optional[str] = None,
         get_token: Optional[Callable[[], Any]] = None,
         timeout: float = 30.0,
         streams: Optional[dict[str, Any]] = None,
@@ -180,7 +264,9 @@ class AsyncLoxtepClient:
         self.auth = auth or {}
         self.organization_id = organization_id
         self.project_id = project_id
-        self._stream_config = resolve_stream_config(streams)
+        self.instance_id = instance_id
+        self.region = region
+        self._stream_config = resolve_stream_config(streams_with_region(streams, region) or streams)
         token = self.auth.get("token") if isinstance(self.auth, dict) else None
         self._get_token = get_token or (lambda: token if isinstance(token, str) else None)
         self._http = AsyncLoxtepHttpClient(
@@ -250,6 +336,34 @@ class AsyncLoxtepClient:
             activity=AsyncActivityApi(self._http),
         )
         self.metrics = _MetricsStub()
+
+    @classmethod
+    def from_workspace(
+        cls,
+        *,
+        cwd: Optional[str] = None,
+        api_url: Optional[str] = None,
+        project_id: Optional[str] = None,
+        instance_id: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        region: Optional[str] = None,
+        token: Optional[str] = None,
+        streams: Optional[Mapping[str, Any]] = None,
+        timeout: float = 30.0,
+    ) -> "AsyncLoxtepClient":
+        """Build an async client from workspace files. See ``LoxtepClient.from_workspace``."""
+        return _client_from_auto_config(
+            cwd=cwd,
+            api_url=api_url,
+            project_id=project_id,
+            instance_id=instance_id,
+            organization_id=organization_id,
+            region=region,
+            token=token,
+            streams=streams,
+            timeout=timeout,
+            async_client=True,
+        )
 
     async def get_writer(self, name_or_id: str, **options: Any) -> Any:
         return await self._data_products.get_writer(name_or_id, **options)

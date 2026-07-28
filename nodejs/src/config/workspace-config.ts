@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findProjectDir, getProjectFilePath, PROJECT_DIR_NAME, PROJECT_FILE_NAME } from '../cli/project-context.js';
 import { resolveCredentialsPath } from '../cli/credentials.js';
+import { ValidationError } from '../errors/validation.js';
 import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
 import { parseStreamsPartial } from './streams-partial.js';
 
@@ -221,4 +222,40 @@ export function resolveAutoConfig(
     resolvedFiles: workspace.resolvedFiles,
     missingFiles: workspace.missingFiles,
   };
+}
+
+/**
+ * Raise {@link ValidationError} when `api_url` or token cannot be resolved.
+ * Shared by `LoxtepClient.fromWorkspace` (matches Python `require_auto_config`).
+ */
+export function requireAutoConfig(resolved: AutoConfigResult): AutoConfigResult {
+  if (!resolved.api_url) {
+    const missingProjectFile = resolved.missingFiles.find(f => f.includes('project.json'));
+    if (missingProjectFile) {
+      throw new ValidationError(
+        `Cannot auto-configure: required file is missing: ${missingProjectFile}`,
+        [{ field: 'api_url', message: `File not found: ${missingProjectFile}` }]
+      );
+    }
+    throw new ValidationError(
+      'Cannot auto-configure: api_url could not be resolved from workspace files, environment, or explicit config',
+      [{ field: 'api_url', message: 'No api_url available' }]
+    );
+  }
+
+  if (!resolved.token) {
+    const missingCredFile = resolved.missingFiles.find(f => f.includes('credentials.json'));
+    if (missingCredFile) {
+      throw new ValidationError(
+        `Cannot auto-configure: required file is missing: ${missingCredFile}`,
+        [{ field: 'token', message: `File not found: ${missingCredFile}` }]
+      );
+    }
+    throw new ValidationError(
+      'Cannot auto-configure: auth token could not be resolved from workspace files, environment, or explicit config',
+      [{ field: 'token', message: 'No auth token available' }]
+    );
+  }
+
+  return resolved;
 }

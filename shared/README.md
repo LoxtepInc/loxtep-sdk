@@ -4,7 +4,8 @@ This directory contains shared resources used across all SDK implementations:
 
 - **`api-schemas.ts`** — Zod schemas defining the API contract (source of truth for type generation)
 - **`openapi/`** — OpenAPI spec (future: auto-generated from backend)
-- **`fixtures/`** — Shared test fixtures for integration tests
+- **`fixtures/workspace/`** — Canonical `.loxtep/project.json` + credentials shapes for
+  Node/Python `from_workspace` / `fromWorkspace` tests (attach contract)
 
 ## Keeping SDKs in sync
 

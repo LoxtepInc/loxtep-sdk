@@ -1,7 +1,7 @@
 export { loadConfig, loadConfigSync } from './load.js';
 export { saveConfig } from './save.js';
 export { parseStreamsPartial } from './streams-partial.js';
-export { getConfigDir, getDefaultConfigPath } from './paths.js';
+export { getConfigDir, getDefaultConfigPath, CONFIG_DIR_ENV } from './paths.js';
 export type { LoxtepConfig } from './types.js';
 export { DEFAULT_CONFIG } from './types.js';
 export { buildAuthServiceUrl, extendClientBaseUrl } from './api-path.js';
@@ -19,6 +19,7 @@ export {
 export {
   loadWorkspaceConfig,
   resolveAutoConfig,
+  requireAutoConfig,
   type WorkspaceResolvedFields,
   type WorkspaceConfigResult,
   type ExplicitConfigFields,

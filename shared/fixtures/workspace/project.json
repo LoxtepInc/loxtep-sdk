@@ -1,0 +1,12 @@
+{
+  "project_id": "proj-1",
+  "organization_id": "org-1",
+  "instance_id": "inst-1",
+  "api_url": "https://apidev.loxtep.io",
+  "region": "us-east-1",
+  "streams": {
+    "LeoKinesisStream": "dev-LeoKinesisStream",
+    "LeoEvent": "dev-LeoEvent",
+    "Region": "us-east-1"
+  }
+}
