@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.30] - 2026-07-28
+
+### Added
+
+- **`LOXTEP_CONFIG_DIR`** — `getConfigDir()` honors this env override (parity with
+  Python), so tests and CI can isolate `~/.loxtep` without mocking `homedir`.
+- **`requireAutoConfig()`** — shared ValidationError paths for missing
+  `project.json` / `credentials.json` (used by `fromWorkspace`).
+
+### Changed
+
+- **`fromWorkspace` tests** use `shared/fixtures/workspace/` + `LOXTEP_CONFIG_DIR`
+  instead of conditional skips when the developer machine has real credentials.
+
 ## [0.7.29] - 2026-07-25
 
 ### Fixed

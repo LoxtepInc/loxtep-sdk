@@ -18,12 +18,13 @@ Node.js SDK — see **Parity with the Node.js SDK** at the bottom.
 
 > **Stream bus:** `loxtep.rstreams` is a native Leo data-plane client (Kinesis
 > **write** + DynamoDB/S3 **read**). Enable it with `pip install loxtep[streams]`
-> and pass `streams=` (or set `LEO_*` env).
+> and pass `streams=` (or set `LEO_*` env), or use `from_workspace()` after Node
+> `loxtep attach` (writes `streams` into `.loxtep/project.json`).
 >
-> **Not yet ported from the Node.js SDK:** the `config`, `auth`, `codegen`,
-> `skills`, `authoring`, `http`, `checkpoint` modules (client namespaces are at
-> parity). rstreams perf/edge follow-ups: S3 byte-range fast-read, and
-> snapshot/archive queue transitions.
+> **Not yet ported from the Node.js SDK:** skills / workflow authoring helpers.
+> Codegen (`loxtep generate`) and workspace auto-config (`from_workspace`) are
+> native Python. rstreams follow-ups: S3 byte-range fast-read, snapshot/archive
+> queue transitions.
 
 ## Install
 
@@ -34,7 +35,24 @@ pip install -e .
 
 ## Quick start
 
-### Sync client
+### Sync client (workspace auto-config)
+
+After Node CLI `login` → `init` → `attach` (writes `.loxtep/project.json` +
+credentials):
+
+```python
+from loxtep import LoxtepClient
+
+client = LoxtepClient.from_workspace()
+writer = client.get_writer("app-events")
+writer.write({"user_id": "u_1", "action": "signup"})
+writer.close()
+client.close()
+```
+
+See **[Write to a data product](docs/sdk-first-ingest.md)** for the full flow.
+
+### Sync client (explicit config)
 
 ```python
 from loxtep import LoxtepClient
@@ -305,21 +323,17 @@ Types are hand-written; all public methods and responses use type hints. Run
 
 ## CLI
 
-After `pip install -e .` you get a `loxtep` command:
+After `pip install loxtep` you get a `loxtep` command:
 
-- **login** – runs Node.js `loxtep login` (requires Node/npx)
-- **query** / **stream** / **replay** – data-product operations (Python SDK)
-- **workflows list** / **workflows deploy** – (Python SDK)
-- **observe status** – bot/queue status (Python SDK)
-- **projects list** / **projects get** – (Python SDK)
-- **templates list** / **templates get** – (Python SDK)
-- **config export** – export SDK bootstrap config from a connector (Python SDK)
+- **Native (Python):** `query`, `stream`, `replay`, `generate`, `workflows list|deploy`,
+  `observe status`, `projects`, `templates`, `config export`
+- **Delegated to Node** (`npx loxtep …`): `login`, `init`, `attach`, `ingest`,
+  `deploy`, and any other lifecycle command — requires Node.js/npx
 
-Config: `~/.loxtep/config.json` or env `LOXTEP_API_URL`,
-`LOXTEP_ORGANIZATION_ID`, `LOXTEP_PROJECT_ID`. Auth: run `loxtep login` once or
-set `LOXTEP_TOKEN`.
+Config: `.loxtep/project.json` (after attach) + project-local or `~/.loxtep/credentials.json`,
+or env `LOXTEP_*`. Prefer **`LoxtepClient.from_workspace()`** in app code.
 
-See [docs/CLI.md](docs/CLI.md) for full CLI usage.
+See [docs/CLI.md](docs/CLI.md) and [docs/sdk-first-ingest.md](docs/sdk-first-ingest.md).
 
 ## Parity with the Node.js SDK
 
@@ -332,6 +346,10 @@ names, same ingest → define → deliver grouping. `flows` merged into `workflo
 `improvements`/`activity`/`process_intelligence` exist and are internal/
 experimental (excluded from the documented surface), matching Node.
 
+`LoxtepClient.from_workspace()` / `AsyncLoxtepClient.from_workspace()` match Node's
+`fromWorkspace()`: env > explicit kwargs > `.loxtep/project.json` + credentials,
+including `region` and `streams` from attach.
+
 Remaining, intentional differences:
 
 | Area | Node.js | Python |
@@ -341,7 +359,8 @@ Remaining, intentional differences:
 | large-payload S3 write-offload (>600 KB) | auto | auto (uploads gzipped NDJSON + emits S3-pointer record) |
 | S3 byte-range fast-read; snapshot/archive queues | yes | follow-ups (whole-object read is correct; live/modern queues supported) |
 | `metrics` | no-op stub | no-op stub (identical) |
-| Author-side modules (`config`, `auth`, `codegen`, `skills`, `authoring`, `http`, `checkpoint`) | present | not ported |
+| Workspace lifecycle CLI | full in `@loxtep/sdk` | Python CLI delegates to Node; library owns I/O |
+| Author-side modules (`skills`, `authoring`) | present | not ported (codegen/`generate` is native Python) |
 
 `domains`, `standards`, and `data_contracts` are real HTTP-backed namespaces.
 The `loxtep.rstreams` module is a native Leo data-plane client — sync **and**
