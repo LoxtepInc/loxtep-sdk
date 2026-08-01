@@ -27,7 +27,7 @@ export const DataProductSchema = z
     schema: z.record(z.unknown()).optional(),
     ingestion: z.record(z.unknown()).optional(),
     storage: z.record(z.unknown()).optional(),
-    consumption: z.record(z.unknown()).optional(),
+    delivery: z.record(z.unknown()).optional(),
     governance: z.record(z.unknown()).optional(),
     quality: z.record(z.unknown()).optional(),
     lineage: z.record(z.unknown()).optional(),
