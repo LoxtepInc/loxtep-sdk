@@ -31,7 +31,7 @@ Build & deploy
   connectors test <connector_id>
                      Connectivity probe (POST /connectors/{id}/test). Not samples.
   connectors capture-samples <connector_id> --entity-type <name> [--limit N]
-                     Fetch bounded entity samples (MCP capture_samples). Limit 1–25.
+                     Fetch bounded entity samples. Limit 1–25.
   ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>]
                      [--iceberg] [--dry-run] [--deploy]
                      Trigger + source DP local package (alias: ingest provision)

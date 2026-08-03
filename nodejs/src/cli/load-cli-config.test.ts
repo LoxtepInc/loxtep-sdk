@@ -32,7 +32,12 @@ describe('loadCliConfig', () => {
       })
     );
 
-    const { config, workspace_api_url } = await loadCliConfig({ cwd: tmpRoot });
+    // Point configFilePath at a missing file under tmpRoot so ~/.loxtep/config.json
+    // from the developer machine cannot shadow workspace project.json fields.
+    const { config, workspace_api_url } = await loadCliConfig({
+      cwd: tmpRoot,
+      configFilePath: join(tmpRoot, 'no-global-config.json'),
+    });
     expect(config.project_id).toBe('ed125001-d343-483a-b045-ef2bcaeffb2c');
     expect(config.organization_id).toBe('1e6b719f-c8a2-47f5-93b3-58530e6711d6');
     expect(config.instance_id).toBe('a9da8b2d-5ef0-44ba-80c9-9039f5b9a8f0');
@@ -55,7 +60,10 @@ describe('loadCliConfig', () => {
       })
     );
 
-    const { config } = await loadCliConfig({ cwd: tmpRoot });
+    const { config } = await loadCliConfig({
+      cwd: tmpRoot,
+      configFilePath: join(tmpRoot, 'no-global-config.json'),
+    });
     expect(config.region).toBe('us-east-1');
     expect(config.streams?.LeoEvent).toBe('prod-LeoEvent');
     expect(config.streams?.LeoStream).toBe('prod-LeoStream');
