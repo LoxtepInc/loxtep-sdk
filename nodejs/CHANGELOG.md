@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-08-03
+
+### Added
+
+- **`loxtep connectors test <connector_id>`** — connectivity probe
+  (`POST /connectors/{id}/test`), distinct from sample capture and from
+  `loxtep test <module>` (workflow modules).
+- **`loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]`** —
+  bounded entity sample fetch (`POST /connectors/{id}/capture-samples`, limit 1–25).
+- Matching SDK client methods on `client.connect.connectors` for `test` and
+  `capture_samples`.
+
+### Fixed
+
+- Jest CI no longer fails with a green suite when CLI tests leave a sticky
+  `process.exitCode = 1` on worker processes (`jest.setup.cjs` clears it after
+  each test).
+- CLI help no longer mentions internal MCP operation names (customer-facing
+  surface only).
+
 ## [0.7.30] - 2026-07-28
 
 ### Added

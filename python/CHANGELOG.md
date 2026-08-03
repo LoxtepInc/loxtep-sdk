@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] — 2026-08-03
+
+### Fixed
+
+- **`config export --from-connector` tests** mock `client.connect.connectors.get`
+  (the facade path the CLI uses), so connector type / sdk_config assertions work.
+- **Ruff** — pin an explicit lint `select` in `pyproject.toml` and drop unused
+  imports so CI is not at the mercy of unconfigured `ruff` default-rule churn.
+
 ## [0.5.0] — 2026-07-28
 
 ### Added
