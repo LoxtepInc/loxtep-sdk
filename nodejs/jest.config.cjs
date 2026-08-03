@@ -4,6 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
     '^.+\\.tsx?$': [

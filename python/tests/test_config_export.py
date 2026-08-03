@@ -111,9 +111,9 @@ SDK_CONNECTOR_RESPONSE = {
 
 
 def _mock_client_for_connector(connector_response):
-    """Create a mock LoxtepClient that returns the given connector on connectors.get()."""
+    """Create a mock LoxtepClient for ``client.connect.connectors.get()``."""
     mock_client = MagicMock()
-    mock_client.connectors.get.return_value = connector_response
+    mock_client.connect.connectors.get.return_value = connector_response
     return mock_client
 
 
@@ -169,7 +169,7 @@ class TestRunConfigExportFromConnector:
         monkeypatch.setenv("LOXTEP_TOKEN", "test-token")
 
         mock_client = MagicMock()
-        mock_client.connectors.get.side_effect = Exception("404 Not Found")
+        mock_client.connect.connectors.get.side_effect = Exception("404 Not Found")
         with patch("loxtep.client.LoxtepClient", return_value=mock_client):
             rc = run_config_export_from_connector("conn-missing")
 
