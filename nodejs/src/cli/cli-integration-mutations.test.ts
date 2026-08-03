@@ -12,7 +12,11 @@ import {
 import { runWorkflowsCreate, runWorkflowsDeploy } from './commands/workflows-cmd.js';
 import { runBundleSave } from './commands/bundle-cmd.js';
 import { runIngestProvision } from './commands/ingest-cmd.js';
-import { runConnectorsList } from './commands/connectors-cmd.js';
+import {
+  runConnectorsList,
+  runConnectorsTest,
+  runConnectorsCaptureSamples,
+} from './commands/connectors-cmd.js';
 import { runTriggersCreate, runTriggersTest } from './commands/triggers-cmd.js';
 import { runDataContractsCreate } from './commands/data-contracts-cmd.js';
 import {
@@ -121,6 +125,27 @@ describe('CLI integration mutations (mock platform API)', () => {
       const out = captureCliOutput();
       await runConnectorsList({ type: 'sdk' }, opts());
       expectCliSuccess(out, MOCK_IDS.connector_sdk_id, 'sdk');
+      out.restore();
+    });
+
+    it('connectors test', async () => {
+      const out = captureCliOutput();
+      await runConnectorsTest(MOCK_IDS.connector_sdk_id, opts());
+      expectCliSuccess(out, 'passed', 'true');
+      out.restore();
+    });
+
+    it('connectors capture-samples', async () => {
+      const out = captureCliOutput();
+      await runConnectorsCaptureSamples(
+        {
+          connector_id: MOCK_IDS.connector_sdk_id,
+          entity_type: 'products',
+          limit: 5,
+        },
+        opts()
+      );
+      expectCliSuccess(out, 'products', 'sample_payloads');
       out.restore();
     });
 

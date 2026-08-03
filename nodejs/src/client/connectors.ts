@@ -1,5 +1,5 @@
 /**
- * Connectors API. list, get, create, update, delete, test, oauth.
+ * Connectors API. list, get, create, update, delete, test, capture_samples, oauth.
  * Backend: connectors microservice /connectors/connectors.
  */
 
@@ -11,6 +11,8 @@ import type {
   CreateConnectorInput,
   UpdateConnectorInput,
   ConnectorTestResult,
+  CaptureConnectorSamplesInput,
+  CaptureConnectorSamplesResult,
 } from './connectors-types.js';
 
 const CONNECTORS_BASE = '/connectors/connectors';
@@ -37,6 +39,10 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
   update: (connector_id: string, input: UpdateConnectorInput) => Promise<Connector>;
   delete: (connector_id: string) => Promise<void>;
   test: (connector_id: string) => Promise<ConnectorTestResult>;
+  capture_samples: (
+    connector_id: string,
+    input: CaptureConnectorSamplesInput
+  ) => Promise<CaptureConnectorSamplesResult>;
   get_oauth_url: (
     connector_id: string,
     opts?: { callback_url?: string; toolkit?: string }
@@ -108,6 +114,20 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
       >(`${CONNECTORS_BASE}/${encodeURIComponent(connector_id)}/test`, {});
       const r = res as { data?: ConnectorTestResult };
       return r?.data ?? (res as ConnectorTestResult);
+    },
+
+    async capture_samples(
+      connector_id: string,
+      input: CaptureConnectorSamplesInput
+    ): Promise<CaptureConnectorSamplesResult> {
+      const res = await http.post<
+        { success: true; data: CaptureConnectorSamplesResult } | CaptureConnectorSamplesResult
+      >(`${CONNECTORS_BASE}/${encodeURIComponent(connector_id)}/capture-samples`, {
+        entity_type: input.entity_type,
+        ...(input.limit != null ? { limit: input.limit } : {}),
+      });
+      const r = res as { data?: CaptureConnectorSamplesResult };
+      return r?.data ?? (res as CaptureConnectorSamplesResult);
     },
 
     async get_oauth_url(
