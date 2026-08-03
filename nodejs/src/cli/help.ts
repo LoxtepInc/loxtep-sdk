@@ -28,6 +28,10 @@ Workspace
 Build & deploy
   connectors list [--type sdk]
                      List org connectors (reuse SDK connector before create)
+  connectors test <connector_id>
+                     Connectivity probe (POST /connectors/{id}/test). Not samples.
+  connectors capture-samples <connector_id> --entity-type <name> [--limit N]
+                     Fetch bounded entity samples (MCP capture_samples). Limit 1–25.
   ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>]
                      [--iceberg] [--dry-run] [--deploy]
                      Trigger + source DP local package (alias: ingest provision)
@@ -82,6 +86,8 @@ Examples:
   pnpm exec loxtep login
   pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
   pnpm exec loxtep connectors list --type sdk
+  pnpm exec loxtep connectors test <connector_id>
+  pnpm exec loxtep connectors capture-samples <connector_id> --entity-type products --limit 10
   pnpm exec loxtep ingest create --name app-events
   pnpm exec loxtep transform create --from app-events --name cleaned-events
   pnpm exec loxtep delivery create --from cleaned-events --connector-id <id>

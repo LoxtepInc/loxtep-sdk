@@ -140,6 +140,8 @@ export type {
   CreateConnectorInput,
   UpdateConnectorInput,
   ConnectorTestResult,
+  CaptureConnectorSamplesInput,
+  CaptureConnectorSamplesResult,
 } from './connectors-types.js';
 export type { Instance, InstancesListResponse, InstanceDetailResponse } from './instances-types.js';
 export type { Procedure, ProceduresListResponse } from './procedures-types.js';

@@ -1,5 +1,11 @@
 /**
- * CLI: loxtep connectors list [--type sdk]
+ * CLI: loxtep connectors list | test | capture-samples
+ *
+ * Org-level connectors. Connectivity probe vs sample capture are separate:
+ *   - `test`            → POST /connectors/{id}/test
+ *   - `capture-samples` → POST /connectors/{id}/capture-samples (needs --entity-type)
+ *
+ * There is no `loxtep connector test` (singular) command — always `connectors`.
  */
 
 import type { Connector } from '../../client/connectors-types.js';
@@ -46,6 +52,58 @@ export async function runConnectorsList(
     });
     const summary = mapListSummaries(result, toConnectorListSummary);
     printCliListOutput(summary, result, { ...options, label: 'connectors list' });
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}
+
+export async function runConnectorsTest(
+  connectorId: string,
+  options: ConnectorsCmdOptions = {}
+): Promise<void> {
+  if (!connectorId) {
+    console.error('Usage: loxtep connectors test <connector_id>');
+    process.exitCode = 1;
+    return;
+  }
+  const { client } = await requireCliClient(options);
+  try {
+    const result = await client.connect.connectors.test(connectorId);
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.passed) {
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}
+
+export async function runConnectorsCaptureSamples(
+  params: {
+    connector_id: string;
+    entity_type?: string;
+    limit?: number;
+  },
+  options: ConnectorsCmdOptions = {}
+): Promise<void> {
+  const connectorId = params.connector_id;
+  const entityType = params.entity_type;
+  if (!connectorId || !entityType) {
+    console.error(
+      'Usage: loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]'
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const { client } = await requireCliClient(options);
+  try {
+    const result = await client.connect.connectors.capture_samples(connectorId, {
+      entity_type: entityType,
+      limit: params.limit,
+    });
+    console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
     process.exitCode = 1;

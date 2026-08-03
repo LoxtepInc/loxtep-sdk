@@ -652,6 +652,41 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       return jsonResponse(listEnvelope(items));
     }
 
+    if (method === 'POST' && pathname.startsWith('/connectors/connectors/')) {
+      const testMatch = routeMatch(pathname, /\/connectors\/connectors\/([^/?]+)\/test$/);
+      if (testMatch) {
+        return jsonResponse(
+          successEnvelope({
+            passed: true,
+            message: 'Connection successful',
+            tested_at: '2026-01-01T00:00:00.000Z',
+          })
+        );
+      }
+      const captureMatch = routeMatch(
+        pathname,
+        /\/connectors\/connectors\/([^/?]+)\/capture-samples$/
+      );
+      if (captureMatch) {
+        let body: Record<string, unknown> = {};
+        try {
+          body = init?.body ? JSON.parse(String(init.body)) : {};
+        } catch {
+          body = {};
+        }
+        const entityType = String(body.entity_type ?? 'products');
+        return jsonResponse(
+          successEnvelope({
+            connector_id: captureMatch[1],
+            entity_type: entityType,
+            record_count: 1,
+            captured_at: '2026-01-01T00:00:00.000Z',
+            sample_payloads: { [entityType]: [{ id: 1 }] },
+          })
+        );
+      }
+    }
+
     if (method === 'POST' && (pathname === '/connectors/connectors' || pathname.startsWith('/connectors/connectors?'))) {
       let body: Record<string, unknown> = {};
       try {
