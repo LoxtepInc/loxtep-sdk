@@ -32,7 +32,9 @@ jobs:
 
       - name: Lint
         run: |
-          pip install ruff
+          # Pin major so CI doesn't inherit surprise default-rule expansions.
+          # Rule set lives in python/pyproject.toml ([tool.ruff.lint]).
+          pip install 'ruff>=0.8,<0.17'
           ruff check .
 
       - name: Test

@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .observe import ObserveApi
-
 
 @dataclass
 class ObserveFacade:
