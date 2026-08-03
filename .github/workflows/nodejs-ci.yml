@@ -35,11 +35,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # ESLint is not yet configured for this package (no config / not in
-      # devDependencies), so the lint step is non-blocking until it is set up.
+      # devDependencies). Do not invoke `pnpm run lint` until that lands — it
+      # currently fails with `eslint: not found` and only muddies the job log.
       # TODO: add eslint + a flat config and make this a hard gate.
       - name: Lint
-        run: pnpm run lint
-        continue-on-error: true
+        run: echo "Skipping lint — eslint is not configured (see workflow TODO)."
 
       - name: Build
         run: pnpm run build

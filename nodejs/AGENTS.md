@@ -111,7 +111,9 @@ loxtep workflows create --name <n> --project-id <id> [--template-id <id>]
 loxtep workflows deploy --project-id <id> [--instance-id <id>]
 
 loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id>
-loxtep connectors  # (org-level connectors are managed via SDK/MCP)
+loxtep connectors list [--type sdk]
+loxtep connectors test <connector_id>
+loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]
 loxtep domains list | get <id>
 loxtep standards list | get <id>
 loxtep data-contracts list | get <id>
@@ -121,6 +123,11 @@ loxtep config list | paths | set <k> <v> | export --from-connector <id> [--forma
 loxtep metrics rate-limits | log --id <id> --value <n>
 ```
 
+**Connector probes (do not invent CLI verbs):**
+- Connectivity: `loxtep connectors test <id>` (MCP: `loxtep_connect` → `test_connector`)
+- Samples: `loxtep connectors capture-samples <id> --entity-type <name> [--limit N]` (MCP: `capture_samples`)
+- There is **no** `loxtep connector test` (singular) and **no** `--entity` on `connectors test`
+- `loxtep test <module>` runs a **workflow module** locally — not a connector
 ---
 
 ## SDK reference (`@loxtep/sdk`)

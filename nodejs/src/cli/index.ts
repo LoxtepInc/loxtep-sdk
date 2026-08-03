@@ -45,7 +45,11 @@ import { runTransformCreate } from './commands/transform-cmd.js';
 import { runDeliveryCreate } from './commands/delivery-cmd.js';
 import { runPush } from './commands/push-cmd.js';
 import { runLint } from './commands/lint-cmd.js';
-import { runConnectorsList } from './commands/connectors-cmd.js';
+import {
+  runConnectorsList,
+  runConnectorsTest,
+  runConnectorsCaptureSamples,
+} from './commands/connectors-cmd.js';
 import { runObserveStatus } from './commands/observe-cmd.js';
 import {
   runTriggersList,
@@ -525,8 +529,31 @@ async function runCommand(): Promise<void> {
     case 'connectors':
       if (sub === 'list') {
         await runConnectorsList({ type: getArg('--type') }, { debug: args.includes('--debug') });
+      } else if (sub === 'test' && args[2]) {
+        await runConnectorsTest(args[2], { debug: args.includes('--debug') });
+      } else if (
+        (sub === 'capture-samples' || sub === 'capture_samples') &&
+        args[2]
+      ) {
+        const limitRaw = getArg('--limit');
+        const limit = limitRaw != null && limitRaw !== '' ? Number(limitRaw) : undefined;
+        await runConnectorsCaptureSamples(
+          {
+            connector_id: args[2],
+            entity_type: getArg('--entity-type') ?? getArg('--entity'),
+            limit: Number.isFinite(limit) ? limit : undefined,
+          },
+          { debug: args.includes('--debug') }
+        );
       } else {
-        console.error('Usage: loxtep connectors list [--type sdk]');
+        console.error(
+          [
+            'Usage:',
+            '  loxtep connectors list [--type sdk]',
+            '  loxtep connectors test <connector_id>',
+            '  loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]',
+          ].join('\n')
+        );
         process.exitCode = 1;
       }
       break;

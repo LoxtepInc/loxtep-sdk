@@ -62,3 +62,16 @@ export interface ConnectorTestResult {
   error?: { code: string; message: string };
   tested_at: string;
 }
+
+export interface CaptureConnectorSamplesInput {
+  entity_type: string;
+  limit?: number;
+}
+
+export interface CaptureConnectorSamplesResult {
+  connector_id: string;
+  entity_type: string;
+  record_count: number;
+  captured_at: string;
+  sample_payloads: Record<string, unknown>;
+}

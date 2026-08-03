@@ -35,7 +35,9 @@ Same on Python: `client.get_writer("orders_raw")`, `client.get_reader("orders_ra
 Low-level workflow writer escape hatch: `client.build.get_writer(workflow_id, { bot_id, output_queue_name, … })`.
 
 Vocabulary: MCP `loxtep_build` trigger operations (backend: connections) and target operations
-(backend: consumptions). Connector OAuth uses `get_oauth_url`; sample capture uses `capture_samples`.
+(backend: consumptions). Connector OAuth uses `get_oauth_url`; connectivity
+probe uses `test_connector` / `loxtep connectors test <id>`; sample capture uses
+`capture_samples` / `loxtep connectors capture-samples <id> --entity-type <name>`.
 
 When unsure: **MCP for provisioning and agent tool calls**; **SDK for runtime**
 services running in your infrastructure or CI.

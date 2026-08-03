@@ -2,8 +2,6 @@
 Port of nodejs/src/config/platform-request-url.test.ts — keep test cases in sync.
 """
 
-import os
-
 from loxtep.gateway_url import build_platform_request_url, get_gateway_microservice_id
 
 HOST = "https://apidev.example.com"
