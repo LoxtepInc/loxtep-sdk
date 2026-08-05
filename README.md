@@ -4,18 +4,18 @@ Loxtep is the **Enterprise Context Layer**: the system that turns organizational
 knowledge, expertise, and norms into machine-usable context for AI across
 heterogeneous systems.
 
-Official client libraries for the [Loxtep](https://loxtep.com) platform.
+Official client libraries for the [Loxtep](https://loxtep.io) platform.
 
 | Language | Package | Status |
 |----------|---------|--------|
-| Node.js | [`@loxtep/sdk`](https://www.npmjs.com/package/@loxtep/sdk) | ✅ Active |
-| Python | `loxtep` | 🚧 In progress |
-| Rust | `loxtep` | 🚧 In progress |
+| Node.js | [`@loxtep/sdk`](https://www.npmjs.com/package/@loxtep/sdk) | ✅ Active — CLI + full client |
+| Python | [`loxtep`](https://pypi.org/project/loxtep/) | ✅ Active — client + streams; CLI lifecycle via Node |
+| Rust | `loxtep` | 🚧 Placeholder (not published) |
 
-## Quick start
+## Quick start (Node.js)
 
-New to Loxtep? Start in a **fresh project directory** and wire up the CLI
-workspace before you write application code.
+Start in a **fresh project directory**. The Node package installs both the
+`loxtep` CLI and the programmatic SDK.
 
 ```bash
 mkdir my-loxtep-app && cd my-loxtep-app
@@ -36,15 +36,12 @@ pnpm exec loxtep attach --instance <instance-id>
 pnpm exec loxtep generate
 ```
 
-**Create a data product and write from your app:**
+**Provision a data product and write from your app:**
 
 ```bash
 pnpm exec loxtep ingest provision --name app-events
+# then lint / push / deploy as documented in the getting-started guide
 ```
-
-See [Write to a data product](./nodejs/docs/sdk-first-ingest.md).
-
-Explore what exists on the instance:
 
 ```bash
 pnpm exec loxtep data-products list
@@ -52,14 +49,14 @@ pnpm exec loxtep data-products list
 pnpm exec loxtep workflows list --project-id <project-id>
 ```
 
-**Next:** [SDK-first ingest](./nodejs/docs/sdk-first-ingest.md) (greenfield
-`get_writer` path) or author workflow modules:
-[`nodejs/docs/code-first-cli.md`](./nodejs/docs/code-first-cli.md).
+**Walkthroughs:**
+
+- [Getting started](./nodejs/docs/getting-started.md) — zero to first event
+- [SDK-first ingest](./nodejs/docs/sdk-first-ingest.md) — greenfield `get_writer` path
+- [Code-first CLI](./nodejs/docs/code-first-cli.md) — TypeScript workflow modules
+- [Quick reference](./nodejs/docs/quick-reference.md) — CLI + SDK cheat sheet
 
 ### Programmatic SDK (after attach)
-
-Once logged in and attached, bootstrap the client from your workspace files —
-no manual `api_url` / token wiring:
 
 ```ts
 import { LoxtepClient } from '@loxtep/sdk';
@@ -70,8 +67,7 @@ console.log(me.user.email, me.organization?.name);
 ```
 
 **Stream I/O** (`get_writer` / `get_reader`) requires a **deployed** data
-product on your attached instance. After you deploy a workflow that publishes
-one:
+product on your attached instance:
 
 ```ts
 const writer = await client.get_writer('orders'); // name from `data-products list`
@@ -79,8 +75,7 @@ writer.write({ order_id: '1', total: 42.0 });
 await writer.close();
 ```
 
-See [`nodejs/README.md`](./nodejs/README.md) for the full API surface and CLI
-reference.
+Full API surface and CLI reference: [`nodejs/README.md`](./nodejs/README.md).
 
 ### Other ways to work with Loxtep
 
@@ -92,11 +87,14 @@ reference.
 
 Platform overview: [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
 
-### Python
+## Python
+
+Use the **Node CLI** for login / init / attach / provision / deploy. Use the
+Python package for application code and stream I/O.
 
 ```bash
-# Lifecycle: use the Node CLI (login / init / attach / ingest provision / deploy)
-pnpm add @loxtep/sdk && pnpm exec loxtep login && pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
+pnpm add @loxtep/sdk
+pnpm exec loxtep login && pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
 
 pip install 'loxtep[streams]'
 ```
@@ -111,24 +109,34 @@ writer.close()
 ```
 
 See [`python/docs/sdk-first-ingest.md`](./python/docs/sdk-first-ingest.md) and
-[`python/README.md`](./python/README.md).
+[`python/README.md`](./python/README.md). Skills / workflow-authoring helpers are
+not yet ported from Node; codegen and `from_workspace()` are native Python.
 
 ## Repository structure
 
 ```
 loxtep-sdk/
-├── nodejs/          ← @loxtep/sdk (npm)
-├── python/          ← loxtep (PyPI)
-├── rust/            ← loxtep (crates.io)
-├── shared/          ← OpenAPI spec, test fixtures, contract schemas
+├── nodejs/          ← @loxtep/sdk (npm) — CLI + TypeScript client
+├── python/          ← loxtep (PyPI) — Python client + optional streams
+├── rust/            ← placeholder crate (not on crates.io yet)
+├── shared/          ← API contract schemas + cross-SDK test fixtures
+├── SECURITY.md      ← vulnerability reporting
 └── .github/
-    └── workflows/   ← Per-language CI and publish workflows
+    └── workflows/   ← CI and publish (npm / PyPI Trusted Publishing)
 ```
 
 ## Contributing
 
-Each SDK has its own development setup. See the README in each language directory.
+Each language package has its own README with setup and test commands:
+
+- [`nodejs/README.md`](./nodejs/README.md)
+- [`python/README.md`](./python/README.md)
+- [`rust/leo-sdk/README.md`](./rust/leo-sdk/README.md)
+
+## Security
+
+See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities privately.
 
 ## License
 
-MIT
+[MIT](./LICENSE)
