@@ -27,6 +27,10 @@ Thumbs.db
 .env.local
 *.local
 
+# Internal QA artifacts (live-environment reports — keep out of the public tree)
+E2E_*.md
+*_E2E_REPORT.md
+
 # Test coverage
 coverage/
 htmlcov/

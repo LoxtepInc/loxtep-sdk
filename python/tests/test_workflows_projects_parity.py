@@ -1,7 +1,7 @@
 """
 Tests for workflows.create()'s required workflow_type/domain_id and projects.reindex(),
 both ported from Node.js fixes (nodejs/src/client/flow-types.ts FlowCreateInput;
-nodejs/src/client/projects.ts reindex). See E2E_TEST_REPORT.md findings #10, #12.
+nodejs/src/client/projects.ts reindex).
 """
 
 from unittest.mock import patch

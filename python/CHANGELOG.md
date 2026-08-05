@@ -35,11 +35,10 @@ and this project adheres to
 - **Shared fixtures** — `from_workspace` / workspace_config tests load
   `shared/fixtures/workspace/` so Node and Python stay on the same attach contract.
 
-## [0.4.0] — Bug-fix parity with Node.js SDK (E2E_TEST_REPORT.md follow-up)
+## [0.4.0] — Bug-fix parity with Node.js SDK
 
-Ports the fixes made to the Node.js SDK (`@loxtep/sdk` 0.7.24–0.7.29) in response to an
-end-to-end test that found several critical/high bugs. See the Node.js repo's
-`E2E_TEST_REPORT.md` / `E2E_RETEST_REPORT.md` for the original findings.
+Ports the fixes made to the Node.js SDK (`@loxtep/sdk` 0.7.24–0.7.29) in response to
+end-to-end testing that found several critical/high bugs.
 
 (Most of this shipped as `0.2.0`; the Leo→Loxtep stream-class rename below landed after
 that release and is new in `0.4.0`. Versions `0.2.0`/`0.3.0` are otherwise skipped here —

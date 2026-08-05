@@ -28,8 +28,8 @@ MICROSERVICE_OVERRIDES: dict[str, str] = {
 }
 
 # Sibling resources that live directly under the `dataproducts` microservice root
-# (`platform-backend/dataproducts/api/<name>/...`), as opposed to being nested one level
-# deeper under the `dataproducts` *resource* itself (`platform-backend/dataproducts/api/dataproducts/...`,
+# (e.g. `/dataproducts/warehouse/...`), as opposed to being nested one level deeper
+# under the `dataproducts` *resource* itself (e.g. `/dataproducts/dataproducts/...`,
 # which is what the `/dataproducts/dataproducts/...` doubling below is for).
 # A path like `/dataproducts/datacontracts` must NOT be doubled — the real route is
 # `/dataproducts/datacontracts`, not `/dataproducts/dataproducts/datacontracts`.

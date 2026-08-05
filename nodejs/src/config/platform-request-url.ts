@@ -6,8 +6,8 @@
  * and when `path` already begins with a microservice (e.g. `/ai/…`, `/graph/…`) we do **not** add another
  * segment (see `PATH_ALREADY_HAS_SERVICE_PREFIX`).
  *
- * For backend route definitions, see each microservice’s `config.loxtep.api.uri` in
- * `platform-backend` per-service `api` trees (`.../api/.../package.json`).
+ * Public routes follow each microservice’s registered API Gateway URI
+ * (`/{microservice}{resourcePath}`).
  */
 
 /** Paths that are already correct from the host root (include the gateway’s first segment in `path`). */
@@ -22,8 +22,8 @@ const MICROSERVICE_OVERRIDES: Readonly<Record<string, string>> = {
 
 /**
  * Sibling resources that live directly under the `dataproducts` microservice root
- * (`platform-backend/dataproducts/api/<name>/...`), as opposed to being nested one level
- * deeper under the `dataproducts` *resource* itself (`platform-backend/dataproducts/api/dataproducts/...`,
+ * (e.g. `/dataproducts/warehouse/...`), as opposed to being nested one level deeper
+ * under the `dataproducts` *resource* itself (e.g. `/dataproducts/dataproducts/...`,
  * which is what the `/dataproducts/dataproducts/...` doubling in `buildPlatformRequestUrl` is for).
  * A path like `/dataproducts/datacontracts` must NOT be doubled — the real route is
  * `/dataproducts/datacontracts`, not `/dataproducts/dataproducts/datacontracts`.

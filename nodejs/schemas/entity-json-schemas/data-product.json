@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://loxtep.io/schemas/entity/data-product.json",
   "title": "Data Product Entity",
-  "description": "JSON Schema for Data Product entity in customer workspace (Studio / S3 graph). Flow-graph fields (workflow_id, upstream_entity_id, etc.) describe placement in the workflow canvas. The canonical interoperable catalog and API representation is ODPS v4.1 (Open Data Products Standard): include `odps_document` aligned with https://opendataproducts.org/v4.1/schema/odps.json — see `odps-product.json` and .kiro/specs/odps-data-product-standard in the Loxtep repo.",
+  "description": "JSON Schema for Data Product entity in customer workspace (Studio / S3 graph). Flow-graph fields (workflow_id, upstream_entity_id, etc.) describe placement in the workflow canvas. The canonical interoperable catalog and API representation is ODPS v4.1 (Open Data Products Standard): include `odps_document` aligned with https://opendataproducts.org/v4.1/schema/odps.json — see `odps-product.json` in this package for the ODPS document shape.",
   "type": "object",
   "required": [
     "data_product_id",

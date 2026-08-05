@@ -1,10 +1,9 @@
 """
 Tests for reading `api_base_url` from credentials.json as an api_url fallback.
 
-This is bug-parity with Node's fix for headless `login --console` not persisting
-`api_base_url` (E2E_TEST_REPORT.md finding #8): once persisted, Python must honor it
-the same way `resolveCliApiUrl` does on the Node side, so a dev/staging login isn't
-silently overridden by the baked-in production default.
+Parity with Node's fix for headless `login --console` not persisting `api_base_url`:
+once persisted, Python must honor it the same way `resolveCliApiUrl` does on the Node
+side, so a dev/staging login isn't silently overridden by the baked-in production default.
 """
 
 import json

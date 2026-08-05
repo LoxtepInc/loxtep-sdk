@@ -1,9 +1,8 @@
 /**
  * Project versions (snapshots) API types.
- * Backend: No dedicated REST API yet. MCP tools (list_versions, create_snapshot,
- * restore_version, compare_versions) use CustomerWorkspaceService internally.
- * SDK module exposes types for when REST endpoints are added.
- * See: platform-backend/pipelines/lib/project-versions.ts
+ * No dedicated REST API yet. MCP tools (list_versions, create_snapshot,
+ * restore_version, compare_versions) use the platform workspace service
+ * internally. This module exposes types for when REST endpoints are added.
  */
 
 export interface ProjectVersionMetadata {

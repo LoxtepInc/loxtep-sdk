@@ -177,8 +177,7 @@ class ProjectsApi:
 
         Required after `save_workflow_bundle`/direct S3 writes before `deploy` will see
         the new entities: the deploy bot reads from this index table, not S3 directly,
-        and a bundle save alone doesn't refresh it (E2E_TEST_REPORT.md finding #12 —
-        `deploy` reported "No workflow modules found" until this was called).
+        and a bundle save alone doesn't refresh it.
         """
         path = f"{PROJECTS_BASE}/{quote(project_id)}/reindex"
         res = self._http.post(path, {})
