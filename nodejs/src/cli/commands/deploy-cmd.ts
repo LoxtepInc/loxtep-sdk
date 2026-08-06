@@ -72,6 +72,36 @@ export interface DeployTrackingHandle {
   status: string;
 }
 
+function trackingHandleFromDeployResult(
+  result: { run_id?: string; deployment_id?: string; status?: string; message?: string }
+): DeployTrackingHandle | undefined {
+  const run_id = result.run_id ?? result.deployment_id;
+  const status = result.status ?? result.message;
+  if (!run_id && !status) {
+    return undefined;
+  }
+  return {
+    run_id: run_id ?? '(none)',
+    status: status ?? 'unknown',
+  };
+}
+
+function formatTrackingLines(trackingHandle: DeployTrackingHandle): string[] {
+  const lines = [
+    `Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`,
+  ];
+  if (trackingHandle.run_id !== 'unknown' && trackingHandle.run_id !== '(none)') {
+    lines.push(
+      'Deploy fan-out is async; check activity / the UI for completion. (CLI status poll TBD.)'
+    );
+  } else if (trackingHandle.run_id === '(none)') {
+    lines.push(
+      'Platform returned deploy status without a run_id (backend contract outdated or still nested).'
+    );
+  }
+  return lines;
+}
+
 /** Result of a single workflow deployment. */
 export interface WorkflowDeployResult {
   name: string;
@@ -177,7 +207,7 @@ export async function deployLocalEntityWorkflows(
       project_id: projectId,
       instance_id: instanceId,
     });
-    trackingHandle = { run_id: result.deployment_id, status: result.status };
+    trackingHandle = trackingHandleFromDeployResult(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     trackingHandle = { run_id: 'unknown', status: `failed: ${message}` };
@@ -460,10 +490,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
     }
     if (trackingHandle) {
       outputLines.push('');
-      outputLines.push(
-        `Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`
-      );
-      outputLines.push('Poll status with: loxtep workflows deploy --status <run_id>');
+      outputLines.push(...formatTrackingLines(trackingHandle));
     }
 
     if (failed.length > 0) {
@@ -574,15 +601,12 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
         project_id: projectId,
         instance_id: instanceId,
       });
-      trackingHandle = {
-        run_id: result.deployment_id,
-        status: result.status,
-      };
+      trackingHandle = trackingHandleFromDeployResult(result);
       // When deploying from S3 bundle, the platform handles all workflows atomically
       for (const { compiled } of compiledModules) {
         deployResults.push({
           name: compiled.name,
-          workflow_id: compiled.workflow_id ?? result.deployment_id,
+          workflow_id: compiled.workflow_id ?? trackingHandle?.run_id ?? 'unknown',
           status: compiled.workflow_id ? 'updated' : 'created',
         });
       }
@@ -623,10 +647,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
         project_id: projectId,
         instance_id: instanceId,
       });
-      trackingHandle = {
-        run_id: result.deployment_id,
-        status: result.status,
-      };
+      trackingHandle = trackingHandleFromDeployResult(result);
     } catch (err: unknown) {
       // Deploy orchestrator failure is non-fatal for the workflow creation/update,
       // but we surface it.
@@ -696,8 +717,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   // Tracking handle (R18.5)
   if (trackingHandle) {
     outputLines.push('');
-    outputLines.push(`Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`);
-    outputLines.push('Poll status with: loxtep workflows deploy --status <run_id>');
+    outputLines.push(...formatTrackingLines(trackingHandle));
   }
 
   // If there were failed deploys, report them but still exit 0 for partial success

@@ -867,10 +867,11 @@ export function createDefaultPlatformRoutes(): RouteHandler {
     if (method === 'POST' && routeMatch(pathname, /\/workflows\/projects\/[^/]+\/deploy$/)) {
       return jsonResponse(
         successEnvelope({
+          run_id: 'deploy-test-001',
           deployment_id: 'deploy-test-001',
-          status: 'in_progress',
+          status: 'requested',
+          message: 'Project deployment requested',
           project_id: MOCK_IDS.project_id,
-          instance_id: MOCK_IDS.instance_id,
         })
       );
     }

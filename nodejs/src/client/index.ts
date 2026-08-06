@@ -72,6 +72,7 @@ export type {
   DeployResponse,
   CreateWorkflowInput,
 } from './workflows-types.js';
+export { normalizeDeployResponse } from './workflows-types.js';
 export type {
   Project,
   ProjectsListFilters,
