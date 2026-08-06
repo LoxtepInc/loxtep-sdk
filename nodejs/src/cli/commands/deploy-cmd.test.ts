@@ -253,7 +253,12 @@ describe('deployLocalEntityWorkflows', () => {
           return new Response(
             JSON.stringify({
               success: true,
-              data: { deployment_id: 'deploy-001', status: 'in_progress' },
+              data: {
+                run_id: 'deploy-001',
+                deployment_id: 'deploy-001',
+                status: 'in_progress',
+                message: 'Project deployment requested',
+              },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );

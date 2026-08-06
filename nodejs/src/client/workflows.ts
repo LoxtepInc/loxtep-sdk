@@ -23,6 +23,7 @@ import type {
   SaveWorkflowBundleResult,
   SaveWorkflowBundleResponse,
 } from './workflows-types.js';
+import { normalizeDeployResponse } from './workflows-types.js';
 import type {
   Flow,
   FlowWithNodes,
@@ -242,11 +243,11 @@ export function createWorkflowsApi(
 
     async deploy(input: DeployInput): Promise<DeployResponse['data']> {
       const { project_id, instance_id, version_id, force_redeploy } = input;
-      const res = await http.post<DeployResponse>(
+      const res = await http.post<unknown>(
         `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/deploy`,
         { instance_id, version_id, force_redeploy: force_redeploy ?? false }
       );
-      return res.data;
+      return normalizeDeployResponse(res);
     },
 
     async save_workflow_bundle(

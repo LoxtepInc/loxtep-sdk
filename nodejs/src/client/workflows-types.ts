@@ -50,10 +50,67 @@ export interface DeployInput {
 export interface DeployResponse {
   success: true;
   data: {
-    deployment_id: string;
-    version_id: string;
+    /** async_runs.run_id for deploy fan-out tracking (preferred). */
+    run_id?: string;
+    /** Alias of run_id; older mock/clients used this name. */
+    deployment_id?: string;
+    version_id?: string;
     status: string;
-    message: string;
+    message?: string;
+    project_id?: string;
+  };
+}
+
+/**
+ * Normalize a deploy API body to the flat DeployResponse.data shape.
+ *
+ * Handles:
+ * - `{ success, data: { run_id, status, ... } }` (current contract)
+ * - historical double-nested `{ data: { success, data: { status, ... } } }` mishaps
+ * - already-unwrapped `{ run_id|deployment_id|status, ... }`
+ */
+export function normalizeDeployResponse(raw: unknown): DeployResponse['data'] {
+  let cur: unknown = raw;
+  for (let depth = 0; depth < 5; depth++) {
+    if (!cur || typeof cur !== 'object') break;
+    const obj = cur as Record<string, unknown>;
+    const hasTrackingField =
+      typeof obj.run_id === 'string' ||
+      typeof obj.deployment_id === 'string' ||
+      typeof obj.status === 'string' ||
+      typeof obj.message === 'string';
+    if (hasTrackingField && !('data' in obj && obj.data && typeof obj.data === 'object' && !('status' in obj))) {
+      break;
+    }
+    if ('data' in obj && obj.data != null && typeof obj.data === 'object') {
+      cur = obj.data;
+      continue;
+    }
+    break;
+  }
+
+  const obj =
+    cur && typeof cur === 'object' ? (cur as Record<string, unknown>) : ({} as Record<string, unknown>);
+  const run_id =
+    typeof obj.run_id === 'string'
+      ? obj.run_id
+      : typeof obj.deployment_id === 'string'
+        ? obj.deployment_id
+        : undefined;
+  const deployment_id =
+    typeof obj.deployment_id === 'string'
+      ? obj.deployment_id
+      : typeof obj.run_id === 'string'
+        ? obj.run_id
+        : undefined;
+
+  return {
+    run_id,
+    deployment_id,
+    version_id: typeof obj.version_id === 'string' ? obj.version_id : undefined,
+    status: typeof obj.status === 'string' ? obj.status : 'unknown',
+    message: typeof obj.message === 'string' ? obj.message : undefined,
+    project_id: typeof obj.project_id === 'string' ? obj.project_id : undefined,
   };
 }
 
