@@ -50,7 +50,7 @@ Build & deploy
   delivery create --from <dp> --connector-id <id> [--name …] [--dry-run]
                      Delivery workflow (DP → target connection); workflow_type: delivery
   lint [--workflow <id>]
-                     Validate local entity JSON (schemas + relationships)
+                     Validate local entity JSON (schemas, relationships, unique names)
   push [--workflow-id <id>] [--dry-run] [--skip-reindex]
                      Upload local workflows via save_workflow_bundle + reindex
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]

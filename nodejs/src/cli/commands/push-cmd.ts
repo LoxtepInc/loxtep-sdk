@@ -10,6 +10,7 @@ import {
   listLocalWorkflowIds,
 } from '../../client/workspace-package.js';
 import { writePushManifestFromProjectDir } from '../../client/project-workspace-inventory.js';
+import { LoxtepError } from '../../errors/base.js';
 
 export interface PushCmdOptions {
   configFilePath?: string;
@@ -21,6 +22,21 @@ export interface PushCmdOptions {
 
 /** @deprecated Prefer `../../client/workspace-package.js` — re-exported for existing imports. */
 export { collectFlatBundle, listLocalWorkflowIds };
+
+/** Prefer details.error when the top-level message is an opaque wrapper. */
+export function formatPushError(err: unknown): string {
+  if (err instanceof LoxtepError) {
+    const detail =
+      (typeof err.details?.error === 'string' && err.details.error.trim()) ||
+      (typeof err.details?.message === 'string' && err.details.message.trim()) ||
+      undefined;
+    if (detail && detail !== err.message && !err.message.includes(detail)) {
+      return `${err.message}: ${detail}`;
+    }
+    return err.message;
+  }
+  return err instanceof Error ? err.message : String(err);
+}
 
 /**
  * Push all local workflow packages via save_workflow_bundle, then reindex the project.
@@ -73,7 +89,7 @@ export async function runPush(
       });
       results.push({ workflow_id: workflowId, ok: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = formatPushError(err);
       results.push({ workflow_id: workflowId, ok: false, error: message });
       console.error(`Failed to push ${workflowId}: ${message}`);
     }

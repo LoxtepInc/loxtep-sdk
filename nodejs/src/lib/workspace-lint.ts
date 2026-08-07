@@ -1,5 +1,6 @@
 /**
- * Offline lint of a local Loxtep project package (entity schemas + relationships).
+ * Offline lint of a local Loxtep project package (entity schemas + relationships +
+ * project-scoped workflow/data-product name uniqueness).
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -124,6 +125,92 @@ function discoverEntities(projectDir: string, workflowId?: string): DiscoveredEn
   return entities;
 }
 
+function entityName(entity: DiscoveredEntity): string | undefined {
+  const name = entity.data.name;
+  if (typeof name !== 'string') return undefined;
+  const trimmed = name.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function entityStableId(entity: DiscoveredEntity): string {
+  if (entity.entityType === EntityType.DATA_PRODUCT) {
+    const id = entity.data.data_product_id;
+    if (typeof id === 'string' && id.length > 0) return id;
+  }
+  if (entity.entityType === EntityType.WORKFLOW) {
+    const id = entity.data.workflow_id;
+    if (typeof id === 'string' && id.length > 0) return id;
+    const match = entity.path.match(/^workflows\/([^/]+)\/workflow\.json$/);
+    if (match?.[1]) return match[1];
+  }
+  return entity.path;
+}
+
+function pathInWorkflow(relPath: string, workflowId: string): boolean {
+  return relPath === `workflows/${workflowId}/workflow.json` ||
+    relPath.startsWith(`workflows/${workflowId}/`);
+}
+
+/**
+ * Flag duplicate workflow / data-product display names across the local project.
+ * Matches Postgres UNIQUE(project_id, name) on workflows and data_products.
+ */
+function checkProjectScopedNameUniqueness(
+  entities: DiscoveredEntity[],
+  issues: LintIssue[],
+  scopeWorkflowId?: string
+): void {
+  type NameGroup = { name: string; kind: 'workflow' | 'data product'; entities: DiscoveredEntity[] };
+  const groups = new Map<string, NameGroup>();
+
+  for (const entity of entities) {
+    const kind =
+      entity.entityType === EntityType.WORKFLOW
+        ? ('workflow' as const)
+        : entity.entityType === EntityType.DATA_PRODUCT
+          ? ('data product' as const)
+          : null;
+    if (!kind) continue;
+    const name = entityName(entity);
+    if (!name) continue;
+    const key = `${kind}:${name}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.entities.push(entity);
+    } else {
+      groups.set(key, { name, kind, entities: [entity] });
+    }
+  }
+
+  for (const group of groups.values()) {
+    const byId = new Map<string, DiscoveredEntity>();
+    for (const entity of group.entities) {
+      byId.set(entityStableId(entity), entity);
+    }
+    if (byId.size < 2) continue;
+
+    const distinct = [...byId.values()];
+    const scoped = scopeWorkflowId
+      ? distinct.filter(e => pathInWorkflow(e.path, scopeWorkflowId))
+      : distinct;
+    if (scoped.length === 0) continue;
+
+    for (const entity of scoped) {
+      const others = distinct
+        .filter(o => o.path !== entity.path)
+        .map(o => o.path)
+        .sort();
+      issues.push({
+        path: entity.path,
+        severity: 'error',
+        message:
+          `Duplicate ${group.kind} name "${group.name}" in this project ` +
+          `(also ${others.join(', ')}). Catalog enforces UNIQUE(project_id, name).`,
+      });
+    }
+  }
+}
+
 /**
  * Lint local entity JSON against shipped schemas and basic relationship checks.
  */
@@ -219,6 +306,12 @@ export function lintLocalPackage(options: LintOptions): LintResult {
       }
     }
   }
+
+  // Name uniqueness is project-scoped in Postgres — always scan the full local tree,
+  // even when --workflow narrows schema validation to one package.
+  const uniquenessEntities =
+    workflow_id != null ? discoverEntities(projectDir) : entities;
+  checkProjectScopedNameUniqueness(uniquenessEntities, issues, workflow_id);
 
   return {
     ok: issues.length === 0,
