@@ -1,5 +1,5 @@
 """
-Connectors API. list, get, create, update, delete, test, get_oauth_url.
+Connectors API. list, get, create, update, delete, test, capture_samples, get_oauth_url.
 Backend: connectors microservice /connectors/connectors.
 """
 
@@ -82,6 +82,19 @@ class ConnectorsApi:
 
     def test(self, connector_id: str) -> dict[str, Any]:
         res = self._http.post(f"{CONNECTORS_BASE}/{connector_id}/test", {})
+        return res.get("data", res) if isinstance(res, dict) else res
+
+    def capture_samples(
+        self,
+        connector_id: str,
+        *,
+        entity_type: str,
+        limit: Optional[int] = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"entity_type": entity_type}
+        if limit is not None:
+            body["limit"] = limit
+        res = self._http.post(f"{CONNECTORS_BASE}/{connector_id}/capture-samples", body)
         return res.get("data", res) if isinstance(res, dict) else res
 
     def get_oauth_url(
@@ -169,6 +182,19 @@ class AsyncConnectorsApi:
 
     async def test(self, connector_id: str) -> dict[str, Any]:
         res = await self._http.post(f"{CONNECTORS_BASE}/{connector_id}/test", {})
+        return res.get("data", res) if isinstance(res, dict) else res
+
+    async def capture_samples(
+        self,
+        connector_id: str,
+        *,
+        entity_type: str,
+        limit: Optional[int] = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"entity_type": entity_type}
+        if limit is not None:
+            body["limit"] = limit
+        res = await self._http.post(f"{CONNECTORS_BASE}/{connector_id}/capture-samples", body)
         return res.get("data", res) if isinstance(res, dict) else res
 
     async def get_oauth_url(

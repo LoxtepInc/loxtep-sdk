@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-08-07
+
+### Added
+
+- **Deployments API** — `DeploymentsApi` / `AsyncDeploymentsApi` (`list`, `get`,
+  `pick_latest_deployment`). Wired on `client.workspace.deployments` and
+  `client.observe.list_deployments` / `get_deployment` (Node 0.9.x parity).
+- **Approvals API** — real `ApprovalsApi` replaces `ApprovalsApiStub`
+  (`list`, `list_pending`, `approve`, `reject`, `resolve`) via
+  `/agent-orchestration/organizations/{org}/approval-requests`.
+- **`connectors.capture_samples`** — POST `…/capture-samples` (sync + async).
+- **`project_workspace_status`** — pure `build_project_workspace_status` /
+  `derive_next_action` / `format_project_workspace_status_lines` helpers.
+  Full unpublished FS inventory remains on the Node CLI path (Python CLI still
+  delegates lifecycle commands via `npx`).
+
 ## [0.5.1] — 2026-08-03
 
 ### Fixed

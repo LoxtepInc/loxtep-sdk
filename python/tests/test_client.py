@@ -98,6 +98,11 @@ def test_nested_apis_and_snake_case_methods():
         assert hasattr(client.meaning.thesaurus, m), m
     for m in ("list", "apply", "reject"):
         assert hasattr(client.review.improvements, m), m
+    for m in ("list", "list_pending", "approve", "reject"):
+        assert hasattr(client.review.approvals, m), m
+    assert hasattr(client.workspace.deployments, "list")
+    assert hasattr(client.observe, "list_deployments")
+    assert hasattr(client.connect.connectors, "capture_samples")
     assert hasattr(client.context.activity, "list")
     client.close()
 

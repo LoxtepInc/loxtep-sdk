@@ -7,6 +7,7 @@ Top-level get_writer / get_reader delegate to data-products stream logic.
 from typing import Any, Callable, Mapping, Optional
 
 from .activity import AsyncActivityApi, ActivityApi
+from .approvals import ApprovalsApi, AsyncApprovalsApi
 from .build import BuildFacade
 from .catalog import AsyncCatalogApi, CatalogApi
 from .connect import ConnectFacade
@@ -15,6 +16,7 @@ from .context import ContextFacade
 from .data_contracts import AsyncDataContractsApi, DataContractsApi
 from .data_products import AsyncDataProductsApi, DataProductsApi
 from .define import DefineFacade
+from .deployments import AsyncDeploymentsApi, DeploymentsApi
 from .discovery import AsyncDiscoveryApi, DiscoveryApi
 from .domains import AsyncDomainsApi, DomainsApi
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
@@ -29,7 +31,7 @@ from .projects import AsyncProjectsApi, ProjectsApi
 from .quality import AsyncQualityApi, QualityApi
 from .query import QueryFacade
 from .queues import AsyncQueuesApi, QueuesApi
-from .review import ApprovalsApiStub, ReviewFacade
+from .review import ReviewFacade
 from .rstreams import resolve_stream_config
 from .schemas import AsyncSchemasApi, SchemasApi
 from .session import SessionApi
@@ -128,6 +130,7 @@ class LoxtepClient:
         projects = ProjectsApi(self._http)
         templates = TemplatesApi(self._http)
         observe = ObserveApi(self._http)
+        deployments = DeploymentsApi(self._http)
         data_products = DataProductsApi(
             self._http,
             get_queue_metadata=lambda name: queues.get_queue_metadata(name),
@@ -144,6 +147,7 @@ class LoxtepClient:
         self.workspace = WorkspaceFacade(
             projects=projects,
             instances=InstancesApi(self._http),
+            deployments=deployments,
         )
         self.build = BuildFacade(
             workflows=workflows,
@@ -160,7 +164,7 @@ class LoxtepClient:
         )
         self.meaning = MeaningFacade(thesaurus=ThesaurusApi(self._http, organization_id))
         self.review = ReviewFacade(
-            approvals=ApprovalsApiStub(),
+            approvals=ApprovalsApi(self._http, organization_id=organization_id),
             improvements=ImprovementsApi(self._http),
         )
         self.query = QueryFacade(
@@ -177,6 +181,7 @@ class LoxtepClient:
             _get_reader_checkpoint=queues.get_reader_checkpoint,
             _open_reader=queues.open_reader,
             _open_writer=queues.open_writer,
+            deployments=deployments,
         )
         self.context = ContextFacade(
             process_intelligence=ProcessIntelligenceApi(self._http),
@@ -280,6 +285,7 @@ class AsyncLoxtepClient:
         projects = AsyncProjectsApi(self._http)
         templates = AsyncTemplatesApi(self._http)
         observe = AsyncObserveApi(self._http)
+        deployments = AsyncDeploymentsApi(self._http)
         data_products = AsyncDataProductsApi(
             self._http,
             get_queue_metadata=None,
@@ -296,6 +302,7 @@ class AsyncLoxtepClient:
         self.workspace = WorkspaceFacade(
             projects=projects,
             instances=AsyncInstancesApi(self._http),
+            deployments=deployments,
         )
         self.build = BuildFacade(
             workflows=workflows,
@@ -312,7 +319,7 @@ class AsyncLoxtepClient:
         )
         self.meaning = MeaningFacade(thesaurus=AsyncThesaurusApi(self._http, organization_id))
         self.review = ReviewFacade(
-            approvals=ApprovalsApiStub(),
+            approvals=AsyncApprovalsApi(self._http, organization_id=organization_id),
             improvements=AsyncImprovementsApi(self._http),
         )
         self.query = QueryFacade(
@@ -329,6 +336,7 @@ class AsyncLoxtepClient:
             _get_reader_checkpoint=queues.get_reader_checkpoint,
             _open_reader=queues.open_reader,
             _open_writer=queues.open_writer,
+            deployments=deployments,
         )
         self.context = ContextFacade(
             process_intelligence=AsyncProcessIntelligenceApi(self._http),

@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Union
 
-from .improvements import ImprovementsApi
-
-
-class ApprovalsApiStub:
-    """Approvals REST not yet ported to Python SDK — use MCP `loxtep_review` (`list_pending`, `resolve`)."""
-
-    unavailable: bool = True
+from .approvals import ApprovalsApi, AsyncApprovalsApi
+from .improvements import AsyncImprovementsApi, ImprovementsApi
 
 
 @dataclass(frozen=True)
 class ReviewFacade:
-    approvals: ApprovalsApiStub
-    improvements: ImprovementsApi
+    approvals: Union[ApprovalsApi, AsyncApprovalsApi]
+    improvements: Union[ImprovementsApi, AsyncImprovementsApi]

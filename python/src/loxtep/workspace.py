@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Union
 
-from .instances import InstancesApi
-from .projects import ProjectsApi
+from .deployments import AsyncDeploymentsApi, DeploymentsApi
+from .instances import AsyncInstancesApi, InstancesApi
+from .projects import AsyncProjectsApi, ProjectsApi
 
 
 @dataclass(frozen=True)
@@ -15,6 +17,7 @@ class VersionsFacade:
 
 @dataclass(frozen=True)
 class WorkspaceFacade:
-    projects: ProjectsApi
-    instances: InstancesApi
-    versions: VersionsFacade = VersionsFacade()
+    projects: Union[ProjectsApi, AsyncProjectsApi]
+    instances: Union[InstancesApi, AsyncInstancesApi]
+    deployments: Union[DeploymentsApi, AsyncDeploymentsApi]
+    versions: VersionsFacade = field(default_factory=VersionsFacade)

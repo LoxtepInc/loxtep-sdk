@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional, Union
+
+from .deployments import AsyncDeploymentsApi, DeploymentsApi
 
 
 @dataclass
@@ -14,6 +16,7 @@ class ObserveFacade:
     _get_reader_checkpoint: Callable[..., Any]
     _open_reader: Callable[..., Any]
     _open_writer: Callable[..., Any]
+    deployments: Optional[Union[DeploymentsApi, AsyncDeploymentsApi]] = None
 
     def status(self) -> Any:
         return self._status()
@@ -32,3 +35,13 @@ class ObserveFacade:
 
     def open_writer(self, *args: Any, **kwargs: Any) -> Any:
         return self._open_writer(*args, **kwargs)
+
+    def list_deployments(self, **kwargs: Any) -> Any:
+        if self.deployments is None:
+            raise RuntimeError("deployments API is not configured on observe facade")
+        return self.deployments.list(**kwargs)
+
+    def get_deployment(self, deployment_id: str, **kwargs: Any) -> Any:
+        if self.deployments is None:
+            raise RuntimeError("deployments API is not configured on observe facade")
+        return self.deployments.get(deployment_id, **kwargs)
