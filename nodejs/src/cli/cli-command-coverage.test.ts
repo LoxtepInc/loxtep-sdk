@@ -134,6 +134,16 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
       'commands/improvements-cmd-reject.property.test.ts',
     ],
   },
+  approvals: {
+    kind: 'unit',
+    tests: ['commands/approvals-cmd.test.ts'],
+    notes: 'list/approve/reject; org resolved via session when missing from project.json',
+  },
+  deployments: {
+    kind: 'unit',
+    tests: ['commands/deployments-cmd.test.ts', 'client/deployments.test.ts'],
+    notes: 'list/get — SDK observe.list_deployments / get_deployment',
+  },
   activity: {
     kind: 'integration',
     tests: ['cli-integration.test.ts', 'commands/activity-cmd.test.ts'],
@@ -178,7 +188,9 @@ describe('CLI command coverage registry', () => {
       'domains',
       'standards',
       'data-contracts',
+      'approvals',
       'improvements',
+      'deployments',
       'observe',
       'queue',
       'metrics',

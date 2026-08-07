@@ -92,8 +92,9 @@ function formatTrackingLines(trackingHandle: DeployTrackingHandle): string[] {
     `Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`,
   ];
   if (trackingHandle.run_id !== 'unknown' && trackingHandle.run_id !== '(none)') {
+    lines.push(`Poll status with: loxtep deployments get ${trackingHandle.run_id}`);
     lines.push(
-      'Deploy fan-out is async; check activity / the UI for completion. (CLI status poll TBD.)'
+      'If status is pending_approval: loxtep approvals list --status pending  (then approve <id>)'
     );
   } else if (trackingHandle.run_id === '(none)') {
     lines.push(

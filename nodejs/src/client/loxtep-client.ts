@@ -8,6 +8,7 @@ import { createQueuesApi } from './queues.js';
 import { createTriggersApi } from './triggers.js';
 import { createQualityApi } from './quality.js';
 import { createApprovalsApi } from './approvals.js';
+import { createDeploymentsApi } from './deployments.js';
 import { createCatalogApi } from './catalog.js';
 import { createSchemasApi } from './schemas.js';
 import { createDiscoveryApi } from './discovery.js';
@@ -29,7 +30,6 @@ import { createActivityApi } from './activity.js';
 import { createSessionApi } from './session.js';
 import { createConnectFacade } from './connect.js';
 import { createWorkspaceFacade } from './workspace.js';
-import { createDeploymentsApi } from './deployments.js';
 import { createBuildFacade } from './build.js';
 import { createDefineFacade } from './define.js';
 import { createMeaningFacade } from './meaning.js';
@@ -185,9 +185,9 @@ export class LoxtepClient {
       get_rsdk: () => this.resolve_stream_sdk(),
     });
     const projectsApi = createProjectsApi(this._http);
-    const deploymentsApi = createDeploymentsApi(this._http);
     const templatesApi = createTemplatesApi(this._http);
     const observeApi = createObserveApi(this._http);
+    const deploymentsApi = createDeploymentsApi(this._http);
     this._dataProductsApi = createDataProductsApi(this._http, {
       get_queue_metadata: name => queuesApi.get_queue_metadata(name),
       get_reader_checkpoint: (name, bot_id) => queuesApi.get_reader_checkpoint(name, bot_id),
@@ -241,7 +241,11 @@ export class LoxtepClient {
       discovery: discoveryApi,
       data_products: this._dataProductsApi,
     });
-    this.observe = createObserveFacade({ observe: observeApi, queues: queuesApi });
+    this.observe = createObserveFacade({
+      observe: observeApi,
+      queues: queuesApi,
+      deployments: deploymentsApi,
+    });
     this.context = createContextFacade({
       process_intelligence: processIntelligenceApi,
       procedures: proceduresApi,

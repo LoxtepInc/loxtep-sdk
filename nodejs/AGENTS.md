@@ -83,6 +83,8 @@ internal to the SDK and are not shown in CLI help.
 | `loxtep generate` | Compile workspace context → `.loxtep/generated/index.ts`; validate skills; print per-type counts. | required + attached |
 | `loxtep test <module> --event <file>` | Run one data workflow module locally against the attached Instance; print the action trace. | required + attached |
 | `loxtep deploy` | Compile modules into the flow/workflow graph; deploy to the attached Instance. | required + attached |
+| `loxtep deployments list \| get <id>` | Poll async deploy status (`client.observe.list_deployments` / `get_deployment`). | required |
+| `loxtep approvals list \| approve <id> \| reject <id>` | HITL approval inbox (`client.review.approvals`). | required |
 | `loxtep activity list [filters]` | List unified activity + audit entries. | required |
 | `loxtep improvements list \| apply <id> \| reject <id>` | Review and adopt AI-Eval-derived workflow improvements. | required |
 
@@ -166,7 +168,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 | `client.meaning` | `.thesaurus` | Vocabulary / ontology terms |
 | `client.review` | `.approvals`, `.improvements` | HITL approvals, AI-eval improvements |
 | `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
-| `client.observe` | `.status()`, `.stream_config()`, `.open_reader()`, … | Observe + low-level queue I/O |
+| `client.observe` | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O |
 | `client.context` | `.procedures`, `.activity`, `.process_intelligence` | Process intel, activity feed |
 
 Top-level **`get_writer(name)`** / **`get_reader(name)`** resolve deployment

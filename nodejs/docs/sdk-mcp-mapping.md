@@ -18,7 +18,7 @@ deprecation aliases.
 | `loxtep_meaning` | `client.meaning` | `.thesaurus.*` (ontology/semantic REST split pending) |
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, CDLC and context-mining REST (pending) |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
-| `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, deployment reads, trust signals |
+| `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
 | `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*` |
 
 ## Top-level stream I/O

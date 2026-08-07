@@ -68,6 +68,15 @@ import {
   runImprovementsApplyCommand,
   runImprovementsRejectCommand,
 } from './commands/improvements-cmd.js';
+import {
+  runApprovalsListCommand,
+  runApprovalsApproveCommand,
+  runApprovalsRejectCommand,
+} from './commands/approvals-cmd.js';
+import {
+  runDeploymentsListCommand,
+  runDeploymentsGetCommand,
+} from './commands/deployments-cmd.js';
 import { runActivityListCommand } from './commands/activity-cmd.js';
 import {
   runInstancesList,
@@ -763,6 +772,84 @@ async function runCommand(): Promise<void> {
           'Usage: loxtep improvements list [--status proposed|applied|rejected] [--workflow <name>]\n' +
           '       loxtep improvements apply <id>\n' +
           '       loxtep improvements reject <id>'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'approvals': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      const orgId = getArg('--organization-id');
+      if (sub === 'list') {
+        const statusFilter = getArg('--status');
+        const pageStr = getArg('--page');
+        const pageSizeStr = getArg('--page-size');
+        const page = pageStr != null ? parseInt(pageStr, 10) : undefined;
+        const page_size = pageSizeStr != null ? parseInt(pageSizeStr, 10) : undefined;
+        const result = await runApprovalsListCommand(authResult.client, {
+          status: statusFilter,
+          organization_id: orgId,
+          page: page != null && !Number.isNaN(page) ? page : undefined,
+          page_size: page_size != null && !Number.isNaN(page_size) ? page_size : undefined,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'approve' && args[2]) {
+        const result = await runApprovalsApproveCommand(authResult.client, args[2], {
+          organization_id: orgId,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'reject' && args[2]) {
+        const result = await runApprovalsRejectCommand(authResult.client, args[2], {
+          organization_id: orgId,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep approvals list [--status pending|approved|rejected|expired] [--organization-id <id>]\n' +
+            '       loxtep approvals approve <approval_request_id> [--organization-id <id>]\n' +
+            '       loxtep approvals reject <approval_request_id> [--organization-id <id>]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'deployments': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      if (sub === 'list') {
+        const pageStr = getArg('--page');
+        const pageSizeStr = getArg('--page-size');
+        const page = pageStr != null ? parseInt(pageStr, 10) : undefined;
+        const page_size = pageSizeStr != null ? parseInt(pageSizeStr, 10) : undefined;
+        const result = await runDeploymentsListCommand(authResult.client, {
+          project_id: getArg('--project-id'),
+          instance_id: getArg('--instance-id'),
+          workflow_id: getArg('--workflow-id'),
+          status: getArg('--status'),
+          page: page != null && !Number.isNaN(page) ? page : undefined,
+          page_size: page_size != null && !Number.isNaN(page_size) ? page_size : undefined,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'get' && args[2]) {
+        const result = await runDeploymentsGetCommand(authResult.client, args[2], {
+          include_versions: args.includes('--include-versions'),
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep deployments list [--project-id <id>] [--instance-id <id>] [--workflow-id <id>] [--status pending|in_progress|deployed|failed|rolled_back|archived]\n' +
+            '       loxtep deployments get <deployment_id> [--include-versions]'
         );
         process.exitCode = 1;
       }

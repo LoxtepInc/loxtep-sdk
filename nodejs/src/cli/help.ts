@@ -71,6 +71,8 @@ Governance
   data-contracts list | get <id> | create …
 
 Review
+  approvals list [--status pending|…] [--organization-id <id>]
+  approvals approve <id> | reject <id>   HITL approval inbox (deploy / agent gates)
   improvements list [--status …] [--workflow <name>]
   improvements apply <id> | reject <id>  Adopt or reject AI-eval workflow improvements
 
@@ -80,6 +82,8 @@ Analytics
 
 Observe
   observe status                         Platform / instance health snapshot
+  deployments list [--project-id …] [--instance-id …] [--workflow-id …] [--status …]
+  deployments get <deployment_id>        Poll async deploy status (after loxtep deploy)
   queue info <data-product-id> | --queue <name>
   queue checkpoint <id> --bot <bot-id>   Reader checkpoint for a bot
   metrics rate-limits | log --id <id> --value <n>

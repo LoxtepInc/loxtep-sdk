@@ -136,6 +136,16 @@ export type {
 } from './templates-types.js';
 export type { ObserveStatusResponse, ObserveStreamConfigResponse } from './observe-types.js';
 export type {
+  Deployment,
+  DeploymentStatus,
+  DeploymentType,
+  DeploymentsListFilters,
+  DeploymentsListResponse,
+  GetDeploymentOptions,
+  OrphanReason,
+} from './deployments-types.js';
+export type { DeploymentsApi } from './deployments.js';
+export type {
   QualityMetric,
   QualityListFilters,
   QualityListResponse,
@@ -211,7 +221,6 @@ export type {
 export type { ActivityApi } from './activity.js';
 export type { ConnectFacade } from './connect.js';
 export type { WorkspaceFacade } from './workspace.js';
-export type { Deployment, DeploymentsListFilters, DeploymentsListResponse } from './deployments-types.js';
 export { createDeploymentsApi, pickLatestDeployment } from './deployments.js';
 export {
   buildProjectWorkspaceStatus,

@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-08-07
+
+### Added
+
+- **`client.observe.list_deployments` / `get_deployment`** — REST parity with MCP
+  `loxtep_observe` deployment status ops (`GET /workflows/deployments` and
+  `GET /workflows/deployments/{id}`). Also available via
+  `client.workspace.deployments`.
+- **`loxtep deployments list | get <id>`** — CLI poll surface after `loxtep deploy`
+  (replaces the old "CLI status poll TBD" toast).
+- **`loxtep approvals list | approve <id> | reject <id>`** — CLI parity with
+  `client.review.approvals` / MCP `loxtep_review` HITL inbox.
+
 ## [0.9.0] - 2026-08-07
 
 ### Added
