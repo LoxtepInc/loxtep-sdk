@@ -78,7 +78,12 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
-import { runProjectsList, runProjectsGet, runProjectsLink } from './commands/projects-cmd.js';
+import {
+  runProjectsList,
+  runProjectsGet,
+  runProjectsLink,
+  runProjectsChanges,
+} from './commands/projects-cmd.js';
 import { runStatus } from './commands/status-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
@@ -239,16 +244,24 @@ async function runCommand(): Promise<void> {
           path: getArg('--path'),
           debug: args.includes('--debug'),
         });
+      } else if (sub === 'changes') {
+        await runProjectsChanges({
+          debug: args.includes('--debug'),
+          json: args.includes('--json'),
+        });
       } else {
         console.error(
-          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>]'
+          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects changes [--json]'
         );
         process.exitCode = 1;
       }
       break;
     case 'status': {
       // Cwd-first project workspace status — not `observe status` (bots/queues).
-      await runStatus({ json: args.includes('--json') });
+      await runStatus({
+        json: args.includes('--json'),
+        unpublished: args.includes('--unpublished'),
+      });
       break;
     }
     case 'bus':

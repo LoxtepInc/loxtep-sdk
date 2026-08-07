@@ -3,10 +3,13 @@
  * then trigger project reindex so deploy sees new workflows.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { findProjectDir } from '../project-context.js';
 import { requireCliClient } from '../create-cli-client.js';
+import {
+  collectFlatBundle,
+  listLocalWorkflowIds,
+} from '../../client/workspace-package.js';
+import { writePushManifestFromProjectDir } from '../../client/project-workspace-inventory.js';
 
 export interface PushCmdOptions {
   configFilePath?: string;
@@ -16,52 +19,8 @@ export interface PushCmdOptions {
   cwd?: string;
 }
 
-/**
- * Find local workflow packages under `workflows/<id>/` (SDK-first entity-JSON layout, as
- * written by `ingest`/`transform`/`delivery create`) — as opposed to the code-first-cli
- * flow's flat `.ts`/`.js` module files, which `deploy-cmd.ts` discovers separately.
- */
-export function listLocalWorkflowIds(projectDir: string): string[] {
-  const workflowsRoot = join(projectDir, 'workflows');
-  if (!existsSync(workflowsRoot)) return [];
-  return readdirSync(workflowsRoot, { withFileTypes: true })
-    .filter(d => d.isDirectory())
-    .map(d => d.name)
-    .filter(id => existsSync(join(workflowsRoot, id, 'workflow.json')));
-}
-
-export function collectFlatBundle(
-  projectDir: string,
-  workflowId: string
-): Record<string, Record<string, unknown>> {
-  const root = join(projectDir, 'workflows', workflowId);
-  const files: Record<string, Record<string, unknown>> = {};
-
-  const workflowJson = JSON.parse(
-    readFileSync(join(root, 'workflow.json'), 'utf8')
-  ) as Record<string, unknown>;
-  files['workflow.json'] = workflowJson;
-
-  for (const entityDir of [
-    'connections',
-    'data-products',
-    'transformations',
-    'validations',
-  ] as const) {
-    const dir = join(root, entityDir);
-    if (!existsSync(dir)) continue;
-    for (const name of readdirSync(dir)) {
-      if (!name.endsWith('.json')) continue;
-      const entity = JSON.parse(readFileSync(join(dir, name), 'utf8')) as Record<
-        string,
-        unknown
-      >;
-      files[`${entityDir}/${name}`] = entity;
-    }
-  }
-
-  return files;
-}
+/** @deprecated Prefer `../../client/workspace-package.js` — re-exported for existing imports. */
+export { collectFlatBundle, listLocalWorkflowIds };
 
 /**
  * Push all local workflow packages via save_workflow_bundle, then reindex the project.
@@ -151,6 +110,13 @@ export async function runPush(
   );
 
   if (failed.length === 0 && !params.dry_run) {
+    try {
+      writePushManifestFromProjectDir(projectDir, projectId);
+    } catch (err) {
+      console.error(
+        `Warning: could not write local push manifest (${err instanceof Error ? err.message : String(err)}).`
+      );
+    }
     console.error('Push complete. Next: `loxtep deploy`.');
   }
 }

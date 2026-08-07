@@ -1,5 +1,5 @@
 /**
- * CLI: loxtep status
+ * CLI: loxtep status [--unpublished] [--json]
  *
  * Cwd-first project workspace status (local / cloud / deployed).
  * Distinct from `loxtep observe status` (runtime bots/queues).
@@ -19,6 +19,8 @@ export interface StatusCmdOptions extends CreateCliClientOptions {
   cwd?: string;
   /** Emit full JSON status payload instead of the one-screen text view. */
   json?: boolean;
+  /** Entity/file inventory (population_depth: unpublished). */
+  unpublished?: boolean;
 }
 
 function localSnapshotFromCwd(cwd: string): LocalProjectSnapshot | null {
@@ -33,12 +35,32 @@ function localSnapshotFromCwd(cwd: string): LocalProjectSnapshot | null {
   };
 }
 
+async function listCloudWorkflowIds(
+  client: Awaited<ReturnType<typeof requireCliClient>>['client'],
+  projectId: string
+): Promise<{ ids: string[] | null; unavailable: boolean }> {
+  try {
+    const listed = await client.build.workflows.list({
+      project_id: projectId,
+      page_size: 100,
+    });
+    const items = listed.items ?? [];
+    return {
+      ids: items.map(w => w.workflow_id).filter((id): id is string => typeof id === 'string'),
+      unavailable: false,
+    };
+  } catch {
+    return { ids: null, unavailable: true };
+  }
+}
+
 /**
  * Execute `loxtep status` (structured {@link CliResult} for tests).
  */
 export async function runStatusCommand(options: StatusCmdOptions = {}): Promise<CliResult> {
   const cwd = options.cwd ?? process.cwd();
   const local = localSnapshotFromCwd(cwd);
+  const population_depth = options.unpublished ? 'unpublished' : 'status';
 
   if (!local) {
     return {
@@ -57,10 +79,9 @@ export async function runStatusCommand(options: StatusCmdOptions = {}): Promise<
   try {
     cloud = await client.workspace.projects.get(local.project_id);
   } catch (err) {
-    // Still render local attach / next-action when cloud get fails.
     const message = err instanceof Error ? err.message : String(err);
     const status = buildProjectWorkspaceStatus({
-      population_depth: 'status',
+      population_depth,
       local,
       cloud: null,
       deployments: null,
@@ -91,12 +112,22 @@ export async function runStatusCommand(options: StatusCmdOptions = {}): Promise<
     deployments_unavailable = true;
   }
 
+  let cloud_workflow_ids: string[] | null = null;
+  let cloud_list_unavailable = false;
+  if (options.unpublished) {
+    const cloudList = await listCloudWorkflowIds(client, local.project_id);
+    cloud_workflow_ids = cloudList.ids;
+    cloud_list_unavailable = cloudList.unavailable;
+  }
+
   const status = buildProjectWorkspaceStatus({
-    population_depth: 'status',
+    population_depth,
     local,
     cloud,
     deployments,
     deployments_unavailable,
+    cloud_workflow_ids,
+    cloud_list_unavailable,
   });
 
   if (options.json) {

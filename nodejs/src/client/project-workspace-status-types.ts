@@ -142,6 +142,40 @@ export const DeployedRuntimeLayerSchema = z.object({
 });
 export type DeployedRuntimeLayer = z.infer<typeof DeployedRuntimeLayerSchema>;
 
+/** Entity kinds in the push/deploy package inventory. */
+export const UnpublishedEntityKindSchema = z.enum([
+  'workflow',
+  'connection',
+  'data_product',
+  'transformation',
+  'validation',
+  'schema',
+  'module',
+]);
+export type UnpublishedEntityKind = z.infer<typeof UnpublishedEntityKindSchema>;
+
+/** How a package path differs across a layer boundary. */
+export const UnpublishedChangeKindSchema = z.enum([
+  'added',
+  'modified',
+  'removed',
+  'pending_push',
+  'pending_deploy',
+  'cloud_only',
+]);
+export type UnpublishedChangeKind = z.infer<typeof UnpublishedChangeKindSchema>;
+
+/** One actionable file/entity in an unpublished inventory. */
+export const UnpublishedChangeItemSchema = z.object({
+  /** Repo-relative path (e.g. `workflows/wf_1/connections/src.json`). */
+  path: z.string(),
+  entity_kind: UnpublishedEntityKindSchema,
+  change: UnpublishedChangeKindSchema,
+  workflow_id: z.string().nullable(),
+  content_sha256: z.string().nullable().optional(),
+});
+export type UnpublishedChangeItem = z.infer<typeof UnpublishedChangeItemSchema>;
+
 /**
  * One unpublished delta axis.
  * `dirty: null` means "not computed at this population_depth" — not "clean".
@@ -152,6 +186,11 @@ export const UnpublishedDeltaSchema = z.object({
   summary: z.string().nullable(),
   /** Count of changed entities/files when inventory was computed. */
   changed_count: z.number().int().nonnegative().nullable(),
+  /**
+   * Entity/file inventory (population_depth `unpublished` only).
+   * Empty at summary/status depths.
+   */
+  changes: z.array(UnpublishedChangeItemSchema).default([]),
 });
 export type UnpublishedDelta = z.infer<typeof UnpublishedDeltaSchema>;
 
@@ -257,9 +296,11 @@ export const PROJECT_WORKSPACE_STATUS_FIELD_COST = {
   'unpublished.local_to_cloud.dirty': 'moderate',
   'unpublished.local_to_cloud.summary': 'moderate',
   'unpublished.local_to_cloud.changed_count': 'expensive',
+  'unpublished.local_to_cloud.changes': 'expensive',
   'unpublished.cloud_to_deployed.dirty': 'moderate',
   'unpublished.cloud_to_deployed.summary': 'moderate',
   'unpublished.cloud_to_deployed.changed_count': 'expensive',
+  'unpublished.cloud_to_deployed.changes': 'expensive',
 
   next_action: 'cheap',
   notes: 'cheap',

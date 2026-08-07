@@ -39,7 +39,8 @@ import type { LoxtepClient } from '../../client/loxtep-client.js';
 import type { NormalizedContext } from '../../codegen/types.js';
 import type { Instance } from '../../client/instances-types.js';
 import { formatLintResult, runLintCheck } from './lint-cmd.js';
-import { listLocalWorkflowIds, collectFlatBundle } from './push-cmd.js';
+import { listLocalWorkflowIds, collectFlatBundle } from '../../client/workspace-package.js';
+import { buildLocalToCloudInventory } from '../../client/project-workspace-inventory.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -414,6 +415,24 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   const { projectDir, project } = precondition;
   const { project_id: projectId, instance_id: instanceId } = project;
 
+  // Warn (do not block) when Local→Cloud is dirty — push first unless product adds --force.
+  const localToCloud = buildLocalToCloudInventory({ projectDir });
+  const dirtyWarnLines: string[] = [];
+  if (localToCloud.dirty === true) {
+    dirtyWarnLines.push(
+      `Warning: Local→Cloud unpublished (${localToCloud.summary ?? 'dirty'}). Consider \`loxtep push\` before deploy.`
+    );
+    const preview = (localToCloud.changes ?? []).slice(0, 8);
+    for (const c of preview) {
+      dirtyWarnLines.push(`  [${c.change}] ${c.path}`);
+    }
+    if ((localToCloud.changes?.length ?? 0) > preview.length) {
+      dirtyWarnLines.push(
+        `  … and ${(localToCloud.changes?.length ?? 0) - preview.length} more (see \`loxtep status --unpublished\`)`
+      );
+    }
+  }
+
   // 1b. Entity-package lint preflight (same engine as `loxtep lint`)
   const lint = runLintCheck({ cwd: projectDir });
   if (!lint.ok) {
@@ -421,6 +440,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
       exitCode: 1,
       stdout: [],
       stderr: [
+        ...dirtyWarnLines,
         'Deploy refused: local entity package failed lint.',
         ...formatLintResult(lint),
       ],
@@ -435,7 +455,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
     return {
       exitCode: 0,
       stdout: ['Deploy dry-run: lint only.', ...lintLines],
-      stderr: [],
+      stderr: dirtyWarnLines,
     };
   }
 
@@ -468,7 +488,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
       return {
         exitCode: 0,
         stdout: ['No workflow modules found in workflows/. Nothing to deploy.'],
-        stderr: [],
+        stderr: dirtyWarnLines,
       };
     }
 
@@ -498,13 +518,14 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
         exitCode: 1,
         stdout: outputLines,
         stderr: [
+          ...dirtyWarnLines,
           'Some local workflow packages failed to push (previous versions remain running):',
           ...failed.map(p => `  ${p.workflow_id}: ${p.error}`),
         ],
       };
     }
 
-    return { exitCode: 0, stdout: outputLines, stderr: [] };
+    return { exitCode: 0, stdout: outputLines, stderr: dirtyWarnLines };
   }
 
   // 5. Compile all modules (R1.11: collect compile errors with file:line)
@@ -730,6 +751,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
       exitCode: 1,
       stdout: outputLines,
       stderr: [
+        ...dirtyWarnLines,
         'Some workflows failed to deploy (previous versions remain running):',
         ...stderrLines,
       ],
@@ -739,7 +761,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   return {
     exitCode: 0,
     stdout: outputLines,
-    stderr: [],
+    stderr: dirtyWarnLines,
   };
 }
 
