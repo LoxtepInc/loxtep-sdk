@@ -79,6 +79,7 @@ import {
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
 import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
+import { runStatus } from './commands/status-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
 import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
@@ -221,6 +222,11 @@ async function runCommand(): Promise<void> {
         process.exitCode = 1;
       }
       break;
+    case 'status': {
+      // Cwd-first project workspace status — not `observe status` (bots/queues).
+      await runStatus({ json: args.includes('--json') });
+      break;
+    }
     case 'bus':
       if (sub === 'login') {
         await runBusLogin();

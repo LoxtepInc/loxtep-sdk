@@ -205,6 +205,18 @@ export type {
 export type { ActivityApi } from './activity.js';
 export type { ConnectFacade } from './connect.js';
 export type { WorkspaceFacade } from './workspace.js';
+export type { Deployment, DeploymentsListFilters, DeploymentsListResponse } from './deployments-types.js';
+export { createDeploymentsApi, pickLatestDeployment } from './deployments.js';
+export {
+  buildProjectWorkspaceStatus,
+  deriveNextAction,
+  enrichProjectListSummary,
+  formatProjectWorkspaceStatusLines,
+  githubStateFromProject,
+  toProjectListStatusEnrichment,
+} from './project-workspace-status.js';
+export type { BuildProjectWorkspaceStatusInput, LocalProjectSnapshot } from './project-workspace-status.js';
+
 export type { BuildFacade } from './build.js';
 export type { DefineFacade } from './define.js';
 export type { MeaningFacade } from './meaning.js';

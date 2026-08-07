@@ -199,6 +199,29 @@ export type RequireProjectResult = RequireProjectSuccess | RequireProjectFailure
  * Returns `NO_PROJECT` (R1.7) when no project file exists in `cwd` or any parent,
  * or when the file cannot be parsed/validated as a project config.
  */
+/**
+ * Soft resolve of `.loxtep/project.json` for `loxtep status` / list enrichment.
+ * Returns null when absent or invalid (does not invent a project).
+ */
+export function tryLoadProjectConfig(cwd: string): {
+  projectDir: string;
+  projectFilePath: string;
+  project: ProjectConfig;
+} | null {
+  const projectDir = findProjectDir(cwd);
+  if (!projectDir) return null;
+  const projectFilePath = getProjectFilePath(projectDir);
+  try {
+    const raw = readFileSync(projectFilePath, 'utf-8');
+    const parsedJson: unknown = JSON.parse(raw);
+    const result = ProjectConfigSchema.safeParse(parsedJson);
+    if (!result.success) return null;
+    return { projectDir, projectFilePath, project: result.data };
+  } catch {
+    return null;
+  }
+}
+
 export function requireProject(cwd: string): RequireProjectResult {
   const projectDir = findProjectDir(cwd);
   if (!projectDir) {

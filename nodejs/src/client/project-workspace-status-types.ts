@@ -1,9 +1,9 @@
 /**
- * Three-layer project / workspace status payload (LOX-1184 / LOX-1183 Phase A).
+ * Three-layer project / workspace status payload.
  *
  * Stable snake_case contract for:
- * - CLI: `loxtep status`, enriched `loxtep projects list|get` (Phase B+)
- * - MCP: `get_project_workspace_status` (Phase F)
+ * - CLI: `loxtep status`, enriched `loxtep projects list|get`
+ * - MCP: `get_project_workspace_status` (planned)
  *
  * Layers:
  * - **local** — CWD / known-locals + `.loxtep/project.json`
@@ -91,7 +91,7 @@ export const LocalWorkspaceLayerSchema = z.object({
   path: z.string().nullable(),
   /** Absolute path to `.loxtep/project.json` when known. */
   project_file: z.string().nullable(),
-  /** True when path came from `~/.loxtep/workspaces.json` (Phase C). */
+  /** True when path came from `~/.loxtep/workspaces.json`. */
   known_local: z.boolean(),
   /** attach state derived from local config (instance_id + api_url). */
   attach_state: AttachStateSchema,
@@ -221,7 +221,7 @@ export type ProjectWorkspaceStatusResponse = z.infer<
 // ---------------------------------------------------------------------------
 
 /**
- * Cost of filling fields so Phase B list enrichment can stay snappy.
+ * Cost of filling fields so list enrichment can stay snappy.
  *
  * - **cheap** — OK per list row (disk + columns already on project list row)
  * - **moderate** — OK for status/get (one extra call or small join)

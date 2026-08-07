@@ -20,6 +20,8 @@ Workspace
                      Scaffold workspace; requires login to register (or bind) a platform project
   attach [--instance <id>]
                      Link project to a runtime instance (writes instance_id + api_url)
+  status [--json]    Cwd-first project workspace status (local / cloud / deployed)
+                     Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
   projects list | get <id>               List org projects (workspaces) and IDs
   instances list | get <id> | create … | deployment-urls | register … | registration
@@ -96,6 +98,7 @@ Examples:
   pnpm exec loxtep deploy --dry-run
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
+  pnpm exec loxtep status
   pnpm exec loxtep projects list
   pnpm exec loxtep workflows list
   pnpm exec loxtep test orders-enricher --event ./events/order.json

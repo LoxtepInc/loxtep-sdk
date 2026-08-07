@@ -55,6 +55,22 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
       'commands/attach-cmd-binding.property.test.ts',
     ],
   },
+  status: {
+    kind: 'unit',
+    tests: [
+      'commands/status-cmd.test.ts',
+      '../client/project-workspace-status.test.ts',
+    ],
+    notes: 'cwd-first workspace status; distinct from observe status',
+  },
+  projects: {
+    kind: 'unit',
+    tests: [
+      'commands/projects-cmd.test.ts',
+      '../client/project-workspace-status.test.ts',
+    ],
+    notes: 'list/get enrichment (github/local/deployed)',
+  },
   generate: {
     kind: 'integration',
     tests: ['cli-local-integration.test.ts', 'commands/generate-cmd.test.ts'],
@@ -143,6 +159,8 @@ describe('CLI command coverage registry', () => {
       'attach',
       'generate',
       'instances',
+      'projects',
+      'status',
       'test',
       'deploy',
       'workflows',
