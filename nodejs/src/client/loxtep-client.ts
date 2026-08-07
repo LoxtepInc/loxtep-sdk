@@ -29,6 +29,7 @@ import { createActivityApi } from './activity.js';
 import { createSessionApi } from './session.js';
 import { createConnectFacade } from './connect.js';
 import { createWorkspaceFacade } from './workspace.js';
+import { createDeploymentsApi } from './deployments.js';
 import { createBuildFacade } from './build.js';
 import { createDefineFacade } from './define.js';
 import { createMeaningFacade } from './meaning.js';
@@ -184,6 +185,7 @@ export class LoxtepClient {
       get_rsdk: () => this.resolve_stream_sdk(),
     });
     const projectsApi = createProjectsApi(this._http);
+    const deploymentsApi = createDeploymentsApi(this._http);
     const templatesApi = createTemplatesApi(this._http);
     const observeApi = createObserveApi(this._http);
     this._dataProductsApi = createDataProductsApi(this._http, {
@@ -214,7 +216,11 @@ export class LoxtepClient {
 
     this.session = createSessionApi(this._http);
     this.connect = createConnectFacade({ connectors: connectorsApi, templates: templatesApi });
-    this.workspace = createWorkspaceFacade({ projects: projectsApi, instances: instancesApi });
+    this.workspace = createWorkspaceFacade({
+      projects: projectsApi,
+      instances: instancesApi,
+      deployments: deploymentsApi,
+    });
     this.build = createBuildFacade({
       workflows: this._workflowsApi,
       triggers: triggersApi,

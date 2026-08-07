@@ -21,14 +21,18 @@ Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 
 `dirty: null` means **not computed** at this `population_depth`. Do not treat null as clean.
 
-## Consumers (later phases)
+## Consumers
 
 | Surface | Uses |
 | --- | --- |
-| CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"` or `"unpublished"`) |
-| CLI `loxtep projects list\|get` | Optional `ProjectListStatusEnrichment` fields (`"summary"`) |
-| MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` |
-| MCP `list_projects` / `get_project` | Enrich with summary fields when cheap |
+| CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"`) — **shipped (Phase B)** |
+| CLI `loxtep projects list\|get` | `ProjectListStatusEnrichment` fields — **shipped (Phase B)** |
+| MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` (Phase F) |
+| MCP `list_projects` / `get_project` | Enrich with summary fields when cheap (Phase F) |
+
+Producer helpers live in `src/client/project-workspace-status.ts`
+(`buildProjectWorkspaceStatus`, `formatProjectWorkspaceStatusLines`,
+`enrichProjectListSummary`).
 
 Do **not** invent a second list command; enrich the existing `projects` plural group.
 
@@ -131,3 +135,12 @@ API is unavailable.
   "notes": []
 }
 ```
+
+## SDK pin drift
+
+The monorepo may still declare `"@loxtep/sdk": "^0.1.0"` (often resolving to
+**0.1.2** on the lockfile) while this repo's published line is newer (see
+`nodejs/package.json` `version`, currently **0.8.x** on main). Prefer the
+current `@loxtep/sdk` release (or a git/`workspace` checkout of this tree) when
+you need `loxtep status` / list enrichment — do not assume the 0.1.2 pin has
+Phase B CLI commands.

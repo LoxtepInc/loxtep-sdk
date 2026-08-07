@@ -337,6 +337,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `init --create-repo [name]`                          | Scaffold + create a new GitHub repo (private default)              |
 | `init --from-repo <url>`                             | Scaffold + import from an existing repo                            |
 | `attach --instance <name-or-id>`                     | Bind project to a runtime instance                                 |
+| `status [--json]`                                    | Cwd-first workspace status (local/cloud/deployed; not observe)     |
 | `connectors list [--type]`                           | List org connectors (filter e.g. `--type sdk`)                     |
 | `ingest provision [--name]`                          | Write local SDK ingest package (reuse/create connector; no deploy) |
 | `lint [--workflow]`                                  | Validate local entity JSON (schemas + relationships)               |

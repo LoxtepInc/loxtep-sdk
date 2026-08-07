@@ -10,6 +10,15 @@ and this project adheres to
 
 ### Added
 
+- **`loxtep status` (LOX-1185 / Phase B)** — cwd-first project workspace status
+  (local attach + API host, GitHub linked|unbound, never-deployed / deployed /
+  stale, Local→Cloud and Cloud→Deployed dirty summaries, next-action hint).
+  Distinct from `loxtep observe status`. `--json` emits the full
+  `ProjectWorkspaceStatus` payload.
+- **Enriched `loxtep projects list|get`** — cheap flags for github / local path
+  (when cwd matches) / deployed when detectable via deployments list.
+- **Deployments list client** — `client.workspace.deployments.list` →
+  `GET /workflows/deployments`.
 - **Project workspace status schema (LOX-1184)** — Zod + TypeScript types for
   three-layer local / cloud / deployed status, unpublished deltas, list
   enrichment, and population cost ceilings. Docs:
