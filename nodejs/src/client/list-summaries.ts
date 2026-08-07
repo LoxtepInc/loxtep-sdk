@@ -46,6 +46,8 @@ export interface WorkflowListSummary {
 
 export interface TriggerListSummary {
   connection_id: string;
+  /** Present when the entity payload includes it — required for get/update/delete. */
+  workflow_id?: string;
   name: string;
   key: string;
   type: string;
@@ -147,6 +149,7 @@ export function toWorkflowListSummary(flow: Flow): WorkflowListSummary {
 export function toTriggerListSummary(trigger: Trigger): TriggerListSummary {
   return {
     connection_id: trigger.connection_id,
+    ...(trigger.workflow_id ? { workflow_id: trigger.workflow_id } : {}),
     name: trigger.name,
     key: trigger.key,
     type: trigger.type,

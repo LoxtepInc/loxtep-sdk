@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-08-07
+
+### Fixed
+
+- **`loxtep triggers get` / `targets get`** — when `--workflow-id` is omitted, resolve
+  it from the project entities list before calling the workflow-scoped entity API
+  (backend requires `workflow_id`). Same for update/delete/test.
+- **`triggers list` summary** — include `workflow_id` so list → get is usable
+  without psychic powers.
+
 ## [0.9.1] - 2026-08-07
 
 ### Added

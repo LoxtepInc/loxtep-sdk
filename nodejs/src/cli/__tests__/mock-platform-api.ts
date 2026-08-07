@@ -384,6 +384,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           connections: [
             {
               connection_id: MOCK_IDS.trigger_id,
+              workflow_id: MOCK_IDS.workflow_id,
               name: 'Shopify',
               type: 'api',
               status: 'active',
@@ -429,6 +430,7 @@ export function createDefaultPlatformRoutes(): RouteHandler {
       return jsonResponse(
         successEnvelope({
           connection_id: method === 'PUT' ? 'trigger-created-001' : connectionId,
+          workflow_id: MOCK_IDS.workflow_id,
           name: (body.name as string) ?? 'Shopify',
           type: (body.type as string) ?? 'api',
           status: 'active',

@@ -58,9 +58,49 @@ function paginate(
 }
 
 /**
- * Create the triggers API surface (get, list, create, update, delete, test).
+ * Resolve workflow_id for a connection when the caller omitted it.
+ * Backend get/put/delete require workflow_id for workflow-scoped entities.
  */
-export function createTriggersApi(http: LoxtepHttpClient): {
+async function resolveWorkflowId(
+  http: LoxtepHttpClient,
+  projectId: string,
+  connectionId: string,
+  explicit?: string
+): Promise<string> {
+  if (explicit) return explicit;
+
+  const res = await http.get<{
+    success: true;
+    data: { connections?: Trigger[] };
+  }>(entitiesBase(projectId));
+  const matches = (res.data?.connections ?? []).filter(c => c.connection_id === connectionId);
+  if (matches.length === 0) {
+    throw new Error(
+      `Trigger ${connectionId} not found in project ${projectId}. Run \`loxtep triggers list\` first.`
+    );
+  }
+
+  const workflowIds = [
+    ...new Set(
+      matches
+        .map(m => (typeof m.workflow_id === 'string' ? m.workflow_id : ''))
+        .filter(Boolean)
+    ),
+  ];
+  if (workflowIds.length === 0) {
+    throw new Error(
+      `Trigger ${connectionId} has no workflow_id in the project entities list; pass --workflow-id explicitly.`
+    );
+  }
+  if (workflowIds.length > 1) {
+    throw new Error(
+      `Multiple workflows own connection_id ${connectionId}: ${workflowIds.join(', ')}. Pass --workflow-id to disambiguate.`
+    );
+  }
+  return workflowIds[0]!;
+}
+
+export type TriggersApi = {
   get: (id: string, opts?: { project_id?: string; workflow_id?: string }) => Promise<Trigger>;
   list: (filters?: TriggersListFilters) => Promise<TriggersListResponse['data']>;
   create: (config: TriggerCreateInput) => Promise<Trigger>;
@@ -71,15 +111,21 @@ export function createTriggersApi(http: LoxtepHttpClient): {
   ) => Promise<Trigger>;
   delete: (id: string, opts?: { project_id?: string; workflow_id?: string }) => Promise<void>;
   test: (id: string, opts?: { project_id?: string; workflow_id?: string }) => Promise<TriggerTestResult>;
-} {
-  return {
+};
+
+/**
+ * Create the triggers API surface (get, list, create, update, delete, test).
+ */
+export function createTriggersApi(http: LoxtepHttpClient): TriggersApi {
+  const api: TriggersApi = {
     async get(
       id: string,
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<Trigger> {
       const projectId = requireProjectId(opts?.project_id, 'get');
+      const workflowId = await resolveWorkflowId(http, projectId, id, opts?.workflow_id);
       const res = await http.get<{ success: true; data: Trigger }>(
-        connectionPath(projectId, id, opts?.workflow_id)
+        connectionPath(projectId, id, workflowId)
       );
       return res.data;
     },
@@ -164,17 +210,23 @@ export function createTriggersApi(http: LoxtepHttpClient): {
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<Trigger> {
       const projectId = requireProjectId(opts?.project_id ?? config.project_id, 'update');
-      const workflowId = opts?.workflow_id ?? config.workflow_id;
-      const existing = await this.get(id, { project_id: projectId, workflow_id: workflowId });
+      const workflowId = await resolveWorkflowId(
+        http,
+        projectId,
+        id,
+        opts?.workflow_id ?? config.workflow_id
+      );
+      const existing = await api.get(id, { project_id: projectId, workflow_id: workflowId });
       const merged = {
         ...existing,
         ...config,
         connection_id: id,
         project_id: projectId,
+        workflow_id: workflowId,
         updated_at: new Date().toISOString(),
       };
       const res = await http.put<{ success: true; data: Trigger }>(
-        connectionPath(projectId, id, workflowId ?? String(existing.workflow_id ?? '')),
+        connectionPath(projectId, id, workflowId),
         merged
       );
       return res.data ?? (merged as Trigger);
@@ -185,12 +237,8 @@ export function createTriggersApi(http: LoxtepHttpClient): {
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<void> {
       const projectId = requireProjectId(opts?.project_id, 'delete');
-      const qs = opts?.workflow_id
-        ? `?workflow_id=${encodeURIComponent(opts.workflow_id)}`
-        : '';
-      await http.delete(
-        `${entitiesBase(projectId)}/connections/${encodeURIComponent(id)}${qs}`
-      );
+      const workflowId = await resolveWorkflowId(http, projectId, id, opts?.workflow_id);
+      await http.delete(connectionPath(projectId, id, workflowId));
     },
 
     async test(
@@ -198,7 +246,7 @@ export function createTriggersApi(http: LoxtepHttpClient): {
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<TriggerTestResult> {
       // Connectivity probe: load entity; if configuration has an HTTP URL, report reachable shape.
-      const trigger = await this.get(id, opts);
+      const trigger = await api.get(id, opts);
       const cfg = (trigger.configuration ?? {}) as Record<string, unknown>;
       const probe =
         (typeof cfg.url === 'string' && cfg.url) ||
@@ -215,4 +263,5 @@ export function createTriggersApi(http: LoxtepHttpClient): {
       };
     },
   };
+  return api;
 }

@@ -73,6 +73,7 @@ describe('list summaries', () => {
     const full: Trigger = {
       connection_id: 'c-1',
       organization_id: 'org-hidden',
+      workflow_id: 'wf-1',
       key: 'shopify',
       name: 'Shopify',
       type: 'api',
@@ -88,6 +89,7 @@ describe('list summaries', () => {
 
     expect(toTriggerListSummary(full)).toEqual({
       connection_id: 'c-1',
+      workflow_id: 'wf-1',
       name: 'Shopify',
       key: 'shopify',
       type: 'api',

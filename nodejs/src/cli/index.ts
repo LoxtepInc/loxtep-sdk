@@ -681,7 +681,7 @@ async function runCommand(): Promise<void> {
         });
       } else {
         console.error(
-          'Usage: loxtep triggers list [--project-id <id>] | get <id> --project-id <id> | create --project-id <id> --workflow-id <id> --name … | test <id>'
+          'Usage: loxtep triggers list [--project-id <id>] [--workflow-id <id>] | get <id> [--project-id <id>] [--workflow-id <id>] | create --project-id <id> --workflow-id <id> --name … | test <id>'
         );
         process.exitCode = 1;
       }

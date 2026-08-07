@@ -54,6 +54,45 @@ function paginate(items: Target[], page: number, pageSize: number): TargetsListR
   };
 }
 
+async function resolveWorkflowId(
+  http: LoxtepHttpClient,
+  projectId: string,
+  connectionId: string,
+  explicit?: string
+): Promise<string> {
+  if (explicit) return explicit;
+
+  const res = await http.get<{
+    success: true;
+    data: { connections?: Target[] };
+  }>(entitiesBase(projectId));
+  const matches = (res.data?.connections ?? []).filter(c => c.connection_id === connectionId);
+  if (matches.length === 0) {
+    throw new Error(
+      `Target ${connectionId} not found in project ${projectId}. Run \`loxtep targets list\` first.`
+    );
+  }
+
+  const workflowIds = [
+    ...new Set(
+      matches
+        .map(m => (typeof m.workflow_id === 'string' ? m.workflow_id : ''))
+        .filter(Boolean)
+    ),
+  ];
+  if (workflowIds.length === 0) {
+    throw new Error(
+      `Target ${connectionId} has no workflow_id in the project entities list; pass --workflow-id explicitly.`
+    );
+  }
+  if (workflowIds.length > 1) {
+    throw new Error(
+      `Multiple workflows own connection_id ${connectionId}: ${workflowIds.join(', ')}. Pass --workflow-id to disambiguate.`
+    );
+  }
+  return workflowIds[0]!;
+}
+
 export interface TargetsApi {
   get: (id: string, opts?: { project_id?: string; workflow_id?: string }) => Promise<Target>;
   list: (filters?: TargetsListFilters) => Promise<TargetsListResponse['data']>;
@@ -71,14 +110,15 @@ export interface TargetsApi {
  * Create the targets API surface (parallel to triggers — same connections entity).
  */
 export function createTargetsApi(http: LoxtepHttpClient): TargetsApi {
-  return {
+  const api: TargetsApi = {
     async get(
       id: string,
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<Target> {
       const projectId = requireProjectId(opts?.project_id, 'get');
+      const workflowId = await resolveWorkflowId(http, projectId, id, opts?.workflow_id);
       const res = await http.get<{ success: true; data: Target }>(
-        connectionPath(projectId, id, opts?.workflow_id)
+        connectionPath(projectId, id, workflowId)
       );
       return res.data;
     },
@@ -172,17 +212,23 @@ export function createTargetsApi(http: LoxtepHttpClient): TargetsApi {
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<Target> {
       const projectId = requireProjectId(opts?.project_id ?? config.project_id, 'update');
-      const workflowId = opts?.workflow_id ?? config.workflow_id;
-      const existing = await this.get(id, { project_id: projectId, workflow_id: workflowId });
+      const workflowId = await resolveWorkflowId(
+        http,
+        projectId,
+        id,
+        opts?.workflow_id ?? config.workflow_id
+      );
+      const existing = await api.get(id, { project_id: projectId, workflow_id: workflowId });
       const merged = {
         ...existing,
         ...config,
         connection_id: id,
         project_id: projectId,
+        workflow_id: workflowId,
         updated_at: new Date().toISOString(),
       };
       const res = await http.put<{ success: true; data: Target }>(
-        connectionPath(projectId, id, workflowId ?? String(existing.workflow_id ?? '')),
+        connectionPath(projectId, id, workflowId),
         merged
       );
       return res.data ?? (merged as Target);
@@ -193,19 +239,15 @@ export function createTargetsApi(http: LoxtepHttpClient): TargetsApi {
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<void> {
       const projectId = requireProjectId(opts?.project_id, 'delete');
-      const qs = opts?.workflow_id
-        ? `?workflow_id=${encodeURIComponent(opts.workflow_id)}`
-        : '';
-      await http.delete(
-        `${entitiesBase(projectId)}/connections/${encodeURIComponent(id)}${qs}`
-      );
+      const workflowId = await resolveWorkflowId(http, projectId, id, opts?.workflow_id);
+      await http.delete(connectionPath(projectId, id, workflowId));
     },
 
     async test(
       id: string,
       opts?: { project_id?: string; workflow_id?: string }
     ): Promise<TargetTestResult> {
-      const target = await this.get(id, opts);
+      const target = await api.get(id, opts);
       return {
         success: true,
         message: `Target "${target.name}" loaded. Use MCP test_trigger for live connectivity checks.`,
@@ -214,4 +256,5 @@ export function createTargetsApi(http: LoxtepHttpClient): TargetsApi {
       };
     },
   };
+  return api;
 }
