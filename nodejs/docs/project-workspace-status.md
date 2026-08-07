@@ -25,6 +25,7 @@ Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 | Surface | Uses |
 | --- | --- |
 | CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"`) |
+| CLI `loxtep status --unpublished` / `projects changes` | Same payload at `population_depth: "unpublished"` with file/entity lists |
 | CLI `loxtep projects list\|get` | `ProjectListStatusEnrichment` fields |
 | CLI `loxtep projects link` / `loxtep link` | Local bind + `~/.loxtep/workspaces.json` |
 | MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` (planned) |
@@ -32,7 +33,8 @@ Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 
 Producer helpers live in `src/client/project-workspace-status.ts`
 (`buildProjectWorkspaceStatus`, `formatProjectWorkspaceStatusLines`,
-`enrichProjectListSummary`).
+`enrichProjectListSummary`) and `src/client/project-workspace-inventory.ts`
+(push discovery + `.loxtep/push-manifest.json` compare).
 
 Do **not** invent a second list command; enrich the existing `projects` plural group.
 
@@ -72,10 +74,12 @@ Field costs live in `PROJECT_WORKSPACE_STATUS_FIELD_COST`. Depth ceilings:
 project list row (`project_id`, `name`, `github_repo_*`).
 
 **Moderate (status/get):** one deploy lookup (or cached join) per project;
-boolean dirty heuristics without walking the whole workspace tree.
+Local→Cloud dirty boolean via package vs `.loxtep/push-manifest.json`
+(same discovery as `loxtep push`) without attaching per-file lists.
 
-**Expensive (opt-in):** walk local package vs cloud workspace, GitHub compare,
-full unpublished inventory (`changed_count` + per-entity lists when inventory commands ship).
+**Expensive (opt-in):** `loxtep status --unpublished` / `loxtep projects changes` —
+walk local package vs push manifest (+ optional cloud workflow id escalate),
+attach `unpublished.*.changes` entity/file inventory and counts.
 
 Producers SHOULD omit or set `null` rather than stall list enrichment on moderate/expensive work.
 

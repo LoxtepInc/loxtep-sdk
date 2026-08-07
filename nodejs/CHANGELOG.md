@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- **Unpublished inventory (LOX-1187)** — `loxtep status --unpublished` and
+  `loxtep projects changes` list Local→Cloud / Cloud→Deployed file+entity
+  deltas (workflows, connections, data products, schema package) using the same
+  discovery as `loxtep push`. Compares against `.loxtep/push-manifest.json`
+  (written on successful push); escalates with cloud workflow ids when linked.
+  `loxtep deploy` **warns** (does not block) when Local→Cloud is dirty.
 - **`loxtep status`** — cwd-first project workspace status
   (local attach + API host, GitHub linked|unbound, never-deployed / deployed /
   stale, Local→Cloud and Cloud→Deployed dirty summaries, next-action hint).
