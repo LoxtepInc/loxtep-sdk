@@ -78,7 +78,7 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
-import { runProjectsList, runProjectsGet, runProjectsLink } from './commands/projects-cmd.js';
+import { runProjectsList, runProjectsGet, runProjectsLink, runProjectsClone, runProjectsGithubPullCmd, runProjectsGithubPushCmd } from './commands/projects-cmd.js';
 import { runStatus } from './commands/status-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
@@ -239,9 +239,28 @@ async function runCommand(): Promise<void> {
           path: getArg('--path'),
           debug: args.includes('--debug'),
         });
+      } else if (sub === 'clone' && args[2] && !args[2].startsWith('--')) {
+        const cloneDir =
+          args[3] && !args[3].startsWith('--') ? args[3] : undefined;
+        await runProjectsClone(args[2], cloneDir, {
+          debug: args.includes('--debug'),
+        });
+      } else if (sub === 'pull') {
+        await runProjectsGithubPullCmd({
+          debug: args.includes('--debug'),
+          projectId: getArg('--project-id'),
+          commitSha: getArg('--commit-sha'),
+        });
+      } else if (sub === 'push') {
+        await runProjectsGithubPushCmd({
+          debug: args.includes('--debug'),
+          projectId: getArg('--project-id'),
+          commitMessage: getArg('--message') ?? getArg('--commit-message'),
+          branch: getArg('--branch'),
+        });
       } else {
         console.error(
-          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>]'
+          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects clone <id|name> [dir] | projects pull | projects push'
         );
         process.exitCode = 1;
       }

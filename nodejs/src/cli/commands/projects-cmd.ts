@@ -24,6 +24,8 @@ import {
 } from '../known-locals-registry.js';
 import { tryLoadProjectConfig } from '../project-context.js';
 import { runLink } from './link-cmd.js';
+import { runClone } from './clone-cmd.js';
+import { runProjectsGithubPull, runProjectsGithubPush } from './projects-github-cmd.js';
 
 export type ProjectsListSource = 'all' | 'local' | 'remote';
 
@@ -240,6 +242,55 @@ export async function runProjectsLink(
     projectRef,
     path: options.path,
     registryPath: options.registryPath,
+  });
+  for (const line of result.stdout) console.log(line);
+  for (const line of result.stderr) console.error(line);
+  if (result.exitCode !== 0) process.exitCode = result.exitCode;
+}
+
+export async function runProjectsClone(
+  projectRef: string,
+  dir: string | undefined,
+  options: ProjectsCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  const result = await runClone(client, {
+    projectRef,
+    dir,
+    registryPath: options.registryPath,
+  });
+  for (const line of result.stdout) console.log(line);
+  for (const line of result.stderr) console.error(line);
+  if (result.exitCode !== 0) process.exitCode = result.exitCode;
+}
+
+export async function runProjectsGithubPullCmd(
+  options: ProjectsCmdOptions & { commitSha?: string; projectId?: string } = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  const result = await runProjectsGithubPull(client, {
+    projectId: options.projectId,
+    commitSha: options.commitSha,
+    cwd: options.cwd,
+  });
+  for (const line of result.stdout) console.log(line);
+  for (const line of result.stderr) console.error(line);
+  if (result.exitCode !== 0) process.exitCode = result.exitCode;
+}
+
+export async function runProjectsGithubPushCmd(
+  options: ProjectsCmdOptions & {
+    commitMessage?: string;
+    branch?: string;
+    projectId?: string;
+  } = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  const result = await runProjectsGithubPush(client, {
+    projectId: options.projectId,
+    commitMessage: options.commitMessage,
+    branch: options.branch,
+    cwd: options.cwd,
   });
   for (const line of result.stdout) console.log(line);
   for (const line of result.stderr) console.error(line);

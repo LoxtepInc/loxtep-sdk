@@ -26,6 +26,46 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
   return qs ? `?${qs}` : '';
 }
 
+/** Response from POST /workflows/projects/:id/export (unbound workspace download). */
+export interface ProjectWorkspaceExportResult {
+  project_id: string;
+  organization_id: string;
+  uses_streaming: boolean;
+  total_size_bytes: number;
+  export_data?: {
+    metadata?: Record<string, unknown>;
+    entity_counts?: Record<string, number>;
+    entities: Array<{
+      entity_type: string;
+      entity_id: string;
+      data: Record<string, unknown>;
+      import_order?: number;
+    }>;
+    total_size_bytes?: number;
+  };
+  presigned_url?: string;
+  s3_key?: string;
+  expires_at?: string;
+}
+
+export interface GitHubPullResult {
+  success: boolean;
+  commit_sha?: string;
+  validation_passed?: boolean;
+  file_count?: number;
+  errors?: string[];
+  message?: string;
+}
+
+export interface GitHubPushResult {
+  success: boolean;
+  commit_sha?: string;
+  commit_url?: string;
+  file_count?: number;
+  errors?: string[];
+  message?: string;
+}
+
 export function createProjectsApi(http: LoxtepHttpClient): {
   list: (filters?: ProjectsListFilters) => Promise<ProjectsListResponse['data']>;
   get: (project_id: string) => Promise<Project>;
@@ -36,6 +76,23 @@ export function createProjectsApi(http: LoxtepHttpClient): {
   repository: (project_id: string) => Promise<RepositoryBinding>;
   /** POST /workflows/projects/:id/reindex — refresh customer_workspace_entity_index. */
   reindex: (project_id: string) => Promise<unknown>;
+  /** POST /workflows/projects/:id/export — S3 workspace export for unbound clone. */
+  export_workspace: (
+    project_id: string,
+    body?: {
+      subscription_tier?: 'free' | 'starter' | 'pro' | 'enterprise';
+      include_drafts?: boolean;
+      include_versions?: boolean;
+      validate_size?: boolean;
+    }
+  ) => Promise<ProjectWorkspaceExportResult>;
+  /** POST /workflows/projects/:id/github/pull — Cloud S3 ← GitHub (bound only). */
+  github_pull: (project_id: string, body?: { commit_sha?: string }) => Promise<GitHubPullResult>;
+  /** POST /workflows/projects/:id/github/push — Cloud S3 → GitHub (bound only). */
+  github_push: (
+    project_id: string,
+    body?: { commit_message?: string; branch?: string }
+  ) => Promise<GitHubPushResult>;
 } {
   return {
     async list(filters?: ProjectsListFilters): Promise<ProjectsListResponse['data']> {
@@ -115,6 +172,50 @@ export function createProjectsApi(http: LoxtepHttpClient): {
         {}
       );
       return res.data ?? res;
+    },
+
+    async export_workspace(
+      project_id: string,
+      body?: {
+        subscription_tier?: 'free' | 'starter' | 'pro' | 'enterprise';
+        include_drafts?: boolean;
+        include_versions?: boolean;
+        validate_size?: boolean;
+      }
+    ): Promise<ProjectWorkspaceExportResult> {
+      const res = await http.post<{ success: true; data: ProjectWorkspaceExportResult }>(
+        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/export`,
+        body ?? {}
+      );
+      return res.data;
+    },
+
+    async github_pull(
+      project_id: string,
+      body?: { commit_sha?: string }
+    ): Promise<GitHubPullResult> {
+      const res = await http.post<{ success: true; data?: GitHubPullResult } | GitHubPullResult>(
+        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/pull`,
+        body ?? {}
+      );
+      if (res && typeof res === 'object' && 'data' in res && res.data) {
+        return res.data;
+      }
+      return res as GitHubPullResult;
+    },
+
+    async github_push(
+      project_id: string,
+      body?: { commit_message?: string; branch?: string }
+    ): Promise<GitHubPushResult> {
+      const res = await http.post<{ success: true; data?: GitHubPushResult } | GitHubPushResult>(
+        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/push`,
+        body ?? {}
+      );
+      if (res && typeof res === 'object' && 'data' in res && res.data) {
+        return res.data;
+      }
+      return res as GitHubPushResult;
     },
   };
 }

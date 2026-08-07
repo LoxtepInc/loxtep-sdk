@@ -80,8 +80,8 @@ export function deriveNextAction(input: {
   local_to_cloud_dirty: boolean | null;
   cloud_to_deployed_dirty: boolean | null;
 }): NextActionHint {
-  // No local bind yet → prefer `link`. Full clone/materialize is a later command.
-  if (!input.local_present) return 'link';
+  // No local bind yet → prefer `clone` (or `link` if the tree already exists).
+  if (!input.local_present) return 'clone';
   if (input.attach_state === 'unattached') return 'attach';
   if (input.github_state === 'unbound' && input.local_to_cloud_dirty === true) return 'push';
   if (input.local_to_cloud_dirty === true) return 'push';
