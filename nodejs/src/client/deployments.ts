@@ -1,6 +1,6 @@
 /**
  * Deployments API: list (GET /workflows/deployments).
- * Used by Phase B `loxtep status` / projects list enrichment for deploy age.
+ * Used by `loxtep status` / projects list enrichment for deploy age.
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
