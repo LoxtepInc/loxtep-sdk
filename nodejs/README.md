@@ -346,7 +346,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `test <module> --event <file>`                       | Run a workflow module locally with sample event(s)                  |
 | `deploy`                                             | Compile modules, validate resources, deploy to workflow engine      |
 | `config list`                                        | Show api_url, organization_id, project_id, instance_id             |
-| `projects list` \| `projects get <id>`               | List org projects (discover project_id)                           |
+| `projects list` \| `projects get <id>` \| `projects link` \| `projects clone [dir]` \| `projects pull` \| `projects push` | List/get/link/clone; GH sync when bound; unbound Local→Cloud remains `loxtep push` |
 | `config paths`                                       | Show resolved URLs for auth and SDK path matrix                    |
 | `config set <key> <value>`                           | Set api_url \| organization_id \| project_id \| instance_id        |
 | `config export --from-data-product <id>`             | Print shell exports / JSON for SDK bootstrap                       |

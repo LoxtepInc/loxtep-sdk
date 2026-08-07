@@ -17,23 +17,32 @@ Use [SDK-first ingest](./sdk-first-ingest.md) instead of this guide.
 | Goal | Commands |
 | --- | --- |
 | First-time workspace setup (new project) | `login` → `init` → `attach` → `generate` |
-| Bind an **existing** cloud project to a directory | `login` → `projects link` → `attach` → edit → `push` → `deploy` |
+| **Clone** an existing cloud project locally | `login` → `projects clone <id\|name> [dir]` → `attach` → edit → `push` / `projects push` |
+| Bind an **existing** cloud project to a directory (no download) | `login` → `projects link` → `attach` → edit → `push` → `deploy` |
 | Author, test, and deploy workflows | … → `test` → `deploy` |
 | App code with auto-config | After attach: `LoxtepClient.fromWorkspace()` |
 | Stream I/O to a data product | After **deploy**: `client.get_writer(name)` |
 
 `loxtep init` creates **`.loxtep/project.json`** and the on-disk project layout.
-`loxtep projects link` (alias `loxtep link`) binds an **existing** cloud project
-to a local directory — metadata only, no GitHub required. Prefer `link`
-when you do not need a full scaffold; `init --project-id` still binds the same
-way and also upserts `~/.loxtep/workspaces.json`.
+`loxtep projects clone` materializes Cloud → Local: **git clone** when the project
+is GitHub-bound; authenticated **workspace export** (`POST /workflows/projects/{id}/export`)
+when unbound. Both paths write `.loxtep/project.json` and upsert
+`~/.loxtep/workspaces.json` so `loxtep status` works immediately.
+`loxtep projects link` (alias `loxtep link`) binds metadata only when you already
+have a local tree. Prefer `clone` for "get it from the cloud"; use `link` when
+the files are already on disk.
 
-**`link` ≠ `attach`:** `link` binds the **project**; `attach` binds a runtime
+**GitHub sync vs package push:** top-level `loxtep push` uploads unbound local
+packages (Local → Cloud S3). When GitHub-bound, use `loxtep projects pull` /
+`loxtep projects push` to wrap `/projects/{id}/github/pull|push`. Never pretend
+Git exists for unbound projects.
+
+**`link` ≠ `attach`:** `link`/`clone` bind the **project**; `attach` binds a runtime
 **Instance** (`instance_id` + `api_url`).
 
 Many CLI commands (`generate`, `test`, `deploy`, `attach`) require that file and
-will exit with *"Run \`loxtep init\` first"* if it is missing (or run `link` /
-`init --project-id` to create it for an existing project).
+will exit with *"Run \`loxtep init\` first"* if it is missing (or run `clone` /
+`link` / `init --project-id` to create it for an existing project).
 
 `loxtep login` stores JWT credentials under **`./.loxtep/credentials.json`**
 (by default). That is separate from `project.json` — you can log in before or
@@ -48,13 +57,16 @@ pnpm add @loxtep/sdk
 pnpm exec loxtep login
 # New project:
 pnpm exec loxtep init [--template <slug>]
-# Or existing cloud project:
+# Or clone from cloud (GitHub-bound or unbound export):
+pnpm exec loxtep projects clone <project_id|name> [dir]
+# Or bind without downloading:
 pnpm exec loxtep projects link <project_id|name>
 pnpm exec loxtep attach --instance <name-or-id>
 pnpm exec loxtep generate
 # author workflows under workflows/
 pnpm exec loxtep test <module> --event ./events/sample.json
-pnpm exec loxtep push
+pnpm exec loxtep push                 # unbound Local→Cloud packages
+# pnpm exec loxtep projects push      # GitHub-bound S3→GitHub sync
 pnpm exec loxtep deploy
 ```
 

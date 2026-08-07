@@ -73,9 +73,10 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     tests: [
       'commands/projects-cmd.test.ts',
       'commands/link-cmd.test.ts',
+      'commands/clone-cmd.test.ts',
       '../client/project-workspace-status.test.ts',
     ],
-    notes: 'list/get enrichment + link/--source (known-locals registry)',
+    notes: 'list/get + link + clone + github pull/push wrappers (LOX-1188)',
   },
   generate: {
     kind: 'integration',
