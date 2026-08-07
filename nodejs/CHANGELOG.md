@@ -8,8 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-07
+
 ### Added
 
+- **`loxtep projects clone` (LOX-1188)** — Cloud→Local project materialization
+  (GitHub clone when linked, or workspace export for unbound projects), plus
+  `projects pull` / `projects push` GitHub sync wrappers.
+- **`loxtep link` / `projects link` (LOX-1186)** — bind a cloud project to a local
+  directory and track known locals in `~/.loxtep/workspaces.json`.
 - **Unpublished inventory (LOX-1187)** — `loxtep status --unpublished` and
   `loxtep projects changes` list Local→Cloud / Cloud→Deployed file+entity
   deltas (workflows, connections, data products, schema package) using the same
@@ -31,6 +38,11 @@ and this project adheres to
   `docs/project-workspace-status.md`. Consumers: CLI `status` /
   enriched `projects list|get`, MCP `get_project_workspace_status`
   (planned).
+
+### Fixed
+
+- **`loxtep deploy` tracking** — surfaces a real deployment / tracking id from
+  the deploy response instead of printing `undefined` for `run_id`.
 
 ## [0.8.0] - 2026-08-03
 
