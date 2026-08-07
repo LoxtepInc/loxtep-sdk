@@ -78,7 +78,15 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
-import { runProjectsList, runProjectsGet, runProjectsLink, runProjectsClone, runProjectsGithubPullCmd, runProjectsGithubPushCmd } from './commands/projects-cmd.js';
+import {
+  runProjectsList,
+  runProjectsGet,
+  runProjectsLink,
+  runProjectsChanges,
+  runProjectsClone,
+  runProjectsGithubPullCmd,
+  runProjectsGithubPushCmd,
+} from './commands/projects-cmd.js';
 import { runStatus } from './commands/status-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
@@ -239,6 +247,11 @@ async function runCommand(): Promise<void> {
           path: getArg('--path'),
           debug: args.includes('--debug'),
         });
+      } else if (sub === 'changes') {
+        await runProjectsChanges({
+          debug: args.includes('--debug'),
+          json: args.includes('--json'),
+        });
       } else if (sub === 'clone' && args[2] && !args[2].startsWith('--')) {
         const cloneDir =
           args[3] && !args[3].startsWith('--') ? args[3] : undefined;
@@ -260,14 +273,17 @@ async function runCommand(): Promise<void> {
         });
       } else {
         console.error(
-          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects clone <id|name> [dir] | projects pull | projects push'
+          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects changes [--json] | projects clone <id|name> [dir] | projects pull | projects push'
         );
         process.exitCode = 1;
       }
       break;
     case 'status': {
       // Cwd-first project workspace status — not `observe status` (bots/queues).
-      await runStatus({ json: args.includes('--json') });
+      await runStatus({
+        json: args.includes('--json'),
+        unpublished: args.includes('--unpublished'),
+      });
       break;
     }
     case 'bus':

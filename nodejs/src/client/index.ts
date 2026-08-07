@@ -95,6 +95,9 @@ export type {
   DeployedRuntimeLayer,
   UnpublishedDelta,
   UnpublishedStatus,
+  UnpublishedChangeItem,
+  UnpublishedEntityKind,
+  UnpublishedChangeKind,
   ProjectWorkspaceStatus,
   ProjectListStatusEnrichment,
   ProjectWorkspaceStatusResponse,
@@ -112,6 +115,9 @@ export {
   GithubStatusSchema,
   CloudProjectLayerSchema,
   DeployedRuntimeLayerSchema,
+  UnpublishedEntityKindSchema,
+  UnpublishedChangeKindSchema,
+  UnpublishedChangeItemSchema,
   UnpublishedDeltaSchema,
   UnpublishedStatusSchema,
   ProjectWorkspaceStatusSchema,
@@ -216,6 +222,27 @@ export {
   toProjectListStatusEnrichment,
 } from './project-workspace-status.js';
 export type { BuildProjectWorkspaceStatusInput, LocalProjectSnapshot } from './project-workspace-status.js';
+export {
+  buildCloudToDeployedInventory,
+  buildLocalToCloudInventory,
+  discoverLocalPackageFiles,
+  formatUnpublishedInventoryLines,
+  hashStableJson,
+  readPushManifest,
+  writePushManifest,
+  writePushManifestFromProjectDir,
+  PUSH_MANIFEST_RELATIVE_PATH,
+} from './project-workspace-inventory.js';
+export type {
+  DiscoveredPackageFile,
+  PushManifest,
+} from './project-workspace-inventory.js';
+export {
+  collectFlatBundle,
+  listLocalSchemaPackageFiles,
+  listLocalWorkflowIds,
+  listLocalWorkflowModuleFiles,
+} from './workspace-package.js';
 
 export type { BuildFacade } from './build.js';
 export type { DefineFacade } from './define.js';

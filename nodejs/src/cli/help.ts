@@ -27,8 +27,9 @@ Workspace
                      Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
   projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]
-                     | clone <id|name> [dir] | pull | push
-                     List/get/link/clone org projects. clone = Cloud→Local (git when
+                     | changes [--json] | clone <id|name> [dir] | pull | push
+                     List/get/link/clone org projects. changes = unpublished inventory
+                     (alias of status --unpublished). clone = Cloud→Local (git when
                      GitHub-bound; workspace export when unbound). projects pull/push wrap
                      GitHub sync APIs (bound only). Unbound Local→Cloud stays "loxtep push".
   instances list | get <id> | create … | deployment-urls | register … | registration

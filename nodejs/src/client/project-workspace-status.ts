@@ -3,12 +3,16 @@
  *
  * Builds {@link ProjectWorkspaceStatus} from cwd-local config, cloud project row,
  * and optional deployments list. List enrichment stays at `summary` cost ceiling.
+ * Local→Cloud dirty prefers push-manifest compare (same discovery as `loxtep push`).
  */
 
-import { spawnSync } from 'node:child_process';
 import type { Project } from './projects-types.js';
 import type { Deployment } from './deployments-types.js';
 import { pickLatestDeployment } from './deployments.js';
+import {
+  buildCloudToDeployedInventory,
+  buildLocalToCloudInventory,
+} from './project-workspace-inventory.js';
 import type {
   AttachState,
   DeployedLayerState,
@@ -17,6 +21,8 @@ import type {
   ProjectListStatusEnrichment,
   ProjectWorkspaceStatus,
   StatusPopulationDepth,
+  UnpublishedChangeItem,
+  UnpublishedDelta,
 } from './project-workspace-status-types.js';
 import { ProjectWorkspaceStatusSchema } from './project-workspace-status-types.js';
 
@@ -40,8 +46,16 @@ export interface BuildProjectWorkspaceStatusInput {
   deployments_unavailable?: boolean;
   /** Override clock for age_seconds (tests). */
   now_ms?: number;
-  /** Override git dirty probe (tests). null = skip / not computed. */
+  /**
+   * Test override for Local→Cloud dirty.
+   * When unset, uses push-manifest inventory against `local.path`.
+   */
   local_git_dirty?: boolean | null;
+  /** Precomputed Local→Cloud inventory (status --unpublished / projects changes). */
+  local_to_cloud_inventory?: UnpublishedDelta | null;
+  /** Cloud workflow ids for inventory escalate (optional). */
+  cloud_workflow_ids?: string[] | null;
+  cloud_list_unavailable?: boolean;
   notes?: string[];
   /** True when path came from `~/.loxtep/workspaces.json`. */
   known_local?: boolean;
@@ -55,21 +69,6 @@ function attachStateFromLocal(local: LocalProjectSnapshot | null | undefined): A
 export function githubStateFromProject(project: Project | null | undefined): GithubLinkState {
   if (project?.github_repo_url || project?.github_repo_name) return 'linked';
   return 'unbound';
-}
-
-/** Best-effort git working-tree dirty check (moderate cost; status depth). */
-export function probeLocalGitDirty(projectDir: string): boolean | null {
-  try {
-    const res = spawnSync('git', ['status', '--porcelain'], {
-      cwd: projectDir,
-      encoding: 'utf-8',
-      timeout: 3000,
-    });
-    if (res.error || res.status !== 0) return null;
-    return (res.stdout ?? '').trim().length > 0;
-  } catch {
-    return null;
-  }
 }
 
 export function deriveNextAction(input: {
@@ -167,8 +166,6 @@ function resolveDeployedLayer(input: {
   const syncNewer =
     !Number.isNaN(syncMs) && !Number.isNaN(deployMs) ? syncMs > deployMs + 1000 : false;
 
-  // Stale when cloud sync is ahead of last deploy, or local dirty implies
-  // cloud→deployed may still be current but local→cloud needs push first.
   const stale = syncNewer;
   const cloud_to_deployed_dirty = stale;
   return {
@@ -183,6 +180,62 @@ function resolveDeployedLayer(input: {
     cloud_to_deployed_summary: stale
       ? 'Cloud ahead of last deploy (stale)'
       : 'Deployed matches known cloud revision',
+  };
+}
+
+function resolveLocalToCloud(input: {
+  depth: StatusPopulationDepth;
+  local: LocalProjectSnapshot | null;
+  local_git_dirty: boolean | null | undefined;
+  local_to_cloud_inventory: UnpublishedDelta | null | undefined;
+  cloud_workflow_ids: string[] | null | undefined;
+  cloud_list_unavailable: boolean;
+}): {
+  dirty: boolean | null;
+  summary: string | null;
+  changed_count: number | null;
+  changes: UnpublishedChangeItem[];
+} {
+  if (input.depth !== 'status' && input.depth !== 'unpublished') {
+    return { dirty: null, summary: null, changed_count: null, changes: [] };
+  }
+
+  if (input.local_to_cloud_inventory) {
+    const inv = input.local_to_cloud_inventory;
+    return {
+      dirty: inv.dirty,
+      summary: inv.summary,
+      changed_count: inv.changed_count,
+      changes: input.depth === 'unpublished' ? (inv.changes ?? []) : [],
+    };
+  }
+
+  // Explicit test override (legacy name: local_git_dirty).
+  if (input.local_git_dirty !== undefined && input.local_git_dirty !== null) {
+    return {
+      dirty: input.local_git_dirty,
+      summary: input.local_git_dirty
+        ? 'Local package has unpublished changes'
+        : 'Local package clean',
+      changed_count: null,
+      changes: [],
+    };
+  }
+
+  if (!input.local?.path) {
+    return { dirty: null, summary: null, changed_count: null, changes: [] };
+  }
+
+  const inv = buildLocalToCloudInventory({
+    projectDir: input.local.path,
+    cloud_workflow_ids: input.cloud_workflow_ids,
+    cloud_list_unavailable: input.cloud_list_unavailable,
+  });
+  return {
+    dirty: inv.dirty,
+    summary: inv.summary,
+    changed_count: input.depth === 'unpublished' ? inv.changed_count : null,
+    changes: input.depth === 'unpublished' ? (inv.changes ?? []) : [],
   };
 }
 
@@ -202,20 +255,14 @@ export function buildProjectWorkspaceStatus(
   const attach_state = attachStateFromLocal(local);
   const github_state = githubStateFromProject(cloud);
 
-  let local_to_cloud_dirty: boolean | null = null;
-  let local_to_cloud_summary: string | null = null;
-  if (depth === 'status' || depth === 'unpublished') {
-    if (input.local_git_dirty !== undefined) {
-      local_to_cloud_dirty = input.local_git_dirty;
-    } else if (local?.path) {
-      local_to_cloud_dirty = probeLocalGitDirty(local.path);
-    }
-    if (local_to_cloud_dirty === true) {
-      local_to_cloud_summary = 'Local working tree has uncommitted changes';
-    } else if (local_to_cloud_dirty === false) {
-      local_to_cloud_summary = 'Local working tree clean';
-    }
-  }
+  const l2c = resolveLocalToCloud({
+    depth,
+    local,
+    local_git_dirty: input.local_git_dirty,
+    local_to_cloud_inventory: input.local_to_cloud_inventory,
+    cloud_workflow_ids: input.cloud_workflow_ids,
+    cloud_list_unavailable: input.cloud_list_unavailable === true,
+  });
 
   const deployedLayer =
     depth === 'summary'
@@ -235,7 +282,7 @@ export function buildProjectWorkspaceStatus(
           deployments_unavailable: input.deployments_unavailable === true,
           attached_instance_id: local?.instance_id ?? null,
           cloud,
-          local_to_cloud_dirty,
+          local_to_cloud_dirty: l2c.dirty,
           now_ms,
         });
 
@@ -243,13 +290,37 @@ export function buildProjectWorkspaceStatus(
     notes.push('Deployments list unavailable; deployed layer marked unknown.');
   }
 
+  let c2d_changed_count: number | null = null;
+  let c2d_changes: UnpublishedChangeItem[] = [];
+  let c2d_summary = deployedLayer.cloud_to_deployed_summary;
+  let c2d_dirty = deployedLayer.cloud_to_deployed_dirty;
+
+  if (depth === 'unpublished' && local?.path) {
+    const inv = buildCloudToDeployedInventory({
+      local_to_cloud: {
+        dirty: l2c.dirty,
+        summary: l2c.summary,
+        changed_count: l2c.changed_count,
+        changes: l2c.changes,
+      },
+      deployed_state: deployedLayer.state,
+      cloud_to_deployed_dirty: deployedLayer.cloud_to_deployed_dirty,
+      cloud_to_deployed_summary: deployedLayer.cloud_to_deployed_summary,
+      projectDir: local.path,
+    });
+    c2d_dirty = inv.dirty;
+    c2d_summary = inv.summary;
+    c2d_changed_count = inv.changed_count;
+    c2d_changes = inv.changes ?? [];
+  }
+
   const next_action = deriveNextAction({
     local_present: local != null,
     attach_state,
     github_state,
     deployed_state: deployedLayer.state,
-    local_to_cloud_dirty,
-    cloud_to_deployed_dirty: deployedLayer.cloud_to_deployed_dirty,
+    local_to_cloud_dirty: l2c.dirty,
+    cloud_to_deployed_dirty: c2d_dirty,
   });
 
   const status: ProjectWorkspaceStatus = {
@@ -294,14 +365,16 @@ export function buildProjectWorkspaceStatus(
     },
     unpublished: {
       local_to_cloud: {
-        dirty: local_to_cloud_dirty,
-        summary: local_to_cloud_summary,
-        changed_count: null,
+        dirty: l2c.dirty,
+        summary: l2c.summary,
+        changed_count: l2c.changed_count,
+        changes: l2c.changes,
       },
       cloud_to_deployed: {
-        dirty: deployedLayer.cloud_to_deployed_dirty,
-        summary: deployedLayer.cloud_to_deployed_summary,
-        changed_count: null,
+        dirty: c2d_dirty,
+        summary: c2d_summary,
+        changed_count: c2d_changed_count,
+        changes: c2d_changes,
       },
     },
     next_action,
@@ -383,9 +456,17 @@ export function formatProjectWorkspaceStatusLines(status: ProjectWorkspaceStatus
   const l2c = status.unpublished.local_to_cloud;
   const c2d = status.unpublished.cloud_to_deployed;
   const l2cText =
-    l2c.dirty === null ? 'not computed' : l2c.dirty ? `dirty — ${l2c.summary ?? 'yes'}` : 'clean';
+    l2c.dirty === null
+      ? 'not computed'
+      : l2c.dirty
+        ? `dirty — ${l2c.summary ?? 'yes'}${l2c.changed_count != null ? ` (${l2c.changed_count})` : ''}`
+        : 'clean';
   const c2dText =
-    c2d.dirty === null ? 'not computed' : c2d.dirty ? `dirty — ${c2d.summary ?? 'yes'}` : 'clean';
+    c2d.dirty === null
+      ? 'not computed'
+      : c2d.dirty
+        ? `dirty — ${c2d.summary ?? 'yes'}${c2d.changed_count != null ? ` (${c2d.changed_count})` : ''}`
+        : 'clean';
 
   const lines = [
     `Project: ${name} (${id})`,
@@ -398,6 +479,14 @@ export function formatProjectWorkspaceStatusLines(status: ProjectWorkspaceStatus
     `Unpublished Cloud→Deployed: ${c2dText}`,
     `Next:    ${status.next_action}`,
   ];
+  if (status.population_depth === 'unpublished') {
+    for (const c of l2c.changes ?? []) {
+      lines.push(`  L→C [${c.change}] ${c.path} (${c.entity_kind})`);
+    }
+    for (const c of c2d.changes ?? []) {
+      lines.push(`  C→D [${c.change}] ${c.path} (${c.entity_kind})`);
+    }
+  }
   if (status.notes.length > 0) {
     lines.push(`Notes:   ${status.notes.join('; ')}`);
   }

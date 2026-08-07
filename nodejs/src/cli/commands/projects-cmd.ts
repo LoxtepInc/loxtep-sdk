@@ -1,8 +1,9 @@
 /**
- * CLI: loxtep projects list | projects get <id> | projects link <id|name>
+ * CLI: loxtep projects list | get | link | changes | clone | pull | push
  * Projects are the platform container for workflows, connectors, and deploy targets.
  * Enriched with cheap status flags (github / local path / deployed when detectable).
  * `--source local|remote|all` uses `~/.loxtep/workspaces.json`.
+ * `projects changes` = unpublished inventory (alias of `loxtep status --unpublished`).
  */
 
 import { toProjectListSummary } from '../../client/list-summaries.js';
@@ -22,10 +23,14 @@ import {
   listKnownLocalsPresent,
   type KnownLocalEntry,
 } from '../known-locals-registry.js';
-import { tryLoadProjectConfig } from '../project-context.js';
+import {
+  tryLoadProjectConfig,
+  type CliResult,
+} from '../project-context.js';
 import { runLink } from './link-cmd.js';
 import { runClone } from './clone-cmd.js';
 import { runProjectsGithubPull, runProjectsGithubPush } from './projects-github-cmd.js';
+import { runStatusCommand } from './status-cmd.js';
 
 export type ProjectsListSource = 'all' | 'local' | 'remote';
 
@@ -243,6 +248,29 @@ export async function runProjectsLink(
     path: options.path,
     registryPath: options.registryPath,
   });
+  for (const line of result.stdout) console.log(line);
+  for (const line of result.stderr) console.error(line);
+  if (result.exitCode !== 0) process.exitCode = result.exitCode;
+}
+
+/**
+ * `loxtep projects changes` — unpublished Local→Cloud / Cloud→Deployed inventory.
+ * Same payload as `loxtep status --unpublished`.
+ */
+export async function runProjectsChangesCommand(
+  options: ProjectsCmdOptions & { json?: boolean } = {}
+): Promise<CliResult> {
+  return runStatusCommand({
+    cwd: options.cwd,
+    unpublished: true,
+    json: options.json === true,
+  });
+}
+
+export async function runProjectsChanges(
+  options: ProjectsCmdOptions & { json?: boolean } = {}
+): Promise<void> {
+  const result = await runProjectsChangesCommand(options);
   for (const line of result.stdout) console.log(line);
   for (const line of result.stderr) console.error(line);
   if (result.exitCode !== 0) process.exitCode = result.exitCode;
