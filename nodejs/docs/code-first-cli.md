@@ -23,8 +23,8 @@ Use [SDK-first ingest](./sdk-first-ingest.md) instead of this guide.
 | Stream I/O to a data product | After **deploy**: `client.get_writer(name)` |
 
 `loxtep init` creates **`.loxtep/project.json`** and the on-disk project layout.
-`loxtep projects link` (alias `loxtep link`) is the Railway-style bind for an
-**existing** cloud project — metadata only, no GitHub required. Prefer `link`
+`loxtep projects link` (alias `loxtep link`) binds an **existing** cloud project
+to a local directory — metadata only, no GitHub required. Prefer `link`
 when you do not need a full scaffold; `init --project-id` still binds the same
 way and also upserts `~/.loxtep/workspaces.json`.
 

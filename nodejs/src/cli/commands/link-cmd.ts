@@ -2,7 +2,7 @@
  * `loxtep projects link <project_id|name> [--path .]`
  * Alias: `loxtep link …`
  *
- * Railway-style bind: associate a cloud project with a local directory by writing
+ * Bind a cloud project to a local directory by writing
  * `.loxtep/project.json` and upserting `~/.loxtep/workspaces.json`.
  *
  * Distinct from `loxtep attach`, which binds a runtime **Instance** (instance_id + api_url).

@@ -212,7 +212,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'link': {
-      // Alias for projects link — Railway-style cloud project ↔ directory bind.
+      // Alias for projects link — cloud project ↔ directory bind.
       const linkRef = args[1];
       if (!linkRef || linkRef.startsWith('--')) {
         console.error('Usage: loxtep link <project_id|name> [--path <dir>]');
