@@ -35,6 +35,7 @@ import {
   ProjectConfigSchema,
   type ProjectConfig,
 } from '../project-context.js';
+import { upsertKnownLocal } from '../known-locals-registry.js';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
 import type { TemplateSummary } from '../../client/templates-types.js';
 import type { CreateProjectInput } from '../../client/projects-types.js';
@@ -416,6 +417,15 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
   const projectFilePath = join(loxtepDir, PROJECT_FILE_NAME);
   await writeProjectConfig(projectFilePath, config);
 
+  // Known-locals registry (Phase C) — same bind story as `loxtep projects link`.
+  if (!isLocalProjectId(projectId)) {
+    try {
+      await upsertKnownLocal({ path: cwd, project_id: projectId });
+    } catch {
+      // Non-fatal: project.json is the bind source of truth; registry is an index.
+    }
+  }
+
   // --- Template-specific scaffolding (R16.1, R16.2) ---
   if (templateSlug) {
     // AGENTS.md (R16.1)
@@ -480,8 +490,9 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
   } else if (!isAttached) {
     // Authed but not attached — print attach + generate guidance
     stdout.push('Next steps:');
-    stdout.push('  1. loxtep attach --instance <instance-id>');
+    stdout.push('  1. loxtep attach --instance <instance-id>   # Instance bind (not link)');
     stdout.push('  2. loxtep generate');
+    stdout.push('  (Existing cloud project without scaffold: `loxtep projects link <id>`)');
   }
 
   return { exitCode: 0, stdout, stderr };

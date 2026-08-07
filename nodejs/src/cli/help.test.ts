@@ -24,7 +24,10 @@ describe('CLI help', () => {
     expect(CLI_HELP).toContain('init [--template <slug>]');
     expect(CLI_HELP).toContain('attach [--instance <id>]');
     expect(CLI_HELP).toContain('status [--json]');
-    expect(CLI_HELP).toContain('projects list | get <id>');
+    expect(CLI_HELP).toContain(
+      'projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]'
+    );
+    expect(CLI_HELP).toContain('link <project_id|name> [--path <dir>]');
     expect(CLI_HELP).toContain('generate');
     expect(CLI_HELP).toContain('test <module> --event <file>');
     expect(CLI_HELP).toContain('deploy');

@@ -55,6 +55,11 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
       'commands/attach-cmd-binding.property.test.ts',
     ],
   },
+  link: {
+    kind: 'unit',
+    tests: ['commands/link-cmd.test.ts', 'known-locals-registry.test.ts'],
+    notes: 'projects link + known-locals registry (LOX-1186)',
+  },
   status: {
     kind: 'unit',
     tests: [
@@ -67,9 +72,10 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     kind: 'unit',
     tests: [
       'commands/projects-cmd.test.ts',
+      'commands/link-cmd.test.ts',
       '../client/project-workspace-status.test.ts',
     ],
-    notes: 'list/get enrichment (github/local/deployed)',
+    notes: 'list/get enrichment + link/--source (known-locals registry)',
   },
   generate: {
     kind: 'integration',
@@ -156,8 +162,10 @@ describe('CLI command coverage registry', () => {
       'logout',
       'whoami',
       'init',
+      'link',
       'attach',
       'generate',
+      'projects',
       'instances',
       'projects',
       'status',

@@ -18,12 +18,16 @@ Authentication
 Workspace
   init [--template <slug>] [--project-id <uuid>] [--create-repo | --from-repo <url>]
                      Scaffold workspace; requires login to register (or bind) a platform project
+  link <project_id|name> [--path <dir>]
+                     Bind a cloud project to a local directory (writes .loxtep/project.json;
+                     upserts ~/.loxtep/workspaces.json). Alias: projects link. Not attach.
   attach [--instance <id>]
-                     Link project to a runtime instance (writes instance_id + api_url)
+                     Bind workspace to a runtime Instance (writes instance_id + api_url)
   status [--json]    Cwd-first project workspace status (local / cloud / deployed)
                      Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
-  projects list | get <id>               List org projects (workspaces) and IDs
+  projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]
+                     List/get org projects; link = cloud↔directory bind (see link)
   instances list | get <id> | create … | deployment-urls | register … | registration
                      Provision and register runtime instances
 
@@ -86,6 +90,8 @@ Configuration
 
 Examples:
   pnpm exec loxtep login
+  pnpm exec loxtep projects link <project_id>   # or: loxtep link <name>
+  pnpm exec loxtep attach --instance <id>
   pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
   pnpm exec loxtep connectors list --type sdk
   pnpm exec loxtep connectors test <connector_id>
@@ -100,6 +106,7 @@ Examples:
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
   pnpm exec loxtep status
   pnpm exec loxtep projects list
+  pnpm exec loxtep projects list --source local
   pnpm exec loxtep workflows list
   pnpm exec loxtep test orders-enricher --event ./events/order.json
   pnpm exec loxtep deploy
@@ -109,7 +116,7 @@ Examples:
   pnpm exec loxtep observe status
   pnpm exec loxtep config export --from-connector <connector-id> --format json
 
-Docs: nodejs/docs/sdk-first-ingest.md · nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md
+Docs: nodejs/docs/sdk-first-ingest.md · nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md · nodejs/docs/project-workspace-status.md
 
 Update checks: newer npm versions are announced on stderr (cached daily under ~/.loxtep).
 Disable with LOXTEP_NO_UPDATE_NOTIFIER=1 (or NO_UPDATE_NOTIFIER / CI).

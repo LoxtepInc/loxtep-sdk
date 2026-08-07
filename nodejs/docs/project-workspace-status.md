@@ -26,6 +26,7 @@ Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 | --- | --- |
 | CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"`) |
 | CLI `loxtep projects list\|get` | `ProjectListStatusEnrichment` fields |
+| CLI `loxtep projects link` / `loxtep link` | Local bind + `~/.loxtep/workspaces.json` |
 | MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` (planned) |
 | MCP `list_projects` / `get_project` | Enrich with summary fields when cheap (planned) |
 
@@ -36,6 +37,26 @@ Producer helpers live in `src/client/project-workspace-status.ts`
 Do **not** invent a second list command; enrich the existing `projects` plural group.
 
 Distinct from CLI/MCP **`observe status`** (runtime bots/queues).
+
+## Link vs attach (Phase C)
+
+| Command | Binds | Writes |
+| --- | --- | --- |
+| `loxtep projects link` / `loxtep link` | Cloud **project** ↔ local directory | `.loxtep/project.json` (`project_id`) + `~/.loxtep/workspaces.json` |
+| `loxtep attach` | Local project ↔ runtime **Instance** | `instance_id` + `api_url` (+ streams) in `.loxtep/project.json` |
+| `loxtep init --project-id` | Same project bind as `link`, plus scaffold dirs | project.json + known-locals upsert |
+
+Canonical flow for an existing unbound cloud project:
+
+```text
+loxtep projects link <project_id|name> [--path .]
+loxtep attach --instance <instance-id>
+# edit local package
+loxtep push
+loxtep deploy
+```
+
+GitHub is optional for `link` (`cloud.github.state` may remain `unbound`).
 
 ## Population cost (keep list snappy)
 
