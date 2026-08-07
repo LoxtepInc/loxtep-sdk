@@ -12,7 +12,7 @@ deprecation aliases.
 | --- | --- | --- |
 | `loxtep_session` | `client.session` | `get_current_user`, `get_current_organization`, `logout` |
 | `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
-| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending) |
+| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
 | `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
 | `loxtep_meaning` | `client.meaning` | `.thesaurus.*` (ontology/semantic REST split pending) |
