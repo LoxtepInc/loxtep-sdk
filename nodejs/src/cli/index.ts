@@ -78,7 +78,7 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
 } from './commands/instances-cmd.js';
-import { runProjectsList, runProjectsGet } from './commands/projects-cmd.js';
+import { runProjectsList, runProjectsGet, runProjectsLink } from './commands/projects-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
 import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
@@ -211,13 +211,37 @@ async function runCommand(): Promise<void> {
       }
       break;
     }
+    case 'link': {
+      // Alias for projects link — Railway-style cloud project ↔ directory bind.
+      const linkRef = args[1];
+      if (!linkRef || linkRef.startsWith('--')) {
+        console.error('Usage: loxtep link <project_id|name> [--path <dir>]');
+        process.exitCode = 1;
+        break;
+      }
+      await runProjectsLink(linkRef, {
+        path: getArg('--path'),
+        debug: args.includes('--debug'),
+      });
+      break;
+    }
     case 'projects':
       if (sub === 'list') {
-        await runProjectsList({ debug: args.includes('--debug') });
+        await runProjectsList({
+          debug: args.includes('--debug'),
+          source: getArg('--source'),
+        });
       } else if (sub === 'get' && args[2]) {
         await runProjectsGet(args[2], { debug: args.includes('--debug') });
+      } else if (sub === 'link' && args[2] && !args[2].startsWith('--')) {
+        await runProjectsLink(args[2], {
+          path: getArg('--path'),
+          debug: args.includes('--debug'),
+        });
       } else {
-        console.error('Usage: loxtep projects list | loxtep projects get <id>');
+        console.error(
+          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>]'
+        );
         process.exitCode = 1;
       }
       break;
