@@ -1,7 +1,6 @@
 # Project workspace status (three layers)
 
-Stable snake_case payload for **local / cloud / deployed** visibility
-(LOX-1183 Phase A / LOX-1184).
+Stable snake_case payload for **local / cloud / deployed** visibility.
 
 Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 (exported from `@loxtep/sdk`).
@@ -25,10 +24,10 @@ Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 
 | Surface | Uses |
 | --- | --- |
-| CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"`) — **shipped (Phase B)** |
-| CLI `loxtep projects list\|get` | `ProjectListStatusEnrichment` fields — **shipped (Phase B)** |
-| MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` (Phase F) |
-| MCP `list_projects` / `get_project` | Enrich with summary fields when cheap (Phase F) |
+| CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"`) |
+| CLI `loxtep projects list\|get` | `ProjectListStatusEnrichment` fields |
+| MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` (planned) |
+| MCP `list_projects` / `get_project` | Enrich with summary fields when cheap (planned) |
 
 Producer helpers live in `src/client/project-workspace-status.ts`
 (`buildProjectWorkspaceStatus`, `formatProjectWorkspaceStatusLines`,
@@ -55,7 +54,7 @@ project list row (`project_id`, `name`, `github_repo_*`).
 boolean dirty heuristics without walking the whole workspace tree.
 
 **Expensive (opt-in):** walk local package vs cloud workspace, GitHub compare,
-full unpublished inventory (`changed_count` + per-entity lists in Phase D).
+full unpublished inventory (`changed_count` + per-entity lists when inventory commands ship).
 
 Producers SHOULD omit or set `null` rather than stall list enrichment on moderate/expensive work.
 
@@ -135,12 +134,3 @@ API is unavailable.
   "notes": []
 }
 ```
-
-## SDK pin drift
-
-The monorepo may still declare `"@loxtep/sdk": "^0.1.0"` (often resolving to
-**0.1.2** on the lockfile) while this repo's published line is newer (see
-`nodejs/package.json` `version`, currently **0.8.x** on main). Prefer the
-current `@loxtep/sdk` release (or a git/`workspace` checkout of this tree) when
-you need `loxtep status` / list enrichment — do not assume the 0.1.2 pin has
-Phase B CLI commands.

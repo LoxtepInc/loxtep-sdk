@@ -10,7 +10,7 @@ and this project adheres to
 
 ### Added
 
-- **`loxtep status` (LOX-1185 / Phase B)** — cwd-first project workspace status
+- **`loxtep status`** — cwd-first project workspace status
   (local attach + API host, GitHub linked|unbound, never-deployed / deployed /
   stale, Local→Cloud and Cloud→Deployed dirty summaries, next-action hint).
   Distinct from `loxtep observe status`. `--json` emits the full
@@ -23,8 +23,8 @@ and this project adheres to
   three-layer local / cloud / deployed status, unpublished deltas, list
   enrichment, and population cost ceilings. Docs:
   `docs/project-workspace-status.md`. Consumers: CLI `status` /
-  enriched `projects list|get` (Phase B), MCP `get_project_workspace_status`
-  (Phase F).
+  enriched `projects list|get`, MCP `get_project_workspace_status`
+  (planned).
 
 ## [0.8.0] - 2026-08-03
 

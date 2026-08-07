@@ -1,5 +1,5 @@
 /**
- * Project workspace status producer + rendering (LOX-1185 / Phase B).
+ * Project workspace status producer + rendering.
  *
  * Builds {@link ProjectWorkspaceStatus} from cwd-local config, cloud project row,
  * and optional deployments list. List enrichment stays at `summary` cost ceiling.
@@ -43,7 +43,7 @@ export interface BuildProjectWorkspaceStatusInput {
   /** Override git dirty probe (tests). null = skip / not computed. */
   local_git_dirty?: boolean | null;
   notes?: string[];
-  /** True when path came from `~/.loxtep/workspaces.json` (Phase C). */
+  /** True when path came from `~/.loxtep/workspaces.json`. */
   known_local?: boolean;
 }
 
@@ -80,7 +80,7 @@ export function deriveNextAction(input: {
   local_to_cloud_dirty: boolean | null;
   cloud_to_deployed_dirty: boolean | null;
 }): NextActionHint {
-  // No local bind yet → prefer `link` (Phase C). `clone` is Phase E materialize.
+  // No local bind yet → prefer `link`. Full clone/materialize is a later command.
   if (!input.local_present) return 'link';
   if (input.attach_state === 'unattached') return 'attach';
   if (input.github_state === 'unbound' && input.local_to_cloud_dirty === true) return 'push';
@@ -341,7 +341,7 @@ export function enrichProjectListSummary(
     cwd_path?: string | null;
     cwd_attach_state?: AttachState;
     deployed_by_project?: Map<string, DeployedLayerState>;
-    /** project_id → absolute path from `~/.loxtep/workspaces.json` (Phase C). */
+    /** project_id → absolute path from `~/.loxtep/workspaces.json`. */
     known_local_paths?: Map<string, string>;
   } = {}
 ): ProjectListStatusEnrichment {
