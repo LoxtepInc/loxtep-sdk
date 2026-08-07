@@ -23,6 +23,8 @@ Workspace
                      upserts ~/.loxtep/workspaces.json). Alias: projects link. Not attach.
   attach [--instance <id>]
                      Bind workspace to a runtime Instance (writes instance_id + api_url)
+  status [--json]    Cwd-first project workspace status (local / cloud / deployed)
+                     Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
   projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]
                      List/get org projects; link = cloud↔directory bind (see link)
@@ -102,6 +104,7 @@ Examples:
   pnpm exec loxtep deploy --dry-run
   pnpm exec loxtep init --template shopify-orders
   pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
+  pnpm exec loxtep status
   pnpm exec loxtep projects list
   pnpm exec loxtep projects list --source local
   pnpm exec loxtep workflows list

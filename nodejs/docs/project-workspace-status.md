@@ -1,7 +1,6 @@
 # Project workspace status (three layers)
 
-Stable snake_case payload for **local / cloud / deployed** visibility
-(LOX-1183 Phase A / LOX-1184).
+Stable snake_case payload for **local / cloud / deployed** visibility.
 
 Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 (exported from `@loxtep/sdk`).
@@ -21,15 +20,19 @@ Canonical TypeScript + Zod: `src/client/project-workspace-status-types.ts`
 
 `dirty: null` means **not computed** at this `population_depth`. Do not treat null as clean.
 
-## Consumers (later phases)
+## Consumers
 
 | Surface | Uses |
 | --- | --- |
-| CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"` or `"unpublished"`) |
-| CLI `loxtep projects list\|get` | Optional `ProjectListStatusEnrichment` fields (`"summary"`) |
-| CLI `loxtep projects link` / `loxtep link` | Local bind + `~/.loxtep/workspaces.json` (Phase C) |
-| MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` |
-| MCP `list_projects` / `get_project` | Enrich with summary fields when cheap |
+| CLI `loxtep status` | Full `ProjectWorkspaceStatus` (`population_depth: "status"`) |
+| CLI `loxtep projects list\|get` | `ProjectListStatusEnrichment` fields |
+| CLI `loxtep projects link` / `loxtep link` | Local bind + `~/.loxtep/workspaces.json` |
+| MCP `get_project_workspace_status` | Full `ProjectWorkspaceStatus` (planned) |
+| MCP `list_projects` / `get_project` | Enrich with summary fields when cheap (planned) |
+
+Producer helpers live in `src/client/project-workspace-status.ts`
+(`buildProjectWorkspaceStatus`, `formatProjectWorkspaceStatusLines`,
+`enrichProjectListSummary`).
 
 Do **not** invent a second list command; enrich the existing `projects` plural group.
 
@@ -72,7 +75,7 @@ project list row (`project_id`, `name`, `github_repo_*`).
 boolean dirty heuristics without walking the whole workspace tree.
 
 **Expensive (opt-in):** walk local package vs cloud workspace, GitHub compare,
-full unpublished inventory (`changed_count` + per-entity lists in Phase D).
+full unpublished inventory (`changed_count` + per-entity lists when inventory commands ship).
 
 Producers SHOULD omit or set `null` rather than stall list enrichment on moderate/expensive work.
 

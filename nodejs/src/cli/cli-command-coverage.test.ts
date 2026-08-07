@@ -60,10 +60,22 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     tests: ['commands/link-cmd.test.ts', 'known-locals-registry.test.ts'],
     notes: 'projects link + known-locals registry (LOX-1186)',
   },
+  status: {
+    kind: 'unit',
+    tests: [
+      'commands/status-cmd.test.ts',
+      '../client/project-workspace-status.test.ts',
+    ],
+    notes: 'cwd-first workspace status; distinct from observe status',
+  },
   projects: {
-    kind: 'integration',
-    tests: ['cli-integration.test.ts', 'commands/link-cmd.test.ts'],
-    notes: 'list/get/link; --source filter uses known-locals registry',
+    kind: 'unit',
+    tests: [
+      'commands/projects-cmd.test.ts',
+      'commands/link-cmd.test.ts',
+      '../client/project-workspace-status.test.ts',
+    ],
+    notes: 'list/get enrichment + link/--source (known-locals registry)',
   },
   generate: {
     kind: 'integration',
@@ -155,6 +167,8 @@ describe('CLI command coverage registry', () => {
       'generate',
       'projects',
       'instances',
+      'projects',
+      'status',
       'test',
       'deploy',
       'workflows',
