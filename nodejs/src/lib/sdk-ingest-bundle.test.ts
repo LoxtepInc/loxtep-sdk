@@ -152,4 +152,107 @@ describe('lintLocalPackage', () => {
     expect(result.ok).toBe(false);
     expect(result.issues.length).toBeGreaterThan(0);
   });
+
+  it('fails when two workflows share a data product name', () => {
+    const WF2 = '88888888-8888-4888-8888-888888888888';
+    const DP2 = '99999999-9999-4999-8999-999999999999';
+    const CONN2 = 'aaaaaaaa-bbbb-4aaa-8aaa-aaaaaaaaaaaa';
+
+    const writePkg = (
+      workflowId: string,
+      connectionId: string,
+      dataProductId: string,
+      dataProductName: string,
+      workflowName: string
+    ) => {
+      const pkg = buildSdkIngestLocalPackage({
+        organization_id: ORG,
+        project_id: PROJECT,
+        domain_id: DOMAIN,
+        connector_id: CONNECTOR,
+        data_product_name: dataProductName,
+        user_id: USER,
+        workflow_id: workflowId,
+        connection_id: connectionId,
+        data_product_id: dataProductId,
+        connector: {
+          connector_id: CONNECTOR,
+          organization_id: ORG,
+          connector_type: 'sdk',
+          metadata: { name: 'SDK' },
+        },
+      });
+      for (const [rel, entity] of Object.entries(pkg.files)) {
+        const full = join(dir, rel);
+        mkdirSync(dirname(full), { recursive: true });
+        const payload =
+          rel.endsWith('workflow.json') && typeof entity === 'object' && entity
+            ? { ...(entity as Record<string, unknown>), name: workflowName }
+            : entity;
+        writeFileSync(full, JSON.stringify(payload, null, 2));
+      }
+    };
+
+    writePkg(WF, CONN, DP, 'app-events', 'SDK App Events Ingest');
+    writePkg(WF2, CONN2, DP2, 'app-events', 'SDK App Events Ingest Clone');
+
+    const result = lintLocalPackage({ projectDir: dir });
+    expect(result.ok).toBe(false);
+    expect(
+      result.issues.some(
+        i =>
+          i.message.includes('Duplicate data product name "app-events"') &&
+          i.message.includes('UNIQUE(project_id, name)')
+      )
+    ).toBe(true);
+  });
+
+  it('fails when two workflows share a workflow name', () => {
+    const WF2 = '88888888-8888-4888-8888-888888888888';
+    const DP2 = '99999999-9999-4999-8999-999999999999';
+    const CONN2 = 'aaaaaaaa-bbbb-4aaa-8aaa-aaaaaaaaaaaa';
+
+    const writePkg = (
+      workflowId: string,
+      connectionId: string,
+      dataProductId: string,
+      dataProductName: string
+    ) => {
+      const pkg = buildSdkIngestLocalPackage({
+        organization_id: ORG,
+        project_id: PROJECT,
+        domain_id: DOMAIN,
+        connector_id: CONNECTOR,
+        data_product_name: dataProductName,
+        user_id: USER,
+        workflow_id: workflowId,
+        connection_id: connectionId,
+        data_product_id: dataProductId,
+        connector: {
+          connector_id: CONNECTOR,
+          organization_id: ORG,
+          connector_type: 'sdk',
+          metadata: { name: 'SDK' },
+        },
+      });
+      for (const [rel, entity] of Object.entries(pkg.files)) {
+        const full = join(dir, rel);
+        mkdirSync(dirname(full), { recursive: true });
+        const payload =
+          rel.endsWith('workflow.json') && typeof entity === 'object' && entity
+            ? { ...(entity as Record<string, unknown>), name: 'Same Workflow Name' }
+            : entity;
+        writeFileSync(full, JSON.stringify(payload, null, 2));
+      }
+    };
+
+    writePkg(WF, CONN, DP, 'app-events');
+    writePkg(WF2, CONN2, DP2, 'other-events');
+
+    const result = lintLocalPackage({ projectDir: dir });
+    expect(result.ok).toBe(false);
+    expect(
+      result.issues.some(i => i.message.includes('Duplicate workflow name "Same Workflow Name"'))
+    ).toBe(true);
+  });
 });

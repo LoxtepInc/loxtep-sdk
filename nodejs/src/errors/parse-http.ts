@@ -21,6 +21,9 @@ const GENERIC_ERROR_TITLES = new Set([
   'bad request',
   'an unknown error occurred.',
   'an error occurred',
+  // Opaque API wrappers that bury the real cause in details.error
+  'workflow bundle catalog index failed',
+  'workflow bundle save failed',
 ]);
 
 function isGenericErrorTitle(message: string): boolean {
@@ -40,6 +43,18 @@ function preferConcreteMessage(
   return title;
 }
 
+function objectDetailString(details: unknown): string | undefined {
+  if (!details || typeof details !== 'object') return undefined;
+  const record = details as Record<string, unknown>;
+  if (typeof record.error === 'string' && record.error.trim().length > 0) {
+    return record.error.trim();
+  }
+  if (typeof record.message === 'string' && record.message.trim().length > 0) {
+    return record.message.trim();
+  }
+  return undefined;
+}
+
 function extractPlatformErrorMessage(body: Record<string, unknown>): string | undefined {
   const nested = body.error;
   const nestedRecord =
@@ -53,7 +68,9 @@ function extractPlatformErrorMessage(body: Record<string, unknown>): string | un
 
   const stringDetails =
     (typeof body.details === 'string' ? body.details : undefined) ??
-    (typeof nestedRecord?.details === 'string' ? nestedRecord.details : undefined);
+    (typeof nestedRecord?.details === 'string' ? nestedRecord.details : undefined) ??
+    objectDetailString(body.details) ??
+    objectDetailString(nestedRecord?.details);
 
   return preferConcreteMessage(title, stringDetails);
 }
