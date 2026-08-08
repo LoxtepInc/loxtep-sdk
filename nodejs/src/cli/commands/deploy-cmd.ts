@@ -92,7 +92,12 @@ function formatTrackingLines(trackingHandle: DeployTrackingHandle): string[] {
     `Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`,
   ];
   if (trackingHandle.run_id !== 'unknown' && trackingHandle.run_id !== '(none)') {
-    lines.push(`Poll status with: loxtep deployments get ${trackingHandle.run_id}`);
+    lines.push(
+      `Poll status with: loxtep deployments get ${trackingHandle.run_id}  (project deploy run_id; not a per-workflow deployment_id)`
+    );
+    lines.push(
+      'Per-workflow rows: loxtep deployments list --project-id <project_id>  (after fan-out completes)'
+    );
     lines.push(
       'If status is pending_approval: loxtep approvals list --status pending  (then approve <id>)'
     );
