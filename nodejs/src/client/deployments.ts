@@ -4,6 +4,9 @@
  *
  *   GET /workflows/deployments
  *   GET /workflows/deployments/{deployment_id}
+ *
+ * `get(id)` also accepts the project-deploy `async_runs.run_id` returned by
+ * `POST /projects/:id/deploy` / `loxtep deploy` (aliased as deployment_id in that response).
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
