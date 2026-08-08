@@ -202,7 +202,7 @@ describe('lintLocalPackage', () => {
       result.issues.some(
         i =>
           i.message.includes('Duplicate data product name "app-events"') &&
-          i.message.includes('UNIQUE(project_id, name)')
+          i.message.includes('Names must be unique within a project')
       )
     ).toBe(true);
   });

@@ -12,6 +12,7 @@ export { DefinitionValidationError as SchemaValidationError } from './validation
 export { RateLimitError } from './rate-limit.js';
 export { StreamingError, CheckpointError } from './streaming.js';
 export { parseHttpError } from './parse-http.js';
+export { sanitizeErrorDetails, sanitizePlatformErrorMessage } from './sanitize-message.js';
 
 export type {
   LoxtepErrorOptions,

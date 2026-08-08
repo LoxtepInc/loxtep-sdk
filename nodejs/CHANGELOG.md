@@ -8,13 +8,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-08-07
+
+### Fixed
+
+- **Error sanitization** — strip Knex/Postgres SQL statements and column lists from
+  platform error messages (e.g. catalog index failures on `loxtep push`). Known
+  unique constraints rewrite to plain language ("a data product with this name
+  already exists in the project") instead of dumping `insert into "data_products" (…)`.
+
 ## [0.9.3] - 2026-08-07
 
 ### Fixed
 
 - **`loxtep push` / `parseHttpError`** — surface nested `details.error` when the API
-  returns opaque wrappers like `Workflow bundle catalog index failed` (so Postgres
-  unique-constraint text is visible in the push summary).
+  returns opaque wrappers like `Workflow bundle catalog index failed` (so the
+  underlying catalog failure is visible in the push summary).
 - **`loxtep lint`** — fail on duplicate workflow or data-product `name` values across
   the local project (matches Postgres `UNIQUE(project_id, name)`), including when
   `--workflow` scopes schema checks to one package.

@@ -119,7 +119,9 @@ describe('parseHttpError', () => {
 
   it('should prefer details.error over opaque workflow bundle catalog title', () => {
     const underlying =
-      'Workflow bundle written to S3 but catalog index failed: duplicate key value violates unique constraint "data_products_project_name_unique"';
+      'Workflow bundle written to S3 but catalog index failed: ' +
+      'insert into "data_products" ("name", "project_id") values ($1, $2) - ' +
+      'duplicate key value violates unique constraint "data_products_project_name_unique"';
     const err = parseHttpError(500, {
       success: false,
       error: {
@@ -128,7 +130,11 @@ describe('parseHttpError', () => {
       },
     });
     expect(err).toBeInstanceOf(LoxtepError);
-    expect(err.message).toBe(underlying);
-    expect(err.details?.error).toBe(underlying);
+    expect(err.message).toBe(
+      'Workflow bundle written to S3 but catalog index failed: ' +
+        'a data product with this name already exists in the project'
+    );
+    expect(err.message).not.toMatch(/insert into/i);
+    expect(err.details?.error).toBe(err.message);
   });
 });

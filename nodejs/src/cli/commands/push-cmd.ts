@@ -11,6 +11,7 @@ import {
 } from '../../client/workspace-package.js';
 import { writePushManifestFromProjectDir } from '../../client/project-workspace-inventory.js';
 import { LoxtepError } from '../../errors/base.js';
+import { sanitizePlatformErrorMessage } from '../../errors/sanitize-message.js';
 
 export interface PushCmdOptions {
   configFilePath?: string;
@@ -25,17 +26,22 @@ export { collectFlatBundle, listLocalWorkflowIds };
 
 /** Prefer details.error when the top-level message is an opaque wrapper. */
 export function formatPushError(err: unknown): string {
+  let message: string;
   if (err instanceof LoxtepError) {
     const detail =
       (typeof err.details?.error === 'string' && err.details.error.trim()) ||
       (typeof err.details?.message === 'string' && err.details.message.trim()) ||
       undefined;
     if (detail && detail !== err.message && !err.message.includes(detail)) {
-      return `${err.message}: ${detail}`;
+      message = `${err.message}: ${detail}`;
+    } else {
+      message = err.message;
     }
-    return err.message;
+  } else {
+    message = err instanceof Error ? err.message : String(err);
   }
-  return err instanceof Error ? err.message : String(err);
+  // Defense in depth: never leak raw SQL / column lists even if parseHttpError was bypassed.
+  return sanitizePlatformErrorMessage(message);
 }
 
 /**

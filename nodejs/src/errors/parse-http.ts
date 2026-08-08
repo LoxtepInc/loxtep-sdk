@@ -4,6 +4,7 @@ import { AuthorizationError } from './auth.js';
 import { NotFoundError, ConflictError } from './resource.js';
 import { ValidationError } from './validation.js';
 import { RateLimitError } from './rate-limit.js';
+import { sanitizeErrorDetails, sanitizePlatformErrorMessage } from './sanitize-message.js';
 import type { ApiErrorBody, RateLimitErrorBody } from './types.js';
 
 /**
@@ -72,26 +73,27 @@ function extractPlatformErrorMessage(body: Record<string, unknown>): string | un
     objectDetailString(body.details) ??
     objectDetailString(nestedRecord?.details);
 
-  return preferConcreteMessage(title, stringDetails);
+  const preferred = preferConcreteMessage(title, stringDetails);
+  return preferred ? sanitizePlatformErrorMessage(preferred) : undefined;
 }
 
 function extractPlatformErrorDetails(
   body: Record<string, unknown>
 ): Record<string, unknown> | undefined {
   if (body.details && typeof body.details === 'object') {
-    return body.details as Record<string, unknown>;
+    return sanitizeErrorDetails(body.details as Record<string, unknown>);
   }
   if (typeof body.details === 'string' && body.details.length > 0) {
-    return { message: body.details };
+    return sanitizeErrorDetails({ message: body.details });
   }
   const nested = body.error;
   if (nested && typeof nested === 'object') {
     const nestedDetails = (nested as Record<string, unknown>).details;
     if (nestedDetails && typeof nestedDetails === 'object') {
-      return nestedDetails as Record<string, unknown>;
+      return sanitizeErrorDetails(nestedDetails as Record<string, unknown>);
     }
     if (typeof nestedDetails === 'string' && nestedDetails.length > 0) {
-      return { message: nestedDetails };
+      return sanitizeErrorDetails({ message: nestedDetails });
     }
   }
   return undefined;

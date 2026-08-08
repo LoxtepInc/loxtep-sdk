@@ -205,7 +205,7 @@ function checkProjectScopedNameUniqueness(
         severity: 'error',
         message:
           `Duplicate ${group.kind} name "${group.name}" in this project ` +
-          `(also ${others.join(', ')}). Catalog enforces UNIQUE(project_id, name).`,
+          `(also ${others.join(', ')}). Names must be unique within a project.`,
       });
     }
   }
