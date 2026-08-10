@@ -10,12 +10,22 @@ and this project adheres to
 
 ### Added
 
+<<<<<<< HEAD
+- **`client.context.process_intelligence.decisionTraces` (LOX-1226)** — thin wraps for
+  causal chain, similar decisions, and create-with-links:
+  `getChain`, `getSimilar`, and `create` (Node + Python parity).
+  Paths: `GET .../decision-traces/:id/chain`, `GET .../similar`,
+  `POST .../decision-traces` with `links` / `precedent_id`. Does not re-implement
+  platform graph ranking.
+
+=======
 - **`client.context.procedures`** — MCP `loxtep_context` parity for
   `list_procedures` / `get_procedure` / `create_procedure` /
   `update_procedure` / `delete_procedure` / `import_process_graph` /
   `export_process_graph` against graph REST (`/graph/.../procedures`,
   `/graph/procedures/{id}`, import + export). Short method names (`list`,
   `get`, `create`, `update`, `delete`) alias the MCP op names.
+>>>>>>> origin/main
 - **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
   `get_semantic_artifact`, and `get_semantic_completeness`
   (`POST /semantic-layer/search`, `GET /semantic-layer/...`,

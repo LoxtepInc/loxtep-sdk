@@ -1,15 +1,32 @@
 /**
- * Process Intelligence API: decision traces (LOX-1478), entity context (LOX-1627).
- * Backend: process-intelligence GET /organizations/:organization_id/decision-traces
- * and GET /organizations/:organization_id/context.
+ * Process Intelligence API: decision traces (LOX-1478), entity context (LOX-1627),
+ * causal chain / similar / linked create (LOX-1226).
+ *
+ * Backend (process-intelligence microservice):
+ *   GET  /organizations/:organization_id/decision-traces
+ *   POST /organizations/:organization_id/decision-traces
+ *   GET  /organizations/:organization_id/decision-traces/:trace_id/chain
+ *   GET  /organizations/:organization_id/decision-traces/:trace_id/similar
+ *   GET  /organizations/:organization_id/context
+ *
+ * Thin HTTP wrap only — platform owns graph walk / ranking logic.
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
 import type {
+  CreateDecisionTraceInput,
+  CreateDecisionTraceResponse,
+  CreateDecisionTraceResult,
+  DecisionChainResult,
   DecisionTracesListParams,
   DecisionTracesListResponse,
   EntityContextResponse,
+  GetDecisionChainParams,
+  GetDecisionChainResponse,
   GetEntityContextParams,
+  GetSimilarDecisionsParams,
+  GetSimilarDecisionsResponse,
+  SimilarDecisionsResult,
 } from './process-intelligence-types.js';
 
 const BASE = '/process-intelligence';
@@ -30,8 +47,29 @@ function buildQuery(params?: DecisionTracesListParams): string {
   return qs ? `?${qs}` : '';
 }
 
+function buildChainQuery(params?: GetDecisionChainParams): string {
+  if (!params) return '';
+  const searchParams = new URLSearchParams();
+  if (params.max_depth != null) searchParams.set('max_depth', String(params.max_depth));
+  if (params.direction != null) searchParams.set('direction', params.direction);
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function buildSimilarQuery(params?: GetSimilarDecisionsParams): string {
+  if (!params || params.limit == null) return '';
+  return `?limit=${encodeURIComponent(String(params.limit))}`;
+}
+
+function tracesBase(organizationId: string): string {
+  return `${BASE}/organizations/${encodeURIComponent(organizationId)}/decision-traces`;
+}
+
+export type ProcessIntelligenceApi = ReturnType<typeof createProcessIntelligenceApi>;
+
 /**
- * Create the process intelligence API surface: decisionTraces.list, getEntityContext.
+ * Create the process intelligence API surface:
+ * decisionTraces.list / create / getChain / getSimilar, getEntityContext.
  */
 export function createProcessIntelligenceApi(http: LoxtepHttpClient): {
   decisionTraces: {
@@ -39,6 +77,20 @@ export function createProcessIntelligenceApi(http: LoxtepHttpClient): {
       organizationId: string,
       params?: DecisionTracesListParams
     ) => Promise<DecisionTracesListResponse['data']>;
+    create: (
+      organizationId: string,
+      body: CreateDecisionTraceInput
+    ) => Promise<CreateDecisionTraceResult>;
+    getChain: (
+      organizationId: string,
+      traceId: string,
+      params?: GetDecisionChainParams
+    ) => Promise<DecisionChainResult>;
+    getSimilar: (
+      organizationId: string,
+      traceId: string,
+      params?: GetSimilarDecisionsParams
+    ) => Promise<SimilarDecisionsResult>;
   };
   getEntityContext: (
     organizationId: string,
@@ -51,8 +103,36 @@ export function createProcessIntelligenceApi(http: LoxtepHttpClient): {
         organizationId: string,
         params?: DecisionTracesListParams
       ): Promise<DecisionTracesListResponse['data']> {
-        const path = `${BASE}/organizations/${encodeURIComponent(organizationId)}/decision-traces${buildQuery(params)}`;
+        const path = `${tracesBase(organizationId)}${buildQuery(params)}`;
         const res = await http.get<DecisionTracesListResponse>(path);
+        return res.data;
+      },
+
+      async create(
+        organizationId: string,
+        body: CreateDecisionTraceInput
+      ): Promise<CreateDecisionTraceResult> {
+        const res = await http.post<CreateDecisionTraceResponse>(tracesBase(organizationId), body);
+        return res.data;
+      },
+
+      async getChain(
+        organizationId: string,
+        traceId: string,
+        params?: GetDecisionChainParams
+      ): Promise<DecisionChainResult> {
+        const path = `${tracesBase(organizationId)}/${encodeURIComponent(traceId)}/chain${buildChainQuery(params)}`;
+        const res = await http.get<GetDecisionChainResponse>(path);
+        return res.data;
+      },
+
+      async getSimilar(
+        organizationId: string,
+        traceId: string,
+        params?: GetSimilarDecisionsParams
+      ): Promise<SimilarDecisionsResult> {
+        const path = `${tracesBase(organizationId)}/${encodeURIComponent(traceId)}/similar${buildSimilarQuery(params)}`;
+        const res = await http.get<GetSimilarDecisionsResponse>(path);
         return res.data;
       },
     },
