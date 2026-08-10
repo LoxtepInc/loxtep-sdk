@@ -10,22 +10,24 @@ and this project adheres to
 
 ### Added
 
-<<<<<<< HEAD
+- **`client.context.issues` / `.goals` / `.workstreams`** — MCP `loxtep_context`
+  read parity for `list_issues` / `get_issue`, `list_goals` / `get_goal`,
+  `list_workstreams` / `get_workstream` against agent-orchestration REST.
+  Short method names (`list`, `get`) alias the MCP op names. **Writes deferred**
+  (create/update issue, create goal, create/update workstream, add comment) —
+  use MCP until a follow-up ships them.
 - **`client.context.process_intelligence.decisionTraces` (LOX-1226)** — thin wraps for
   causal chain, similar decisions, and create-with-links:
   `getChain`, `getSimilar`, and `create` (Node + Python parity).
   Paths: `GET .../decision-traces/:id/chain`, `GET .../similar`,
   `POST .../decision-traces` with `links` / `precedent_id`. Does not re-implement
   platform graph ranking.
-
-=======
 - **`client.context.procedures`** — MCP `loxtep_context` parity for
   `list_procedures` / `get_procedure` / `create_procedure` /
   `update_procedure` / `delete_procedure` / `import_process_graph` /
   `export_process_graph` against graph REST (`/graph/.../procedures`,
   `/graph/procedures/{id}`, import + export). Short method names (`list`,
   `get`, `create`, `update`, `delete`) alias the MCP op names.
->>>>>>> origin/main
 - **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
   `get_semantic_artifact`, and `get_semantic_completeness`
   (`POST /semantic-layer/search`, `GET /semantic-layer/...`,

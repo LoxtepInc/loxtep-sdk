@@ -319,6 +319,22 @@ export type {
 } from './procedures-types.js';
 export type { ProceduresApi } from './procedures.js';
 export type {
+  AgentWorkspaceApiDeps,
+  AgentWorkspaceGoal,
+  AgentWorkspaceIssue,
+  AgentWorkspaceListResponse,
+  AgentWorkspaceWorkstream,
+  GoalsListFilters,
+  IssuesListFilters,
+  WorkstreamsListFilters,
+} from './agent-workspace-types.js';
+export type {
+  AgentWorkspaceApi,
+  GoalsApi,
+  IssuesApi,
+  WorkstreamsApi,
+} from './agent-workspace.js';
+export type {
   Improvement,
   ImprovementStatus,
   ImprovementsListFilters,

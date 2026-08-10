@@ -28,6 +28,7 @@ import { createTargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
 import { createInstancesApi } from './instances.js';
 import { createProceduresApi } from './procedures.js';
+import { createAgentWorkspaceApi } from './agent-workspace.js';
 import { createDomainsApi } from './domains.js';
 import { createStandardsApi } from './standards.js';
 import { createPromisesApi } from './promises.js';
@@ -229,6 +230,9 @@ export class LoxtepClient {
     const proceduresApi = createProceduresApi(this._http, {
       organization_id: options.organization_id,
     });
+    const agentWorkspaceApi = createAgentWorkspaceApi(this._http, {
+      organization_id: options.organization_id,
+    });
     const improvementsApi = createImprovementsApi(this._http);
     const activityApi = createActivityApi(this._http);
     const domainsApi = createDomainsApi(this._http);
@@ -281,6 +285,9 @@ export class LoxtepClient {
       process_intelligence: processIntelligenceApi,
       procedures: proceduresApi,
       activity: activityApi,
+      issues: agentWorkspaceApi.issues,
+      goals: agentWorkspaceApi.goals,
+      workstreams: agentWorkspaceApi.workstreams,
     });
     this.metrics = this.createMetricsSurface(options.metrics);
   }

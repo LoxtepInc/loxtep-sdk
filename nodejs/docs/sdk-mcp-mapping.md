@@ -19,7 +19,7 @@ deprecation aliases.
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (get/transition/propagate/lineage/deps + `list_review_queue`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc transition`, `loxtep cdlc review-queue` |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
-| `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*` |
+| `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*`, `.issues.*`, `.goals.*`, `.workstreams.*` |
 
 ## Approvals fixture / env bootstrap
 
@@ -137,5 +137,29 @@ Notes:
 - Import requires exactly one of `graph` (inline JSON-LD) or `s3_reference`.
 - Export `format`: `jsonld` (default) \| `yaml` \| `summary`.
 - Out of this ticket's acceptance set (still MCP-only): `get_procedure_dependencies`.
+
+## Context: agent workspace issues / goals / workstreams (LOX-1250)
+
+MCP `loxtep_context` agent-orchestration **reads** map to
+`client.context.issues` / `.goals` / `.workstreams`:
+
+| MCP operation | SDK | REST | Status |
+| --- | --- | --- | --- |
+| `list_issues` | `client.context.issues.list({ … })` (alias `list_issues`) | `GET /agent-orchestration/organizations/{org}/issues` | shipped |
+| `get_issue` | `.get(issue_id)` (alias `get_issue`) | `GET /agent-orchestration/issues/{issue_id}` | shipped |
+| `list_goals` | `client.context.goals.list({ … })` (alias `list_goals`) | `GET /agent-orchestration/organizations/{org}/goals` | shipped |
+| `get_goal` | `.get(goal_id)` (alias `get_goal`) | `GET /agent-orchestration/goals/{goal_id}` | shipped |
+| `list_workstreams` | `client.context.workstreams.list({ … })` (alias `list_workstreams`) | `GET /agent-orchestration/organizations/{org}/workstreams` | shipped |
+| `get_workstream` | `.get(workstream_id)` (alias `get_workstream`) | `GET /agent-orchestration/workstreams/{workstream_id}` | shipped |
+
+**Writes deferred** (still MCP-only): `create_issue`, `update_issue`,
+`add_issue_comment`, `create_goal`, `create_workstream`, `update_workstream`.
+Also out of this ticket: `list_agents` / `get_agent`.
+
+Notes:
+
+- `organization_id` from the client constructor or per-call override on list routes.
+- Issue list filters: `workstream_id`, `goal_id`, `status`, `assignee_agent_id`,
+  `page`, `page_size`. Goals/workstreams lists accept `page` / `page_size`.
 
 Full MCP operation tables: [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).

@@ -171,7 +171,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 | `client.review` | `.approvals`, `.improvements`, `.cdlc`, `.mining` | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation + review-queue list, context mining (run/list/act) |
 | `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
 | `client.observe` | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O |
-| `client.context` | `.procedures`, `.activity`, `.process_intelligence` | Process intel, activity feed |
+| `client.context` | `.procedures`, `.activity`, `.process_intelligence`, `.issues`, `.goals`, `.workstreams` | Process intel, activity feed, agent-workspace reads |
 
 Top-level **`get_writer(name)`** / **`get_reader(name)`** resolve deployment
 metadata for live stream I/O (preferred over calling nested APIs directly).

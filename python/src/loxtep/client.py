@@ -7,6 +7,14 @@ Top-level get_writer / get_reader delegate to data-products stream logic.
 from typing import Any, Callable, Mapping, Optional
 
 from .activity import AsyncActivityApi, ActivityApi
+from .agent_workspace import (
+    AsyncGoalsApi,
+    AsyncIssuesApi,
+    AsyncWorkstreamsApi,
+    GoalsApi,
+    IssuesApi,
+    WorkstreamsApi,
+)
 from .approvals import ApprovalsApi, AsyncApprovalsApi
 from .build import BuildFacade
 from .catalog import AsyncCatalogApi, CatalogApi
@@ -187,6 +195,9 @@ class LoxtepClient:
             process_intelligence=ProcessIntelligenceApi(self._http),
             procedures=ProceduresApi(self._http),
             activity=ActivityApi(self._http),
+            issues=IssuesApi(self._http, organization_id=organization_id),
+            goals=GoalsApi(self._http, organization_id=organization_id),
+            workstreams=WorkstreamsApi(self._http, organization_id=organization_id),
         )
         self.metrics = _MetricsStub()
 
@@ -342,6 +353,9 @@ class AsyncLoxtepClient:
             process_intelligence=AsyncProcessIntelligenceApi(self._http),
             procedures=AsyncProceduresApi(self._http),
             activity=AsyncActivityApi(self._http),
+            issues=AsyncIssuesApi(self._http, organization_id=organization_id),
+            goals=AsyncGoalsApi(self._http, organization_id=organization_id),
+            workstreams=AsyncWorkstreamsApi(self._http, organization_id=organization_id),
         )
         self.metrics = _MetricsStub()
 
