@@ -227,7 +227,9 @@ export class LoxtepClient {
     const targetsApi = createTargetsApi(this._http);
     const connectorsApi = createConnectorsApi(this._http);
     const instancesApi = createInstancesApi(this._http, options.organization_id);
-    const proceduresApi = createProceduresApi(this._http);
+    const proceduresApi = createProceduresApi(this._http, {
+      organization_id: options.organization_id,
+    });
     const agentWorkspaceApi = createAgentWorkspaceApi(this._http, {
       organization_id: options.organization_id,
     });
