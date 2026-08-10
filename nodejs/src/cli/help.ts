@@ -27,7 +27,11 @@ Workspace
                      Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
   projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]
-                     List/get org projects; link = cloud↔directory bind (see link)
+                     | changes [--json] | clone <id|name> [dir] | pull | push
+                     List/get/link/clone org projects. changes = unpublished inventory
+                     (alias of status --unpublished). clone = Cloud→Local (git when
+                     GitHub-bound; workspace export when unbound). projects pull/push wrap
+                     GitHub sync APIs (bound only). Unbound Local→Cloud stays "loxtep push".
   instances list | get <id> | create … | deployment-urls | register … | registration
                      Provision and register runtime instances
 
@@ -46,7 +50,7 @@ Build & deploy
   delivery create --from <dp> --connector-id <id> [--name …] [--dry-run]
                      Delivery workflow (DP → target connection); workflow_type: delivery
   lint [--workflow <id>]
-                     Validate local entity JSON (schemas + relationships)
+                     Validate local entity JSON (schemas, relationships, unique names)
   push [--workflow-id <id>] [--dry-run] [--skip-reindex]
                      Upload local workflows via save_workflow_bundle + reindex
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
@@ -80,6 +84,8 @@ Analytics
 
 Observe
   observe status                         Platform / instance health snapshot
+  deployments list [--project-id …] [--instance-id …] [--workflow-id …] [--status …]
+  deployments get <deployment_id>        Poll async deploy status (after loxtep deploy)
   queue info <data-product-id> | --queue <name>
   queue checkpoint <id> --bot <bot-id>   Reader checkpoint for a bot
   metrics rate-limits | log --id <id> --value <n>
