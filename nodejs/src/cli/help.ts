@@ -81,6 +81,9 @@ Review
                      Lifecycle transition (draft|in_review|approved|deployed|retired)
   cdlc review-queue [--domain-id <id>] [--organization-id <id>]
                      Steward review queue (pending queue_review tasks)
+  candidates list [--type …] [--status candidate|approved|rejected] [--mining-run-id <id>]
+  candidates act <id> --action approve|reject
+                     Context-mining candidates (approve → CDLC in_review; reject discards)
 
 Meaning
   packs list                             Available vocabulary packs (+ recommendation)
