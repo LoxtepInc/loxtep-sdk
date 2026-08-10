@@ -15,7 +15,7 @@ deprecation aliases.
 | `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
 | `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
-| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*` (list/activate/status) |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*` (search/artifact/completeness) |
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, CDLC and context-mining REST (pending) |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
@@ -82,5 +82,23 @@ Notes:
 - Activation status is normalized to snake_case (`activation_state`, `active_pack_id`, …) whether the graph handler returns camelCase or snake_case.
 - `list_available` follows the MCP/recommend path (same as hosted tools). Admin inventory `GET /graph/admin/vocabulary-packs` is a sibling route; if recommend is unavailable, callers may see errors from that path specifically.
 - Requires `catalog:read` for list/status and `admin:vocabulary` for activate (platform RBAC).
+
+## Meaning: semantic search / completeness (LOX-1243)
+
+MCP `loxtep_meaning` semantic-layer read ops map to `client.meaning.semantic`:
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `search_semantic_layer` | `client.meaning.semantic.search({ query, … })` (alias `search_semantic_layer`; string query shorthand OK) | `POST /semantic-layer/search` |
+| `get_semantic_artifact` | `client.meaning.semantic.get_artifact({ artifact_type, id })` (alias `get_semantic_artifact`; `artifact_id` accepted) | `GET /semantic-layer/{segment}/{id}` |
+| `get_semantic_completeness` | `client.meaning.semantic.get_completeness({ domain_id? })` (alias `get_semantic_completeness`) | `GET /semantic-layer/completeness` |
+
+Artifact path segments (MCP parity): `entity`→`entities`, `glossary_term`→`glossary`, `process_map`→`process-maps`; other types use the raw `artifact_type` string.
+
+Notes:
+
+- Requires `catalog:read` (platform RBAC).
+- SDK calls the semantic-layer MS REST routes directly. MCP-only enrichments (empty-search / completeness `metadata.activation_state` from pack activation) are not duplicated — use `client.meaning.packs.get_activation_status()` when needed.
+- Pack lifecycle remains under `client.meaning.packs` (see vocabulary packs section above).
 
 Full MCP operation tables: [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).

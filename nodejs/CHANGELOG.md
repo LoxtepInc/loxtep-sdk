@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
+  `get_semantic_artifact`, and `get_semantic_completeness`
+  (`POST /semantic-layer/search`, `GET /semantic-layer/...`,
+  `GET /semantic-layer/completeness`).
+
 ## [0.9.4] - 2026-08-07
 
 ### Fixed
