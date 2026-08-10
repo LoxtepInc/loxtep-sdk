@@ -123,6 +123,68 @@ describe('LoxtepHttpClient', () => {
     expect(result).toEqual({ ok: true });
   });
 
+  it('should call refresh_auth on ExpiredToken 403 once and retry when refresh returns true', async () => {
+    let calls = 0;
+    const refresh_auth = jest.fn().mockResolvedValue(true);
+    const fetchFn = jest.fn().mockImplementation(() => {
+      calls++;
+      if (calls === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 403,
+          headers: new Headers(),
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                message: 'The security token included in the request is expired',
+              })
+            ),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: () => Promise.resolve('{"ok":true}'),
+      });
+    });
+    const client = new LoxtepHttpClient({
+      base_url: baseUrl,
+      refresh_auth,
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      fetch_fn: fetchFn,
+    });
+    const result = await client.get('/data');
+    expect(refresh_auth).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('should map ExpiredToken 403 to AuthenticationError when refresh fails', async () => {
+    const refresh_auth = jest.fn().mockResolvedValue(false);
+    const fetchFn = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers(),
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            message: 'The security token included in the request is expired',
+          })
+        ),
+    });
+    const client = new LoxtepHttpClient({
+      base_url: baseUrl,
+      refresh_auth,
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      fetch_fn: fetchFn,
+    });
+    await expect(client.get('/data')).rejects.toMatchObject({
+      code: 'AUTHENTICATION_ERROR',
+      message: expect.stringContaining('loxtep login'),
+    });
+  });
+
   it('should retry on 503', async () => {
     let calls = 0;
     const fetchFn = jest.fn().mockImplementation(() => {

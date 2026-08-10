@@ -13,6 +13,7 @@ import { LoxtepClient } from '../client/loxtep-client.js';
 import { LoxtepHttpClient } from '../http/client.js';
 import { resolveCliApiUrl } from './resolve-api-url.js';
 import { waitForUpdateCheck } from './update-notifier.js';
+import { AuthenticationError, sessionExpiredError } from '../errors/auth.js';
 
 export interface CreateCliClientOptions {
   configFilePath?: string;
@@ -29,6 +30,11 @@ export interface CreateCliClientOptions {
 function jwtExpSeconds(token: string): number | undefined {
   const { exp } = decodeJwtPayload(token);
   return exp;
+}
+
+function awsCredentialsExpired(aws: { expiration?: string } | undefined): boolean {
+  if (!aws?.expiration) return false;
+  return new Date(aws.expiration).getTime() < Date.now();
 }
 
 async function persistRefreshedTokens(
@@ -70,6 +76,14 @@ function isDummySigV4(creds: CliSigV4Credentials): boolean {
   return creds.accessKeyId === 'cli' && creds.secretAccessKey === 'cli';
 }
 
+function applyAwsCredentials(target: CliSigV4Credentials, aws: AwsCredentialsSnake): void {
+  Object.assign(target, {
+    accessKeyId: aws.access_key_id,
+    secretAccessKey: aws.secret_access_key,
+    sessionToken: aws.session_token,
+  });
+}
+
 /** Load STS credentials from credentials.json (with expiry refresh), or dummy dev fallback. */
 export async function resolveCliSigV4Credentials(
   options: CreateCliClientOptions = {}
@@ -84,34 +98,35 @@ export async function resolveCliSigV4Credentials(
       }
     : { ...DUMMY_SIGV4 };
 
-  const expired =
-    fileCreds?.aws_credentials?.expiration &&
-    new Date(fileCreds.aws_credentials.expiration).getTime() < Date.now();
+  const expired = awsCredentialsExpired(fileCreds?.aws_credentials);
+  const hadAws = Boolean(fileCreds?.aws_credentials);
 
-  if (!fileCreds?.aws_credentials || expired) {
+  if (!hadAws || expired) {
     const authCtxForRefresh = await createCliAuthContext({
       ...options,
       on_after_refresh: r => {
         options.on_after_refresh?.(r);
         if (r.aws_credentials) {
-          Object.assign(cliSigv4, {
-            accessKeyId: r.aws_credentials.access_key_id,
-            secretAccessKey: r.aws_credentials.secret_access_key,
-            sessionToken: r.aws_credentials.session_token,
-          });
+          applyAwsCredentials(cliSigv4, r.aws_credentials);
         }
       },
     });
     if (authCtxForRefresh) {
       await authCtxForRefresh.refresh_auth();
       fileCreds = await readCredentials(credsPath);
-      if (fileCreds?.aws_credentials) {
-        Object.assign(cliSigv4, {
-          accessKeyId: fileCreds.aws_credentials.access_key_id,
-          secretAccessKey: fileCreds.aws_credentials.secret_access_key,
-          sessionToken: fileCreds.aws_credentials.session_token,
-        });
+      const nextAws = fileCreds?.aws_credentials;
+      if (nextAws && !awsCredentialsExpired(nextAws)) {
+        applyAwsCredentials(cliSigv4, nextAws);
+      } else if (expired) {
+        // Had STS that expired — do not keep signing with a corpse token.
+        // API Gateway returns a cryptic 403 that looks like an RBAC failure.
+        throw sessionExpiredError(
+          'AWS session credentials expired and could not be refreshed'
+        );
       }
+      // Missing STS entirely: keep dummy fallback below (tests / JWT-only setups).
+    } else if (expired) {
+      throw sessionExpiredError('Missing access token');
     }
   }
 
@@ -136,9 +151,7 @@ export async function createCliHttpClient(
     on_after_refresh: r => {
       options.on_after_refresh?.(r);
       if (r.aws_credentials) {
-        sigv4.accessKeyId = r.aws_credentials.access_key_id;
-        sigv4.secretAccessKey = r.aws_credentials.secret_access_key;
-        sigv4.sessionToken = r.aws_credentials.session_token;
+        applyAwsCredentials(sigv4, r.aws_credentials);
       }
     },
   });
@@ -216,6 +229,9 @@ export async function createCliAuthContext(
     const tok = tm.getToken();
     if (!tok) return null;
     const refreshed = await tm.getTokenOrRefresh(api_url, 300, refreshFn);
+    if (!refreshed) {
+      throw sessionExpiredError('Session expired or could not be refreshed');
+    }
     return refreshed;
   };
 
@@ -248,11 +264,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
     on_after_refresh: r => {
       options.on_after_refresh?.(r);
       if (r.aws_credentials) {
-        Object.assign(cliSigv4, {
-          accessKeyId: r.aws_credentials.access_key_id,
-          secretAccessKey: r.aws_credentials.secret_access_key,
-          sessionToken: r.aws_credentials.session_token,
-        });
+        applyAwsCredentials(cliSigv4, r.aws_credentials);
       }
     },
   });
@@ -289,17 +301,25 @@ export async function requireCliClient(options: CreateCliClientOptions = {}): Pr
   client: LoxtepClient;
   config: Awaited<ReturnType<typeof loadCliConfig>>['config'];
 }> {
-  const r = await createCliClient(options);
-  if (!r) {
-    console.error(
-      'Missing api_url or access token. Run: pnpm exec loxtep login'
-    );
-    // Let the in-flight update check (if any) print its notice before the hard exit below —
-    // process.exit() skips pending promises and finally blocks up the call stack, so without
-    // this the notice would never print for any command run without valid credentials.
-    await waitForUpdateCheck();
-    process.exit(1);
-    return r as never;
+  try {
+    const r = await createCliClient(options);
+    if (!r) {
+      console.error('Missing api_url or access token. Run: loxtep login');
+      // Let the in-flight update check (if any) print its notice before the hard exit below —
+      // process.exit() skips pending promises and finally blocks up the call stack, so without
+      // this the notice would never print for any command run without valid credentials.
+      await waitForUpdateCheck();
+      process.exit(1);
+      return r as never;
+    }
+    return r;
+  } catch (err) {
+    if (err instanceof AuthenticationError) {
+      console.error(err.message);
+      await waitForUpdateCheck();
+      process.exit(1);
+      return undefined as never;
+    }
+    throw err;
   }
-  return r;
 }

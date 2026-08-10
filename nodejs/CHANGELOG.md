@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-08-10
+
+### Fixed
+
+- **CLI auth / expired session** — when JWT or AWS SigV4 STS credentials are expired
+  and `/auth/refresh` fails (e.g. session revoked), fail fast with
+  `AuthenticationError` and `Run: loxtep login` instead of signing with dead STS
+  and dumping `AuthorizationError: The security token included in the request is
+  expired`. Also map API Gateway ExpiredToken `403` to authentication (not RBAC),
+  retry refresh once on that status, and print a one-line CLI error instead of a
+  stack dump.
+
 ## [0.9.4] - 2026-08-07
 
 ### Fixed

@@ -1,6 +1,10 @@
 import { LoxtepError } from './base.js';
-import { AuthenticationError } from './auth.js';
-import { AuthorizationError } from './auth.js';
+import {
+  AuthenticationError,
+  AuthorizationError,
+  isExpiredSecurityTokenMessage,
+  sessionExpiredError,
+} from './auth.js';
 import { NotFoundError, ConflictError } from './resource.js';
 import { ValidationError } from './validation.js';
 import { RateLimitError } from './rate-limit.js';
@@ -113,6 +117,15 @@ export function parseHttpError(
     case 401:
       return new AuthenticationError(message, details);
     case 403:
+      // API Gateway returns 403 (not 401) when SigV4 STS session tokens expire.
+      // Treat that as authentication failure so callers get a re-login hint
+      // instead of an RBAC "AuthorizationError".
+      if (isExpiredSecurityTokenMessage(message)) {
+        return sessionExpiredError(
+          'AWS session credentials expired',
+          details
+        );
+      }
       return new AuthorizationError(message, details);
     case 404: {
       const resource_type =
