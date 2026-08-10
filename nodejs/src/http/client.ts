@@ -3,6 +3,7 @@ import type { AwsCredentialIdentity } from '@smithy/types';
 import { buildPlatformRequestUrl } from '../config/platform-request-url.js';
 import { signRequest } from './signer.js';
 import { parseHttpError } from '../errors/parse-http.js';
+import { isExpiredSecurityTokenMessage } from '../errors/auth.js';
 
 const DEFAULT_REGION = 'us-east-1';
 const MAX_RETRIES = 2;
@@ -33,7 +34,10 @@ export interface LoxtepHttpClientOptions {
   region?: string;
   credentials?: AwsCredentialIdentity;
   fetch_fn?: typeof fetch;
-  /** After 401, run once; return true to retry the same request with updated JWT from get_token. */
+  /**
+   * After 401 (or API Gateway ExpiredToken 403), run once; return true to retry
+   * the same request with updated JWT/STS from get_token / refresh side effects.
+   */
   refresh_auth?: () => Promise<boolean>;
 }
 
@@ -49,6 +53,22 @@ function isNetworkError(err: unknown): boolean {
   )
     return true;
   return false;
+}
+
+function extractResponseMessage(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== 'object') return fallback;
+  const record = parsed as Record<string, unknown>;
+  if (typeof record.message === 'string' && record.message.length > 0) {
+    return record.message;
+  }
+  const nested = record.error;
+  if (nested && typeof nested === 'object') {
+    const nestedMessage = (nested as Record<string, unknown>).message;
+    if (typeof nestedMessage === 'string' && nestedMessage.length > 0) {
+      return nestedMessage;
+    }
+  }
+  return fallback;
 }
 
 /**
@@ -152,8 +172,16 @@ export class LoxtepHttpClient {
       parsed = { message: response.statusText };
     }
 
-    if (response.status === 401 && authRetry === 0 && this.refresh_auth) {
-      const ok = await this.refresh_auth();
+    const parsedMessage = extractResponseMessage(parsed, response.statusText);
+
+    const shouldRefreshAuth =
+      authRetry === 0 &&
+      this.refresh_auth &&
+      (response.status === 401 ||
+        (response.status === 403 && isExpiredSecurityTokenMessage(parsedMessage)));
+
+    if (shouldRefreshAuth) {
+      const ok = await this.refresh_auth!();
       if (ok) {
         return this.request<T>(method, path, body, retryCount, authRetry + 1, requestOptions);
       }

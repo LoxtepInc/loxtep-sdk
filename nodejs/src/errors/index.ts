@@ -4,7 +4,13 @@
  */
 
 export { LoxtepError } from './base.js';
-export { AuthenticationError, AuthorizationError } from './auth.js';
+export {
+  AuthenticationError,
+  AuthorizationError,
+  RELOGIN_HINT,
+  isExpiredSecurityTokenMessage,
+  sessionExpiredError,
+} from './auth.js';
 export { NotFoundError, ConflictError } from './resource.js';
 export { ValidationError, DefinitionValidationError } from './validation.js';
 /** Alias for DefinitionValidationError (backend: schema → customer term: definition). */

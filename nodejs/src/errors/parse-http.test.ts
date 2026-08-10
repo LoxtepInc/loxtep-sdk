@@ -20,6 +20,16 @@ describe('parseHttpError', () => {
     expect(err.status_code).toBe(403);
   });
 
+  it('should map ExpiredToken 403 to AuthenticationError with re-login hint', () => {
+    const err = parseHttpError(403, {
+      message: 'The security token included in the request is expired',
+    });
+    expect(err).toBeInstanceOf(AuthenticationError);
+    expect(err.message).toContain('AWS session credentials expired');
+    expect(err.message).toContain('loxtep login');
+    expect(err.status_code).toBe(401);
+  });
+
   it('should map 404 to NotFoundError with resource_type and resource_id', () => {
     const err = parseHttpError(404, {
       message: 'Not found',

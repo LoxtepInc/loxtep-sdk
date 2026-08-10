@@ -100,6 +100,8 @@ import { runStatus } from './commands/status-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
 import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
+import { LoxtepError } from '../errors/base.js';
+import { AuthenticationError, AuthorizationError } from '../errors/auth.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -112,6 +114,20 @@ function getArg(name: string): string | undefined {
 
 function printHelp(): void {
   printCliHelp();
+}
+
+/** Prefer a one-line auth/API error over a Node stack dump for CLI users. */
+function formatCliError(err: unknown): string {
+  if (err instanceof AuthenticationError || err instanceof AuthorizationError) {
+    return err.message;
+  }
+  if (err instanceof LoxtepError) {
+    return err.message;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return String(err);
 }
 
 async function main(): Promise<void> {
@@ -929,6 +945,6 @@ async function runCommand(): Promise<void> {
 }
 
 main().catch(err => {
-  console.error(err);
+  console.error(formatCliError(err));
   process.exit(1);
 });
