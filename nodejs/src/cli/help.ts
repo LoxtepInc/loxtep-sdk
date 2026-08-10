@@ -77,6 +77,10 @@ Review
                      Resolve a pending approval (same decision as inbox / Slack)
   improvements list [--status …] [--workflow <name>]
   improvements apply <id> | reject <id>  Adopt or reject AI-eval workflow improvements
+  cdlc transition <artifact_ref> --from <state> --to <state>
+                     Lifecycle transition (draft|in_review|approved|deployed|retired)
+  cdlc review-queue [--domain-id <id>] [--organization-id <id>]
+                     Steward review queue (pending queue_review tasks)
 
 Meaning
   packs list                             Available vocabulary packs (+ recommendation)

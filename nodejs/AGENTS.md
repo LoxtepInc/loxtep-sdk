@@ -85,6 +85,8 @@ internal to the SDK and are not shown in CLI help.
 | `loxtep deploy` | Compile modules into the flow/workflow graph; deploy to the attached Instance. | required + attached |
 | `loxtep deployments list \| get <id>` | Poll async deploy status (`client.observe.list_deployments` / `get_deployment`). | required |
 | `loxtep approvals list \| approve <id> \| reject <id>` | HITL approval inbox (`client.review.approvals`). | required |
+| `loxtep cdlc transition <ref> --from <state> --to <state>` | CDLC lifecycle transition (`client.review.cdlc.transition_lifecycle`). | required |
+| `loxtep cdlc review-queue [--domain-id <id>]` | Steward review queue list (`client.review.cdlc.list_review_queue`). | required |
 | `loxtep activity list [filters]` | List unified activity + audit entries. | required |
 | `loxtep improvements list \| apply <id> \| reject <id>` | Review and adopt AI-Eval-derived workflow improvements. | required |
 
@@ -166,7 +168,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 | `client.build` | `.workflows`, `.triggers`, `.data_products`, `.targets` | Authoring, deploy, CRUD, stream/replay |
 | `client.define` | `.schemas`, `.quality`, `.standards`, `.data_contracts`, `.domains` | Schema, quality, governance |
 | `client.meaning` | `.thesaurus`, `.ontology`, `.packs`, `.semantic` | Vocabulary + ontology + packs + semantic search/artifact/completeness |
-| `client.review` | `.approvals`, `.improvements`, `.cdlc` | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation |
+| `client.review` | `.approvals`, `.improvements`, `.cdlc` | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation + review-queue list |
 | `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
 | `client.observe` | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O |
 | `client.context` | `.procedures`, `.activity`, `.process_intelligence` | Process intel, activity feed |

@@ -30,6 +30,10 @@ export type {
   ListContextDependenciesFilters,
   ContextDependency,
   ContextDependenciesListResult,
+  ListReviewQueueFilters,
+  ReviewTaskStatus,
+  ReviewTask,
+  ReviewQueueListResult,
 } from './cdlc-types.js';
 export type { CdlcApi } from './cdlc.js';
 export type {

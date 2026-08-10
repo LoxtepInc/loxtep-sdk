@@ -2,6 +2,7 @@
  * CDLC (Context Development Lifecycle) API types.
  * MCP ops under loxtep_review: get_artifact_lifecycle, transition_lifecycle,
  * propagate_change, list_propagation_lineage, list_context_dependencies.
+ * Steward queue (REST; not a separate MCP tool): list_review_queue.
  *
  * REST (graph):
  *   GET  /graph/organizations/{org}/cdlc/artifacts/{artifact_ref}
@@ -9,6 +10,7 @@
  *   POST /graph/organizations/{org}/cdlc/propagate
  *   GET  /graph/organizations/{org}/cdlc/propagation-lineage
  *   GET  /graph/organizations/{org}/cdlc/dependencies
+ *   GET  /graph/organizations/{org}/cdlc/review-queue
  */
 
 /** Artifact ref format: `artifact_type:id` (e.g. "thesaurus_term:term_123"). */
@@ -139,5 +141,36 @@ export interface ContextDependency {
 
 export interface ContextDependenciesListResult {
   dependencies: ContextDependency[];
+  count: number;
+}
+
+export type ReviewTaskStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ListReviewQueueFilters {
+  organization_id?: string;
+  /** Optional domain filter (platform may ignore until query params are wired). */
+  domain_id?: string;
+}
+
+/** Pending steward review task created by `queue_review` propagation. */
+export interface ReviewTask {
+  id: string;
+  artifact_ref: ArtifactRef;
+  artifact_name: string;
+  artifact_type: string;
+  source_artifact_ref: ArtifactRef;
+  source_artifact_name: string;
+  version_before: string | null;
+  version_after: string;
+  actor: string;
+  status: ReviewTaskStatus | string;
+  created_at: string;
+  owner: string | null;
+  rejection_reason?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ReviewQueueListResult {
+  tasks: ReviewTask[];
   count: number;
 }

@@ -38,6 +38,11 @@ describe('CLI help', () => {
     expect(CLI_HELP).toContain('data-products list');
   });
 
+  it('lists CDLC steward verbs under Review', () => {
+    expect(CLI_HELP).toContain('cdlc transition <artifact_ref> --from <state> --to <state>');
+    expect(CLI_HELP).toContain('cdlc review-queue');
+  });
+
   it('uses pnpm in examples', () => {
     expect(CLI_HELP).toContain('pnpm exec loxtep login');
   });

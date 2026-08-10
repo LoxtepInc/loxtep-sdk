@@ -75,6 +75,10 @@ import {
   parseApprovalsListNumericFlags,
 } from './commands/approvals-cmd.js';
 import {
+  runCdlcTransitionCommand,
+  runCdlcReviewQueueCommand,
+} from './commands/cdlc-cmd.js';
+import {
   runPacksListCommand,
   runPacksActivateCommand,
   runPacksStatusCommand,
@@ -877,6 +881,39 @@ async function runCommand(): Promise<void> {
           'Usage: loxtep packs list\n' +
             '       loxtep packs activate <pack_id> [--organization-id <id>]\n' +
             '       loxtep packs status'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'cdlc': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      const orgId = getArg('--organization-id');
+      if (sub === 'transition' && args[2]) {
+        const result = await runCdlcTransitionCommand(authResult.client, args[2], {
+          from: getArg('--from'),
+          to: getArg('--to'),
+          organization_id: orgId,
+          actor: getArg('--actor'),
+          owner: getArg('--owner'),
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'review-queue') {
+        const result = await runCdlcReviewQueueCommand(authResult.client, {
+          organization_id: orgId,
+          domain_id: getArg('--domain-id'),
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep cdlc transition <artifact_ref> --from <state> --to <state> [--actor <id>] [--owner <id>] [--organization-id <id>]\n' +
+            '       loxtep cdlc review-queue [--domain-id <id>] [--organization-id <id>]\n' +
+            'States: draft | in_review | approved | deployed | retired'
         );
         process.exitCode = 1;
       }
