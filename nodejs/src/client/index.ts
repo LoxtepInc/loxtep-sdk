@@ -279,7 +279,27 @@ export type {
   CaptureConnectorSamplesResult,
 } from './connectors-types.js';
 export type { Instance, InstancesListResponse, InstanceDetailResponse } from './instances-types.js';
-export type { Procedure, ProceduresListResponse } from './procedures-types.js';
+export type {
+  Procedure,
+  ProcedureCreateInput,
+  ProcedureDecision,
+  ProcedureDependency,
+  ProcedureDeleteResult,
+  ProcedureExportFormat,
+  ProcedureStatus,
+  ProcedureStep,
+  ProcedureTrigger,
+  ProcedureUpdateInput,
+  ProceduresApiDeps,
+  ProceduresListFilters,
+  ProceduresListResponse,
+  ProceduresListResult,
+  ExportProcessGraphInput,
+  ImportProcessGraphInput,
+  ImportProcessGraphOptions,
+  ImportProcessGraphS3Reference,
+} from './procedures-types.js';
+export type { ProceduresApi } from './procedures.js';
 export type {
   Improvement,
   ImprovementStatus,
