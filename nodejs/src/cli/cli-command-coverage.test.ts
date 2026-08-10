@@ -135,17 +135,6 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     ],
   },
   approvals: {
-<<<<<<< HEAD
-    kind: 'unit',
-    tests: ['commands/approvals-cmd.test.ts'],
-    notes:
-      'list/approve/reject; SDK resolve body covered in src/client/approvals.test.ts; HTTP integration LOX-1240; optional --organization-id',
-  },
-  deployments: {
-    kind: 'unit',
-    tests: ['commands/deployments-cmd.test.ts', 'client/deployments.test.ts'],
-    notes: 'list/get — SDK observe.list_deployments / get_deployment',
-=======
     kind: 'integration',
     tests: [
       'cli-integration.test.ts',
@@ -156,7 +145,11 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     ],
     notes:
       'list/approve/reject via mock-platform-api fixtures (MCP list_pending + resolve); optional live smoke LOXTEP_CLI_SMOKE=1',
->>>>>>> 4e4722c (LOX-1240: approvals list_pending + resolve integration fixtures)
+  },
+  deployments: {
+    kind: 'unit',
+    tests: ['commands/deployments-cmd.test.ts', 'client/deployments.test.ts'],
+    notes: 'list/get — SDK observe.list_deployments / get_deployment',
   },
   activity: {
     kind: 'integration',
