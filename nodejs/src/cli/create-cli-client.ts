@@ -99,8 +99,9 @@ export async function resolveCliSigV4Credentials(
     : { ...DUMMY_SIGV4 };
 
   const expired = awsCredentialsExpired(fileCreds?.aws_credentials);
+  const hadAws = Boolean(fileCreds?.aws_credentials);
 
-  if (!fileCreds?.aws_credentials || expired) {
+  if (!hadAws || expired) {
     const authCtxForRefresh = await createCliAuthContext({
       ...options,
       on_after_refresh: r => {
@@ -110,23 +111,23 @@ export async function resolveCliSigV4Credentials(
         }
       },
     });
-    if (!authCtxForRefresh) {
+    if (authCtxForRefresh) {
+      await authCtxForRefresh.refresh_auth();
+      fileCreds = await readCredentials(credsPath);
+      const nextAws = fileCreds?.aws_credentials;
+      if (nextAws && !awsCredentialsExpired(nextAws)) {
+        applyAwsCredentials(cliSigv4, nextAws);
+      } else if (expired) {
+        // Had STS that expired — do not keep signing with a corpse token.
+        // API Gateway returns a cryptic 403 that looks like an RBAC failure.
+        throw sessionExpiredError(
+          'AWS session credentials expired and could not be refreshed'
+        );
+      }
+      // Missing STS entirely: keep dummy fallback below (tests / JWT-only setups).
+    } else if (expired) {
       throw sessionExpiredError('Missing access token');
     }
-    const refreshed = await authCtxForRefresh.refresh_auth();
-    fileCreds = await readCredentials(credsPath);
-    const nextAws = fileCreds?.aws_credentials;
-    const stillExpired = !nextAws || awsCredentialsExpired(nextAws);
-    if (!refreshed || stillExpired) {
-      // Do not continue with corpse STS — API Gateway returns a cryptic 403
-      // "security token … expired" that looks like an RBAC failure.
-      throw sessionExpiredError(
-        expired
-          ? 'AWS session credentials expired and could not be refreshed'
-          : 'Could not obtain AWS session credentials'
-      );
-    }
-    applyAwsCredentials(cliSigv4, nextAws);
   }
 
   if (isDummySigV4(cliSigv4)) {
