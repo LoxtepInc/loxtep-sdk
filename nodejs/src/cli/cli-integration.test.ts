@@ -35,6 +35,7 @@ import { runQueueInfo, runQueueCheckpoint } from './commands/queue-cmd.js';
 import { runMetricsRateLimits, runMetricsLog } from './commands/metrics-cmd.js';
 import { runActivityListCommand } from './commands/activity-cmd.js';
 import { runImprovementsListCommand } from './commands/improvements-cmd.js';
+import { runApprovalsListCommand } from './commands/approvals-cmd.js';
 import { requireCliClient } from './create-cli-client.js';
 import { readCredentials } from './credentials.js';
 import {
@@ -306,6 +307,14 @@ describe('CLI integration (mock platform API)', () => {
   });
 
   describe('Review & activity', () => {
+    it('approvals list (list_pending defaults status=pending)', async () => {
+      const { client } = await requireCliClient(opts());
+      const result = await runApprovalsListCommand(client);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.join('\n')).toContain(MOCK_IDS.approval_request_id);
+      expect(result.stdout.join('\n')).toContain('pending');
+    });
+
     it('improvements list', async () => {
       const { client } = await requireCliClient(opts());
       const result = await runImprovementsListCommand(client);
