@@ -19,6 +19,7 @@ import { createProjectsApi } from './projects.js';
 import { createTemplatesApi } from './templates.js';
 import { createObserveApi } from './observe.js';
 import { createThesaurusApi } from './thesaurus.js';
+import { createOntologyApi } from './ontology.js';
 import { createProcessIntelligenceApi } from './process-intelligence.js';
 import { createTargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
@@ -116,7 +117,7 @@ export class LoxtepClient {
   /** Schemas, quality, standards, contracts, domains (MCP: loxtep_define). */
   readonly define: ReturnType<typeof createDefineFacade>;
 
-  /** Thesaurus / ontology vocabulary (MCP: loxtep_meaning). */
+  /** Thesaurus + ontology concepts/relationships (MCP: loxtep_meaning). */
   readonly meaning: ReturnType<typeof createMeaningFacade>;
 
   /** Approvals + improvements + CDLC (MCP: loxtep_review). */
@@ -208,6 +209,9 @@ export class LoxtepClient {
     const discoveryApi = createDiscoveryApi(this._http);
     const schemasApi = createSchemasApi(this._http);
     const thesaurusApi = createThesaurusApi(this._http, options.organization_id);
+    const ontologyApi = createOntologyApi(this._http, {
+      organization_id: options.organization_id,
+    });
     const processIntelligenceApi = createProcessIntelligenceApi(this._http);
     const targetsApi = createTargetsApi(this._http);
     const connectorsApi = createConnectorsApi(this._http);
@@ -239,7 +243,7 @@ export class LoxtepClient {
       data_contracts: dataContractsApi,
       domains: domainsApi,
     });
-    this.meaning = createMeaningFacade({ thesaurus: thesaurusApi });
+    this.meaning = createMeaningFacade({ thesaurus: thesaurusApi, ontology: ontologyApi });
     this.review = createReviewFacade({
       approvals: approvalsApi,
       improvements: improvementsApi,

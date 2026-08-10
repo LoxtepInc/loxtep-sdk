@@ -27,6 +27,10 @@ import {
   runImprovementsApplyCommand,
   runImprovementsRejectCommand,
 } from './commands/improvements-cmd.js';
+import {
+  runApprovalsApproveCommand,
+  runApprovalsRejectCommand,
+} from './commands/approvals-cmd.js';
 import { requireCliClient } from './create-cli-client.js';
 import {
   createCliTestHarness,
@@ -236,6 +240,22 @@ describe('CLI integration mutations (mock platform API)', () => {
   });
 
   describe('Review', () => {
+    it('approvals approve (resolve approve)', async () => {
+      const { client } = await requireCliClient(opts());
+      const result = await runApprovalsApproveCommand(client, MOCK_IDS.approval_request_id);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.join('\n')).toContain(MOCK_IDS.approval_request_id);
+      expect(result.stdout.join('\n')).toContain('approved');
+    });
+
+    it('approvals reject (resolve reject)', async () => {
+      const { client } = await requireCliClient(opts());
+      const result = await runApprovalsRejectCommand(client, MOCK_IDS.approval_request_id);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.join('\n')).toContain(MOCK_IDS.approval_request_id);
+      expect(result.stdout.join('\n')).toContain('rejected');
+    });
+
     it('improvements reject', async () => {
       const { client } = await requireCliClient(opts());
       const result = await runImprovementsRejectCommand(client, 'imp-001');
