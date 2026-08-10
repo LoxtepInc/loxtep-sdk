@@ -14,7 +14,7 @@ Client for the Loxtep API. `LoxtepClient` groups platform APIs under
 | Review | `client.review` | `.approvals.*`, `.improvements.*` |
 | Analytics | `client.query` | `.catalog.*`, `.discovery.*`, `.query()` |
 | Observe | `client.observe` | `.stream_config()`, `.open_reader()` |
-| Context | `client.context` | `.procedures.*`, `.activity.*`, … |
+| Context | `client.context` | `.procedures.*`, `.issues.*`, `.goals.*`, `.workstreams.*`, … |
 
 **Stream I/O** uses top-level helpers on the client:
 `await client.get_writer('data-product-name')` and
@@ -230,7 +230,7 @@ Every method is `snake_case`. APIs live on **namespaced areas** of
 - **`client.session`** — `get_current_user`, `get_current_organization`, `logout`
 - **`client.meaning`** — `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`
 - **`client.review`** — `.approvals.*`, `.improvements.*`
-- **`client.context`** — `.procedures.*`, `.activity.*`, `.process_intelligence.*`
+- **`client.context`** — `.procedures.*`, `.activity.*`, `.process_intelligence.*`, `.issues.*`, `.goals.*`, `.workstreams.*`
 - **`client.metrics`** — `log`, `get_reporter` (stub until metrics wiring lands)
 
 ## Data product writer and reader

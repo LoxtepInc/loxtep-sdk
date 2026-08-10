@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Agent workspace reads** — `IssuesApi` / `GoalsApi` / `WorkstreamsApi`
+  (sync + async) on `client.context.issues|goals|workstreams` for
+  `list`/`get` (MCP aliases `list_issues`/`get_issue`, etc.) against
+  `/agent-orchestration/...`. **Writes deferred** — use MCP `loxtep_context`.
+
 ## [0.6.0] — 2026-08-07
 
 ### Added

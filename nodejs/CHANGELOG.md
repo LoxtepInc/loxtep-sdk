@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added
 
+- **`client.context.issues` / `.goals` / `.workstreams`** — MCP `loxtep_context`
+  read parity for `list_issues` / `get_issue`, `list_goals` / `get_goal`,
+  `list_workstreams` / `get_workstream` against agent-orchestration REST.
+  Short method names (`list`, `get`) alias the MCP op names. **Writes deferred**
+  (create/update issue, create goal, create/update workstream, add comment) —
+  use MCP until a follow-up ships them.
 - **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
   `get_semantic_artifact`, and `get_semantic_completeness`
   (`POST /semantic-layer/search`, `GET /semantic-layer/...`,

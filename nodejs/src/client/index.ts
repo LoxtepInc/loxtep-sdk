@@ -281,6 +281,22 @@ export type {
 export type { Instance, InstancesListResponse, InstanceDetailResponse } from './instances-types.js';
 export type { Procedure, ProceduresListResponse } from './procedures-types.js';
 export type {
+  AgentWorkspaceApiDeps,
+  AgentWorkspaceGoal,
+  AgentWorkspaceIssue,
+  AgentWorkspaceListResponse,
+  AgentWorkspaceWorkstream,
+  GoalsListFilters,
+  IssuesListFilters,
+  WorkstreamsListFilters,
+} from './agent-workspace-types.js';
+export type {
+  AgentWorkspaceApi,
+  GoalsApi,
+  IssuesApi,
+  WorkstreamsApi,
+} from './agent-workspace.js';
+export type {
   Improvement,
   ImprovementStatus,
   ImprovementsListFilters,
