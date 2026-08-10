@@ -85,7 +85,7 @@ Full API surface and CLI reference: [`nodejs/README.md`](./nodejs/README.md).
 | **Agent-first (MCP)** | Drive Loxtep from Cursor, Claude, Kiro, etc. — [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills) |
 | **Web UI** | Visual setup at [app.loxtep.io](https://app.loxtep.io) |
 
-Platform overview: [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
+Platform overview: [Loxtep Quickstart](https://app.loxtep.io/docs/quickstart/quickstart).
 
 ## Python
 

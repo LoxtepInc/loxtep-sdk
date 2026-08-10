@@ -35,7 +35,7 @@ credentials for SigV4 on both REST and the bus.
 | **Agent-first (MCP)** | Conversational setup from your IDE | [loxtep-plugins-skills](https://github.com/LoxtepInc/loxtep-plugins-skills) |
 | **Web UI** | Visual project and workflow management | [app.loxtep.io](https://app.loxtep.io) |
 
-All paths: [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
+All paths: [Loxtep Quickstart](https://app.loxtep.io/docs/quickstart/quickstart).
 
 ---
 

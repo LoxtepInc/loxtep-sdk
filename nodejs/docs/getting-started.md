@@ -11,7 +11,7 @@ write events with `get_writer`.
 > **Other paths:** [Code-first CLI](./code-first-cli.md) (`init → attach →
 > generate → test → deploy`), [Agent-first MCP](https://github.com/LoxtepInc/loxtep-plugins-skills),
 > or the **Web UI** at [app.loxtep.io](https://app.loxtep.io).
-> Overview: [Loxtep Quickstart](https://docs.loxtep.io/quickstart).
+> Overview: [Loxtep Quickstart](https://app.loxtep.io/docs/quickstart/quickstart).
 
 ## Table of Contents
 
