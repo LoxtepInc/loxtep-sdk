@@ -135,9 +135,16 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     ],
   },
   approvals: {
-    kind: 'unit',
-    tests: ['commands/approvals-cmd.test.ts'],
-    notes: 'list/approve/reject; org resolved via session when missing from project.json',
+    kind: 'integration',
+    tests: [
+      'cli-integration.test.ts',
+      'cli-integration-mutations.test.ts',
+      'commands/approvals-cmd.test.ts',
+      '../client/approvals.http.integration.test.ts',
+      '../client/approvals.test.ts',
+    ],
+    notes:
+      'list/approve/reject via mock-platform-api fixtures (MCP list_pending + resolve); optional live smoke LOXTEP_CLI_SMOKE=1',
   },
   cdlc: {
     kind: 'unit',

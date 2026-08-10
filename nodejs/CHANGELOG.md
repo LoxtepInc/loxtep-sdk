@@ -8,6 +8,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
+  `get_semantic_artifact`, and `get_semantic_completeness`
+  (`POST /semantic-layer/search`, `GET /semantic-layer/...`,
+  `GET /semantic-layer/completeness`).
+
+## [0.9.6] - 2026-08-10
+
+### Fixed
+
+- **CLI `DEP0187` warning** — stop eagerly importing `leo-sdk` on every command.
+  REST-only commands (e.g. `loxtep data-products list`) no longer load the stream
+  runtime, avoiding Node's `fs.existsSync` deprecation from leo-sdk's
+  `leoConfigure` side effect. `leo-sdk` is still required lazily when constructing
+  a stream reader/writer.
+
 ## [0.9.5] - 2026-08-10
 
 ### Fixed

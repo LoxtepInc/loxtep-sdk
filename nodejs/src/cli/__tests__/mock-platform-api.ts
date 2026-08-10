@@ -21,6 +21,7 @@ export const MOCK_IDS = {
   connector_sdk_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   connector_shopify_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   project_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  approval_request_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
   queue_name: 'test-env-queue-orders',
   bot_id: 'test-env-bot-reader',
 } as const;
@@ -1007,6 +1008,51 @@ export function createDefaultPlatformRoutes(): RouteHandler {
           type: body.type ?? 'api',
           key: body.key ?? 'new-trigger',
           status: 'active',
+        })
+      );
+    }
+
+    // Approvals (agent-orchestration) — MCP list_pending / resolve via REST.
+    // Public path: /agent-orchestration/organizations/{org}/approval-requests[/{id}/approve|reject]
+    const approvalsListMatch = routeMatch(
+      pathname,
+      /\/agent-orchestration\/organizations\/([^/]+)\/approval-requests$/
+    );
+    if (method === 'GET' && approvalsListMatch) {
+      return jsonResponse(
+        listEnvelope([
+          {
+            approval_request_id: MOCK_IDS.approval_request_id,
+            organization_id: approvalsListMatch[1],
+            workflow_name: 'orders-sync',
+            operation_name: 'review-mapping',
+            target_resource: MOCK_IDS.data_product_id,
+            requesting_actor: 'system',
+            status: 'pending',
+            expires_at: '2026-12-31T00:00:00.000Z',
+            decided_by_user_id: null,
+            decided_at: null,
+            metadata: {},
+            required_approvals: 1,
+            criteria_schema: null,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+          },
+        ])
+      );
+    }
+
+    const approvalsDecideMatch = routeMatch(
+      pathname,
+      /\/agent-orchestration\/organizations\/([^/]+)\/approval-requests\/([^/]+)\/(approve|reject)$/
+    );
+    if (method === 'POST' && approvalsDecideMatch) {
+      const action = approvalsDecideMatch[3];
+      return jsonResponse(
+        successEnvelope({
+          approval_request_id: approvalsDecideMatch[2],
+          status: action === 'approve' ? 'approved' : 'rejected',
+          decided_at: '2026-01-02T00:00:00.000Z',
         })
       );
     }

@@ -71,14 +71,21 @@ Governance
   data-contracts list | get <id> | create …
 
 Review
-  approvals list [--status pending|…] [--organization-id <id>]
-  approvals approve <id> | reject <id>   HITL approval inbox (deploy / agent gates)
+  approvals list [--status …] [--page N] [--page-size N] [--organization-id <id>]
+                     List HITL approval requests (default status: pending)
+  approvals approve <id> | reject <id> [--response …] [--form-response <json>] [--organization-id <id>]
+                     Resolve a pending approval (same decision as inbox / Slack)
   improvements list [--status …] [--workflow <name>]
   improvements apply <id> | reject <id>  Adopt or reject AI-eval workflow improvements
   cdlc transition <artifact_ref> --from <state> --to <state>
                      Lifecycle transition (draft|in_review|approved|deployed|retired)
   cdlc review-queue [--domain-id <id>] [--organization-id <id>]
                      Steward review queue (pending queue_review tasks)
+
+Meaning
+  packs list                             Available vocabulary packs (+ recommendation)
+  packs activate <pack_id> [--organization-id <id>]
+  packs status                           Current pack activation state
 
 Analytics
   data-products query <id> "SQL" | --file <path>

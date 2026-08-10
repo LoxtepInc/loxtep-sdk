@@ -93,6 +93,16 @@ describe('LoxtepClient', () => {
     expect(typeof thesaurus.list_terms).toBe('function');
     expect(typeof thesaurus.resolve_canonical_key).toBe('function');
 
+    const ontology = (client.meaning as Record<string, unknown>).ontology as Record<string, unknown>;
+    expect(typeof ontology.list_concepts).toBe('function');
+    expect(typeof ontology.get_concept).toBe('function');
+    expect(typeof ontology.create_concept).toBe('function');
+    expect(typeof ontology.update_concept).toBe('function');
+    expect(typeof ontology.delete_concept).toBe('function');
+    expect(typeof ontology.create_relationship).toBe('function');
+    expect(typeof ontology.get_relationships).toBe('function');
+    expect(typeof ontology.list_relationships).toBe('function');
+
     const dataProducts = build.data_products as Record<string, unknown>;
     expect(typeof dataProducts.get_usage_map).toBe('function');
     expect(typeof client.build.get_writer).toBe('function');
