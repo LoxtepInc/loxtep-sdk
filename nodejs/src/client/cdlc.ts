@@ -1,14 +1,16 @@
 /**
  * CDLC (Context Development Lifecycle) API — lifecycle get/transition,
- * change propagation, lineage, and context dependency edges.
+ * change propagation, lineage, context dependency edges, and steward review queue.
  * MCP: loxtep_review CDLC ops (get_artifact_lifecycle, transition_lifecycle,
  * propagate_change, list_propagation_lineage, list_context_dependencies).
+ * REST steward path: list_review_queue (GET .../cdlc/review-queue).
  *
  *   GET  /graph/organizations/{org}/cdlc/artifacts/{artifact_ref}
  *   POST /graph/organizations/{org}/cdlc/artifacts/{artifact_ref}/transition
  *   POST /graph/organizations/{org}/cdlc/propagate
  *   GET  /graph/organizations/{org}/cdlc/propagation-lineage
  *   GET  /graph/organizations/{org}/cdlc/dependencies
+ *   GET  /graph/organizations/{org}/cdlc/review-queue
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
@@ -20,10 +22,13 @@ import type {
   LifecycleTransitionResult,
   ListContextDependenciesFilters,
   ListPropagationLineageFilters,
+  ListReviewQueueFilters,
   PropagateChangeInput,
   PropagateChangeResult,
   PropagationLineageListResult,
   PropagationLineageRecord,
+  ReviewQueueListResult,
+  ReviewTask,
   TransitionLifecycleInput,
 } from './cdlc-types.js';
 
@@ -81,6 +86,45 @@ function normalizeDependencies(payload: unknown): ContextDependenciesListResult 
   return { dependencies, count: obj.count ?? dependencies.length };
 }
 
+function normalizeReviewTask(row: Record<string, unknown>): ReviewTask {
+  return {
+    id: String(row.id ?? row.task_id ?? ''),
+    artifact_ref: String(row.artifact_ref ?? row.artifactRef ?? ''),
+    artifact_name: String(row.artifact_name ?? row.artifactName ?? ''),
+    artifact_type: String(row.artifact_type ?? row.artifactType ?? 'unknown'),
+    source_artifact_ref: String(row.source_artifact_ref ?? row.sourceArtifactRef ?? ''),
+    source_artifact_name: String(row.source_artifact_name ?? row.sourceArtifactName ?? ''),
+    version_before: (row.version_before ?? row.versionBefore ?? null) as string | null,
+    version_after: String(row.version_after ?? row.versionAfter ?? ''),
+    actor: String(row.actor ?? ''),
+    status: String(row.status ?? 'pending'),
+    created_at: String(row.created_at ?? row.createdAt ?? ''),
+    owner: (row.owner as string | null | undefined) ?? null,
+    rejection_reason: (row.rejection_reason ??
+      row.rejectionReason ??
+      null) as string | null,
+  };
+}
+
+function normalizeReviewQueue(payload: unknown): ReviewQueueListResult {
+  let rows: unknown[] = [];
+  if (Array.isArray(payload)) {
+    rows = payload;
+  } else if (payload && typeof payload === 'object') {
+    const obj = payload as {
+      tasks?: unknown[];
+      items?: unknown[];
+      count?: number;
+    };
+    if (Array.isArray(obj.tasks)) rows = obj.tasks;
+    else if (Array.isArray(obj.items)) rows = obj.items;
+  }
+  const tasks = rows
+    .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+    .map(normalizeReviewTask);
+  return { tasks, count: tasks.length };
+}
+
 export interface CdlcApi {
   get_artifact_lifecycle: (input: GetArtifactLifecycleInput) => Promise<ArtifactLifecycle>;
   transition_lifecycle: (input: TransitionLifecycleInput) => Promise<LifecycleTransitionResult>;
@@ -91,6 +135,8 @@ export interface CdlcApi {
   list_context_dependencies: (
     filters?: ListContextDependenciesFilters
   ) => Promise<ContextDependenciesListResult>;
+  /** Steward review queue (pending `in_review` / queue_review tasks). */
+  list_review_queue: (filters?: ListReviewQueueFilters) => Promise<ReviewQueueListResult>;
 }
 
 export function createCdlcApi(http: LoxtepHttpClient, deps: CdlcApiDeps = {}): CdlcApi {
@@ -164,6 +210,17 @@ export function createCdlcApi(http: LoxtepHttpClient, deps: CdlcApiDeps = {}): C
       const qs = search.toString() ? `?${search.toString()}` : '';
       const res = await http.get<unknown>(`${orgBase(org)}/dependencies${qs}`);
       return normalizeDependencies(unwrapData(res));
+    },
+
+    async list_review_queue(
+      filters: ListReviewQueueFilters = {}
+    ): Promise<ReviewQueueListResult> {
+      const org = requireOrg(deps, filters.organization_id);
+      const search = new URLSearchParams();
+      if (filters.domain_id) search.set('domain_id', filters.domain_id);
+      const qs = search.toString() ? `?${search.toString()}` : '';
+      const res = await http.get<unknown>(`${orgBase(org)}/review-queue${qs}`);
+      return normalizeReviewQueue(unwrapData(res));
     },
   };
 }

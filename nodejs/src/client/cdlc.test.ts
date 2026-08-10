@@ -190,6 +190,48 @@ describe('createCdlcApi', () => {
     expect(result.dependencies[0]?.id).toBe('d1');
   });
 
+  it('list_review_queue GETs .../review-queue and normalizes snake_case rows', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return {
+          success: true as const,
+          data: [
+            {
+              id: 'rt1',
+              artifact_ref: 'ontology_concept:c1',
+              artifact_name: 'Concept One',
+              artifact_type: 'ontology_concept',
+              source_artifact_ref: 'thesaurus_term:t1',
+              source_artifact_name: 'Term One',
+              version_before: '1',
+              version_after: '2',
+              actor: 'u1',
+              status: 'pending',
+              created_at: '2026-08-10T00:00:00Z',
+              owner: 'steward',
+            },
+          ],
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http, { organization_id: 'org1' });
+    const result = await api.list_review_queue({ domain_id: 'dom-1' });
+
+    expect(capturedPath).toBe(
+      '/graph/organizations/org1/cdlc/review-queue?domain_id=dom-1'
+    );
+    expect(result.count).toBe(1);
+    expect(result.tasks[0]).toMatchObject({
+      id: 'rt1',
+      artifact_ref: 'ontology_concept:c1',
+      status: 'pending',
+      owner: 'steward',
+    });
+  });
+
   it('throws when organization_id is missing from both deps and call', async () => {
     const http = {
       get: async () => ({ success: true as const, data: {} }),
