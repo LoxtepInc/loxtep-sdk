@@ -137,7 +137,8 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
   approvals: {
     kind: 'unit',
     tests: ['commands/approvals-cmd.test.ts'],
-    notes: 'list/approve/reject; org resolved via session when missing from project.json',
+    notes:
+      'list/approve/reject; SDK resolve body covered in src/client/approvals.test.ts; HTTP integration LOX-1240; optional --organization-id',
   },
   deployments: {
     kind: 'unit',
