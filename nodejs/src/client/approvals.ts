@@ -12,11 +12,29 @@ import type {
   ApprovalsApiDeps,
   ApprovalsListFilters,
   ApprovalsListResponse,
+  ApprovalsResolveOptions,
   ApprovalDecisionResult,
 } from './approvals-types.js';
 
 function unwrap<T>(res: unknown): T {
   return ((res as { data?: T }).data ?? res) as T;
+}
+
+function normalizeResolveOptions(
+  organization_idOrOptions?: string | ApprovalsResolveOptions
+): ApprovalsResolveOptions {
+  if (typeof organization_idOrOptions === 'string') {
+    return { organization_id: organization_idOrOptions };
+  }
+  return organization_idOrOptions ?? {};
+}
+
+function buildResolveBody(options: ApprovalsResolveOptions): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (options.response !== undefined) body.response = options.response;
+  if (options.form_response !== undefined) body.form_response = options.form_response;
+  if (options.decision_note !== undefined) body.decision_note = options.decision_note;
+  return body;
 }
 
 export function createApprovalsApi(
@@ -28,10 +46,16 @@ export function createApprovalsApi(
   resolve: (
     approval_request_id: string,
     action: 'approve' | 'reject',
-    organization_id?: string
+    organization_idOrOptions?: string | ApprovalsResolveOptions
   ) => Promise<ApprovalDecisionResult>;
-  approve: (approval_request_id: string, organization_id?: string) => Promise<ApprovalDecisionResult>;
-  reject: (approval_request_id: string, organization_id?: string) => Promise<ApprovalDecisionResult>;
+  approve: (
+    approval_request_id: string,
+    options?: ApprovalsResolveOptions
+  ) => Promise<ApprovalDecisionResult>;
+  reject: (
+    approval_request_id: string,
+    options?: ApprovalsResolveOptions
+  ) => Promise<ApprovalDecisionResult>;
 } {
   const resolveOrg = (override?: string): string => {
     const org = override ?? deps.organization_id;
@@ -56,7 +80,12 @@ export function createApprovalsApi(
       const qs = search.toString() ? `?${search.toString()}` : '';
       const res = await http.get<ApprovalsListResponse>(`${base(org)}${qs}`);
       const payload = unwrap<ApprovalsListResponse>(res);
-      return { items: payload.items ?? [], pagination: payload.pagination };
+      const out: ApprovalsListResponse = {
+        items: payload.items ?? [],
+        pagination: payload.pagination,
+      };
+      if (payload.total != null) out.total = payload.total;
+      return out;
     },
 
     list_pending(organization_id?: string): Promise<ApprovalsListResponse> {
@@ -66,22 +95,29 @@ export function createApprovalsApi(
     async resolve(
       approval_request_id: string,
       action: 'approve' | 'reject',
-      organization_id?: string
+      organization_idOrOptions?: string | ApprovalsResolveOptions
     ): Promise<ApprovalDecisionResult> {
-      const org = resolveOrg(organization_id);
+      const options = normalizeResolveOptions(organization_idOrOptions);
+      const org = resolveOrg(options.organization_id);
       const res = await http.post<ApprovalDecisionResult>(
         `${base(org)}/${encodeURIComponent(approval_request_id)}/${action}`,
-        {}
+        buildResolveBody(options)
       );
       return unwrap<ApprovalDecisionResult>(res);
     },
 
-    approve(approval_request_id: string, organization_id?: string): Promise<ApprovalDecisionResult> {
-      return this.resolve(approval_request_id, 'approve', organization_id);
+    approve(
+      approval_request_id: string,
+      options?: ApprovalsResolveOptions
+    ): Promise<ApprovalDecisionResult> {
+      return this.resolve(approval_request_id, 'approve', options);
     },
 
-    reject(approval_request_id: string, organization_id?: string): Promise<ApprovalDecisionResult> {
-      return this.resolve(approval_request_id, 'reject', organization_id);
+    reject(
+      approval_request_id: string,
+      options?: ApprovalsResolveOptions
+    ): Promise<ApprovalDecisionResult> {
+      return this.resolve(approval_request_id, 'reject', options);
     },
   };
 }

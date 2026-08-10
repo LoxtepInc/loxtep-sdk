@@ -8,6 +8,7 @@ export type {
   ApprovalStatus,
   ApprovalsListResponse,
   ApprovalsListFilters,
+  ApprovalsResolveOptions,
   ApprovalDecisionResult,
 } from './approvals-types.js';
 export type {
@@ -197,6 +198,43 @@ export type {
   ThesaurusListResponse,
   ThesaurusResolveResponse,
 } from './thesaurus-types.js';
+export type {
+  OntologyNodeType,
+  OntologyConcept,
+  OntologyConceptListResult,
+  OntologyListConceptsFilters,
+  OntologyCreateConceptInput,
+  OntologyUpdateConceptInput,
+  OntologyDeleteConceptResult,
+  OntologyRelationship,
+  OntologyRelationshipsResult,
+  OntologyCreateRelationshipInput,
+  OntologyGetRelationshipsFilters,
+} from './ontology-types.js';
+export type { OntologyApi } from './ontology.js';
+export type {
+  PackActivationState,
+  PackActivationStatus,
+  AvailablePackSummary,
+  ListAvailablePacksResult,
+  ActivateVocabularyPackInput,
+  ActivateVocabularyPackResult,
+  PacksApiDeps,
+} from './packs-types.js';
+export type { PacksApi } from './packs.js';
+export type {
+  SemanticArtifactType,
+  SearchSemanticLayerInput,
+  SemanticSearchResultItem,
+  SemanticSearchPagination,
+  SearchSemanticLayerResult,
+  GetSemanticArtifactInput,
+  GetSemanticCompletenessInput,
+  DomainCompleteness,
+  SemanticCompletenessResult,
+} from './semantic-layer-types.js';
+export type { SemanticLayerApi } from './semantic-layer.js';
+export { semanticArtifactPathSegment } from './semantic-layer.js';
 export type {
   DecisionTraceListItem,
   DecisionTracesListParams,
