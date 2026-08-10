@@ -8,7 +8,9 @@ import { createQueuesApi } from './queues.js';
 import { createTriggersApi } from './triggers.js';
 import { createQualityApi } from './quality.js';
 import { createApprovalsApi } from './approvals.js';
+import { createCdlcApi } from './cdlc.js';
 import { createDeploymentsApi } from './deployments.js';
+
 import { createCatalogApi } from './catalog.js';
 import { createSchemasApi } from './schemas.js';
 import { createDiscoveryApi } from './discovery.js';
@@ -120,7 +122,7 @@ export class LoxtepClient {
   /** Thesaurus + ontology + packs + semantic search/completeness (MCP: loxtep_meaning). */
   readonly meaning: ReturnType<typeof createMeaningFacade>;
 
-  /** Approvals + improvements (MCP: loxtep_review). */
+  /** Approvals + improvements + CDLC (MCP: loxtep_review). */
   readonly review: ReturnType<typeof createReviewFacade>;
 
   /** Catalog, discovery, analytics query (MCP: loxtep_query). */
@@ -202,6 +204,9 @@ export class LoxtepClient {
     const approvalsApi = createApprovalsApi(this._http, {
       organization_id: options.organization_id,
     });
+    const cdlcApi = createCdlcApi(this._http, {
+      organization_id: options.organization_id,
+    });
     const catalogApi = createCatalogApi(this._http);
     const discoveryApi = createDiscoveryApi(this._http);
     const schemasApi = createSchemasApi(this._http);
@@ -250,7 +255,11 @@ export class LoxtepClient {
       packs: packsApi,
       semantic: semanticApi,
     });
-    this.review = createReviewFacade({ approvals: approvalsApi, improvements: improvementsApi });
+    this.review = createReviewFacade({
+      approvals: approvalsApi,
+      improvements: improvementsApi,
+      cdlc: cdlcApi,
+    });
     this.query = createQueryFacade({
       catalog: catalogApi,
       discovery: discoveryApi,
