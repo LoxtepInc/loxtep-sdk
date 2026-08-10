@@ -252,12 +252,30 @@ export type {
 export type { SemanticLayerApi } from './semantic-layer.js';
 export { semanticArtifactPathSegment } from './semantic-layer.js';
 export type {
+  CausalChainDirection,
+  CausalChainHop,
+  CausalLinkInput,
+  CausalLinkType,
+  CreateDecisionTraceInput,
+  CreateDecisionTraceResponse,
+  CreateDecisionTraceResult,
+  CreatedCausalLink,
+  DecisionChainResult,
+  DecisionTraceEntityType,
   DecisionTraceListItem,
   DecisionTracesListParams,
   DecisionTracesListResponse,
   EntityContextResponse,
+  GetDecisionChainParams,
+  GetDecisionChainResponse,
   GetEntityContextParams,
+  GetSimilarDecisionsParams,
+  GetSimilarDecisionsResponse,
+  SimilarDecisionCandidate,
+  SimilarDecisionsResult,
 } from './process-intelligence-types.js';
+export { CAUSAL_LINK_TYPES, DECISION_TRACE_ENTITY_TYPES } from './process-intelligence-types.js';
+export type { ProcessIntelligenceApi } from './process-intelligence.js';
 export type {
   Target,
   TargetType,

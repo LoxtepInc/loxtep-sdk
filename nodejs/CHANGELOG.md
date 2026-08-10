@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- **`client.context.process_intelligence.decisionTraces` (LOX-1226)** — thin wraps for
+  causal chain, similar decisions, and create-with-links:
+  `getChain`, `getSimilar`, and `create` (Node + Python parity).
+  Paths: `GET .../decision-traces/:id/chain`, `GET .../similar`,
+  `POST .../decision-traces` with `links` / `precedent_id`. Does not re-implement
+  platform graph ranking.
+
 - **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
   `get_semantic_artifact`, and `get_semantic_completeness`
   (`POST /semantic-layer/search`, `GET /semantic-layer/...`,
