@@ -8,30 +8,32 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.7] - 2026-08-10
+
 ### Added
 
-- **`client.context.issues` / `.goals` / `.workstreams`** — MCP `loxtep_context`
-  read parity for `list_issues` / `get_issue`, `list_goals` / `get_goal`,
-  `list_workstreams` / `get_workstream` against agent-orchestration REST.
-  Short method names (`list`, `get`) alias the MCP op names. **Writes deferred**
-  (create/update issue, create goal, create/update workstream, add comment) —
-  use MCP until a follow-up ships them.
-- **`client.context.process_intelligence.decisionTraces` (LOX-1226)** — thin wraps for
-  causal chain, similar decisions, and create-with-links:
-  `getChain`, `getSimilar`, and `create` (Node + Python parity).
-  Paths: `GET .../decision-traces/:id/chain`, `GET .../similar`,
-  `POST .../decision-traces` with `links` / `precedent_id`. Does not re-implement
-  platform graph ranking.
-- **`client.context.procedures`** — MCP `loxtep_context` parity for
-  `list_procedures` / `get_procedure` / `create_procedure` /
-  `update_procedure` / `delete_procedure` / `import_process_graph` /
-  `export_process_graph` against graph REST (`/graph/.../procedures`,
-  `/graph/procedures/{id}`, import + export). Short method names (`list`,
-  `get`, `create`, `update`, `delete`) alias the MCP op names.
-- **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
-  `get_semantic_artifact`, and `get_semantic_completeness`
-  (`POST /semantic-layer/search`, `GET /semantic-layer/...`,
-  `GET /semantic-layer/completeness`).
+- **Phase A SDK/CLI surface parity** — typed REST under the existing 10 MCP
+  facades (no new hosted tools):
+  - **`client.meaning.ontology`** — ontology concepts CRUD + relationships
+    (`list/get/create/update/delete_concept`, `create/get_relationships`).
+  - **`client.meaning.packs`** + CLI `loxtep packs list|activate|status` —
+    vocabulary pack recommend / enable / activation-state.
+  - **`client.meaning.semantic`** — `search_semantic_layer`,
+    `get_semantic_artifact`, `get_semantic_completeness`.
+  - **`client.review.cdlc`** + CLI `loxtep cdlc transition|review-queue` —
+    lifecycle get/transition, propagate, lineage, deps, steward review queue.
+  - **`client.review.mining`** + CLI `loxtep candidates list|act` —
+    `run_mining_pass`, `list_candidates`, `act_on_candidate`.
+  - **`client.context.procedures`** — graph procedures CRUD +
+    `import_process_graph` / `export_process_graph` (list path now targets
+    authored graph procedures, not PI discovery).
+  - **`client.context.process_intelligence.decisionTraces`** — causal chain,
+    similar decisions, and create-with-links (LOX-1226 / LOX-1248).
+  - **`client.context.issues` / `.goals` / `.workstreams`** — thin agent-
+    orchestration **reads** (`list`/`get`); writes remain MCP-only.
+- **Docs** — `docs/sdk-mcp-mapping.md` + `AGENTS.md` updated for the Phase A
+  surface (ontology/packs/semantic, CDLC/mining/candidates, procedures,
+  decisionTraces, agent-workspace reads).
 
 ### Changed
 

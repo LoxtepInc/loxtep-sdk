@@ -8,12 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-08-10
+
 ### Added
 
 - **Agent workspace reads** — `IssuesApi` / `GoalsApi` / `WorkstreamsApi`
   (sync + async) on `client.context.issues|goals|workstreams` for
   `list`/`get` (MCP aliases `list_issues`/`get_issue`, etc.) against
   `/agent-orchestration/...`. **Writes deferred** — use MCP `loxtep_context`.
+- **Decision-trace causal / similar (LOX-1226)** —
+  `decision_traces_get_chain`, `decision_traces_get_similar`, and
+  create-with-links on process-intelligence (sync + async).
 
 ## [0.6.0] — 2026-08-07
 
