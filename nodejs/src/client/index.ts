@@ -11,6 +11,27 @@ export type {
   ApprovalDecisionResult,
 } from './approvals-types.js';
 export type {
+  ArtifactRef,
+  LifecycleState,
+  ChangePropagationPolicy,
+  DependencyType,
+  CdlcApiDeps,
+  GetArtifactLifecycleInput,
+  ArtifactLifecycle,
+  TransitionLifecycleInput,
+  LifecycleTransitionResult,
+  PropagateChangeInput,
+  PropagateChangeAction,
+  PropagateChangeResult,
+  ListPropagationLineageFilters,
+  PropagationLineageRecord,
+  PropagationLineageListResult,
+  ListContextDependenciesFilters,
+  ContextDependency,
+  ContextDependenciesListResult,
+} from './cdlc-types.js';
+export type { CdlcApi } from './cdlc.js';
+export type {
   DataProduct,
   DataProductKind,
   DataProductCreateInput,
