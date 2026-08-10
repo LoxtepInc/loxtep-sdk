@@ -187,6 +187,16 @@ export type {
 } from './ontology-types.js';
 export type { OntologyApi } from './ontology.js';
 export type {
+  PackActivationState,
+  PackActivationStatus,
+  AvailablePackSummary,
+  ListAvailablePacksResult,
+  ActivateVocabularyPackInput,
+  ActivateVocabularyPackResult,
+  PacksApiDeps,
+} from './packs-types.js';
+export type { PacksApi } from './packs.js';
+export type {
   DecisionTraceListItem,
   DecisionTracesListParams,
   DecisionTracesListResponse,

@@ -74,6 +74,11 @@ import {
   runApprovalsRejectCommand,
 } from './commands/approvals-cmd.js';
 import {
+  runPacksListCommand,
+  runPacksActivateCommand,
+  runPacksStatusCommand,
+} from './commands/packs-cmd.js';
+import {
   runDeploymentsListCommand,
   runDeploymentsGetCommand,
 } from './commands/deployments-cmd.js';
@@ -815,6 +820,37 @@ async function runCommand(): Promise<void> {
           'Usage: loxtep approvals list [--status pending|approved|rejected|expired] [--organization-id <id>]\n' +
             '       loxtep approvals approve <approval_request_id> [--organization-id <id>]\n' +
             '       loxtep approvals reject <approval_request_id> [--organization-id <id>]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'packs': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      const orgId = getArg('--organization-id');
+      if (sub === 'list') {
+        const result = await runPacksListCommand(authResult.client);
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'activate' && args[2]) {
+        const result = await runPacksActivateCommand(authResult.client, args[2], {
+          organization_id: orgId,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'status') {
+        const result = await runPacksStatusCommand(authResult.client);
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep packs list\n' +
+            '       loxtep packs activate <pack_id> [--organization-id <id>]\n' +
+            '       loxtep packs status'
         );
         process.exitCode = 1;
       }

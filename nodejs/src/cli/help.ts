@@ -76,6 +76,11 @@ Review
   improvements list [--status …] [--workflow <name>]
   improvements apply <id> | reject <id>  Adopt or reject AI-eval workflow improvements
 
+Meaning
+  packs list                             Available vocabulary packs (+ recommendation)
+  packs activate <pack_id> [--organization-id <id>]
+  packs status                           Current pack activation state
+
 Analytics
   data-products query <id> "SQL" | --file <path>
   data-products tables <id>              List tables for analytics SQL
