@@ -8,6 +8,7 @@ export type {
   ApprovalStatus,
   ApprovalsListResponse,
   ApprovalsListFilters,
+  ApprovalsResolveOptions,
   ApprovalDecisionResult,
 } from './approvals-types.js';
 export type {

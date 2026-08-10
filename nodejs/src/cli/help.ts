@@ -27,11 +27,7 @@ Workspace
                      Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
   projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]
-                     | changes [--json] | clone <id|name> [dir] | pull | push
-                     List/get/link/clone org projects. changes = unpublished inventory
-                     (alias of status --unpublished). clone = Cloud→Local (git when
-                     GitHub-bound; workspace export when unbound). projects pull/push wrap
-                     GitHub sync APIs (bound only). Unbound Local→Cloud stays "loxtep push".
+                     List/get org projects; link = cloud↔directory bind (see link)
   instances list | get <id> | create … | deployment-urls | register … | registration
                      Provision and register runtime instances
 
@@ -50,7 +46,7 @@ Build & deploy
   delivery create --from <dp> --connector-id <id> [--name …] [--dry-run]
                      Delivery workflow (DP → target connection); workflow_type: delivery
   lint [--workflow <id>]
-                     Validate local entity JSON (schemas, relationships, unique names)
+                     Validate local entity JSON (schemas + relationships)
   push [--workflow-id <id>] [--dry-run] [--skip-reindex]
                      Upload local workflows via save_workflow_bundle + reindex
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
@@ -71,8 +67,10 @@ Governance
   data-contracts list | get <id> | create …
 
 Review
-  approvals list [--status pending|…] [--organization-id <id>]
-  approvals approve <id> | reject <id>   HITL approval inbox (deploy / agent gates)
+  approvals list [--status …] [--page N] [--page-size N] [--organization-id <id>]
+                     List HITL approval requests (default status: pending)
+  approvals approve <id> | reject <id> [--response …] [--form-response <json>] [--organization-id <id>]
+                     Resolve a pending approval (same decision as inbox / Slack)
   improvements list [--status …] [--workflow <name>]
   improvements apply <id> | reject <id>  Adopt or reject AI-eval workflow improvements
 
@@ -82,8 +80,6 @@ Analytics
 
 Observe
   observe status                         Platform / instance health snapshot
-  deployments list [--project-id …] [--instance-id …] [--workflow-id …] [--status …]
-  deployments get <deployment_id>        Poll async deploy status (after loxtep deploy)
   queue info <data-product-id> | --queue <name>
   queue checkpoint <id> --bot <bot-id>   Reader checkpoint for a bot
   metrics rate-limits | log --id <id> --value <n>
