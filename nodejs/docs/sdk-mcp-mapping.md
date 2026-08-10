@@ -15,7 +15,7 @@ deprecation aliases.
 | `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
 | `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
-| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*` (concepts CRUD + relationships create/list) |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*` (list/activate/status) |
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, CDLC and context-mining REST (pending) |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
@@ -57,6 +57,30 @@ MCP `loxtep_meaning` ontology ops map to `client.meaning.ontology`:
 | `get_ontology_relationships` | `client.meaning.ontology.get_relationships({ … })` (alias: `list_relationships`) |
 
 REST: `/graph/organizations/{org}/ontology/concepts` and `…/relationships`.
-Pack activation / semantic-layer ops remain MCP-only until a follow-up.
+
+## Meaning: vocabulary packs (LOX-1242)
+
+These ops live under MCP **`loxtep_meaning`** / semantic-layer (not `loxtep_define`).
+SDK surface: `client.meaning.packs`. CLI: `loxtep packs …`.
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `list_available_packs` | `client.meaning.packs.list_available()` (alias `list_available_packs`) | `GET /graph/admin/vocabulary-packs/recommend` |
+| `activate_vocabulary_pack` | `client.meaning.packs.activate({ pack_id, organization_id? })` (alias `activate_vocabulary_pack`) | `POST /graph/admin/vocabulary-packs/{pack_id}/enable` body `{ organization_id }` |
+| `get_pack_activation_status` | `client.meaning.packs.get_activation_status()` (alias `get_pack_activation_status`) | `GET /graph/semantic-layer/activation-state` |
+
+CLI verbs:
+
+| CLI | SDK |
+| --- | --- |
+| `loxtep packs list` | `list_available()` |
+| `loxtep packs activate <pack_id> [--organization-id]` | `activate({ pack_id, organization_id })` |
+| `loxtep packs status` | `get_activation_status()` |
+
+Notes:
+
+- Activation status is normalized to snake_case (`activation_state`, `active_pack_id`, …) whether the graph handler returns camelCase or snake_case.
+- `list_available` follows the MCP/recommend path (same as hosted tools). Admin inventory `GET /graph/admin/vocabulary-packs` is a sibling route; if recommend is unavailable, callers may see errors from that path specifically.
+- Requires `catalog:read` for list/status and `admin:vocabulary` for activate (platform RBAC).
 
 Full MCP operation tables: [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).
