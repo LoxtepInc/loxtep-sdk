@@ -21,6 +21,20 @@ deprecation aliases.
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
 | `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*` |
 
+## Approvals fixture / env bootstrap
+
+Happy-path **list_pending** + **resolve** (approve/reject) integration tests use the
+CLI mock catalog — no live mcpdev required for the default suite:
+
+| Mode | Bootstrap |
+| --- | --- |
+| **Fixtures (CI default)** | `src/cli/__tests__/mock-platform-api.ts` — routes under `/agent-orchestration/organizations/{org}/approval-requests`. Run: `pnpm exec jest src/client/approvals.http.integration.test.ts src/cli/cli-integration.test.ts src/cli/cli-integration-mutations.test.ts` |
+| **Live staging/mcpdev (optional)** | `loxtep login` (writes credentials), set `api_url` / `organization_id` in config (or `LOXTEP_API_URL` / `LOXTEP_ORGANIZATION_ID`), then `LOXTEP_CLI_SMOKE=1 pnpm exec jest src/cli/cli-staging-smoke.test.ts` |
+
+MCP mapping: `loxtep_review.list_pending` → `client.review.approvals.list_pending()`;
+`loxtep_review.resolve` → `client.review.approvals.resolve(id, 'approve'\|'reject')`
+(CLI: `loxtep approvals list|approve|reject`).
+
 ## Top-level stream I/O
 
 Preferred write/read path — resolves deployment metadata automatically:
