@@ -165,7 +165,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 | `client.workspace` | `.projects`, `.instances` | Projects, runtime instances |
 | `client.build` | `.workflows`, `.triggers`, `.data_products`, `.targets` | Authoring, deploy, CRUD, stream/replay |
 | `client.define` | `.schemas`, `.quality`, `.standards`, `.data_contracts`, `.domains` | Schema, quality, governance |
-| `client.meaning` | `.thesaurus`, `.ontology` | Vocabulary terms + ontology concepts/relationships |
+| `client.meaning` | `.thesaurus`, `.ontology`, `.packs`, `.semantic` | Vocabulary + ontology + packs + semantic search/artifact/completeness |
 | `client.review` | `.approvals`, `.improvements` | HITL approvals, AI-eval improvements |
 | `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
 | `client.observe` | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O |

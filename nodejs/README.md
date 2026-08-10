@@ -10,7 +10,7 @@ Client for the Loxtep API. `LoxtepClient` groups platform APIs under
 | Workspace | `client.workspace` | `.projects.*`, `.instances.*` |
 | Build & deploy | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*` |
 | Governance | `client.define` | `.schemas.*`, `.quality.*`, `.domains.*`, … |
-| Semantics | `client.meaning` | `.thesaurus.*`, `.ontology.*` |
+| Semantics | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*` |
 | Review | `client.review` | `.approvals.*`, `.improvements.*` |
 | Analytics | `client.query` | `.catalog.*`, `.discovery.*`, `.query()` |
 | Observe | `client.observe` | `.stream_config()`, `.open_reader()` |
@@ -228,7 +228,7 @@ Every method is `snake_case`. APIs live on **namespaced areas** of
 ### Authentication, semantics, review, and context
 
 - **`client.session`** — `get_current_user`, `get_current_organization`, `logout`
-- **`client.meaning`** — `.thesaurus.*`, `.ontology.*`
+- **`client.meaning`** — `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`
 - **`client.review`** — `.approvals.*`, `.improvements.*`
 - **`client.context`** — `.procedures.*`, `.activity.*`, `.process_intelligence.*`
 - **`client.metrics`** — `log`, `get_reporter` (stub until metrics wiring lands)

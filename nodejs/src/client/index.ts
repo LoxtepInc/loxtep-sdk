@@ -188,6 +188,29 @@ export type {
 } from './ontology-types.js';
 export type { OntologyApi } from './ontology.js';
 export type {
+  PackActivationState,
+  PackActivationStatus,
+  AvailablePackSummary,
+  ListAvailablePacksResult,
+  ActivateVocabularyPackInput,
+  ActivateVocabularyPackResult,
+  PacksApiDeps,
+} from './packs-types.js';
+export type { PacksApi } from './packs.js';
+export type {
+  SemanticArtifactType,
+  SearchSemanticLayerInput,
+  SemanticSearchResultItem,
+  SemanticSearchPagination,
+  SearchSemanticLayerResult,
+  GetSemanticArtifactInput,
+  GetSemanticCompletenessInput,
+  DomainCompleteness,
+  SemanticCompletenessResult,
+} from './semantic-layer-types.js';
+export type { SemanticLayerApi } from './semantic-layer.js';
+export { semanticArtifactPathSegment } from './semantic-layer.js';
+export type {
   DecisionTraceListItem,
   DecisionTracesListParams,
   DecisionTracesListResponse,
