@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-08-10
+
+### Fixed
+
+- **CLI `DEP0187` warning** — stop eagerly importing `leo-sdk` on every command.
+  REST-only commands (e.g. `loxtep data-products list`) no longer load the stream
+  runtime, avoiding Node's `fs.existsSync` deprecation from leo-sdk's
+  `leoConfigure` side effect. `leo-sdk` is still required lazily when constructing
+  a stream reader/writer.
+
 ## [0.9.5] - 2026-08-10
 
 ### Fixed
