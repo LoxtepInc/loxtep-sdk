@@ -174,6 +174,20 @@ export type {
   ThesaurusResolveResponse,
 } from './thesaurus-types.js';
 export type {
+  OntologyNodeType,
+  OntologyConcept,
+  OntologyConceptListResult,
+  OntologyListConceptsFilters,
+  OntologyCreateConceptInput,
+  OntologyUpdateConceptInput,
+  OntologyDeleteConceptResult,
+  OntologyRelationship,
+  OntologyRelationshipsResult,
+  OntologyCreateRelationshipInput,
+  OntologyGetRelationshipsFilters,
+} from './ontology-types.js';
+export type { OntologyApi } from './ontology.js';
+export type {
   DecisionTraceListItem,
   DecisionTracesListParams,
   DecisionTracesListResponse,

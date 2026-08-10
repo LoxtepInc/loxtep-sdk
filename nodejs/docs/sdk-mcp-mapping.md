@@ -15,7 +15,7 @@ deprecation aliases.
 | `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
 | `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
-| `loxtep_meaning` | `client.meaning` | `.thesaurus.*` (ontology/semantic REST split pending) |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*` (concepts CRUD + relationships create/list) |
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, CDLC and context-mining REST (pending) |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
@@ -41,5 +41,22 @@ probe uses `test_connector` / `loxtep connectors test <id>`; sample capture uses
 
 When unsure: **MCP for provisioning and agent tool calls**; **SDK for runtime**
 services running in your infrastructure or CI.
+
+## Meaning: ontology concepts (LOX-1241)
+
+MCP `loxtep_meaning` ontology ops map to `client.meaning.ontology`:
+
+| MCP operation | SDK |
+| --- | --- |
+| `list_ontology_concepts` | `client.meaning.ontology.list_concepts()` |
+| `get_ontology_concept` | `client.meaning.ontology.get_concept(concept_id)` |
+| `create_ontology_concept` | `client.meaning.ontology.create_concept({ name, namespace, node_type, … })` |
+| `update_ontology_concept` | `client.meaning.ontology.update_concept(concept_id, { … })` |
+| `delete_ontology_concept` | `client.meaning.ontology.delete_concept(concept_id)` |
+| `create_ontology_relationship` | `client.meaning.ontology.create_relationship({ source_entity_type, target_entity_type, relation_type, … })` |
+| `get_ontology_relationships` | `client.meaning.ontology.get_relationships({ … })` (alias: `list_relationships`) |
+
+REST: `/graph/organizations/{org}/ontology/concepts` and `…/relationships`.
+Pack activation / semantic-layer ops remain MCP-only until a follow-up.
 
 Full MCP operation tables: [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).
