@@ -43,6 +43,11 @@ describe('CLI help', () => {
     expect(CLI_HELP).toContain('cdlc review-queue');
   });
 
+  it('lists mining candidates list/act verbs under Review', () => {
+    expect(CLI_HELP).toContain('candidates list [--type');
+    expect(CLI_HELP).toContain('candidates act <id> --action approve|reject');
+  });
+
   it('uses pnpm in examples', () => {
     expect(CLI_HELP).toContain('pnpm exec loxtep login');
   });

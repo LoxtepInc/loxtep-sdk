@@ -78,6 +78,10 @@ import {
   runCdlcReviewQueueCommand,
 } from './commands/cdlc-cmd.js';
 import {
+  runCandidatesListCommand,
+  runCandidatesActCommand,
+} from './commands/candidates-cmd.js';
+import {
   runDeploymentsListCommand,
   runDeploymentsGetCommand,
 } from './commands/deployments-cmd.js';
@@ -868,6 +872,41 @@ async function runCommand(): Promise<void> {
           'Usage: loxtep cdlc transition <artifact_ref> --from <state> --to <state> [--actor <id>] [--owner <id>] [--organization-id <id>]\n' +
             '       loxtep cdlc review-queue [--domain-id <id>] [--organization-id <id>]\n' +
             'States: draft | in_review | approved | deployed | retired'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'candidates': {
+      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
+      const authResult = await requireAuth();
+      const orgId = getArg('--organization-id');
+      if (sub === 'list') {
+        const result = await runCandidatesListCommand(authResult.client, {
+          candidate_type: getArg('--type'),
+          status: getArg('--status'),
+          mining_run_id: getArg('--mining-run-id'),
+          organization_id: orgId,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else if (sub === 'act' && args[2]) {
+        const result = await runCandidatesActCommand(authResult.client, args[2], {
+          action: getArg('--action'),
+          organization_id: orgId,
+          rationale: getArg('--rationale'),
+          actor: getArg('--actor'),
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep candidates list [--type <type>] [--status candidate|approved|rejected] [--mining-run-id <id>] [--organization-id <id>]\n' +
+            '       loxtep candidates act <candidate_id> --action approve|reject [--rationale <text>] [--actor <id>] [--organization-id <id>]\n' +
+            'Types: semantic_conflict | procedure | promotion | entity_fact\n' +
+            'approve routes the candidate into CDLC in_review; reject discards it.'
         );
         process.exitCode = 1;
       }
