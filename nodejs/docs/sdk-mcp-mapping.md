@@ -16,7 +16,7 @@ deprecation aliases.
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
 | `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
 | `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*` (search/artifact/completeness) |
-| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (get/transition/propagate/lineage/deps + `list_review_queue`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc transition`, `loxtep cdlc review-queue` |
+| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (get/transition/propagate/lineage/deps + `list_review_queue`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc …`, `loxtep candidates list|act` |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
 | `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*`, `.issues.*`, `.goals.*`, `.workstreams.*` |
@@ -114,6 +114,40 @@ Notes:
 - Requires `catalog:read` (platform RBAC).
 - SDK calls the semantic-layer MS REST routes directly. MCP-only enrichments (empty-search / completeness `metadata.activation_state` from pack activation) are not duplicated — use `client.meaning.packs.get_activation_status()` when needed.
 - Pack lifecycle remains under `client.meaning.packs` (see vocabulary packs section above).
+
+## Review: CDLC + context mining (LOX-1244…1247)
+
+MCP `loxtep_review` CDLC / mining ops map to `client.review.cdlc` and
+`client.review.mining`:
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `get_artifact_lifecycle` | `client.review.cdlc.get_artifact_lifecycle({ artifact_ref })` | `GET /graph/organizations/{org}/cdlc/artifacts/{artifact_ref}` |
+| `transition_lifecycle` | `.transition_lifecycle({ artifact_ref, from_state, to_state, … })` | `POST …/cdlc/artifacts/{artifact_ref}/transition` |
+| `propagate_change` | `.propagate_change({ … })` | `POST …/cdlc/propagate` |
+| `list_propagation_lineage` | `.list_propagation_lineage({ … })` | `GET …/cdlc/propagation-lineage` |
+| `list_context_dependencies` | `.list_context_dependencies({ … })` | `GET …/cdlc/dependencies` |
+| `list_review_queue` | `.list_review_queue({ … })` | `GET …/cdlc/review-queue` |
+| `run_mining_pass` | `client.review.mining.run_mining_pass({ … })` | `POST …/mining/run` |
+| `list_candidates` | `.list_candidates({ … })` | `GET …/mining/candidates` |
+| `act_on_candidate` | `.act_on_candidate(candidate_id, { action, … })` | `POST …/mining/candidates/{id}/act` |
+
+CLI: `loxtep cdlc transition`, `loxtep cdlc review-queue`,
+`loxtep candidates list`, `loxtep candidates act`.
+
+## Context: decision traces causal / similar (LOX-1248)
+
+MCP `loxtep_context` process-intelligence decision-trace ops map to
+`client.context.process_intelligence.decisionTraces`:
+
+| MCP / REST concern | SDK | REST |
+| --- | --- | --- |
+| list decision traces | `.decisionTraces.list(org, { … })` | `GET …/decision-traces` |
+| create (optional links / precedent) | `.decisionTraces.create(org, { … })` | `POST …/decision-traces` |
+| causal chain | `.decisionTraces.getChain(org, trace_id, { … })` | `GET …/decision-traces/{id}/chain` |
+| similar decisions | `.decisionTraces.getSimilar(org, trace_id, { … })` | `GET …/decision-traces/{id}/similar` |
+
+Also: `client.context.process_intelligence.getEntityContext(org, { entity_type, entity_id })`.
 
 ## Context: procedures CRUD / import-export (LOX-1249)
 
