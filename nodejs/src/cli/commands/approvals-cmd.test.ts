@@ -87,6 +87,18 @@ describe('loxtep approvals list', () => {
     expect(captured).toEqual({ status: 'approved', page: 2, page_size: 10 });
   });
 
+  it('passes organization_id filter when provided', async () => {
+    let captured: unknown;
+    const client = mockClient({
+      onList: filters => {
+        captured = filters;
+      },
+    });
+
+    await runApprovalsListCommand(client, { organization_id: 'org-9' });
+    expect(captured).toEqual({ status: 'pending', organization_id: 'org-9' });
+  });
+
   it('rejects invalid status filter', async () => {
     const result = await runApprovalsListCommand(mockClient({}), { status: 'nope' });
     expect(result.exitCode).toBe(1);
