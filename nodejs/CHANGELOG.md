@@ -15,6 +15,28 @@ and this project adheres to
   (`POST /semantic-layer/search`, `GET /semantic-layer/...`,
   `GET /semantic-layer/completeness`).
 
+## [0.9.6] - 2026-08-10
+
+### Fixed
+
+- **CLI `DEP0187` warning** — stop eagerly importing `leo-sdk` on every command.
+  REST-only commands (e.g. `loxtep data-products list`) no longer load the stream
+  runtime, avoiding Node's `fs.existsSync` deprecation from leo-sdk's
+  `leoConfigure` side effect. `leo-sdk` is still required lazily when constructing
+  a stream reader/writer.
+
+## [0.9.5] - 2026-08-10
+
+### Fixed
+
+- **CLI auth / expired session** — when JWT or AWS SigV4 STS credentials are expired
+  and `/auth/refresh` fails (e.g. session revoked), fail fast with
+  `AuthenticationError` and `Run: loxtep login` instead of signing with dead STS
+  and dumping `AuthorizationError: The security token included in the request is
+  expired`. Also map API Gateway ExpiredToken `403` to authentication (not RBAC),
+  retry refresh once on that status, and print a one-line CLI error instead of a
+  stack dump.
+
 ## [0.9.4] - 2026-08-07
 
 ### Fixed

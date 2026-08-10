@@ -55,7 +55,7 @@ describe('TokenManager', () => {
     expect(manager.getRefreshToken()).toBe('new-refresh');
   });
 
-  it('getTokenOrRefresh should return current token when refresh fails', async () => {
+  it('getTokenOrRefresh should return current token when refresh fails but token is still valid', async () => {
     const expFar = Math.floor(Date.now() / 1000) + 3600;
     const payload = Buffer.from(JSON.stringify({ exp: expFar }), 'utf-8')
       .toString('base64')
@@ -67,5 +67,18 @@ describe('TokenManager', () => {
     const result = await manager.getTokenOrRefresh('https://api.example.com', 9999, refreshFn);
     expect(result).toBe(token);
     expect(manager.getToken()).toBe(token);
+  });
+
+  it('getTokenOrRefresh should return null when refresh fails and token is already expired', async () => {
+    const expPast = Math.floor(Date.now() / 1000) - 60;
+    const payload = Buffer.from(JSON.stringify({ exp: expPast }), 'utf-8')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+    const token = `h.${payload}.s`;
+    manager.setToken(token, 'refresh-1');
+    const refreshFn = jest.fn().mockRejectedValue(new Error('Session expired or revoked'));
+    const result = await manager.getTokenOrRefresh('https://api.example.com', 300, refreshFn);
+    expect(result).toBeNull();
   });
 });
