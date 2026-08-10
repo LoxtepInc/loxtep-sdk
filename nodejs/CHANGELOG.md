@@ -10,10 +10,23 @@ and this project adheres to
 
 ### Added
 
+- **`client.context.procedures`** — MCP `loxtep_context` parity for
+  `list_procedures` / `get_procedure` / `create_procedure` /
+  `update_procedure` / `delete_procedure` / `import_process_graph` /
+  `export_process_graph` against graph REST (`/graph/.../procedures`,
+  `/graph/procedures/{id}`, import + export). Short method names (`list`,
+  `get`, `create`, `update`, `delete`) alias the MCP op names.
 - **`client.meaning.semantic`** — MCP parity for `search_semantic_layer`,
   `get_semantic_artifact`, and `get_semantic_completeness`
   (`POST /semantic-layer/search`, `GET /semantic-layer/...`,
   `GET /semantic-layer/completeness`).
+
+### Changed
+
+- **`client.context.procedures.list`** — now targets authored graph procedures
+  (`GET /graph/organizations/{org}/procedures`) instead of the
+  process-intelligence discovery list. Filters match MCP (`status`, `name`,
+  `domain_id`, …); pagination args from the old PI wrapper are removed.
 
 ## [0.9.6] - 2026-08-10
 

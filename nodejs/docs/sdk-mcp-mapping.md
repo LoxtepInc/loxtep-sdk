@@ -115,4 +115,27 @@ Notes:
 - SDK calls the semantic-layer MS REST routes directly. MCP-only enrichments (empty-search / completeness `metadata.activation_state` from pack activation) are not duplicated — use `client.meaning.packs.get_activation_status()` when needed.
 - Pack lifecycle remains under `client.meaning.packs` (see vocabulary packs section above).
 
+## Context: procedures CRUD / import-export (LOX-1249)
+
+MCP `loxtep_context` procedure ops map to `client.context.procedures` (graph
+authored process maps — not process-intelligence discovery):
+
+| MCP operation | SDK | REST | Status |
+| --- | --- | --- | --- |
+| `list_procedures` | `client.context.procedures.list({ … })` (alias `list_procedures`) | `GET /graph/organizations/{org}/procedures` | shipped |
+| `get_procedure` | `.get(procedure_id)` (alias `get_procedure`) | `GET /graph/procedures/{procedure_id}` | shipped |
+| `create_procedure` | `.create({ name, … })` (alias `create_procedure`) | `POST /graph/organizations/{org}/procedures` | shipped |
+| `update_procedure` | `.update(procedure_id, { … })` (alias `update_procedure`) | `PUT /graph/procedures/{procedure_id}` | shipped |
+| `delete_procedure` | `.delete(procedure_id)` (alias `delete_procedure`) | `DELETE /graph/procedures/{procedure_id}` | shipped |
+| `import_process_graph` | `.import_process_graph({ graph \| s3_reference, … })` | `POST /graph/organizations/{org}/procedures/import` | shipped |
+| `export_process_graph` | `.export_process_graph({ procedure_id, format?, preserve_namespaces? })` | `GET /graph/procedures/{procedure_id}/export` | shipped |
+
+Notes:
+
+- `organization_id` comes from the client constructor or per-call override for
+  org-scoped routes (`list` / `create` / `import_process_graph`).
+- Import requires exactly one of `graph` (inline JSON-LD) or `s3_reference`.
+- Export `format`: `jsonld` (default) \| `yaml` \| `summary`.
+- Out of this ticket's acceptance set (still MCP-only): `get_procedure_dependencies`.
+
 Full MCP operation tables: [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).
