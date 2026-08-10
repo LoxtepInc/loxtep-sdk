@@ -37,6 +37,22 @@ export type {
 } from './cdlc-types.js';
 export type { CdlcApi } from './cdlc.js';
 export type {
+  MiningApiDeps,
+  MiningSignalSource,
+  MiningCandidateType,
+  MiningCandidateStatus,
+  MiningCandidateAction,
+  MiningScopeFilters,
+  RunMiningPassInput,
+  RunMiningPassResult,
+  ListCandidatesFilters,
+  MiningCandidate,
+  ListCandidatesResult,
+  ActOnCandidateInput,
+  ActOnCandidateResult,
+} from './mining-types.js';
+export type { MiningApi } from './mining.js';
+export type {
   DataProduct,
   DataProductKind,
   DataProductCreateInput,
