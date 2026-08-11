@@ -66,6 +66,10 @@ const me = await client.session.get_current_user();
 console.log(me.user.email, me.organization?.name);
 ```
 
+To mint tokens from app code (email/password or browser) instead of the CLI, see
+**Login from code** in [`nodejs/README.md`](./nodejs/README.md) — that uses the
+isolated `sdk_node` session channel.
+
 **Stream I/O** (`get_writer` / `get_reader`) requires a **deployed** data
 product on your attached instance:
 
@@ -107,6 +111,10 @@ writer = client.get_writer("app-events")
 writer.write({"user_id": "u_1", "action": "signup"})
 writer.close()
 ```
+
+Native Python login (no Node CLI): `login` / `browser_login` in
+[`python/README.md`](./python/README.md) — **`sdk_python`** channel, separate
+from CLI credentials.
 
 See [`python/docs/sdk-first-ingest.md`](./python/docs/sdk-first-ingest.md) and
 [`python/README.md`](./python/README.md). Skills / workflow-authoring helpers are

@@ -62,6 +62,33 @@ Run these in an **empty directory** you want to turn into a Loxtep workspace.
    > **CI/headless:** `pnpm exec loxtep login --email you@co.com --password …`
    > or set `LOXTEP_AUTH_TOKEN`.
 
+### Login from code (library)
+
+Use these when your app mints tokens itself (not the CLI). Library login uses
+the **`sdk_node`** session channel — separate from CLI, web, Python SDK, and MCP.
+
+```ts
+import { login, browserLogin, LoxtepClient } from '@loxtep/sdk';
+
+const apiUrl = 'https://api.loxtep.io'; // or apidev.loxtep.io
+
+// Email / password (optional mfa_code). Defaults to client_channel: 'sdk_node'.
+const tokens = await login(apiUrl, 'you@co.com', 'secret', {
+  // mfa_code: '123456',
+});
+
+// Or browser handoff → /auth/sdk?runtime=node (also sdk_node).
+// const tokens = await browserLogin({ app_url: 'https://app.loxtep.io' });
+
+const client = new LoxtepClient({
+  api_url: apiUrl,
+  auth: { type: 'jwt', token: tokens.access_token },
+});
+```
+
+Refresh with `refresh(apiUrl, tokens.refresh_token)`. Prefer `loxtep login` +
+`LoxtepClient.fromWorkspace()` when you want credentials on disk for the CLI.
+
 3. **Scaffold the workspace**
 
    ```bash

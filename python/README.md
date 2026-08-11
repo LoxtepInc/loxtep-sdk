@@ -33,6 +33,31 @@ pip install -e .
 # or from repo root: pip install -e sdks/python
 ```
 
+## Login from code
+
+Mint an **`sdk_python`** session (isolated from CLI, web, Node SDK, and MCP):
+
+```python
+from loxtep import LoxtepClient, login, browser_login
+
+api_url = "https://api.loxtep.io"  # or apidev.loxtep.io
+
+# Email / password (optional mfa_code=...). Defaults to client_channel="sdk_python".
+tokens = login(api_url, "you@co.com", "secret")
+# Or browser handoff → /auth/sdk?runtime=python:
+# tokens = browser_login("https://app.loxtep.io")
+
+client = LoxtepClient(
+    api_url=api_url,
+    auth={"type": "jwt", "token": tokens["access_token"]},
+)
+```
+
+Refresh with `from loxtep import refresh` then
+`refresh(api_url, tokens["refresh_token"])`. For CLI credentials on disk, keep
+using Node `loxtep login` (that mints a **CLI** session) +
+`LoxtepClient.from_workspace()`.
+
 ## Quick start
 
 ### Sync client (workspace auto-config)
