@@ -24,7 +24,7 @@ describe('login', () => {
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'u@e.com', password: 'pass' }),
+        body: JSON.stringify({ email: 'u@e.com', password: 'pass', client_channel: 'sdk_node' }),
       })
     );
   });
@@ -78,7 +78,7 @@ describe('login', () => {
     expect(fetchFn).toHaveBeenCalledWith(
       'https://api.example.com/app/auth/login',
       expect.objectContaining({
-        body: JSON.stringify({ email: 'u@e.com', password: 'pass' }),
+        body: JSON.stringify({ email: 'u@e.com', password: 'pass', client_channel: 'sdk_node' }),
       })
     );
   });
@@ -166,6 +166,7 @@ describe('login', () => {
         body: JSON.stringify({
           email: 'u@e.com',
           password: 'pass',
+          client_channel: 'sdk_node',
           mfa_code: '123456',
         }),
       })

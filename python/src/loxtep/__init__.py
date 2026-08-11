@@ -6,6 +6,7 @@ data_contracts, targets. Plus advanced: projects, templates, instances, observe,
 queues, metrics.
 """
 
+from .auth import LoginMfaRequiredError, browser_login, login, refresh
 from .client import AsyncLoxtepClient, LoxtepClient
 from .targets import AsyncTargetsApi, TargetsApi
 from .triggers import AsyncTriggersApi, TriggersApi
@@ -39,6 +40,10 @@ from .models import (
 __all__ = [
     "AsyncLoxtepClient",
     "LoxtepClient",
+    "LoginMfaRequiredError",
+    "login",
+    "refresh",
+    "browser_login",
     "LoxtepError",
     "AuthenticationError",
     "AuthorizationError",

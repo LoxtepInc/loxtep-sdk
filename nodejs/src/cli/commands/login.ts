@@ -104,6 +104,8 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
       const result = await browserLogin({
         app_url: appUrl,
         api_url: apiUrl || undefined,
+        // CLI must mint CLISESS#, not the SDK Node session family.
+        channel: 'cli',
         no_open: options.no_open,
       });
       await writeCredentials(
@@ -166,6 +168,7 @@ export async function runLogin(options: LoginOptions = {}): Promise<void> {
     const result = await authLogin(apiUrl, email, password, {
       organization_id: org,
       ...(mfa ? { mfa_code: mfa } : {}),
+      client_channel: 'cli',
       auth_path_prefix: options.auth_path_prefix ?? config.auth_path_prefix,
       fetchFn,
     });

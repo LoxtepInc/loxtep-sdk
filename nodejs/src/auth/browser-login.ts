@@ -1,15 +1,16 @@
 /**
- * OAuth 2.1 browser-based login for the Loxtep SDK.
+ * OAuth 2.1 browser-based login for the Loxtep SDK / CLI.
  *
- * Opens a browser to the Loxtep app's MCP auth page, runs a localhost callback
- * server to receive the tokens, then returns them. Same UX as the hosted MCP
- * OAuth flow — no email/password/TOTP prompts needed.
+ * Opens a browser, runs a localhost callback server, returns tokens.
+ * Session channels stay isolated:
+ * - `channel: 'cli'` → `/auth/cli` (CLISESS#)
+ * - `channel: 'sdk'` → `/auth/sdk?runtime=node|python` (SDKSESSNODE# / SDKSESSPY#)
  *
  * Flow:
  * 1. Start a local HTTP server on a random port
- * 2. Open browser to https://app.loxtep.io/auth/cli?callback_url=http://localhost:{port}/callback
+ * 2. Open browser to the channel-specific auth bridge with callback_url
  * 3. User logs in (Cognito SRP + MFA if needed) in the browser
- * 4. App mints a CLI-scoped session and redirects to our localhost callback with tokens
+ * 4. App mints a channel-scoped session and redirects to localhost with tokens
  * 5. Return tokens to caller, shut down server
  */
 
@@ -19,11 +20,23 @@ import { URL } from 'node:url';
 import { exec, type ChildProcess } from 'node:child_process';
 import { platform } from 'node:os';
 
+export type BrowserLoginChannel = 'cli' | 'sdk';
+
 export interface BrowserLoginOptions {
   /** Loxtep app URL (e.g. https://app.loxtep.io or https://appdev.loxtep.io). */
   app_url: string;
   /** API base URL for the refresh endpoint (e.g. https://api.loxtep.io). */
   api_url?: string;
+  /**
+   * Which session family to mint. Default `sdk` for library callers.
+   * CLI `loxtep login` must pass `cli`.
+   */
+  channel?: BrowserLoginChannel;
+  /**
+   * SDK runtime when `channel` is `sdk`. Default `node`.
+   * Python SDK should pass `python`.
+   */
+  runtime?: 'node' | 'python';
   /** Timeout in milliseconds before giving up (default: 300000 = 5 minutes). */
   timeout_ms?: number;
   /** If true, don't auto-open the browser — just print the URL. */
@@ -77,12 +90,33 @@ function finishResponse(res: ServerResponse, body: string, status = 200): void {
   res.socket?.destroy();
 }
 
+function buildLoginUrl(
+  appUrl: string,
+  callbackUrl: string,
+  channel: BrowserLoginChannel,
+  runtime: 'node' | 'python'
+): string {
+  const base = appUrl.replace(/\/$/, '');
+  const cb = encodeURIComponent(callbackUrl);
+  if (channel === 'cli') {
+    return `${base}/auth/cli?callback_url=${cb}`;
+  }
+  return `${base}/auth/sdk?callback_url=${cb}&runtime=${encodeURIComponent(runtime)}`;
+}
+
 /**
  * Run the browser-based OAuth login flow.
  * Returns tokens on success, throws on timeout or failure.
  */
 export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLoginResult> {
-  const { app_url, timeout_ms = 300_000, no_open = false, on_listening } = options;
+  const {
+    app_url,
+    channel = 'sdk',
+    runtime = 'node',
+    timeout_ms = 300_000,
+    no_open = false,
+    on_listening,
+  } = options;
 
   return new Promise<BrowserLoginResult>((resolve, reject) => {
     let settled = false;
@@ -112,7 +146,8 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
         const access_token = reqUrl.searchParams.get('access_token');
         const refresh_token = reqUrl.searchParams.get('refresh_token') ?? undefined;
         const expires_at = reqUrl.searchParams.get('expires_at') ?? undefined;
-        const api_base_url = reqUrl.searchParams.get('api_base_url')?.replace(/\/$/, '') || undefined;
+        const api_base_url =
+          reqUrl.searchParams.get('api_base_url')?.replace(/\/$/, '') || undefined;
 
         let aws_credentials: BrowserLoginResult['aws_credentials'] | undefined;
         const awsCredsParam = reqUrl.searchParams.get('aws_credentials');
@@ -165,7 +200,7 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
       on_listening?.(port);
 
       const callbackUrl = `http://localhost:${port}/callback`;
-      const loginUrl = `${app_url.replace(/\/$/, '')}/auth/cli?callback_url=${encodeURIComponent(callbackUrl)}`;
+      const loginUrl = buildLoginUrl(app_url, callbackUrl, channel, runtime);
 
       if (no_open) {
         console.log(`\nOpen this URL in your browser to log in:\n\n  ${loginUrl}\n`);

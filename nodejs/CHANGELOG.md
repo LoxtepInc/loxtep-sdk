@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-08-11
+
+### Changed
+
+- **Session channels stay isolated** — library `login()` defaults to
+  `client_channel: 'sdk_node'` (`SDKSESSNODE#`). CLI console/browser login
+  explicitly uses `cli` (`CLISESS#`). Library `browserLogin()` defaults to
+  `/auth/sdk?runtime=node`; CLI passes `channel: 'cli'` → `/auth/cli`.
+
 ## [0.9.8] - 2026-08-11
 
 ### Changed

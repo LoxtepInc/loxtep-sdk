@@ -103,6 +103,9 @@ function getLoginErrorMessage(json: LoginErrorBody, res: { statusText: string })
 /**
  * Login with email/password. POST `{apiUrl}/{auth_path}/auth/login` (default `auth_path` = `app`).
  * Returns tokens; caller should set them in TokenManager (no disk).
+ *
+ * Default `client_channel` is `sdk_node` so library login does not share the CLI or web session.
+ * The CLI must pass `client_channel: 'cli'`.
  */
 export async function login(
   apiUrl: string,
@@ -111,6 +114,11 @@ export async function login(
   options?: {
     organization_id?: string;
     mfa_code?: string;
+    /**
+     * Session family. Default `sdk_node` for library callers.
+     * CLI console login should pass `cli`.
+     */
+    client_channel?: 'web' | 'cli' | 'sdk_node' | 'sdk_python' | 'mcp_bridge';
     /** Omitted: default `app`. Set to `""` to omit (if `api_url` already includes `/app`). */
     auth_path_prefix?: string;
     fetchFn?: typeof fetch;
@@ -121,6 +129,7 @@ export async function login(
   const body = {
     email,
     password,
+    client_channel: options?.client_channel ?? 'sdk_node',
     ...(options?.organization_id && { organization_id: options.organization_id }),
     ...(options?.mfa_code && { mfa_code: options.mfa_code }),
   };

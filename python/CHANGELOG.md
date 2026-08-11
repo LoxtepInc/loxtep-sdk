@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-08-11
+
+### Added
+
+- **Programmatic auth** — `loxtep.auth.login` / `refresh` / `browser_login`
+  mint isolated `sdk_python` sessions (`SDKSESSPY#`) via
+  `client_channel=sdk_python` and `/auth/sdk?runtime=python`. Does not share
+  CLI, web, Node SDK, or MCP session families.
+
 ## [0.6.1] — 2026-08-10
 
 ### Added
