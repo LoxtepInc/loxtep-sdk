@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-08-11
+
+### Changed
+
+- **CLI browser login** opens `/auth/cli` instead of `/auth/mcp`. The app mints a
+  dedicated CLI session (`CLISESS#`) via `/app/auth/delegate-session`, so web SPA
+  token refresh no longer revokes CLI credentials. Re-run `loxtep login` once
+  after the platform deploy that ships this change.
+
 ## [0.9.7] - 2026-08-10
 
 ### Added

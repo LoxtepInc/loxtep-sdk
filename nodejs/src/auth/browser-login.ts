@@ -7,9 +7,9 @@
  *
  * Flow:
  * 1. Start a local HTTP server on a random port
- * 2. Open browser to https://app.loxtep.io/auth/mcp?callback_url=http://localhost:{port}/callback
+ * 2. Open browser to https://app.loxtep.io/auth/cli?callback_url=http://localhost:{port}/callback
  * 3. User logs in (Cognito SRP + MFA if needed) in the browser
- * 4. App redirects to our localhost callback with access_token + refresh_token
+ * 4. App mints a CLI-scoped session and redirects to our localhost callback with tokens
  * 5. Return tokens to caller, shut down server
  */
 
@@ -165,7 +165,7 @@ export function browserLogin(options: BrowserLoginOptions): Promise<BrowserLogin
       on_listening?.(port);
 
       const callbackUrl = `http://localhost:${port}/callback`;
-      const loginUrl = `${app_url.replace(/\/$/, '')}/auth/mcp?callback_url=${encodeURIComponent(callbackUrl)}`;
+      const loginUrl = `${app_url.replace(/\/$/, '')}/auth/cli?callback_url=${encodeURIComponent(callbackUrl)}`;
 
       if (no_open) {
         console.log(`\nOpen this URL in your browser to log in:\n\n  ${loginUrl}\n`);
