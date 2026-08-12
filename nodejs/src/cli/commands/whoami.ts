@@ -132,6 +132,11 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Failed to fetch user:', msg);
+    if (/insufficient permissions|Access denied/i.test(msg)) {
+      console.error(
+        'Hint: confirm whoami hits the same host as login (`api_base_url` in credentials). Stale ~/.loxtep/config.json api_url pointing at prod with a dev token is a common cause. Use LOXTEP_DEBUG=1 loxtep whoami.'
+      );
+    }
     process.exitCode = 1;
   }
 }
