@@ -42,8 +42,30 @@ describe('resolveCliApiUrl', () => {
     }
   });
 
-  it('uses explicit config file api_url over credentials', () => {
+  it('uses credentials api_base_url over explicit config file api_url', () => {
     const dir = mkdtempSync(join(tmpdir(), 'loxtep-config-'));
+    const configPath = join(dir, 'config.json');
+    writeFileSync(configPath, JSON.stringify({ api_url: 'https://api.loxtep.io' }));
+    try {
+      expect(
+        resolveCliApiUrl(
+          { ...DEFAULT_CONFIG, api_url: 'https://api.loxtep.io' },
+          {
+            access_token: 't',
+            source: 'credentials',
+            api_url_from_mcp: 'https://apidev.loxtep.io',
+          },
+          { configFilePath: configPath }
+        )
+      ).toBe('https://apidev.loxtep.io');
+      expect(configFileHasExplicitApiUrl(configPath)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('uses explicit config file api_url when credentials have no api_base_url', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'loxtep-config-nocreds-'));
     const configPath = join(dir, 'config.json');
     writeFileSync(configPath, JSON.stringify({ api_url: 'https://file.example.com' }));
     try {
@@ -53,12 +75,10 @@ describe('resolveCliApiUrl', () => {
           {
             access_token: 't',
             source: 'credentials',
-            api_url_from_mcp: 'https://creds.example.com',
           },
           { configFilePath: configPath }
         )
       ).toBe('https://file.example.com');
-      expect(configFileHasExplicitApiUrl(configPath)).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

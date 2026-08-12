@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.10] - 2026-08-12
+
+### Fixed
+
+- **CLI API host from credentials** — `resolveCliApiUrl` prefers credentials
+  `api_base_url` over a stale `~/.loxtep/config.json` `api_url`. Stops sending
+  a host-bound login token (e.g. apidev `CLISESS#`) to production and getting
+  `users:read` RBAC denials on `loxtep whoami`. `LOXTEP_API_URL` still wins.
+  `whoami` prints a hint when the error looks like that mismatch.
+
 ## [0.9.9] - 2026-08-11
 
 ### Changed
