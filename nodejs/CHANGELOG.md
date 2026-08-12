@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.11] - 2026-08-12
+
+### Fixed
+
+- **`createRStreamsSdk` / stream I/O** — restore top-level
+  `createRequire(import.meta.url)` in `leo-runtime.ts`. The 0.9.7
+  `new Function('return import.meta.url')` workaround always throws
+  `SyntaxError: Cannot use 'import.meta' outside a module` (Function bodies
+  are Scripts, never Modules), breaking `get_writer()` / `get_reader()` for
+  every consumer from 0.9.7–0.9.10. Jest maps the module to a CJS-safe stub
+  (and excludes it from coverage) instead of breaking the real runtime.
+
 ## [0.9.10] - 2026-08-12
 
 ### Fixed

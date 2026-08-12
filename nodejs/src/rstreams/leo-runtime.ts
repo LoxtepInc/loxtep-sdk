@@ -4,29 +4,19 @@
  * IMPORTANT: do not statically `import 'leo-sdk'`. leo-sdk's `leoConfigure.js` runs
  * `build(process.cwd())` at module load and calls `fs.existsSync({})` when there is no
  * Leo system directory (DEP0187). REST-only CLI commands must not pay that cost or warning.
- *
- * Lazy load must not use a bare `import.meta` in this file — Jest's CJS transform
- * rejects it. Resolve the module URL via Function so ESM runtime still works.
  */
 
 import { createRequire } from 'node:module';
 import type { ConfigurationResources, RStreamsSdk } from 'leo-sdk';
 
-type LeoSdkModule = Record<string, unknown> & {
-  default?: Record<string, unknown>;
-  RStreamsSdk?: new (config: ConfigurationResources) => RStreamsSdk;
-};
-
-function loadLeoSdk(): LeoSdkModule {
-  // Hide import.meta from static transforms (Jest); evaluate only in real ESM.
-  const moduleUrl = new Function('return import.meta.url')() as string;
-  const requireCjs = createRequire(moduleUrl);
-  return requireCjs('leo-sdk') as LeoSdkModule;
-}
+const require = createRequire(import.meta.url);
 
 export function createRStreamsSdk(config: ConfigurationResources): RStreamsSdk {
   // Lazy CJS require — only when a stream reader/writer is actually constructed.
-  const StreamRuntime = loadLeoSdk();
+  const StreamRuntime = require('leo-sdk') as Record<string, unknown> & {
+    default?: Record<string, unknown>;
+    RStreamsSdk?: new (config: ConfigurationResources) => RStreamsSdk;
+  };
   const defaultExport = StreamRuntime.default;
   const SDK = (StreamRuntime.RStreamsSdk || defaultExport?.RStreamsSdk) as
     | (new (config: ConfigurationResources) => RStreamsSdk)
