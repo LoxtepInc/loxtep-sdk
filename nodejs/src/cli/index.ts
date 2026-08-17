@@ -95,6 +95,7 @@ import { runActivityListCommand } from './commands/activity-cmd.js';
 import {
   runInstancesList,
   runInstancesGet,
+  runInstancesStreamConfig,
   runInstancesCreate,
   runInstancesDeploymentUrls,
   runInstancesRegistration,
@@ -1028,6 +1029,9 @@ async function runCommand(): Promise<void> {
         await runInstancesList({ debug: args.includes('--debug') });
       } else if (sub === 'get' && args[2]) {
         await runInstancesGet(args[2]);
+      } else if (sub === 'stream-config') {
+        const maybeId = args[2] && !args[2].startsWith('-') ? args[2] : undefined;
+        await runInstancesStreamConfig(maybeId);
       } else if (sub === 'create') {
         try {
           const input = parseCreateInstanceArgs(args.slice(2));
@@ -1053,7 +1057,7 @@ async function runCommand(): Promise<void> {
         await runInstancesRegistration();
       } else {
         console.error(
-          'Usage: loxtep instances list | get <id> | create --name ... --region ... --type ... | deployment-urls | register --cross-account-role-arn <arn> | registration'
+          'Usage: loxtep instances list | get <id> | stream-config [<id>] | create --name ... --region ... --type ... | deployment-urls | register --cross-account-role-arn <arn> | registration'
         );
         process.exitCode = 1;
       }

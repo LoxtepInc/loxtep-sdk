@@ -121,6 +121,7 @@ loxtep connectors list [--type sdk]
 loxtep connectors test <connector_id>
 loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]
 loxtep domains list | get <id>
+loxtep instances list | get <id> | stream-config [<id>]
 loxtep standards list | get <id>
 loxtep data-contracts list | get <id>
 loxtep packs list | activate <pack_id> | status

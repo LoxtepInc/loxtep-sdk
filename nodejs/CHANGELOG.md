@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **`loxtep instances stream-config [<instance_id>]`** — prints bus resource
+  names (`LeoCron`, `LeoS3`, …) via JWT
+  `GET /organizations/instances/{id}/stream-config`. Defaults to the attached
+  workspace instance / `LOXTEP_INSTANCE_ID`. Hosted MCP does not expose this.
+
 ## [0.9.11] - 2026-08-12
 
 ### Fixed

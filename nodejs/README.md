@@ -104,10 +104,13 @@ Refresh with `refresh(apiUrl, tokens.refresh_token)`. Prefer `loxtep login` +
    ```bash
    pnpm exec loxtep instances list
    pnpm exec loxtep attach --instance <instance-id>
+   pnpm exec loxtep instances stream-config   # optional: Leo/S3/Kinesis names
    ```
 
    Writes `instance_id` and `api_url` into `.loxtep/project.json`. Required
-   before `generate`, `test`, and `deploy`.
+   before `generate`, `test`, and `deploy`. Bus physical names are CLI/REST
+   (`instances stream-config` or `client.workspace.instances.get_stream_config`);
+   MCP `list_instances` / `get_sdk_config` do not return them.
 
 5. **Generate typed workspace constants**
 

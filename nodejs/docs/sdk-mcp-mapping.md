@@ -12,7 +12,7 @@ deprecation aliases.
 | --- | --- | --- |
 | `loxtep_session` | `client.session` | `get_current_user`, `get_current_organization`, `logout` |
 | `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
-| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*`, `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
+| `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*` (`list`/`get`/`create`; **`get_stream_config` is REST/CLI only** — not an MCP op). `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
 | `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
 | `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*` (search/artifact/completeness) |
@@ -53,8 +53,10 @@ Vocabulary: MCP `loxtep_build` trigger operations (backend: connections) and tar
 probe uses `test_connector` / `loxtep connectors test <id>`; sample capture uses
 `capture_samples` / `loxtep connectors capture-samples <id> --entity-type <name>`.
 
-When unsure: **MCP for provisioning and agent tool calls**; **SDK for runtime**
-services running in your infrastructure or CI.
+When unsure: **MCP for provisioning and agent tool calls**; **SDK/CLI for runtime**.
+Bus physical names (`LeoCron`, `LeoS3`, …): Node `loxtep instances stream-config`
+or `client.workspace.instances.get_stream_config(id)` (Python same method). Not
+MCP `list_instances` or `get_sdk_config`.
 
 ## Meaning: ontology concepts (LOX-1241)
 
