@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loxtep"
-version = "0.6.2"
+version = "0.6.3"
 description = "Loxtep Python SDK - data products, workflows, triggers, targets, queues"
 readme = "README.md"
 requires-python = ">=3.10"

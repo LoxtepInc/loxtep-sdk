@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.12] - 2026-08-17
+
 ### Added
 
 - **`loxtep instances stream-config [<instance_id>]`** — prints bus resource

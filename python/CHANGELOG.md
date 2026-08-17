@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.3] — 2026-08-17
+
 ### Fixed
 
 - **`instances.get_stream_config`** now calls
