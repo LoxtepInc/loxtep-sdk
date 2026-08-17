@@ -27,6 +27,7 @@ import { runTriggersList, runTriggersGet } from './commands/triggers-cmd.js';
 import {
   runInstancesList,
   runInstancesGet,
+  runInstancesStreamConfig,
   runInstancesDeploymentUrls,
   runInstancesRegistration,
 } from './commands/instances-cmd.js';
@@ -244,6 +245,13 @@ describe('CLI integration (mock platform API)', () => {
       const out = captureCliOutput();
       await runInstancesGet(MOCK_IDS.instance_id, opts());
       expectCliSuccess(out, 'Test Instance');
+      out.restore();
+    });
+
+    it('instances stream-config', async () => {
+      const out = captureCliOutput();
+      await runInstancesStreamConfig(MOCK_IDS.instance_id, opts());
+      expectCliSuccess(out, 'test-LeoCron', MOCK_IDS.instance_id);
       out.restore();
     });
 

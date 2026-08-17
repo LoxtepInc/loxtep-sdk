@@ -145,10 +145,13 @@ List instances, then bind your workspace to one:
 ```bash
 pnpm exec loxtep instances list
 pnpm exec loxtep attach --instance <instance-id>
+pnpm exec loxtep instances stream-config   # optional: Leo/S3/Kinesis names for this instance
 ```
 
 `attach` writes `instance_id` and `api_url` into `.loxtep/project.json`.
-Required before `generate`, `test`, and `deploy`.
+Required before `generate`, `test`, and `deploy`. Bus physical names are CLI/REST
+only (`instances stream-config`); they are not returned from MCP `list_instances`
+or `get_sdk_config`.
 
 ---
 

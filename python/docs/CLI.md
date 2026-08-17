@@ -31,12 +31,18 @@ loxtep login
 # Query (uses Python SDK; token from ~/.loxtep/credentials.json or LOXTEP_TOKEN)
 loxtep query <data_product_id> "SELECT * FROM t LIMIT 10"
 
-# Stream events (Python SDK)
+# Stream / replay (Python SDK)
 loxtep stream <data_product_id> [--start <cursor>]
-
-# Replay events (Python SDK)
 loxtep replay <data_product_id> [--start <cursor>]
 ```
+
+Instance bus names (`LeoCron`, `LeoS3`, …) are **not** an MCP tool. In Python:
+
+```python
+cfg = client.workspace.instances.get_stream_config(instance_id)
+```
+
+Or run the Node CLI: `npx loxtep instances stream-config [<instance_id>]`.
 
 **Config**: `~/.loxtep/config.json` or env: `LOXTEP_API_URL`,
 `LOXTEP_ORGANIZATION_ID`, `LOXTEP_PROJECT_ID`.  

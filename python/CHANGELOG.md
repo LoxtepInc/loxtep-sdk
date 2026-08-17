@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **`instances.get_stream_config`** now calls
+  `GET /organizations/instances/{id}/stream-config` (same public route as Node).
+  The previous `/instances/{id}/stream-config` path is not a gateway route.
+
+### Changed
+
+- Docs: bus physical names are SDK/CLI/REST, not MCP `list_instances` /
+  `get_sdk_config`. Python uses `client.workspace.instances.get_stream_config`;
+  the CLI verb lives on the Node `loxtep` binary.
+
 ## [0.6.2] — 2026-08-11
 
 ### Added

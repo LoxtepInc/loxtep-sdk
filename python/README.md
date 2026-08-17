@@ -314,6 +314,9 @@ Canonical correlation keys + aliases.
 | --- | --- |
 | `list()` | List runtime instances for the organization |
 | `get(instance_id)` | Get a single instance by ID |
+| `get_stream_config(instance_id)` | Bus resource names (`LeoCron`, `LeoS3`, …) via JWT `GET /organizations/instances/{id}/stream-config`. Not an MCP operation. |
+
+Python has no `loxtep instances stream-config` verb — use this method, or the Node CLI (`npx loxtep instances stream-config`).
 
 ### `client.procedures`
 

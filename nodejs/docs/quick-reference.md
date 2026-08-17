@@ -170,7 +170,8 @@ const hits = await client.query.catalog.search({ query: 'orders' });
 | **Read (low-level)** | `client.observe.open_reader({ bot_id, queue_name })` |
 | **Stream live** | `client.build.data_products.stream(id, opts)` |
 | **Replay history** | `client.build.data_products.replay(id, opts)` |
-| **List data products** | `client.build.data_products.list()` |
+| **List instances** | `client.workspace.instances.list()` / `loxtep instances list` |
+| **Bus resource names** | `client.workspace.instances.get_stream_config(id)` / `loxtep instances stream-config` |
 | **List workflows** | `client.build.workflows.list({ project_id })` |
 | **Get connector** | `client.connect.connectors.get(id)` |
 | **Catalog search** | `client.query.catalog.search({ query })` |
@@ -186,6 +187,7 @@ Workspace lifecycle (requires `loxtep init` first — see [Code-first CLI guide]
 pnpm exec loxtep login
 pnpm exec loxtep init
 pnpm exec loxtep attach --instance <instance-id>
+pnpm exec loxtep instances stream-config   # bus resource names (JWT)
 pnpm exec loxtep generate
 ```
 

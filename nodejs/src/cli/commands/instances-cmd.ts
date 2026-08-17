@@ -1,12 +1,14 @@
 /**
- * CLI: loxtep instances list | get <id> | create | deployment-urls | register | registration
+ * CLI: loxtep instances list | get <id> | stream-config [<id>] | create | deployment-urls | register | registration
  *
  * Wraps the `client.workspace.instances` SDK namespace. Lifecycle: `list` and `get` are
- * read-only; `deployment-urls` + `register` + `registration` drive the
+ * read-only; `stream-config` prints bus resource names via JWT GET stream-config;
+ * `deployment-urls` + `register` + `registration` drive the
  * self-hosted install flow alongside `create`.
  *
  *   loxtep instances list
  *   loxtep instances get <id>
+ *   loxtep instances stream-config [<id>]
  *   loxtep instances create \
  *     --name <n> --region <region> --type <shared|managed|self-hosted> \
  *     [--plan-id <starter|pro|enterprise>] \
@@ -80,6 +82,45 @@ export async function runInstancesGet(
   try {
     const instance = await client.workspace.instances.get(instanceId);
     console.log(JSON.stringify(instance, null, 2));
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}
+
+const STREAM_CONFIG_USAGE =
+  'Usage: loxtep instances stream-config [<instance_id>]\nPass an instance id, or run `loxtep attach` / set LOXTEP_INSTANCE_ID.';
+
+export function resolveStreamConfigInstanceId(
+  explicitId: string | undefined,
+  attachedInstanceId: string | undefined
+): string {
+  const id = explicitId?.trim() || attachedInstanceId?.trim();
+  if (!id) {
+    throw new Error(STREAM_CONFIG_USAGE);
+  }
+  return id;
+}
+
+export async function runInstancesStreamConfig(
+  explicitInstanceId: string | undefined,
+  options: InstancesCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  try {
+    const instanceId = resolveStreamConfigInstanceId(explicitInstanceId, client.instance_id);
+    const result = await client.workspace.instances.get_stream_config(instanceId);
+    console.log(
+      JSON.stringify(
+        {
+          instance_id: instanceId,
+          source: result.source,
+          config: result.config,
+        },
+        null,
+        2
+      )
+    );
   } catch (err) {
     console.error((err as Error).message);
     process.exitCode = 1;

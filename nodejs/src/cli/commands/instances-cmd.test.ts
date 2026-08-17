@@ -1,12 +1,33 @@
 /**
  * Tests for `loxtep instances` CLI command — focuses on the pure arg-parsing
- * helper `parseCreateInstanceArgs`. The SDK passthrough wrappers
+ * helpers. The SDK passthrough wrappers
  * (runInstancesList/Get/Create/DeploymentUrls/Registration/Register) are thin
  * and covered by SDK client tests; here we lock the CLI input contract.
  */
 
-import { parseCreateInstanceArgs } from './instances-cmd';
+import { parseCreateInstanceArgs, resolveStreamConfigInstanceId } from './instances-cmd';
 import type { InstanceCreateInput } from '../../client/instances-types';
+
+describe('resolveStreamConfigInstanceId', () => {
+  it('prefers an explicit instance id', () => {
+    expect(resolveStreamConfigInstanceId(' inst-explicit ', 'inst-attached')).toBe(
+      'inst-explicit'
+    );
+  });
+
+  it('falls back to the attached workspace instance', () => {
+    expect(resolveStreamConfigInstanceId(undefined, ' inst-attached ')).toBe(
+      'inst-attached'
+    );
+  });
+
+  it('rejects missing ids with usage text', () => {
+    expect(() => resolveStreamConfigInstanceId(undefined, undefined)).toThrow(
+      /loxtep instances stream-config/
+    );
+    expect(() => resolveStreamConfigInstanceId('  ', '')).toThrow(/LOXTEP_INSTANCE_ID/);
+  });
+});
 
 describe('parseCreateInstanceArgs', () => {
   it('accepts shared playground minimum', () => {
