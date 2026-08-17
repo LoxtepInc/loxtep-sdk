@@ -1,0 +1,28 @@
+{
+  "name": "@loxtep/customer-mcp-server",
+  "version": "2.0.0",
+  "description": "Retired. Use hosted MCP at https://mcp.loxtep.io/ai/mcp/stream",
+  "license": "MIT",
+  "author": "Loxtep <engineering@loxtep.io>",
+  "homepage": "https://github.com/loxtepinc/loxtep-plugins-skills",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LoxtepInc/loxtep-sdk.git",
+    "directory": "retired/customer-mcp-server"
+  },
+  "bin": {
+    "customer-mcp-server": "./cli.js"
+  },
+  "files": [
+    "cli.js",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "mcp",
+    "loxtep",
+    "deprecated"
+  ]
+}
