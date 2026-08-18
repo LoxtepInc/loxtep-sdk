@@ -4,6 +4,14 @@ Loxtep is the **Enterprise Context Layer**: the system that turns organizational
 knowledge, expertise, and norms into machine-usable context for AI across
 heterogeneous systems.
 
+**Agent-first (MCP):** paste this into your AI coding tool. This README is the
+**code-first** path (CLI + SDK).
+
+```text
+Set up Loxtep for this AI tool by following instructions:
+https://docs.loxtep.io/docs/setup.md
+```
+
 Official client libraries for the [Loxtep](https://loxtep.io) platform.
 
 | Language | Package | Status |

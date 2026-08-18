@@ -1,5 +1,15 @@
 # SDK Getting Started Guide
 
+> **Agent-first?** Paste this into your AI tool instead of walking this CLI
+> path:
+>
+> ```text
+> Set up Loxtep for this AI tool by following instructions:
+> https://docs.loxtep.io/docs/setup.md
+> ```
+>
+> This guide is the **code-first** path (`login` → `init` → `attach` → write).
+
 Get from zero to a working Loxtep workspace: authenticate, scaffold a project,
 attach to a runtime instance, **provision your first source data product**, and
 write events with `get_writer`.
