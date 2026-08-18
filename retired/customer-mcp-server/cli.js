@@ -4,8 +4,7 @@
 const message = [
   '@loxtep/customer-mcp-server is retired and no longer runs.',
   'Connect to hosted MCP instead:',
-  '  Prod: https://mcp.loxtep.io/ai/mcp/stream',
-  '  Dev:  https://mcpdev.loxtep.io/ai/mcp/stream',
+  '  https://mcp.loxtep.io/ai/mcp/stream',
   'Setup: https://github.com/loxtepinc/loxtep-plugins-skills',
 ].join('\n');
 
