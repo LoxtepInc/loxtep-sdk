@@ -14,6 +14,4 @@ Use hosted MCP:
 }
 ```
 
-Dev: `https://mcpdev.loxtep.io/ai/mcp/stream`
-
 Setup: [loxtep-plugins-skills](https://github.com/loxtepinc/loxtep-plugins-skills)
