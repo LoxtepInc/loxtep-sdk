@@ -46,6 +46,8 @@ export interface WorkflowsApiDeps {
   rsdk?: RStreamsSdk;
   /** Lazy stream runtime resolver (attempts observe.stream_config() when rsdk is not set). */
   get_rsdk?: () => Promise<RStreamsSdk | undefined>;
+  /** Default project_id for list() when filters omit it (from client / workspace). */
+  project_id?: string;
 }
 
 function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
@@ -168,7 +170,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export type WorkflowsApi = {
-  list: (filters: WorkflowsListFilters) => Promise<WorkflowsListResponse['data']>;
+  list: (filters?: WorkflowsListFilters) => Promise<WorkflowsListResponse['data']>;
   get: (id: string) => Promise<FlowWithNodes>;
   create: (input: CreateWorkflowInput) => Promise<Flow>;
   get_graph: (
@@ -194,9 +196,9 @@ export function createWorkflowsApi(
   deps?: WorkflowsApiDeps
 ): WorkflowsApi {
   const api: WorkflowsApi = {
-    async list(filters: WorkflowsListFilters): Promise<WorkflowsListResponse['data']> {
+    async list(filters: WorkflowsListFilters = {}): Promise<WorkflowsListResponse['data']> {
       const params: Record<string, string | number | undefined> = {
-        project_id: filters.project_id,
+        project_id: filters.project_id ?? deps?.project_id,
         page: filters.page ?? 1,
         page_size: filters.page_size ?? 100,
       };

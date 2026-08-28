@@ -4,12 +4,15 @@
  * Links the project to an existing Instance using the same connection mechanism
  * the Platform_UI uses (client.projects + client.instances / update_project).
  *
- * On success: writes resolved `instance_id` + `api_url` + stream bus `streams`/`region`
- * atomically into `.loxtep/project.json`, including a `repository` block when the
- * GitHub-bound (R17.2) and omitting it when unbound (R17.3).
+ * On success: writes resolved `instance_id` + `api_url` from instances.get into
+ * `.loxtep/project.json` (workspace attach_state becomes attached). Stream bus
+ * `streams`/`region` are written when stream-config is available. A missing
+ * stream-config cache is a warning — generate/stream I/O stay blocked — not a
+ * hard attach fail. Includes a `repository` block when GitHub-bound (R17.2)
+ * and omits it when unbound (R17.3).
  *
- * On failure: exits non-zero, prints the failure reason, and leaves
- * `.loxtep/project.json` byte-unchanged (R1.9).
+ * On instance/project resolve or write failure: exits non-zero, prints the
+ * failure reason, and leaves `.loxtep/project.json` byte-unchanged (R1.9).
  */
 
 import type { LoxtepClient } from '../../client/loxtep-client.js';
@@ -96,9 +99,12 @@ export async function runAttach(
     };
   }
 
-  // 4. Resolve stream bus resources for this instance (required for get_writer / queue I/O).
+  // 4. Resolve stream bus resources when the instance has a stream-config cache.
+  // Missing cache is a warning: persist instance_id + api_url so the workspace
+  // is attached; generate/stream I/O stay blocked until stream-config exists.
   let streamConfig;
   let streamConfigSource: InstanceStreamConfigSource = 'organizations';
+  let streamConfigWarning: string | undefined;
   try {
     const resolved = await client.workspace.instances.get_stream_config(instance.instance_id, {
       instance,
@@ -107,14 +113,9 @@ export async function runAttach(
     streamConfigSource = resolved.source;
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    return {
-      exitCode: 1,
-      stdout: [],
-      stderr: [
-        `Attach failed: could not resolve stream bus configuration for instance ${instance.instance_id}: ${reason}`,
-        'Ensure the instance is active and your token can call GET /organizations/instances/{id}/stream-config.',
-      ],
-    };
+    streamConfigWarning =
+      `Warning: instance ${instance.instance_id} has no stream-config cache. ` +
+      `Workspace will be attached (instance_id + api_url). Generate/stream I/O stay blocked. ${reason}`;
   }
 
   // 5. Fetch the project record to read github_* binding fields.
@@ -130,16 +131,18 @@ export async function runAttach(
     };
   }
 
-  // 6. Build the new config with instance gateway + stream bus bindings.
+  // 6. Build the new config with instance gateway; stream bus only when cached.
   const repository = projectToRepository(projectRecord);
-  const streams = instanceStreamConfigToStreams(streamConfig);
+  const streams = streamConfig ? instanceStreamConfigToStreams(streamConfig) : undefined;
   const newConfig: ProjectConfig = {
     ...project,
     instance_id: instance.instance_id,
     api_url: instance.api_url,
-    region: streams.Region || instance.region,
-    streams,
+    region: streams?.Region || instance.region,
   };
+  if (streams) {
+    newConfig.streams = streams;
+  }
 
   // Include the repository block only when bound (R17.2); omit entirely when unbound (R17.3).
   if (repository) {
@@ -164,13 +167,23 @@ export async function runAttach(
   const lines: string[] = [
     `Attached to instance "${instance.name}" (${instance.instance_id}).`,
     `  api_url: ${instance.api_url}`,
-    `  region: ${newConfig.region}`,
-    `  streams: LeoEvent, LeoStream, LeoCron, LeoS3, LeoKinesisStream, LeoFirehoseStream, LeoSettings (from ${streamConfigSource})`,
   ];
+  if (newConfig.region) {
+    lines.push(`  region: ${newConfig.region}`);
+  }
+  if (streams) {
+    lines.push(
+      `  streams: LeoEvent, LeoStream, LeoCron, LeoS3, LeoKinesisStream, LeoFirehoseStream, LeoSettings (from ${streamConfigSource})`
+    );
+  }
   if (repository) {
     lines.push(`  repository: ${repository.url} (${repository.branch})`);
   }
-  return { exitCode: 0, stdout: lines, stderr: [] };
+  return {
+    exitCode: 0,
+    stdout: lines,
+    stderr: streamConfigWarning ? [streamConfigWarning] : [],
+  };
 }
 
 /**

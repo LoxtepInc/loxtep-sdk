@@ -129,6 +129,8 @@ export function createPacksApi(
   deps: PacksApiDeps = {}
 ): {
   list_available: () => Promise<ListAvailablePacksResult>;
+  /** Alias of list_available (published SDK contract). */
+  list: () => Promise<ListAvailablePacksResult>;
   /** MCP operation alias. */
   list_available_packs: () => Promise<ListAvailablePacksResult>;
   activate: (input: ActivateVocabularyPackInput | string) => Promise<ActivateVocabularyPackResult>;
@@ -168,6 +170,7 @@ export function createPacksApi(
 
   return {
     list_available,
+    list: list_available,
     list_available_packs: list_available,
     activate,
     activate_vocabulary_pack: activate,

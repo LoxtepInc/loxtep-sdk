@@ -71,6 +71,30 @@ describe('workspace-config', () => {
       expect(result.fields.instance_id).toBeUndefined();
     });
 
+    it('reads aws_credentials from credentials.json when present', async () => {
+      const loxtepDir = join(tmpRoot, '.loxtep');
+      await mkdir(loxtepDir, { recursive: true });
+      await writeFile(join(loxtepDir, 'project.json'), JSON.stringify({ project_id: 'p1' }));
+      await writeFile(
+        join(loxtepDir, 'credentials.json'),
+        JSON.stringify({
+          access_token: 'tok',
+          aws_credentials: {
+            access_key_id: 'ASIAEXAMPLEKEY',
+            secret_access_key: 'test-secret',
+            session_token: 'test-session-token',
+          },
+        })
+      );
+
+      const result = loadWorkspaceConfig(tmpRoot);
+      expect(result.fields.aws_credentials).toEqual({
+        accessKeyId: 'ASIAEXAMPLEKEY',
+        secretAccessKey: 'test-secret',
+        sessionToken: 'test-session-token',
+      });
+    });
+
     it('treats malformed JSON as missing', async () => {
       const loxtepDir = join(tmpRoot, '.loxtep');
       await mkdir(loxtepDir, { recursive: true });
