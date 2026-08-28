@@ -323,16 +323,48 @@ PY
       FAILED=1
     elif [[ "$POLL_OK" -eq 1 ]]; then
       echo "OK: deploy run $RUN_ID completed"
+      # Status reads per-workflow deployment rows, which lag the project_deploy run.
+      echo ""
+      echo "==> wait for status Deploy: deployed"
+      echo "==> wait for status Deploy: deployed" >>"$LOG"
+      STATUS_OK=0
+      for _ in $(seq 1 45); do
+        STATUS_OUT="$(mktemp)"
+        if loxtep status >"$STATUS_OUT" 2>&1; then
+          if grep -Eq '^Deploy:[[:space:]]+deployed( |$)' "$STATUS_OUT"; then
+            cat "$STATUS_OUT" | tee -a "$LOG"
+            STATUS_OK=1
+            break
+          fi
+          DEPLOY_LINE="$(grep -E '^Deploy:' "$STATUS_OUT" | head -1 || true)"
+          echo "  $DEPLOY_LINE" | tee -a "$LOG"
+        fi
+        rm -f "$STATUS_OUT"
+        sleep 2
+      done
+      if [[ "$STATUS_OK" -ne 1 ]]; then
+        echo "FAIL: timed out waiting for loxtep status to show Deploy: deployed" >&2
+        FAILED=1
+      else
+        echo "OK: status shows deployed"
+      fi
     fi
   fi
 fi
 rm -f "$DEPLOY_OUT"
 
-step "deployments list" deployments list --project-id "$(python3 -c "import json; print(json.load(open('$WORKDIR/.loxtep/project.json'))['project_id'])")"
+PROJECT_ID="$(python3 -c "import json; print(json.load(open('$WORKDIR/.loxtep/project.json'))['project_id'])")"
+step "deployments list" deployments list --project-id "$PROJECT_ID"
 step "workflows list (post-deploy)" workflows list
 step "observe status" observe status
 step "status (final)" status
-assert_log_match 'Deploy:[[:space:]]+deployed' "final status shows deployed"
+# Assert only the final status block (earlier phases legitimately print never deployed).
+if ! awk '/^==> status \(final\)$/{p=1;next} p && /^==> /{exit} p' "$LOG" | grep -Eq '^Deploy:[[:space:]]+deployed( |$)'; then
+  echo "FAIL: final status does not show Deploy: deployed" >&2
+  FAILED=1
+else
+  echo "OK: final status shows deployed"
+fi
 
 if [[ "$FAILED" -ne 0 ]]; then
   exit 1
