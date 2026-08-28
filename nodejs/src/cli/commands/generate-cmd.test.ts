@@ -30,6 +30,27 @@ function createTempDir(): string {
   return dir;
 }
 
+const COMPLETE_STREAMS = {
+  Region: 'us-east-1',
+  LeoEvent: 'LeoEvent',
+  LeoStream: 'LeoStream',
+  LeoCron: 'LeoCron',
+  LeoS3: 'LeoS3',
+  LeoKinesisStream: 'LeoKinesis',
+  LeoFirehoseStream: 'LeoFirehose',
+  LeoSettings: 'LeoSettings',
+};
+
+function attachedProjectConfig(extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    project_id: 'proj_123',
+    instance_id: 'inst_456',
+    api_url: 'https://api.loxtep.io',
+    streams: COMPLETE_STREAMS,
+    ...extra,
+  };
+}
+
 function createProjectDir(tmpDir: string, config: Record<string, unknown>): string {
   const loxtepDir = join(tmpDir, '.loxtep');
   mkdirSync(loxtepDir, { recursive: true });
@@ -65,10 +86,8 @@ describe('loxtep generate command', () => {
         rmSync(tmpDir, { recursive: true, force: true });
       }
     });
-  });
 
-  describe('context-retrieval failure (R2.8)', () => {
-    it('exits non-zero and prints error on context-retrieval failure', async () => {
+    it('exits non-zero and does not write .loxtep/generated when attached without stream-config', async () => {
       const tmpDir = createTempDir();
       try {
         createProjectDir(tmpDir, {
@@ -76,6 +95,25 @@ describe('loxtep generate command', () => {
           instance_id: 'inst_456',
           api_url: 'https://api.loxtep.io',
         });
+
+        const result = await runGenerateCommand(tmpDir);
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr.join(' ')).toContain('stream-config');
+        expect(result.stderr.join(' ')).toContain('blocked');
+        expect(existsSync(join(tmpDir, '.loxtep', 'generated'))).toBe(false);
+        expect(mockLoadWorkspaceContext).not.toHaveBeenCalled();
+        expect(mockRequireCliClient).not.toHaveBeenCalled();
+      } finally {
+        rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('context-retrieval failure (R2.8)', () => {
+    it('exits non-zero and prints error on context-retrieval failure', async () => {
+      const tmpDir = createTempDir();
+      try {
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         mockRequireCliClient.mockResolvedValue({
           client: {} as any,
@@ -95,11 +133,7 @@ describe('loxtep generate command', () => {
     it('leaves prior artifact unchanged on context-retrieval failure', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         // Write a prior artifact
         const generatedDir = join(tmpDir, '.loxtep', 'generated');
@@ -128,11 +162,7 @@ describe('loxtep generate command', () => {
     it('prints per-type counts on success', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         mockRequireCliClient.mockResolvedValue({
           client: {} as any,
@@ -176,11 +206,7 @@ describe('loxtep generate command', () => {
     it('generates the artifact file at .loxtep/generated/index.ts', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         mockRequireCliClient.mockResolvedValue({
           client: {} as any,
@@ -212,11 +238,7 @@ describe('loxtep generate command', () => {
     it('reports 0 for empty resource types (R2.7)', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         mockRequireCliClient.mockResolvedValue({
           client: {} as any,
@@ -251,11 +273,7 @@ describe('loxtep generate command', () => {
     it('exits non-zero when a skill references a non-existent resource', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         // Create a skill that references a non-existent data product
         const skillsDir = join(tmpDir, '.loxtep', 'skills');
@@ -302,11 +320,7 @@ permissions:
     it('succeeds when all skill references are valid', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         // Create a skill that references existing resources
         const skillsDir = join(tmpDir, '.loxtep', 'skills');
@@ -349,11 +363,7 @@ permissions:
     it('succeeds when no skills directory exists', async () => {
       const tmpDir = createTempDir();
       try {
-        createProjectDir(tmpDir, {
-          project_id: 'proj_123',
-          instance_id: 'inst_456',
-          api_url: 'https://api.loxtep.io',
-        });
+        createProjectDir(tmpDir, attachedProjectConfig());
 
         mockRequireCliClient.mockResolvedValue({
           client: {} as any,

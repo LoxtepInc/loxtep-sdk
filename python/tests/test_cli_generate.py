@@ -9,10 +9,33 @@ from unittest.mock import MagicMock, patch
 from loxtep.cli import _is_native_command, main
 
 
+COMPLETE_STREAMS = {
+    "Region": "us-east-1",
+    "LeoEvent": "LeoEvent",
+    "LeoStream": "LeoStream",
+    "LeoCron": "LeoCron",
+    "LeoS3": "LeoS3",
+    "LeoKinesisStream": "LeoKinesis",
+    "LeoFirehoseStream": "LeoFirehose",
+    "LeoSettings": "LeoSettings",
+}
+
+
 def _write_project_json(root, data):
     loxtep_dir = root / ".loxtep"
     loxtep_dir.mkdir(parents=True, exist_ok=True)
     (loxtep_dir / "project.json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def _attached_project(streams=True):
+    data = {
+        "project_id": "proj-1",
+        "instance_id": "inst-1",
+        "api_url": "https://apidev.loxtep.io",
+    }
+    if streams:
+        data["streams"] = COMPLETE_STREAMS
+    return data
 
 
 def test_generate_is_native_not_delegated():
@@ -46,11 +69,23 @@ def test_generate_fails_when_not_attached(tmp_path, monkeypatch, capsys):
     assert "loxtep attach" in capsys.readouterr().err
 
 
+def test_generate_fails_when_attached_without_stream_config(tmp_path, monkeypatch, capsys):
+    _write_project_json(tmp_path, _attached_project(streams=False))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", ["loxtep", "generate"])
+    generated = tmp_path / ".loxtep" / "generated"
+
+    rc = main()
+
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "stream-config" in err
+    assert "blocked" in err
+    assert not generated.exists()
+
+
 def test_generate_fails_when_not_logged_in(tmp_path, monkeypatch, capsys):
-    _write_project_json(
-        tmp_path,
-        {"project_id": "proj-1", "instance_id": "inst-1", "api_url": "https://apidev.loxtep.io"},
-    )
+    _write_project_json(tmp_path, _attached_project())
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("sys.argv", ["loxtep", "generate"])
     monkeypatch.delenv("LOXTEP_TOKEN", raising=False)
@@ -63,10 +98,7 @@ def test_generate_fails_when_not_logged_in(tmp_path, monkeypatch, capsys):
 
 
 def test_generate_writes_python_artifact_and_prints_counts(tmp_path, monkeypatch, capsys):
-    _write_project_json(
-        tmp_path,
-        {"project_id": "proj-1", "instance_id": "inst-1", "api_url": "https://apidev.loxtep.io"},
-    )
+    _write_project_json(tmp_path, _attached_project())
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("sys.argv", ["loxtep", "generate"])
     monkeypatch.setenv("LOXTEP_TOKEN", "test-token")

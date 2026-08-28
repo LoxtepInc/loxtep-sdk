@@ -25,6 +25,20 @@ NOT_ATTACHED_MESSAGE = (
     "Project is not attached to an Instance (missing instance_id/api_url). "
     "Run `loxtep attach` first."
 )
+NO_STREAM_CONFIG_MESSAGE = (
+    "Instance has no stream-config cache. Generate/stream I/O stay blocked "
+    "until stream-config is available."
+)
+_STREAM_CACHE_KEYS = (
+    "Region",
+    "LeoEvent",
+    "LeoStream",
+    "LeoCron",
+    "LeoS3",
+    "LeoKinesisStream",
+    "LeoFirehoseStream",
+    "LeoSettings",
+)
 LOCAL_PROJECT_MESSAGE = (
     "Project is not registered on the platform (local-only project_id). Run `loxtep login` "
     "then `loxtep init` to register a platform project, or `loxtep init --project-id <uuid>` "
@@ -100,10 +114,27 @@ def require_project(cwd: Optional[str] = None) -> tuple[str, dict[str, Any]]:
 def require_attached_project(cwd: Optional[str] = None) -> tuple[str, dict[str, Any]]:
     """Like `require_project`, but additionally enforces that the project has been
     attached: raises ProjectPreconditionError when `instance_id`/`api_url` are missing.
-    Used by `generate` (and would be used by a native `deploy`/`test` if added)."""
+    Does not require stream-config (`streams`); attach may persist instance_id/api_url
+    and warn when the cache is missing."""
     project_dir, project = require_project(cwd)
     instance_id = project.get("instance_id")
     api_url = project.get("api_url")
     if not isinstance(instance_id, str) or not instance_id or not isinstance(api_url, str) or not api_url:
         raise ProjectPreconditionError(NOT_ATTACHED_MESSAGE)
+    return project_dir, project
+
+
+def has_complete_stream_config(project: dict[str, Any]) -> bool:
+    """True when project.json `streams` has the Leo* cache attach writes on success."""
+    streams = project.get("streams")
+    if not isinstance(streams, dict):
+        return False
+    return all(isinstance(streams.get(key), str) and streams[key] for key in _STREAM_CACHE_KEYS)
+
+
+def require_attached_stream_config(cwd: Optional[str] = None) -> tuple[str, dict[str, Any]]:
+    """Attached project plus a complete stream-config cache. Used by generate / stream I/O."""
+    project_dir, project = require_attached_project(cwd)
+    if not has_complete_stream_config(project):
+        raise ProjectPreconditionError(NO_STREAM_CONFIG_MESSAGE)
     return project_dir, project
