@@ -3,23 +3,22 @@
 # Not Jest. Requires a prior pwd-local login (or an explicit credentials file).
 #
 # Usage:
-#   # Minimal (auth + workspace scaffold) — works with platform credentials only:
+#   # Minimal (auth + workspace scaffold):
 #   pnpm run test:e2e:cli
 #
-#   # Full attach + generate (needs an instance whose API allows workspace context):
+#   # Full attach + generate (must succeed — no soft-fail):
 #   pnpm run test:e2e:cli -- --instance <uuid>
 #
-#   ./scripts/cli-e2e.sh [--instance <uuid>] [--credentials <file>] [--keep]
+#   ./scripts/cli-e2e.sh [--instance <uuid>] [--credentials <file>] [--keep] [--name <name>]
 #
 # Env:
-#   LOXTEP_E2E_INSTANCE_ID   Optional; enables attach + generate when set
+#   LOXTEP_E2E_INSTANCE_ID   Optional; enables attach + data-products + generate when set
 #   LOXTEP_E2E_CREDENTIALS   Credentials.json to copy (default: ./.loxtep/credentials.json)
 #   LOXTEP_E2E_KEEP=1        Keep temp workdir on success
 #   LOXTEP_E2E_WORKDIR       Use this dir instead of mktemp (implies keep)
-#   LOXTEP_E2E_SOFT_ATTACH=1 Attach/generate failures become warnings (still exit 0)
 #   LOXTEP_CLI               Override CLI binary (default: dist/cli/index.js)
 #
-# Exit 0 only if required steps succeed (and optional attach steps unless soft).
+# Exit 0 only if every invoked step succeeds. Attach/generate Forbidden is a failure.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,12 +28,11 @@ INSTANCE_ID="${LOXTEP_E2E_INSTANCE_ID:-}"
 CREDENTIALS_SRC="${LOXTEP_E2E_CREDENTIALS:-$ROOT/.loxtep/credentials.json}"
 KEEP="${LOXTEP_E2E_KEEP:-0}"
 WORKDIR="${LOXTEP_E2E_WORKDIR:-}"
-SOFT_ATTACH="${LOXTEP_E2E_SOFT_ATTACH:-0}"
 CLI="${LOXTEP_CLI:-$ROOT/dist/cli/index.js}"
 NAME="cli-e2e-$(date +%Y%m%d-%H%M%S)"
 
 usage() {
-  sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -50,10 +48,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --keep)
       KEEP=1
-      shift
-      ;;
-    --soft-attach)
-      SOFT_ATTACH=1
       shift
       ;;
     --name)
@@ -98,7 +92,6 @@ cleanup() {
     echo "E2E FAILED. Workdir kept: $WORKDIR" >&2
     echo "Tail of $LOG:" >&2
     tail -n 50 "$LOG" >&2 || true
-    [[ "$KEEP" == "1" ]] || true
     exit 1
   fi
   if [[ "$KEEP" != "1" ]]; then
@@ -128,30 +121,6 @@ step() {
   echo "OK: $label"
 }
 
-soft_step() {
-  local label="$1"
-  shift
-  echo ""
-  echo "==> $label (soft)"
-  echo "==> $label (soft)" >>"$LOG"
-  echo "\$ loxtep $*" | tee -a "$LOG"
-  if ! loxtep "$@" >>"$LOG" 2>&1; then
-    echo "WARN: $label failed (continuing)" | tee -a "$LOG" >&2
-    return 0
-  fi
-  echo "OK: $label"
-}
-
-optional_step() {
-  local label="$1"
-  shift
-  if [[ "$SOFT_ATTACH" == "1" ]]; then
-    soft_step "$label" "$@" || true
-  else
-    step "$label" "$@"
-  fi
-}
-
 assert_file() {
   local path="$1"
   if [[ ! -f "$WORKDIR/$path" ]]; then
@@ -178,7 +147,6 @@ echo "  cli:         $CLI"
 echo "  workdir:     $WORKDIR"
 echo "  credentials: $CREDENTIALS_SRC"
 echo "  instance:    ${INSTANCE_ID:-"(none — workspace phase only)"}"
-echo "  soft_attach: $SOFT_ATTACH"
 echo "  project:     $NAME"
 echo "  log:         $LOG"
 
@@ -206,15 +174,14 @@ else
 fi
 
 step "projects list" projects list
-soft_step "instances list" instances list
+step "instances list" instances list
 step "status (pre-attach)" status
 step "whoami (post-init)" whoami
 
-# --- Phase B: attach + generate (optional; instance-scoped APIs vary) ---
+# --- Phase B: attach + control-plane data products + generate ---
 if [[ -n "$INSTANCE_ID" ]]; then
-  optional_step "attach instance" attach --instance "$INSTANCE_ID"
-  if [[ "$FAILED" -eq 0 || "$SOFT_ATTACH" == "1" ]]; then
-    if python3 - "$WORKDIR/.loxtep/project.json" "$INSTANCE_ID" <<'PY'
+  step "attach instance" attach --instance "$INSTANCE_ID"
+  if ! python3 - "$WORKDIR/.loxtep/project.json" "$INSTANCE_ID" <<'PY'
 import json, sys
 path, expect = sys.argv[1], sys.argv[2]
 data = json.load(open(path))
@@ -223,29 +190,21 @@ if got != expect:
     raise SystemExit(f"instance_id mismatch: got={got!r} expect={expect!r}")
 print("OK: project.json instance_id")
 PY
-    then
-      :
-    else
-      if [[ "$SOFT_ATTACH" == "1" ]]; then
-        echo "WARN: instance_id not written (continuing)" | tee -a "$LOG" >&2
-      else
-        FAILED=1
-      fi
-    fi
+  then
+    FAILED=1
   fi
 
-  soft_step "data-products list" data-products list
-  optional_step "generate" generate
+  # Hits control plane GET /dataproducts/dataproducts (not instance api_url).
+  step "data-products list" data-products list
+  step "generate" generate
   if [[ -f "$WORKDIR/.loxtep/generated/index.ts" ]]; then
     echo "OK: file .loxtep/generated/index.ts"
-  elif [[ "$SOFT_ATTACH" == "1" ]]; then
-    echo "WARN: generate output missing (continuing)" | tee -a "$LOG" >&2
   else
     echo "FAIL: missing .loxtep/generated/index.ts" >&2
     FAILED=1
   fi
 
-  optional_step "status (post-attach)" status
+  step "status (post-attach)" status
 fi
 
 if [[ "$FAILED" -ne 0 ]]; then
