@@ -1,13 +1,15 @@
 """
-HTTP client for Loxtep API. Sync and async; JWT in x-jwt-token; retry on 5xx/429.
+HTTP client for Loxtep API. Sync and async; JWT in x-jwt-token; SigV4 when STS present.
 """
 
-from typing import Any, Callable, Optional
+import json
+from typing import Any, Callable, Mapping, Optional
 
 import httpx
 
 from .errors import parse_http_error
 from .gateway_url import build_platform_request_url
+from .signer import sign_request
 
 MAX_RETRIES = 2
 INITIAL_BACKOFF = 1.0
@@ -15,6 +17,42 @@ INITIAL_BACKOFF = 1.0
 
 def _is_retryable(status_code: int) -> bool:
     return status_code >= 500 or status_code == 429
+
+
+def _jwt_headers(get_token: Optional[Callable[..., Any]]) -> dict[str, str]:
+    headers: dict[str, str] = {"Content-Type": "application/json", "Accept": "application/json"}
+    if get_token:
+        token = get_token()
+        if isinstance(token, str) and token:
+            headers["x-jwt-token"] = token
+    return headers
+
+
+def signed_request_parts(
+    *,
+    method: str,
+    url: str,
+    body: Optional[dict[str, Any]],
+    get_token: Optional[Callable[..., Any]],
+    credentials: Optional[Mapping[str, str]],
+    region: str,
+) -> tuple[dict[str, str], Optional[bytes]]:
+    headers = _jwt_headers(get_token)
+    content: Optional[bytes] = None
+    body_str: Optional[str] = None
+    if body is not None:
+        body_str = json.dumps(body)
+        content = body_str.encode("utf-8")
+    if credentials:
+        headers = sign_request(
+            method=method,
+            url=url,
+            headers=headers,
+            body=body_str,
+            credentials=credentials,
+            region=region,
+        )
+    return headers, content
 
 
 class RateLimitInfo:
@@ -43,11 +81,15 @@ class LoxtepHttpClient:
         *,
         timeout: float = 30.0,
         use_platform_path_resolution: bool = True,
+        credentials: Optional[Mapping[str, str]] = None,
+        region: Optional[str] = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._get_token = get_token
         self._timeout = timeout
         self._use_platform_path_resolution = use_platform_path_resolution
+        self._credentials = dict(credentials) if credentials else None
+        self._region = region or "us-east-1"
         self._last_rate_limit: Optional[RateLimitInfo] = None
         self._client = httpx.Client(timeout=timeout)
 
@@ -61,12 +103,19 @@ class LoxtepHttpClient:
         self.close()
 
     def _headers(self) -> dict[str, str]:
-        headers: dict[str, str] = {"Content-Type": "application/json", "Accept": "application/json"}
-        if self._get_token:
-            token = self._get_token()
-            if token:
-                headers["x-jwt-token"] = token
-        return headers
+        return _jwt_headers(self._get_token)
+
+    def _signed_request(
+        self, method: str, url: str, body: Optional[dict[str, Any]]
+    ) -> tuple[dict[str, str], Optional[bytes]]:
+        return signed_request_parts(
+            method=method,
+            url=url,
+            body=body,
+            get_token=self._get_token,
+            credentials=self._credentials,
+            region=self._region,
+        )
 
     def _capture_rate_limit(self, response: httpx.Response) -> None:
         limit_h = response.headers.get("x-ratelimit-limit")
@@ -100,11 +149,12 @@ class LoxtepHttpClient:
         retry_count: int = 0,
     ) -> Any:
         url = self._build_url(path)
+        headers, content = self._signed_request(method, url, body)
         resp = self._client.request(
             method,
             url,
-            headers=self._headers(),
-            json=body,
+            headers=headers,
+            content=content,
         )
         request_id = resp.headers.get("x-request-id")
         try:
@@ -148,11 +198,15 @@ class AsyncLoxtepHttpClient:
         *,
         timeout: float = 30.0,
         use_platform_path_resolution: bool = True,
+        credentials: Optional[Mapping[str, str]] = None,
+        region: Optional[str] = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._get_token = get_token
         self._timeout = timeout
         self._use_platform_path_resolution = use_platform_path_resolution
+        self._credentials = dict(credentials) if credentials else None
+        self._region = region or "us-east-1"
         self._last_rate_limit: Optional[RateLimitInfo] = None
         self._client = httpx.AsyncClient(timeout=timeout)
 
@@ -166,13 +220,19 @@ class AsyncLoxtepHttpClient:
         await self.aclose()
 
     def _headers(self) -> dict[str, str]:
-        headers: dict[str, str] = {"Content-Type": "application/json", "Accept": "application/json"}
-        if self._get_token:
-            token = self._get_token()
-            if isinstance(token, str) and token:
-                headers["x-jwt-token"] = token
-            # If coroutine, caller should pass a resolved token getter or we support async get_token
-        return headers
+        return _jwt_headers(self._get_token)
+
+    def _signed_request(
+        self, method: str, url: str, body: Optional[dict[str, Any]]
+    ) -> tuple[dict[str, str], Optional[bytes]]:
+        return signed_request_parts(
+            method=method,
+            url=url,
+            body=body,
+            get_token=self._get_token,
+            credentials=self._credentials,
+            region=self._region,
+        )
 
     def _capture_rate_limit(self, response: httpx.Response) -> None:
         limit_h = response.headers.get("x-ratelimit-limit")
@@ -206,11 +266,12 @@ class AsyncLoxtepHttpClient:
         retry_count: int = 0,
     ) -> Any:
         url = self._build_url(path)
+        headers, content = self._signed_request(method, url, body)
         resp = await self._client.request(
             method,
             url,
-            headers=self._headers(),
-            json=body,
+            headers=headers,
+            content=content,
         )
         request_id = resp.headers.get("x-request-id")
         try:

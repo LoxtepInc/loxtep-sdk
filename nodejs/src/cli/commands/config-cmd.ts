@@ -1,11 +1,14 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { loadConfig } from '../../config/load.js';
 import { loadCliConfig } from '../load-cli-config.js';
 import { resolveCliApiUrl } from '../resolve-api-url.js';
 import { resolveCliAccessToken } from '../auth-resolve.js';
 import { saveConfig } from '../../config/save.js';
 import type { LoxtepConfig } from '../../config/types.js';
+import { getDefaultConfigPath } from '../../config/paths.js';
 import { resolveSdkApiPaths } from '../../config/resolve-sdk-urls.js';
 import { requireCliClient } from '../create-cli-client.js';
+import { tryLoadProjectConfig, writeProjectConfig } from '../project-context.js';
 
 const ALLOWED_KEYS: (keyof LoxtepConfig)[] = [
   'api_url',
@@ -96,8 +99,14 @@ export async function runConfigList(): Promise<void> {
 
 /**
  * Run config set <key> <value>: update one config key and save to file.
+ * `instance_id` (and `api_url` when already known) are also written to the
+ * workspace `.loxtep/project.json` so status sees the instance. Not a full attach.
  */
-export async function runConfigSet(key: string, value: string): Promise<void> {
+export async function runConfigSet(
+  key: string,
+  value: string,
+  options: { cwd?: string } = {}
+): Promise<void> {
   const k = key as keyof LoxtepConfig;
   if (!ALLOWED_KEYS.includes(k)) {
     console.error(`Invalid key. Allowed: ${ALLOWED_KEYS.join(', ')}`);
@@ -107,8 +116,65 @@ export async function runConfigSet(key: string, value: string): Promise<void> {
 
   const config = await loadConfig();
   const updated: Partial<LoxtepConfig> = { ...config, [k]: value || undefined };
+  const fileApiUrl = readStoredApiUrl();
   await saveConfig(updated);
+  if (k === 'instance_id' || k === 'api_url') {
+    const cwd = options.cwd ?? process.cwd();
+    const knownApiUrl =
+      k === 'api_url'
+        ? trimConfigValue(value)
+        : process.env.LOXTEP_API_URL?.trim() || fileApiUrl;
+    await persistWorkspaceProjectBinding(
+      {
+        instance_id: k === 'instance_id' ? value || undefined : updated.instance_id,
+        api_url: knownApiUrl,
+      },
+      cwd
+    );
+  }
   console.log(`${key} set to ${value || '(cleared)'}`);
+}
+
+/** api_url actually stored in ~/.loxtep/config.json — not the production default. */
+function readStoredApiUrl(): string | undefined {
+  const path = getDefaultConfigPath();
+  if (!existsSync(path)) return undefined;
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as Record<string, unknown>;
+    return typeof parsed.api_url === 'string' ? trimConfigValue(parsed.api_url) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Merge instance_id / api_url into `.loxtep/project.json` when a workspace exists.
+ * Leaves the file unchanged when there is no project.json (config set is not attach).
+ */
+export async function persistWorkspaceProjectBinding(
+  config: Partial<LoxtepConfig>,
+  cwd: string = process.cwd()
+): Promise<void> {
+  const loaded = tryLoadProjectConfig(cwd);
+  if (!loaded) return;
+
+  const instance_id = trimConfigValue(config.instance_id) ?? loaded.project.instance_id;
+  const api_url = trimConfigValue(config.api_url) ?? loaded.project.api_url;
+  const next = {
+    ...loaded.project,
+    ...(instance_id ? { instance_id } : {}),
+    ...(api_url ? { api_url } : {}),
+  };
+  if (next.instance_id === loaded.project.instance_id && next.api_url === loaded.project.api_url) {
+    return;
+  }
+  await writeProjectConfig(loaded.projectFilePath, next);
+}
+
+function trimConfigValue(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 /**

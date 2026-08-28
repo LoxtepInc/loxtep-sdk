@@ -200,6 +200,51 @@ describe('LoxtepClient.fromWorkspace()', () => {
     });
   });
 
+  it('loads aws_credentials from credentials.json and uses them for SigV4', async () => {
+    const loxtepDir = join(tmpRoot, '.loxtep');
+    await mkdir(loxtepDir, { recursive: true });
+    await writeFile(
+      join(loxtepDir, 'project.json'),
+      JSON.stringify({
+        project_id: 'proj-1',
+        api_url: 'https://api.example.com',
+        instance_id: 'inst-1',
+      })
+    );
+    await writeFile(
+      join(loxtepDir, 'credentials.json'),
+      JSON.stringify({
+        access_token: 'tok-local',
+        aws_credentials: {
+          access_key_id: 'ASIAEXAMPLEKEY',
+          secret_access_key: 'test-secret',
+          session_token: 'test-session-token',
+        },
+      })
+    );
+
+    const fetchFn = jest.fn(async () => {
+      return new Response(JSON.stringify({ success: true, data: { user_id: 'u1' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const client = LoxtepClient.fromWorkspace({ cwd: tmpRoot, fetch_fn: fetchFn });
+    await client.session.get_current_user();
+
+    expect(fetchFn).toHaveBeenCalled();
+    const init = fetchFn.mock.calls[0]?.[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    const headerKeys = Object.keys(headers).reduce<Record<string, string>>((acc, key) => {
+      acc[key.toLowerCase()] = headers[key];
+      return acc;
+    }, {});
+    expect(headerKeys['authorization']).toMatch(/^AWS4-HMAC-SHA256 /);
+    expect(headerKeys['x-amz-security-token']).toBe('test-session-token');
+    expect(headerKeys['x-jwt-token']).toBe('tok-local');
+  });
+
   it('LOXTEP_CONFIG_DIR isolates global credentials from the real home dir', async () => {
     await installWorkspace(tmpRoot, {
       project: 'project-minimal.json',

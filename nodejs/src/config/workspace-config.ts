@@ -17,6 +17,13 @@ import { ValidationError } from '../errors/validation.js';
 import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
 import { parseStreamsPartial } from './streams-partial.js';
 
+/** STS keys from credentials.json `aws_credentials` — same shape the constructor `credentials` option uses. */
+export interface WorkspaceAwsCredentials {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken?: string;
+}
+
 /**
  * Fields that auto-config resolves from workspace files.
  */
@@ -28,6 +35,8 @@ export interface WorkspaceResolvedFields {
   region?: string;
   streams?: Partial<ConfigurationResources>;
   token?: string;
+  /** STS from credentials.json `aws_credentials` when present. */
+  aws_credentials?: WorkspaceAwsCredentials;
 }
 
 /**
@@ -110,6 +119,10 @@ export function loadWorkspaceConfig(cwd?: string): WorkspaceConfigResult {
         if (typeof parsed.access_token === 'string' && parsed.access_token.trim()) {
           fields.token = parsed.access_token.trim();
         }
+        const aws = parseAwsCredentials(parsed.aws_credentials);
+        if (aws) {
+          fields.aws_credentials = aws;
+        }
         // credentials.json can also carry api_base_url (from login)
         if (
           !fields.api_url &&
@@ -142,6 +155,8 @@ export interface ExplicitConfigFields {
   region?: string;
   streams?: Partial<ConfigurationResources>;
   token?: string;
+  /** STS keys; explicit override of workspace credentials.json. */
+  aws_credentials?: WorkspaceAwsCredentials;
 }
 
 /**
@@ -172,6 +187,8 @@ export interface AutoConfigResult {
   streams?: Partial<ConfigurationResources>;
   /** Final resolved auth token. */
   token?: string;
+  /** STS from credentials.json (or explicit), for constructor `credentials`. */
+  aws_credentials?: WorkspaceAwsCredentials;
   /** Files that were resolved (for debug log). */
   resolvedFiles: string[];
   /** Files that were missing. */
@@ -201,6 +218,7 @@ export function resolveAutoConfig(
     region: explicit?.region || workspace.fields.region,
     streams: explicit?.streams || workspace.fields.streams,
     token: explicit?.token || workspace.fields.token,
+    aws_credentials: explicit?.aws_credentials || workspace.fields.aws_credentials,
   };
 
   // Layer 3: env vars (highest precedence)
@@ -219,6 +237,7 @@ export function resolveAutoConfig(
     region: envRegion || afterExplicit.region,
     streams: afterExplicit.streams,
     token: envToken || afterExplicit.token,
+    aws_credentials: afterExplicit.aws_credentials,
     resolvedFiles: workspace.resolvedFiles,
     missingFiles: workspace.missingFiles,
   };
@@ -258,4 +277,20 @@ export function requireAutoConfig(resolved: AutoConfigResult): AutoConfigResult 
   }
 
   return resolved;
+}
+
+/** Map credentials.json `aws_credentials` (snake_case) to constructor `credentials`. */
+export function parseAwsCredentials(raw: unknown): WorkspaceAwsCredentials | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const aws = raw as Record<string, unknown>;
+  if (typeof aws.access_key_id !== 'string' || !aws.access_key_id.trim()) return undefined;
+  if (typeof aws.secret_access_key !== 'string' || !aws.secret_access_key.trim()) return undefined;
+  return {
+    accessKeyId: aws.access_key_id.trim(),
+    secretAccessKey: aws.secret_access_key.trim(),
+    sessionToken:
+      typeof aws.session_token === 'string' && aws.session_token.trim()
+        ? aws.session_token.trim()
+        : undefined,
+  };
 }

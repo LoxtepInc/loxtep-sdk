@@ -121,11 +121,12 @@ def _build_create_body(
 class TriggersApi:
     """Sync triggers surface (get, list, create, update, delete, test)."""
 
-    def __init__(self, http: LoxtepHttpClient) -> None:
+    def __init__(self, http: LoxtepHttpClient, project_id: Optional[str] = None) -> None:
         self._http = http
+        self._project_id = project_id
 
     def get(self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None) -> Trigger:
-        pid = _require_project_id(project_id, "get")
+        pid = _require_project_id(project_id or self._project_id, "get")
         res = self._http.get(_connection_path(pid, id, workflow_id))
         data = res.get("data", res) if isinstance(res, dict) else res
         return Trigger.model_validate(data)
@@ -143,7 +144,7 @@ class TriggersApi:
         verified: Optional[bool] = None,
         draft: Optional[bool] = None,
     ) -> dict[str, Any]:
-        pid = _require_project_id(project_id, "list")
+        pid = _require_project_id(project_id or self._project_id, "list")
         res = self._http.get(_entities_base(pid))
         data = res.get("data", res) if isinstance(res, dict) else res
         raw_items = data.get("connections", []) if isinstance(data, dict) else []
@@ -244,13 +245,14 @@ class TriggersApi:
 class AsyncTriggersApi:
     """Async triggers surface (get, list, create, update, delete, test)."""
 
-    def __init__(self, http: AsyncLoxtepHttpClient) -> None:
+    def __init__(self, http: AsyncLoxtepHttpClient, project_id: Optional[str] = None) -> None:
         self._http = http
+        self._project_id = project_id
 
     async def get(
         self, id: str, *, project_id: Optional[str] = None, workflow_id: Optional[str] = None
     ) -> Trigger:
-        pid = _require_project_id(project_id, "get")
+        pid = _require_project_id(project_id or self._project_id, "get")
         res = await self._http.get(_connection_path(pid, id, workflow_id))
         data = res.get("data", res) if isinstance(res, dict) else res
         return Trigger.model_validate(data)
@@ -268,7 +270,7 @@ class AsyncTriggersApi:
         verified: Optional[bool] = None,
         draft: Optional[bool] = None,
     ) -> dict[str, Any]:
-        pid = _require_project_id(project_id, "list")
+        pid = _require_project_id(project_id or self._project_id, "list")
         res = await self._http.get(_entities_base(pid))
         data = res.get("data", res) if isinstance(res, dict) else res
         raw_items = data.get("connections", []) if isinstance(data, dict) else []

@@ -53,9 +53,9 @@ export interface FlowNode {
   [key: string]: unknown;
 }
 
-/** Filters for flows.list(). project_id required. */
+/** Filters for flows.list(). project_id defaults to the client's project_id. */
 export interface FlowsListFilters {
-  project_id: string;
+  project_id?: string;
   status?: 'active' | 'paused' | 'error' | 'inactive';
   search?: string;
   page?: number;

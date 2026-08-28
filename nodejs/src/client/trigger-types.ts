@@ -87,7 +87,7 @@ export interface TriggerUpdateInput {
 
 /** Filters for triggers.list(). */
 export interface TriggersListFilters {
-  /** Required — list is project-scoped via entities API. */
+  /** Defaults to the client's project_id when omitted. */
   project_id?: string;
   workflow_id?: string;
   page?: number;

@@ -210,23 +210,29 @@ describe('loxtep attach', () => {
     expect(afterContent).toBe(originalContent);
   });
 
-  it('fails when stream-config returns an error, leaving file unchanged (R1.9)', async () => {
+  it('attaches with instance_id + api_url when stream-config cache is missing (warning, not hard fail)', async () => {
     const dir = makeTmpDir();
     tmpDirs.push(dir);
     const filePath = scaffoldProject(dir, { project_id: 'proj_test1' });
-    const originalContent = readFileSync(filePath, 'utf-8');
-
+    const instance = makeInstance({
+      instance_id: 'inst_abc123',
+      api_url: 'https://api.loxtep.io',
+    });
     const client = mockClient({
+      getInstance: instance,
       streamConfigError: new Error('stream-config unavailable'),
     });
 
     const result = await runAttach(client, { cwd: dir, instanceId: 'inst_abc123' });
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr[0]).toContain('stream bus configuration');
-    expect(result.stderr[0]).toContain('stream-config unavailable');
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr.join(' ')).toContain('no stream-config cache');
+    expect(result.stderr.join(' ')).toContain('inst_abc123');
+    expect(result.stdout.join(' ')).toContain('Attached');
 
-    const afterContent = readFileSync(filePath, 'utf-8');
-    expect(afterContent).toBe(originalContent);
+    const written = JSON.parse(readFileSync(filePath, 'utf-8'));
+    expect(written.instance_id).toBe('inst_abc123');
+    expect(written.api_url).toBe('https://api.loxtep.io');
+    expect(written.streams).toBeUndefined();
   });
 
   it('fails when project.get returns an error, leaving file unchanged (R1.9)', async () => {

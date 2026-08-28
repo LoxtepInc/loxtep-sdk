@@ -67,6 +67,7 @@ def _client_from_auto_config(
     region: Optional[str] = None,
     token: Optional[str] = None,
     streams: Optional[Mapping[str, Any]] = None,
+    credentials: Optional[Mapping[str, str]] = None,
     timeout: float = 30.0,
     async_client: bool = False,
 ) -> Any:
@@ -86,6 +87,8 @@ def _client_from_auto_config(
         explicit["token"] = token
     if streams:
         explicit["streams"] = dict(streams)
+    if credentials:
+        explicit["aws_credentials"] = dict(credentials)
 
     resolved = require_auto_config(resolve_auto_config(explicit, cwd))
     merged_streams = streams_with_region(resolved.streams, resolved.region)
@@ -98,6 +101,7 @@ def _client_from_auto_config(
         instance_id=resolved.instance_id,
         region=resolved.region,
         streams=merged_streams,
+        credentials=resolved.aws_credentials,
         timeout=timeout,
     )
 
@@ -117,6 +121,7 @@ class LoxtepClient:
         get_token: Optional[Callable[[], Optional[str]]] = None,
         timeout: float = 30.0,
         streams: Optional[dict[str, Any]] = None,
+        credentials: Optional[Mapping[str, str]] = None,
     ) -> None:
         self.api_url = api_url.rstrip("/")
         self.auth = auth or {}
@@ -130,11 +135,13 @@ class LoxtepClient:
             base_url=self.api_url,
             get_token=self._get_token,
             timeout=timeout,
+            credentials=credentials,
+            region=region,
         )
         self._stream_config = resolve_stream_config(streams_with_region(streams, region) or streams)
         queues = QueuesApi(self._http)
-        triggers = TriggersApi(self._http)
-        workflows = WorkflowsApi(self._http, stream_config=self._stream_config)
+        triggers = TriggersApi(self._http, project_id=project_id)
+        workflows = WorkflowsApi(self._http, stream_config=self._stream_config, project_id=project_id)
         projects = ProjectsApi(self._http)
         templates = TemplatesApi(self._http)
         observe = ObserveApi(self._http)
@@ -275,6 +282,7 @@ class AsyncLoxtepClient:
         get_token: Optional[Callable[[], Any]] = None,
         timeout: float = 30.0,
         streams: Optional[dict[str, Any]] = None,
+        credentials: Optional[Mapping[str, str]] = None,
     ) -> None:
         self.api_url = api_url.rstrip("/")
         self.auth = auth or {}
@@ -289,10 +297,12 @@ class AsyncLoxtepClient:
             base_url=self.api_url,
             get_token=self._get_token,
             timeout=timeout,
+            credentials=credentials,
+            region=region,
         )
         queues = AsyncQueuesApi(self._http)
-        triggers = AsyncTriggersApi(self._http)
-        workflows = AsyncWorkflowsApi(self._http, stream_config=self._stream_config)
+        triggers = AsyncTriggersApi(self._http, project_id=project_id)
+        workflows = AsyncWorkflowsApi(self._http, stream_config=self._stream_config, project_id=project_id)
         projects = AsyncProjectsApi(self._http)
         templates = AsyncTemplatesApi(self._http)
         observe = AsyncObserveApi(self._http)

@@ -15,9 +15,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from .cli_config import _resolve_credentials_path
+from .cli_config import _config_path, _resolve_credentials_path
 from .errors import ValidationError
 from .project_context import PROJECT_DIR_NAME, PROJECT_FILE_NAME, find_project_dir, get_project_file_path
+from .signer import parse_aws_credentials
 
 ENV_API_URL = "LOXTEP_API_URL"
 ENV_ORGANIZATION_ID = "LOXTEP_ORGANIZATION_ID"
@@ -89,6 +90,7 @@ class AutoConfigResult:
     region: Optional[str] = None
     streams: Optional[dict[str, str]] = None
     token: Optional[str] = None
+    aws_credentials: Optional[dict[str, str]] = None
     resolved_files: list[str] = field(default_factory=list)
     missing_files: list[str] = field(default_factory=list)
 
@@ -119,6 +121,8 @@ def load_workspace_config(cwd: Optional[str] = None) -> WorkspaceConfigResult:
     else:
         missing_files.append(str(Path(work_dir) / PROJECT_DIR_NAME / PROJECT_FILE_NAME))
 
+    _merge_global_config_fields(fields, resolved_files)
+
     credentials_path = _resolve_credentials_path(work_dir)
     if credentials_path.exists():
         try:
@@ -127,6 +131,9 @@ def load_workspace_config(cwd: Optional[str] = None) -> WorkspaceConfigResult:
                 token = _trim_str(parsed.get("access_token"))
                 if token is not None:
                     fields["token"] = token
+                aws = parse_aws_credentials(parsed.get("aws_credentials"))
+                if aws is not None:
+                    fields["aws_credentials"] = aws
                 if "api_url" not in fields:
                     api_base = _trim_str(parsed.get("api_base_url"))
                     if api_base is not None:
@@ -184,9 +191,45 @@ def resolve_auto_config(
         region=_pick("region"),
         streams=streams if isinstance(streams, dict) else None,
         token=_pick("token"),
+        aws_credentials=_pick_aws_credentials(explicit, workspace.fields),
         resolved_files=list(workspace.resolved_files),
         missing_files=list(workspace.missing_files),
     )
+
+
+def _merge_global_config_fields(fields: dict[str, Any], resolved_files: list[str]) -> None:
+    """Fill instance_id / api_url from ~/.loxtep/config.json when project.json lacks them."""
+    config_path = _config_path()
+    if not config_path.exists():
+        return
+    try:
+        parsed = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(parsed, dict):
+        return
+    filled = False
+    for key in ("api_url", "instance_id"):
+        if key not in fields:
+            val = _trim_str(parsed.get(key))
+            if val is not None:
+                fields[key] = val.rstrip("/") if key == "api_url" else val
+                filled = True
+    if filled:
+        path_str = str(config_path)
+        if path_str not in resolved_files:
+            resolved_files.append(path_str)
+
+
+def _pick_aws_credentials(
+    explicit: Mapping[str, Any],
+    workspace_fields: dict[str, Any],
+) -> Optional[dict[str, str]]:
+    explicit_aws = parse_aws_credentials(explicit.get("aws_credentials"))
+    if explicit_aws is not None:
+        return explicit_aws
+    workspace_aws = workspace_fields.get("aws_credentials")
+    return workspace_aws if isinstance(workspace_aws, dict) else None
 
 
 def streams_with_region(

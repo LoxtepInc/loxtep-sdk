@@ -116,7 +116,12 @@ export type TriggersApi = {
 /**
  * Create the triggers API surface (get, list, create, update, delete, test).
  */
-export function createTriggersApi(http: LoxtepHttpClient): TriggersApi {
+export interface TriggersApiDeps {
+  /** Default project_id for list() when filters omit it (from client / workspace). */
+  project_id?: string;
+}
+
+export function createTriggersApi(http: LoxtepHttpClient, deps: TriggersApiDeps = {}): TriggersApi {
   const api: TriggersApi = {
     async get(
       id: string,
@@ -131,7 +136,7 @@ export function createTriggersApi(http: LoxtepHttpClient): TriggersApi {
     },
 
     async list(filters?: TriggersListFilters): Promise<TriggersListResponse['data']> {
-      const projectId = requireProjectId(filters?.project_id, 'list');
+      const projectId = requireProjectId(filters?.project_id ?? deps.project_id, 'list');
       const page = filters?.page ?? 1;
       const pageSize = filters?.page_size ?? 50;
       const res = await http.get<{

@@ -186,10 +186,13 @@ export class LoxtepClient {
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
     });
-    const triggersApi = createTriggersApi(this._http);
+    const triggersApi = createTriggersApi(this._http, {
+      project_id: options.project_id,
+    });
     this._workflowsApi = createWorkflowsApi(this._http, {
       rsdk: this._rsdk,
       get_rsdk: () => this.resolve_stream_sdk(),
+      project_id: options.project_id,
     });
     const projectsApi = createProjectsApi(this._http);
     const templatesApi = createTemplatesApi(this._http);
@@ -355,6 +358,7 @@ export class LoxtepClient {
       region: options.region ?? resolved.region,
       streams: resolved.streams,
       fetch_fn: options.fetch_fn,
+      credentials: resolved.aws_credentials,
     });
   }
 
