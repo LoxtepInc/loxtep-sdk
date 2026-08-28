@@ -2,9 +2,16 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createCliAuthContext, resolveCliSigV4Credentials } from './create-cli-client.js';
+import {
+  createCliAuthContext,
+  createCliClient,
+  createCliHttpClient,
+  requireCliClient,
+  resolveCliSigV4Credentials,
+} from './create-cli-client.js';
 import { refresh as refreshAuth } from '../auth/login.js';
 import { AuthenticationError } from '../errors/auth.js';
+import { waitForUpdateCheck } from './update-notifier.js';
 
 jest.mock('../auth/login.js', () => {
   const actual = jest.requireActual('../auth/login.js');
@@ -13,6 +20,10 @@ jest.mock('../auth/login.js', () => {
     refresh: jest.fn(),
   };
 });
+
+jest.mock('./update-notifier.js', () => ({
+  waitForUpdateCheck: jest.fn(async () => undefined),
+}));
 
 function makeJwt(expSeconds: number): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
@@ -151,5 +162,104 @@ describe('createCliAuthContext refresh persistence', () => {
     });
     expect(creds.accessKeyId).toBe('ASIANEW');
     expect(creds.sessionToken).toBe('new-token');
+  });
+
+  it('createCliAuthContext returns null without api_url/token', async () => {
+    await writeFile(configPath, JSON.stringify({}, null, 2));
+    const auth = await createCliAuthContext({ configFilePath: configPath, credentialsPath });
+    expect(auth).toBeNull();
+  });
+
+  it('get_token from env source returns token without refresh', async () => {
+    process.env.LOXTEP_AUTH_TOKEN = makeJwt(Math.floor(Date.now() / 1000) + 7200);
+    const auth = await createCliAuthContext({ configFilePath: configPath, credentialsPath });
+    expect(auth).not.toBeNull();
+    const tok = await auth!.get_token();
+    expect(tok).toBe(process.env.LOXTEP_AUTH_TOKEN);
+    expect(await auth!.refresh_auth()).toBe(false);
+  });
+
+  it('createCliHttpClient returns null when auth context is missing', async () => {
+    await writeFile(configPath, JSON.stringify({}, null, 2));
+    const http = await createCliHttpClient({ configFilePath: configPath, credentialsPath });
+    expect(http).toBeNull();
+  });
+
+  it('createCliClient returns client when credentials are present', async () => {
+    await writeFile(
+      credentialsPath,
+      JSON.stringify(
+        {
+          access_token: makeJwt(Math.floor(Date.now() / 1000) + 7200),
+          refresh_token: 'rt',
+          api_base_url: 'https://api.example.com',
+        },
+        null,
+        2
+      )
+    );
+    const result = await createCliClient({ configFilePath: configPath, credentialsPath });
+    expect(result).not.toBeNull();
+    expect(result!.client.api_url).toContain('api.example.com');
+  });
+
+  it('requireCliClient exits when credentials are missing', async () => {
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await writeFile(configPath, JSON.stringify({}, null, 2));
+    await requireCliClient({ configFilePath: configPath, credentialsPath });
+    expect(waitForUpdateCheck).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Missing api_url'));
+    exitSpy.mockRestore();
+    errSpy.mockRestore();
+  });
+
+  it('requireCliClient exits on AuthenticationError', async () => {
+    await writeFile(
+      credentialsPath,
+      JSON.stringify(
+        {
+          access_token: makeJwt(Math.floor(Date.now() / 1000) - 60),
+          refresh_token: 'dead',
+          api_base_url: 'https://api.example.com',
+          aws_credentials: {
+            access_key_id: 'ASIAOLD',
+            secret_access_key: 'secret',
+            session_token: 'token',
+            expiration: new Date(Date.now() - 60_000).toISOString(),
+          },
+        },
+        null,
+        2
+      )
+    );
+    jest.mocked(refreshAuth).mockRejectedValue(new Error('revoked'));
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await requireCliClient({ configFilePath: configPath, credentialsPath });
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(waitForUpdateCheck).toHaveBeenCalled();
+    exitSpy.mockRestore();
+    errSpy.mockRestore();
+  });
+
+  it('get_token throws when refresh cannot renew an expired session', async () => {
+    await writeFile(
+      credentialsPath,
+      JSON.stringify(
+        {
+          access_token: makeJwt(Math.floor(Date.now() / 1000) - 60),
+          refresh_token: 'dead-refresh',
+          api_base_url: 'https://api.example.com',
+        },
+        null,
+        2
+      )
+    );
+    jest.mocked(refreshAuth).mockRejectedValue(new Error('revoked'));
+    const auth = await createCliAuthContext({ configFilePath: configPath, credentialsPath });
+    expect(auth).not.toBeNull();
+    await expect(auth!.get_token()).rejects.toBeInstanceOf(AuthenticationError);
   });
 });

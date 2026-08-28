@@ -11,7 +11,7 @@
  * - SDK-first JSON-entity workflow package push+activate (deployLocalEntityWorkflows)
  */
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -19,6 +19,7 @@ import {
   resolveDeployTarget,
   validateReferencedResources,
   deployLocalEntityWorkflows,
+  runDeployCommand,
   type CompileError,
   type MissingRefError,
   type DeployTarget,
@@ -27,6 +28,8 @@ import { LoxtepClient } from '../../client/loxtep-client.js';
 import type { CompiledWorkflow } from '../../authoring/compiler.js';
 import type { NormalizedContext } from '../../codegen/types.js';
 import type { Instance } from '../../client/instances-types.js';
+import { captureCliOutput } from '../__tests__/cli-test-harness.js';
+import { runIngestCreate } from './ingest-cmd.js';
 
 // ─── resolveDeployTarget ─────────────────────────────────────────────────────
 
@@ -154,6 +157,23 @@ describe('validateReferencedResources', () => {
     expect(result[0]).toMatchObject({ type: 'domain', id: 'dm_missing' });
   });
 
+  it('validates workflow refs', () => {
+    const compiled: CompiledWorkflow = {
+      name: 'test_wf',
+      ops: [],
+      referencedResources: [
+        { type: 'workflow', id: 'wf_1' },
+        { type: 'workflow', id: 'wf_missing', name: 'gone' },
+      ],
+    };
+    const result = validateReferencedResources(
+      [{ compiled, file: 'wf-workflow.ts' }],
+      ctx
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: 'workflow', id: 'wf_missing', name: 'gone' });
+  });
+
   it('aggregates errors across multiple modules', () => {
     const compiled1: CompiledWorkflow = {
       name: 'wf1',
@@ -184,6 +204,23 @@ describe('discoverModuleFiles', () => {
   it('returns empty array when workflows/ does not exist', () => {
     const result = discoverModuleFiles('/tmp/nonexistent_project_' + Date.now());
     expect(result).toEqual([]);
+  });
+
+  it('lists .ts/.js modules and skips tests and .d.ts', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'deploy-discover-'));
+    try {
+      const wf = join(dir, 'workflows');
+      mkdirSync(wf, { recursive: true });
+      writeFileSync(join(wf, 'main.js'), 'module.exports = {}');
+      writeFileSync(join(wf, 'main.test.js'), '');
+      writeFileSync(join(wf, 'types.d.ts'), '');
+      writeFileSync(join(wf, 'other.ts'), '');
+      writeFileSync(join(wf, 'readme.md'), '');
+      const files = discoverModuleFiles(dir).map(f => f.filename).sort();
+      expect(files).toEqual(['main.js', 'other.ts']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -332,5 +369,403 @@ describe('deployLocalEntityWorkflows', () => {
     );
     expect(reindexCalled.count).toBe(1);
     expect(deployCalled.count).toBe(1);
+  });
+
+  it('treats reindex failure as non-fatal and still activates', async () => {
+    writeLocalWorkflowPackage('wf-json-1');
+    const client = new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'test-token' },
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      fetch_fn: async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+        if (u.includes('/workflow-bundle')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { success: true, workflow_id: 'wf-json-1' } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/reindex')) {
+          return new Response(JSON.stringify({ success: false, error: { message: 'busy' } }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (u.endsWith('/deploy')) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: { deployment_id: 'dep-only', message: 'queued' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+
+    const result = await deployLocalEntityWorkflows(client, projectDir, 'proj-1', 'inst-1');
+    expect(result.pushed[0]?.ok).toBe(true);
+    expect(result.trackingHandle?.run_id).toBe('dep-only');
+    expect(result.trackingHandle?.status).toMatch(/queued|unknown|in_progress|failed/);
+  });
+
+  it('records failed tracking handle when activate deploy throws', async () => {
+    writeLocalWorkflowPackage('wf-json-1');
+    const client = new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'test-token' },
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      fetch_fn: async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+        if (u.includes('/workflow-bundle')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { success: true, workflow_id: 'wf-json-1' } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.includes('/reindex')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { project_id: 'proj-1', enqueued: true } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (u.endsWith('/deploy')) {
+          return new Response(JSON.stringify({ success: false, error: { message: 'boom' } }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+
+    const result = await deployLocalEntityWorkflows(client, projectDir, 'proj-1', 'inst-1');
+    expect(result.trackingHandle?.run_id).toBe('unknown');
+    expect(result.trackingHandle?.status).toMatch(/failed:/);
+  });
+});
+
+// ─── runDeployCommand preconditions / dry_run ────────────────────────────────
+
+describe('runDeployCommand', () => {
+  let projectDir: string;
+
+  beforeEach(() => {
+    projectDir = mkdtempSync(join(tmpdir(), 'deploy-cmd-run-'));
+  });
+
+  afterEach(() => {
+    rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  it('fails when no .loxtep/project.json exists', async () => {
+    const result = await runDeployCommand({ cwd: projectDir });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toMatch(/loxtep init|project\.json/i);
+  });
+
+  function writeAttachedProject(extra: Record<string, unknown> = {}): void {
+    mkdirSync(join(projectDir, '.loxtep'), { recursive: true });
+    mkdirSync(join(projectDir, 'workflows'), { recursive: true });
+    writeFileSync(
+      join(projectDir, '.loxtep', 'project.json'),
+      JSON.stringify({
+        project_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        instance_id: '44444444-4444-4444-8444-444444444444',
+        api_url: 'https://api.test.loxtep.com',
+        ...extra,
+      }),
+      'utf-8'
+    );
+  }
+
+  it('dry_run returns lint-only success for an attached empty project', async () => {
+    writeAttachedProject();
+    const result = await runDeployCommand({ cwd: projectDir, dry_run: true });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.join('\n')).toContain('Deploy dry-run');
+    expect(result.stdout.join('\n')).toMatch(/Lint skipped|Lint passed/);
+  });
+
+  it('fails when project is not attached', async () => {
+    mkdirSync(join(projectDir, '.loxtep'), { recursive: true });
+    writeFileSync(
+      join(projectDir, '.loxtep', 'project.json'),
+      JSON.stringify({ project_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' }),
+      'utf-8'
+    );
+    const result = await runDeployCommand({ cwd: projectDir });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toMatch(/attach/i);
+  });
+
+  it('reports nothing to deploy when workflows/ is empty', async () => {
+    const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+    const harness = await createLocalProjectHarness();
+    try {
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: harness.cliOptions,
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.join('\n')).toContain('Nothing to deploy');
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('rejects invalid compiled modules with file:line errors', async () => {
+    const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+    const harness = await createLocalProjectHarness();
+    try {
+      writeFileSync(
+        join(harness.projectDir, 'workflows', 'broken.js'),
+        'module.exports = { name: "broken" };\n'
+      );
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: harness.cliOptions,
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toContain('compilation errors');
+      expect(result.stderr.join('\n')).toContain('broken.js');
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('fails when workspace context cannot be loaded', async () => {
+    const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+    const harness = await createLocalProjectHarness();
+    try {
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: {
+          ...harness.cliOptions,
+          fetch_fn: async () =>
+            new Response(JSON.stringify({ success: false, error: { message: 'context down' } }), {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+        },
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toMatch(/workspace context|Deploy failed/i);
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('runDeploy prints stdout/stderr and sets exitCode', async () => {
+    const { runDeploy } = await import('./deploy-cmd.js');
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const prev = process.exitCode;
+    try {
+      await runDeploy();
+      expect(process.exitCode).toBe(1);
+      expect(errSpy).toHaveBeenCalled();
+    } finally {
+      process.exitCode = prev;
+      logSpy.mockRestore();
+      errSpy.mockRestore();
+    }
+  });
+
+  it('refuses deploy when local entity package fails lint', async () => {
+    writeAttachedProject();
+    const wfRoot = join(projectDir, 'workflows', 'wf-bad');
+    mkdirSync(join(wfRoot, 'connections'), { recursive: true });
+    // Parseable JSON that fails schema / relationship lint (connection missing connector_id).
+    writeFileSync(
+      join(wfRoot, 'workflow.json'),
+      JSON.stringify({
+        workflow_id: 'wf-bad',
+        name: 'Bad',
+        workflow_type: 'ingestion',
+      })
+    );
+    writeFileSync(
+      join(wfRoot, 'connections', 'conn-1.json'),
+      JSON.stringify({ connection_id: 'conn-1', key: 'in', type: 'sdk' })
+    );
+    const result = await runDeployCommand({ cwd: projectDir, dry_run: true });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toMatch(/lint|Deploy refused|connector_id/i);
+  });
+
+  it('deploys repo-bound project via platform deploy endpoint', async () => {
+    const {
+      createLocalProjectHarness,
+      writeMinimalWorkflowModule,
+    } = await import('../__tests__/cli-test-harness.js');
+    const harness = await createLocalProjectHarness();
+    try {
+      await writeMinimalWorkflowModule(harness.projectDir, 'echo-bound');
+      const projectFile = join(harness.projectDir, '.loxtep', 'project.json');
+      const cfg = JSON.parse(readFileSync(projectFile, 'utf-8')) as Record<string, unknown>;
+      cfg.repository = {
+        url: 'https://github.com/acme/demo.git',
+        name: 'acme/demo',
+        branch: 'main',
+      };
+      writeFileSync(projectFile, JSON.stringify(cfg, null, 2));
+
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: harness.cliOptions,
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.join('\n')).toMatch(/Deploy target|S3 Code_Bundle|Created|Updated/);
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('rejects missing referenced resources on the instance', async () => {
+    const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+    const { createPlatformMockFetch } = await import('../__tests__/mock-platform-api.js');
+    const harness = await createLocalProjectHarness();
+    try {
+      writeFileSync(
+        join(harness.projectDir, 'workflows', 'missing-queue.js'),
+        `const workflow = {
+  name: 'missing-queue-wf',
+  triggers: [{ kind: 'queue', ref: { id: 'q_does_not_exist', name: 'ghost' } }],
+  async handler() {},
+};
+module.exports = workflow;
+module.exports.default = workflow;
+`
+      );
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: harness.cliOptions,
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toMatch(/referenced resources not found|q_does_not_exist/);
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('reports failed local entity package push via runDeployCommand', async () => {
+    const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+    const { createPlatformMockFetch, MOCK_IDS } = await import('../__tests__/mock-platform-api.js');
+    const harness = await createLocalProjectHarness();
+    const fetchFn = createPlatformMockFetch({
+      extra: (pathname, init) => {
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'POST' && pathname.includes('/workflow-bundle')) {
+          return new Response(
+            JSON.stringify({ success: false, error: { message: 'push boom' } }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+    try {
+      // Valid schema-shaped package so lint passes and we reach save_workflow_bundle.
+      const out = captureCliOutput();
+      await runIngestCreate(
+        {
+          name: 'app-events',
+          domain_id: MOCK_IDS.domain_id,
+          dry_run: false,
+        },
+        harness.cliOptions
+      );
+      out.restore();
+      process.exitCode = 0;
+
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: { ...harness.cliOptions, fetch_fn: fetchFn },
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toMatch(/failed to push/i);
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('reports failed workflow removal and failed individual deploys', async () => {
+    const {
+      createLocalProjectHarness,
+      writeMinimalWorkflowModule,
+    } = await import('../__tests__/cli-test-harness.js');
+    const { createPlatformMockFetch } = await import('../__tests__/mock-platform-api.js');
+    const harness = await createLocalProjectHarness();
+    const fetchFn = createPlatformMockFetch({
+      extra: (pathname, init) => {
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'DELETE' && /\/workflows\/projects\/[^/?]+$/.test(pathname.split('?')[0] ?? '')) {
+          return new Response(
+            JSON.stringify({ success: false, error: { message: 'delete denied' } }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (method === 'POST' && pathname.includes('/workflows/workflows')) {
+          return new Response(
+            JSON.stringify({ success: false, error: { message: 'create failed' } }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+    try {
+      await writeMinimalWorkflowModule(harness.projectDir, 'echo-local');
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: { ...harness.cliOptions, fetch_fn: fetchFn },
+      });
+      // Non-repo path: create may fail → failed deploy; removals may fail → Failed to remove
+      expect(result.exitCode).toBe(1);
+      const text = `${result.stdout.join('\n')}\n${result.stderr.join('\n')}`;
+      expect(text).toMatch(/failed to deploy|Failed to remove|create failed|delete denied/i);
+    } finally {
+      await harness.destroy();
+    }
+  });
+
+  it('fails repo-bound deploy when platform deploy endpoint errors', async () => {
+    const {
+      createLocalProjectHarness,
+      writeMinimalWorkflowModule,
+    } = await import('../__tests__/cli-test-harness.js');
+    const { createPlatformMockFetch } = await import('../__tests__/mock-platform-api.js');
+    const harness = await createLocalProjectHarness();
+    const fetchFn = createPlatformMockFetch({
+      extra: (pathname, init) => {
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'POST' && pathname.includes('/deploy')) {
+          return new Response(
+            JSON.stringify({ success: false, error: { message: 'deploy unavailable' } }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+    try {
+      await writeMinimalWorkflowModule(harness.projectDir, 'echo-bound');
+      const projectFile = join(harness.projectDir, '.loxtep', 'project.json');
+      const cfg = JSON.parse(readFileSync(projectFile, 'utf-8')) as Record<string, unknown>;
+      cfg.repository = { url: 'https://github.com/acme/demo.git', name: 'acme/demo', branch: 'main' };
+      writeFileSync(projectFile, JSON.stringify(cfg, null, 2));
+      const result = await runDeployCommand({
+        cwd: harness.projectDir,
+        cliOptions: { ...harness.cliOptions, fetch_fn: fetchFn },
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toMatch(/Deploy failed/);
+    } finally {
+      await harness.destroy();
+    }
   });
 });

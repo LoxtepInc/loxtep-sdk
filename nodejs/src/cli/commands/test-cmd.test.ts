@@ -168,6 +168,81 @@ describe('loxtep test command', () => {
       expect(result.stderr[0]).toContain('Failed to read event file');
     });
   });
+
+  describe('handler execution', () => {
+    it('runs handler and prints action trace with harness client', async () => {
+      const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+      const harness = await createLocalProjectHarness();
+      try {
+        setupWorkflowModule(harness.projectDir, 'echo-wf', {
+          handlerBody: '/* ok */',
+        });
+        setupEventFile(harness.projectDir, 'event.json', { hello: true });
+
+        const result = await runTestCommand({
+          cwd: harness.projectDir,
+          moduleName: 'echo-wf',
+          eventFile: 'event.json',
+          cliOptions: harness.cliOptions,
+        });
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout.join('\n')).toContain('Test completed');
+        expect(result.stdout.join('\n')).toContain('handler.complete');
+        expect(result.stdout.join('\n')).toContain('Action Trace');
+      } finally {
+        await harness.destroy();
+      }
+    });
+
+    it('records handler.error when handler throws a non-skip error', async () => {
+      const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+      const harness = await createLocalProjectHarness();
+      try {
+        setupWorkflowModule(harness.projectDir, 'boom-wf', {
+          handlerBody: 'throw new Error("handler boom");',
+        });
+        setupEventFile(harness.projectDir, 'event.json', {});
+
+        const result = await runTestCommand({
+          cwd: harness.projectDir,
+          moduleName: 'boom-wf',
+          eventFile: 'event.json',
+          cliOptions: harness.cliOptions,
+        });
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout.join('\n')).toContain('handler.error');
+        expect(result.stdout.join('\n')).toContain('handler boom');
+      } finally {
+        await harness.destroy();
+      }
+    });
+
+    it('treats GuardedOperationSkipped as non-fatal for the handler', async () => {
+      const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+      const harness = await createLocalProjectHarness();
+      try {
+        setupWorkflowModule(harness.projectDir, 'guard-wf', {
+          requireApproval: ['dataProducts.write'],
+          handlerBody:
+            'await ctx.toolbox.dataProducts.write({ id: "dp", name: "orders" }, event);',
+        });
+        setupEventFile(harness.projectDir, 'event.json', { x: 1 });
+
+        const result = await runTestCommand({
+          cwd: harness.projectDir,
+          moduleName: 'guard-wf',
+          eventFile: 'event.json',
+          cliOptions: harness.cliOptions,
+          promptFn: mockPromptReject(),
+        });
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout.join('\n')).toContain('dataProducts.write');
+        expect(result.stdout.join('\n')).not.toContain('handler.error');
+      } finally {
+        await harness.destroy();
+      }
+    });
+  });
 });
 
 describe('createApprovalGuardedToolbox', () => {
@@ -285,6 +360,58 @@ describe('createApprovalGuardedToolbox', () => {
     const entries = trace.getEntries();
     expect(entries[0].targetResource).toBe('orders');
   });
+
+  it('wraps remaining toolbox methods and records failures', async () => {
+    (mockToolbox.dataProducts.query as jest.Mock).mockRejectedValue(new Error('query failed'));
+    (mockToolbox.connections.test as jest.Mock).mockResolvedValue({ success: true });
+    (mockToolbox.workflows.getGraph as jest.Mock).mockResolvedValue({ nodes: [] });
+
+    const guarded = createApprovalGuardedToolbox(
+      mockToolbox,
+      new Set(['dataProducts.query']),
+      trace,
+      mockPromptApprove()
+    );
+
+    await expect(
+      guarded.dataProducts.query({ id: 'dp_1', name: 'orders' }, 'SELECT 1')
+    ).rejects.toThrow(/query failed/);
+    await guarded.connections.list();
+    await guarded.connections.get('conn_1');
+    await guarded.connections.test('conn_1');
+    await guarded.workflows.list();
+    await guarded.workflows.getGraph({ id: 'wf_1', name: 'main' });
+    await guarded.queues.getMetadata({ id: 'q_1', name: 'events' });
+
+    const entries = trace.getEntries();
+    expect(entries.some(e => e.operationName === 'dataProducts.query' && e.outcome === 'failed')).toBe(
+      true
+    );
+    expect(entries.some(e => e.operationName === 'workflows.getGraph')).toBe(true);
+  });
+});
+
+describe('promptApproval', () => {
+  it('approves y/yes answers and rejects others via injected readline', async () => {
+    const makeRl = (answer: string) =>
+      ({
+        question: (_prompt: string, cb: (a: string) => void) => cb(answer),
+        close: jest.fn(),
+      }) as unknown as import('node:readline').Interface;
+
+    await expect(promptApproval('op', 'target', makeRl('y'))).resolves.toEqual({
+      approved: true,
+      timedOut: false,
+    });
+    await expect(promptApproval('op', 'target', makeRl('YES'))).resolves.toEqual({
+      approved: true,
+      timedOut: false,
+    });
+    await expect(promptApproval('op', 'target', makeRl('n'))).resolves.toEqual({
+      approved: false,
+      timedOut: false,
+    });
+  });
 });
 
 describe('GuardedOperationSkipped', () => {
@@ -300,5 +427,34 @@ describe('GuardedOperationSkipped', () => {
     const err = new GuardedOperationSkipped('queues.write', 'events', true);
     expect(err.timedOut).toBe(true);
     expect(err.message).toContain('timed out');
+  });
+});
+
+describe('runTest CLI entry', () => {
+  const origArgv = process.argv;
+
+  afterEach(() => {
+    process.argv = origArgv;
+    process.exitCode = 0;
+  });
+
+  it('prints usage when module name is missing', async () => {
+    process.argv = ['node', 'loxtep', 'test'];
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { runTest } = await import('./test-cmd.js');
+    await runTest();
+    expect(process.exitCode).toBe(1);
+    expect(errSpy.mock.calls.flat().join(' ')).toContain('Usage: loxtep test');
+    errSpy.mockRestore();
+  });
+
+  it('prints usage when --event is missing', async () => {
+    process.argv = ['node', 'loxtep', 'test', 'my-workflow'];
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { runTest } = await import('./test-cmd.js');
+    await runTest();
+    expect(process.exitCode).toBe(1);
+    expect(errSpy.mock.calls.flat().join(' ')).toContain('Missing required --event');
+    errSpy.mockRestore();
   });
 });

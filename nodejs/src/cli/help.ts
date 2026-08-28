@@ -140,7 +140,7 @@ Examples:
 
 Docs: nodejs/docs/sdk-first-ingest.md · nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md · nodejs/docs/project-workspace-status.md
 
-Update checks: newer npm versions are announced on stderr (cached daily under ~/.loxtep).
+Update checks: newer npm versions are announced on stderr (cached daily under ./.loxtep).
 Disable with LOXTEP_NO_UPDATE_NOTIFIER=1 (or NO_UPDATE_NOTIFIER / CI).
 `.trimEnd();
 
