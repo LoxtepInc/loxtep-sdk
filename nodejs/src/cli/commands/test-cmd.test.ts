@@ -32,7 +32,7 @@ function createTempDir(): string {
   return dir;
 }
 
-function setupProject(dir: string, attached = true): void {
+function setupProject(dir: string, attached = true, withStreams = attached): void {
   const loxtepDir = join(dir, '.loxtep');
   mkdirSync(loxtepDir, { recursive: true });
   const config: Record<string, unknown> = {
@@ -41,6 +41,18 @@ function setupProject(dir: string, attached = true): void {
   if (attached) {
     config.instance_id = 'inst_test_456';
     config.api_url = 'https://api.loxtep.io';
+  }
+  if (withStreams) {
+    config.streams = {
+      Region: 'us-east-1',
+      LeoEvent: 'LeoEvent',
+      LeoStream: 'LeoStream',
+      LeoCron: 'LeoCron',
+      LeoS3: 'LeoS3',
+      LeoKinesisStream: 'LeoKinesis',
+      LeoFirehoseStream: 'LeoFirehose',
+      LeoSettings: 'LeoSettings',
+    };
   }
   writeFileSync(join(loxtepDir, 'project.json'), JSON.stringify(config, null, 2));
 }
@@ -121,6 +133,18 @@ describe('loxtep test command', () => {
       });
       expect(result.exitCode).toBe(1);
       expect(result.stderr[0]).toContain('loxtep attach');
+    });
+
+    it('fails when attached without stream-config cache', async () => {
+      setupProject(tempDir, true, false);
+      const result = await runTestCommand({
+        cwd: tempDir,
+        moduleName: 'my-workflow',
+        eventFile: 'event.json',
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join(' ')).toContain('stream-config');
+      expect(result.stderr.join(' ')).toContain('blocked');
     });
   });
 

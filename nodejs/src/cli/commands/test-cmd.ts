@@ -2,7 +2,7 @@
  * CLI: loxtep test <module> --event <file> — local execution with approval prompts.
  *
  * Steps:
- * 1. Call requireAttachedProject() to verify preconditions (R1.7, R1.10)
+ * 1. Call requireAttachedStreamConfig() (attached + stream-config cache)
  * 2. Load the named module from `workflows/<name>.ts` (dynamic import)
  * 3. Read the event file (JSON)
  * 4. Set up a HandlerContext with toolbox + agent from the SDK authoring
@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
 import {
-  requireAttachedProject,
+  requireAttachedStreamConfig,
   preconditionToCliResult,
   type CliResult,
 } from '../project-context.js';
@@ -347,8 +347,8 @@ export interface TestCommandOptions {
 export async function runTestCommand(options: TestCommandOptions): Promise<CliResult> {
   const workingDir = options.cwd ?? process.cwd();
 
-  // 1. Verify preconditions: project exists and is attached (R1.7, R1.10)
-  const precondition = requireAttachedProject(workingDir);
+  // 1. Verify preconditions: project exists, is attached, and has stream-config
+  const precondition = requireAttachedStreamConfig(workingDir);
   if (!precondition.ok) {
     return preconditionToCliResult(precondition.failure);
   }

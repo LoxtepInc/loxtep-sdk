@@ -8,6 +8,9 @@
  *   - {@link requireProject} fails with `NO_PROJECT` (R1.7) → "run loxtep init first".
  *   - {@link requireAttachedProject} fails with `NOT_ATTACHED` (R1.10) →
  *     "run loxtep attach first" when `instance_id`/`api_url` are not yet resolved.
+ *   - {@link requireAttachedStreamConfig} fails with `NO_STREAM_CONFIG` when
+ *     attach persisted instance_id/api_url but no stream-config cache (`streams`).
+ *     Generate/test/deploy stay blocked; attach itself is allowed to warn.
  *
  * Writes go through the atomic build-validate-write-once {@link writeProjectConfig}
  * helper used by `attach` / `generate` / `improvements apply`, so a failed command
@@ -23,6 +26,7 @@ import { z } from 'zod';
 import { ValidationError } from '../errors/validation.js';
 import type { FieldError } from '../errors/types.js';
 import type { ConfigurationResources } from '../rstreams/leo-runtime.js';
+import { isCompleteStreamConfig } from '../lib/instance-stream-config.js';
 
 /** Workspace config directory name: `.loxtep`. */
 export const PROJECT_DIR_NAME = '.loxtep';
@@ -111,7 +115,8 @@ export const ProjectConfigSchema = z.object({
  */
 export type PreconditionFailure =
   | { code: 'NO_PROJECT'; message: string } // → "run loxtep init first", exit 1
-  | { code: 'NOT_ATTACHED'; message: string }; // → "run loxtep attach first", exit 1
+  | { code: 'NOT_ATTACHED'; message: string } // → "run loxtep attach first", exit 1
+  | { code: 'NO_STREAM_CONFIG'; message: string }; // → generate/stream I/O stay blocked
 
 /**
  * The structured result every lifecycle command returns. `main()` maps
@@ -133,6 +138,9 @@ const NO_PROJECT_MESSAGE =
 /** Guidance message for an unattached project (R1.10). */
 const NOT_ATTACHED_MESSAGE =
   'Project is not attached to an Instance (missing instance_id/api_url). Run `loxtep attach` first.';
+/** Guidance when attach persisted instance_id/api_url but stream-config cache is missing. */
+export const NO_STREAM_CONFIG_MESSAGE =
+  'Instance has no stream-config cache. Generate/stream I/O stay blocked until stream-config is available.';
 /** Prefix for offline-only project ids written before platform registration existed. */
 export const LOCAL_PROJECT_ID_PREFIX = 'proj_local_';
 
@@ -280,7 +288,8 @@ export type RequireAttachedProjectResult = RequireAttachedProjectSuccess | Requi
 /**
  * Like {@link requireProject}, but additionally enforces that the project has
  * been attached: returns `NOT_ATTACHED` (R1.10) when `instance_id` or `api_url`
- * is missing. Used by `generate` / `test` / `deploy`.
+ * is missing. Does not require stream-config (`streams`); attach may persist
+ * instance_id/api_url and warn when the cache is missing.
  */
 export function requireAttachedProject(cwd: string): RequireAttachedProjectResult {
   const base = requireProject(cwd);
@@ -300,6 +309,24 @@ export function requireAttachedProject(cwd: string): RequireAttachedProjectResul
     projectFilePath,
     project: { ...project, instance_id: project.instance_id, api_url: project.api_url },
   };
+}
+
+function noStreamConfigFailure(): PreconditionFailure {
+  return { code: 'NO_STREAM_CONFIG', message: NO_STREAM_CONFIG_MESSAGE };
+}
+
+/**
+ * Like {@link requireAttachedProject}, but fail-closed when `.loxtep/project.json`
+ * has no complete stream-config cache (`streams` Leo* keys). Used by generate /
+ * test / deploy so they do not proceed after attach-with-warning.
+ */
+export function requireAttachedStreamConfig(cwd: string): RequireAttachedProjectResult {
+  const attached = requireAttachedProject(cwd);
+  if (!attached.ok) return attached;
+  if (!isCompleteStreamConfig(attached.project.streams)) {
+    return { ok: false, failure: noStreamConfigFailure() };
+  }
+  return attached;
 }
 
 /** Map a {@link PreconditionFailure} to a non-zero {@link CliResult}. */

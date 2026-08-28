@@ -5,11 +5,13 @@ import { tmpdir } from 'node:os';
 import {
   requireProject,
   requireAttachedProject,
+  requireAttachedStreamConfig,
   writeProjectConfig,
   findProjectDir,
   getProjectFilePath,
   preconditionToCliResult,
   ProjectConfigSchema,
+  NO_STREAM_CONFIG_MESSAGE,
 } from './project-context.js';
 import { ValidationError } from '../errors/validation.js';
 
@@ -128,6 +130,58 @@ describe('project-context', () => {
       if (result.ok) {
         expect(result.project.instance_id).toBe('inst-1');
         expect(result.project.api_url).toBe('https://apidev.loxtep.io');
+      }
+    });
+  });
+
+  describe('requireAttachedStreamConfig', () => {
+    it('returns NO_STREAM_CONFIG when attached without streams cache', async () => {
+      await writeProjectFile(tmpDir, {
+        project_id: 'proj-1',
+        instance_id: 'inst-1',
+        api_url: 'https://apidev.loxtep.io',
+      });
+      const result = requireAttachedStreamConfig(tmpDir);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.failure.code).toBe('NO_STREAM_CONFIG');
+        expect(result.failure.message).toBe(NO_STREAM_CONFIG_MESSAGE);
+      }
+    });
+
+    it('returns NO_STREAM_CONFIG when streams is incomplete', async () => {
+      await writeProjectFile(tmpDir, {
+        project_id: 'proj-1',
+        instance_id: 'inst-1',
+        api_url: 'https://apidev.loxtep.io',
+        streams: { Region: 'us-east-1', LeoEvent: 'e' },
+      });
+      const result = requireAttachedStreamConfig(tmpDir);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.failure.code).toBe('NO_STREAM_CONFIG');
+    });
+
+    it('succeeds when attached with a complete streams cache', async () => {
+      await writeProjectFile(tmpDir, {
+        project_id: 'proj-1',
+        instance_id: 'inst-1',
+        api_url: 'https://apidev.loxtep.io',
+        streams: {
+          Region: 'us-east-1',
+          LeoEvent: 'e',
+          LeoStream: 's',
+          LeoCron: 'c',
+          LeoS3: 's3',
+          LeoKinesisStream: 'k',
+          LeoFirehoseStream: 'f',
+          LeoSettings: 'set',
+        },
+      });
+      const result = requireAttachedStreamConfig(tmpDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.project.instance_id).toBe('inst-1');
+        expect(result.project.streams?.LeoEvent).toBe('e');
       }
     });
   });

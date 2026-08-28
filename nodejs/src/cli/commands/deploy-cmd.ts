@@ -2,7 +2,7 @@
  * CLI: loxtep deploy — compile and deploy Data_Workflow_Modules.
  *
  * Steps:
- * 1. Call requireAttachedProject() to verify preconditions (R1.7, R1.10)
+ * 1. Call requireAttachedStreamConfig() (attached + stream-config cache)
  * 2. Load all workflow modules from `workflows/` directory
  * 3. Compile all modules via compileModule (R1.11: collect compile errors with file:line)
  * 4. On compile errors: reject, print each error with file:line, exit non-zero
@@ -25,7 +25,7 @@
 import { join } from 'node:path';
 import { readdirSync } from 'node:fs';
 import {
-  requireAttachedProject,
+  requireAttachedStreamConfig,
   preconditionToCliResult,
   type CliResult,
 } from '../project-context.js';
@@ -412,8 +412,8 @@ export interface DeployCommandOptions {
 export async function runDeployCommand(options: DeployCommandOptions = {}): Promise<CliResult> {
   const workingDir = options.cwd ?? process.cwd();
 
-  // 1. Verify preconditions: project exists and is attached (R1.7, R1.10)
-  const precondition = requireAttachedProject(workingDir);
+  // 1. Verify preconditions: project exists, is attached, and has stream-config
+  const precondition = requireAttachedStreamConfig(workingDir);
   if (!precondition.ok) {
     return preconditionToCliResult(precondition.failure);
   }

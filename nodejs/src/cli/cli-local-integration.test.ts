@@ -2,6 +2,10 @@
  * CLI integration tests — local project lifecycle (init, attach, generate, deploy, test).
  */
 
+jest.mock('../rstreams/leo-runtime', () => ({
+  createRStreamsSdk: () => ({}),
+}));
+
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { writeFile } from 'node:fs/promises';

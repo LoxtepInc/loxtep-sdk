@@ -52,8 +52,18 @@ def _canonical_query(parsed) -> str:
     return "&".join(f"{k}={v}" for k, v in encoded)
 
 
+def _lower_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    """Case-fold header names so Accept/accept cannot both exist on the wire."""
+    lowered: dict[str, str] = {}
+    for key, value in headers.items():
+        if value is None:
+            continue
+        lowered[key.lower()] = value.strip() if isinstance(value, str) else value
+    return lowered
+
+
 def _canonical_headers(headers: Mapping[str, str]) -> tuple[str, str]:
-    lowered = {k.lower(): v.strip() for k, v in headers.items() if v is not None}
+    lowered = _lower_headers(headers)
     names = sorted(lowered)
     canonical = "".join(f"{name}:{lowered[name]}\n" for name in names)
     signed = ";".join(names)
@@ -80,10 +90,11 @@ def sign_request(
     payload = body if body is not None else ""
     payload_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+    incoming = _lower_headers(headers)
     signed_headers: dict[str, str] = {
         "host": parsed.hostname or "",
         "accept": "application/json",
-        **{k: v for k, v in headers.items()},
+        **incoming,
         "x-amz-date": amz_date,
         "x-amz-content-sha256": payload_hash,
     }

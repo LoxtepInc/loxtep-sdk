@@ -114,6 +114,16 @@ export async function createLocalProjectHarness(
     organization_id: MOCK_IDS.organization_id,
     instance_id: MOCK_IDS.instance_id,
     api_url: MOCK_PLATFORM_API,
+    streams: {
+      Region: 'us-east-1',
+      LeoEvent: 'LeoEvent',
+      LeoStream: 'LeoStream',
+      LeoCron: 'LeoCron',
+      LeoS3: 'LeoS3',
+      LeoKinesisStream: 'LeoKinesis',
+      LeoFirehoseStream: 'LeoFirehose',
+      LeoSettings: 'LeoSettings',
+    },
   };
   await writeFile(join(loxtepDir, 'project.json'), JSON.stringify(projectConfig, null, 2), 'utf-8');
   await writeFile(projectCredentialsPath, await readFile(base.credentialsPath, 'utf-8'), 'utf-8');
