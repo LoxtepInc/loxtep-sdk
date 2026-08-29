@@ -108,15 +108,12 @@ describe('runDeliveryCreate', () => {
         },
         harness.cliOptions
       );
-      // Success or lint-fail both exercise writePackageFiles; prefer success when schemas allow.
-      if ((process.exitCode ?? 0) === 0) {
-        expect(out.stdout).toContain('delivery');
-        expect(out.stdout).toContain(MOCK_IDS.connector_sdk_id);
-        expect(out.stderr).toContain('Delivery package ready');
-      } else {
-        expect(out.stderr.length).toBeGreaterThan(0);
-        expect(existsSync(join(harness.projectDir, 'workflows'))).toBe(true);
-      }
+      expectCliSuccess(out, 'delivery', MOCK_IDS.connector_sdk_id);
+      expect(out.stderr).toContain('Delivery package ready');
+      expect(
+        existsSync(join(harness.projectDir, 'connectors', `${MOCK_IDS.connector_sdk_id}.json`))
+      ).toBe(true);
+      expect(existsSync(join(harness.projectDir, 'workflows'))).toBe(true);
       out.restore();
     } finally {
       await harness.destroy();
