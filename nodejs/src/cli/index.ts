@@ -21,7 +21,7 @@ import {
 } from './commands/config-cmd.js';
 import { runInitCommand } from './commands/init-cmd.js';
 import { runBusLogin } from './commands/bus-cmd.js';
-import { createCliClient } from './create-cli-client.js';
+import { createCliClient, requireCliClient } from './create-cli-client.js';
 import {
   runDataProductsList,
   runDataProductsGet,
@@ -118,15 +118,6 @@ import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
 import { LoxtepError } from '../errors/base.js';
 import { AuthenticationError, AuthorizationError } from '../errors/auth.js';
 
-const args = process.argv.slice(2);
-const command = args[0];
-const sub = args[1];
-
-function getArg(name: string): string | undefined {
-  const idx = args.indexOf(name);
-  return idx >= 0 ? args[idx + 1] : undefined;
-}
-
 function printHelp(): void {
   printCliHelp();
 }
@@ -145,7 +136,20 @@ function formatCliError(err: unknown): string {
   return String(err);
 }
 
-async function main(): Promise<void> {
+/**
+ * Programmatic CLI entry — used by tests and the bin wrapper.
+ * Does not read `process.argv` so callers can inject argv.
+ */
+export async function runCli(argv: string[]): Promise<void> {
+  const args = argv;
+  const command = args[0];
+  const sub = args[1];
+
+  function getArg(name: string): string | undefined {
+    const idx = args.indexOf(name);
+    return idx >= 0 ? args[idx + 1] : undefined;
+  }
+
   // Kick off update check early; await in finally so network time overlaps work. Stored in the
   // update-notifier module so early-exit paths elsewhere (e.g. requireCliClient's
   // process.exit(1) when not logged in) can wait for it too — a bare process.exit() skips this
@@ -167,9 +171,8 @@ async function main(): Promise<void> {
   } finally {
     await updateCheck;
   }
-}
 
-async function runCommand(): Promise<void> {
+  async function runCommand(): Promise<void> {
   switch (command) {
     case 'login': {
       const emailIdx = args.indexOf('--email');
@@ -244,7 +247,6 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'attach': {
-      const { requireCliClient } = await import('./create-cli-client.js');
       const authResult = await requireCliClient();
       const attachResult = await runAttach(authResult.client, {
         instanceId: getArg('--instance'),
@@ -776,8 +778,7 @@ async function runCommand(): Promise<void> {
       }
       break;
     case 'improvements': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       if (sub === 'list') {
         const statusFilter = getArg('--status');
         const workflowFilter = getArg('--workflow');
@@ -809,8 +810,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'approvals': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       const orgId = getArg('--organization-id');
       if (sub === 'list') {
         const statusFilter = getArg('--status');
@@ -861,8 +861,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'packs': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       const orgId = getArg('--organization-id');
       if (sub === 'list') {
         const result = await runPacksListCommand(authResult.client);
@@ -892,8 +891,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'cdlc': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       const orgId = getArg('--organization-id');
       if (sub === 'transition' && args[2]) {
         const result = await runCdlcTransitionCommand(authResult.client, args[2], {
@@ -925,8 +923,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'candidates': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       const orgId = getArg('--organization-id');
       if (sub === 'list') {
         const result = await runCandidatesListCommand(authResult.client, {
@@ -960,8 +957,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'deployments': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       if (sub === 'list') {
         const pageStr = getArg('--page');
         const pageSizeStr = getArg('--page-size');
@@ -995,8 +991,7 @@ async function runCommand(): Promise<void> {
       break;
     }
     case 'activity': {
-      const { requireCliClient: requireAuth } = await import('./create-cli-client.js');
-      const authResult = await requireAuth();
+      const authResult = await requireCliClient();
       if (sub === 'list') {
         const sourceFilter = getArg('--source');
         const actorFilter = getArg('--actor');
@@ -1068,9 +1063,13 @@ async function runCommand(): Promise<void> {
       printHelp();
       process.exitCode = 1;
   }
+  } // end runCommand
 }
 
-main().catch(err => {
-  console.error(formatCliError(err));
-  process.exit(1);
-});
+// Auto-run only when executed as the CLI bin (skip under Jest imports).
+if (process.env.JEST_WORKER_ID === undefined) {
+  runCli(process.argv.slice(2)).catch(err => {
+    console.error(formatCliError(err));
+    process.exit(1);
+  });
+}

@@ -1,0 +1,3 @@
+# Local CLI state (pwd-scoped login / update cache)
+.loxtep/
+.loxtep/credentials.json

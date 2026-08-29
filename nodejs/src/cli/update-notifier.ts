@@ -8,7 +8,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { getConfigDir } from '../config/paths.js';
+import { PROJECT_DIR_NAME } from './project-context.js';
 import { getSdkVersion } from './version.js';
 
 export const NPM_PACKAGE_NAME = '@loxtep/sdk';
@@ -50,8 +50,9 @@ export function shouldSkipUpdateCheck(env: NodeJS.ProcessEnv = process.env): boo
   );
 }
 
-export function getUpdateCheckCachePath(configDir: string = getConfigDir()): string {
-  return join(configDir, CACHE_FILENAME);
+/** Cache under `./.loxtep/update-check.json` (pwd), not `~/.loxtep`. */
+export function getUpdateCheckCachePath(cwd: string = process.cwd()): string {
+  return join(cwd, PROJECT_DIR_NAME, CACHE_FILENAME);
 }
 
 /**
@@ -99,7 +100,8 @@ export function formatUpdateAvailableMessage(
 async function readCache(path: string): Promise<UpdateCheckCache | null> {
   try {
     const raw = await readFile(path, 'utf8');
-    const parsed = JSON.parse(raw) as UpdateCheckCache;
+    // Node 24 / TS 6: readFile utf8 overload can narrow to NonSharedBuffer in some lib sets.
+    const parsed = JSON.parse(String(raw)) as UpdateCheckCache;
     if (!parsed || typeof parsed.checked_at !== 'string') return null;
     return parsed;
   } catch {

@@ -610,7 +610,17 @@ export function createDefaultPlatformRoutes(): RouteHandler {
             successEnvelope({
               connector_id: MOCK_IDS.connector_sdk_id,
               connector_type: 'sdk',
-              metadata: { name: 'SDK Connector', instance_id: MOCK_IDS.instance_id },
+              metadata: {
+                name: 'SDK Connector',
+                instance_id: MOCK_IDS.instance_id,
+                sdk_config: {
+                  api_url: MOCK_PLATFORM_API,
+                  organization_id: MOCK_IDS.organization_id,
+                  project_id: MOCK_IDS.project_id,
+                  instance_id: MOCK_IDS.instance_id,
+                  region: 'us-east-1',
+                },
+              },
               organization_id: MOCK_IDS.organization_id,
               created_at: '2026-01-01T00:00:00.000Z',
               updated_at: '2026-01-01T00:00:00.000Z',
@@ -925,9 +935,65 @@ export function createDefaultPlatformRoutes(): RouteHandler {
             github_repo_name: 'org-repo',
             github_branch: 'main',
             status: 'active',
+            is_active: true,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-02T00:00:00.000Z',
           })
         );
       }
+    }
+
+    if (method === 'POST' && routeMatch(pathname, /\/workflows\/projects\/[^/]+\/github\/pull$/)) {
+      return jsonResponse(
+        successEnvelope({
+          success: true,
+          commit_sha: 'abc123def456',
+          file_count: 3,
+          message: 'Pulled from GitHub',
+        })
+      );
+    }
+
+    if (method === 'POST' && routeMatch(pathname, /\/workflows\/projects\/[^/]+\/github\/push$/)) {
+      return jsonResponse(
+        successEnvelope({
+          success: true,
+          commit_sha: 'fed654cba321',
+          commit_url: 'https://github.com/test/org-repo/commit/fed654cba321',
+          file_count: 2,
+          message: 'Pushed to GitHub',
+        })
+      );
+    }
+
+    if (method === 'GET' && pathname.startsWith(resolvedPlatformPath('/workflows/deployments'))) {
+      const detail = routeMatch(pathname, /\/workflows\/deployments\/([^/?]+)$/);
+      if (detail) {
+        return jsonResponse(
+          successEnvelope({
+            deployment_id: detail[1],
+            project_id: MOCK_IDS.project_id,
+            instance_id: MOCK_IDS.instance_id,
+            name: 'main',
+            status: 'deployed',
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-04T00:00:00.000Z',
+          })
+        );
+      }
+      return jsonResponse(
+        listEnvelope([
+          {
+            deployment_id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+            project_id: MOCK_IDS.project_id,
+            instance_id: MOCK_IDS.instance_id,
+            name: 'main',
+            status: 'deployed',
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-04T00:00:00.000Z',
+          },
+        ])
+      );
     }
 
     if (method === 'DELETE' && routeMatch(pathname, /\/workflows\/projects\/[^/?]+$/)) {

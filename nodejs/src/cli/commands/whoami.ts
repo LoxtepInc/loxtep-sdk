@@ -27,6 +27,8 @@ export interface WhoamiOptions {
   configFilePath?: string;
   credentialsPath?: string;
   customerMcpPath?: string;
+  /** Working directory used to resolve project-local credentials (default: `process.cwd()`). */
+  cwd?: string;
 }
 
 function isDebugEnabled(options: WhoamiOptions): boolean {
@@ -81,11 +83,12 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
             configFilePath: options.configFilePath,
             credentialsPath: options.credentialsPath,
             customerMcpPath: options.customerMcpPath,
+            cwd: options.cwd,
             fetch_fn: options.fetch_fn ?? options.fetchFn,
           });
           if (!cli) {
             console.error(
-              'Missing api_url or access token. Set LOXTEP_API_URL / LOXTEP_AUTH_TOKEN, or run: loxtep config set api_url <url> ; loxtep login'
+              'Missing api_url or access token. Set LOXTEP_API_URL / LOXTEP_AUTH_TOKEN, or run: loxtep login'
             );
             process.exitCode = 1;
             return null;

@@ -5,8 +5,8 @@
  * Bootstrap:
  * - Default path uses `createPlatformMockFetch` from `src/cli/__tests__/mock-platform-api.ts`
  *   (stable MOCK_IDS + production `{ success, data }` envelopes).
- * - Optional live smoke: `LOXTEP_CLI_SMOKE=1` with logged-in CLI credentials
- *   (`loxtep login`) and `LOXTEP_API_URL` / org in config — see `cli-staging-smoke.test.ts`.
+ * - Optional live smoke: `LOXTEP_CLI_SMOKE=1` with `loxtep login` (pwd-local
+ *   `./.loxtep/credentials.json`) — see `cli-staging-smoke.test.ts`.
  */
 
 import { LoxtepClient } from './loxtep-client.js';

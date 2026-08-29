@@ -95,12 +95,31 @@ describe('withGitHubAuth', () => {
     );
   });
 
+  it('uses GITHUB_TOKEN when GH_TOKEN is absent', () => {
+    delete process.env.GH_TOKEN;
+    process.env.GITHUB_TOKEN = 'ghp_alt';
+    expect(withGitHubAuth('https://github.com/acme/demo.git')).toContain('ghp_alt');
+  });
+
   it('leaves url unchanged without token', () => {
     delete process.env.GH_TOKEN;
     delete process.env.GITHUB_TOKEN;
     expect(withGitHubAuth('https://github.com/acme/demo.git')).toBe(
       'https://github.com/acme/demo.git'
     );
+  });
+
+  it('leaves non-https and already-authed urls unchanged', () => {
+    process.env.GH_TOKEN = 'secret';
+    expect(withGitHubAuth('git@github.com:acme/demo.git')).toBe('git@github.com:acme/demo.git');
+    expect(withGitHubAuth('https://user:pass@github.com/acme/demo.git')).toBe(
+      'https://user:pass@github.com/acme/demo.git'
+    );
+  });
+
+  it('returns original string for invalid URLs', () => {
+    process.env.GH_TOKEN = 'secret';
+    expect(withGitHubAuth('not a url')).toBe('not a url');
   });
 });
 
@@ -120,6 +139,8 @@ describe('materializeExportToDir', () => {
             entity_id: 'dp-1',
             data: { data_product_id: 'dp-1', name: 'Events' },
           },
+          { entity_type: '', entity_id: 'x', data: {} },
+          { entity_type: 'domains', entity_id: '', data: {} },
         ],
       });
       expect(n).toBe(2);
@@ -231,5 +252,200 @@ describe('runClone', () => {
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
+  });
+
+  it('surfaces git clone failures', async () => {
+    const parent = makeTempDir('loxtep-clone-gitfail');
+    const target = join(parent, 'github-demo');
+    const client = mockClient({ get: BOUND });
+    try {
+      const result = await runClone(client, {
+        projectRef: BOUND.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+        gitClone: async () => {
+          throw new Error('auth required');
+        },
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toContain('Clone failed (git)');
+      expect(result.stderr.join('\n')).toContain('GH_TOKEN');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when github_repo_path is missing after clone', async () => {
+    const parent = makeTempDir('loxtep-clone-subpath');
+    const target = join(parent, 'github-demo');
+    const bound: Project = { ...BOUND, github_repo_path: 'packages/app' };
+    const client = mockClient({ get: bound });
+    try {
+      const result = await runClone(client, {
+        projectRef: bound.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+        gitClone: async ({ targetDir }) => {
+          mkdirSync(targetDir, { recursive: true });
+        },
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toContain('github_repo_path');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('binds under github_repo_path when present', async () => {
+    const parent = makeTempDir('loxtep-clone-subpath-ok');
+    const target = join(parent, 'github-demo');
+    const bound: Project = { ...BOUND, github_repo_path: 'packages/app' };
+    const client = mockClient({ get: bound });
+    try {
+      const result = await runClone(client, {
+        projectRef: bound.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+        gitClone: async ({ targetDir }) => {
+          mkdirSync(join(targetDir, 'packages', 'app'), { recursive: true });
+        },
+      });
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(join(target, 'packages', 'app', PROJECT_DIR_NAME, PROJECT_FILE_NAME))).toBe(
+        true
+      );
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('fails unbound clone when target already has project.json', async () => {
+    const parent = makeTempDir('loxtep-clone-unbound-exists');
+    const target = join(parent, 'unbound-demo');
+    mkdirSync(join(target, PROJECT_DIR_NAME), { recursive: true });
+    writeFileSync(join(target, PROJECT_DIR_NAME, PROJECT_FILE_NAME), '{}');
+    const client = mockClient({ get: UNBOUND });
+    try {
+      const result = await runClone(client, {
+        projectRef: UNBOUND.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toMatch(/already has/);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('surfaces export_workspace failures', async () => {
+    const parent = makeTempDir('loxtep-clone-export-fail');
+    const target = join(parent, 'unbound-demo');
+    const client = mockClient({
+      get: UNBOUND,
+      exportError: new Error('export unavailable'),
+    });
+    try {
+      const result = await runClone(client, {
+        projectRef: UNBOUND.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toContain('workspace export');
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('downloads export via presigned_url when export_data is absent', async () => {
+    const parent = makeTempDir('loxtep-clone-presign');
+    const target = join(parent, 'unbound-demo');
+    const client = mockClient({
+      get: UNBOUND,
+      exportResult: {
+        project_id: UNBOUND.project_id,
+        organization_id: ORG,
+        uses_streaming: true,
+        total_size_bytes: 99,
+        presigned_url: 'https://s3.example/export.json',
+      },
+    });
+    try {
+      const result = await runClone(client, {
+        projectRef: UNBOUND.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+        fetchExportJson: async () => ({
+          entities: [
+            {
+              entity_type: 'domains',
+              entity_id: 'd2',
+              data: { domain_id: 'd2', name: 'Sales' },
+            },
+          ],
+        }),
+      });
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(join(target, 'domains', 'd2.json'))).toBe(true);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when export has neither export_data nor usable presigned payload', async () => {
+    const parent = makeTempDir('loxtep-clone-empty-export');
+    const target = join(parent, 'unbound-demo');
+    const client = mockClient({
+      get: UNBOUND,
+      exportResult: {
+        project_id: UNBOUND.project_id,
+        organization_id: ORG,
+        uses_streaming: false,
+        total_size_bytes: 0,
+      },
+    });
+    try {
+      const result = await runClone(client, {
+        projectRef: UNBOUND.project_id,
+        dir: target,
+        registryPath: join(registryDir, 'workspaces.json'),
+      });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.join('\n')).toMatch(/neither export_data|presigned_url/);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('surfaces resolveCloudProject failures', async () => {
+    const bad = {
+      workspace: {
+        projects: {
+          get: async () => {
+            throw new Error('not found');
+          },
+          list: async () => ({
+            items: [],
+            pagination: {
+              page: 1,
+              page_size: 100,
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: false,
+            },
+          }),
+        },
+      },
+    } as unknown as LoxtepClient;
+
+    const result = await runClone(bad, {
+      projectRef: 'missing',
+      dir: join(registryDir, 'nowhere'),
+      registryPath: join(registryDir, 'workspaces.json'),
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toContain('Clone failed');
   });
 });

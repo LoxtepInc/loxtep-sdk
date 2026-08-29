@@ -1,20 +1,23 @@
 /**
- * Optional staging smoke tests — run only when LOXTEP_CLI_SMOKE=1 and credentials exist.
+ * Optional staging smoke tests — run only when LOXTEP_CLI_SMOKE=1 and credentials
+ * resolve from cwd (project-local `./.loxtep/credentials.json` preferred, then
+ * global fallback). Does **not** require `~/.loxtep/config.json`.
  *
+ *   # from a directory where you ran `loxtep login` (writes ./.loxtep/credentials.json)
  *   LOXTEP_CLI_SMOKE=1 pnpm exec jest src/cli/cli-staging-smoke.test.ts
  */
 
 import { existsSync } from 'node:fs';
-import { getDefaultConfigPath, getConfigDir } from '../config/paths.js';
-import { getCredentialsPath } from './credentials.js';
+import { resolveCredentialsPath } from './credentials.js';
 import { runWhoami } from './commands/whoami.js';
 import { captureCliOutput, expectCliSuccess } from './__tests__/cli-test-harness.js';
 
 const smokeEnabled = process.env.LOXTEP_CLI_SMOKE === '1';
-const hasGlobalCreds =
-  existsSync(getDefaultConfigPath()) && existsSync(getCredentialsPath());
+const smokeCwd = process.cwd();
+const resolvedCreds = resolveCredentialsPath(smokeCwd);
+const hasResolvedCreds = existsSync(resolvedCreds.path);
 
-const describeSmoke = smokeEnabled && hasGlobalCreds ? describe : describe.skip;
+const describeSmoke = smokeEnabled && hasResolvedCreds ? describe : describe.skip;
 
 describeSmoke('CLI staging smoke (live API)', () => {
   beforeEach(() => {
@@ -24,19 +27,29 @@ describeSmoke('CLI staging smoke (live API)', () => {
 
   it('whoami returns user email against configured staging/dev API', async () => {
     const out = captureCliOutput();
-    await runWhoami();
+    await runWhoami({
+      cwd: smokeCwd,
+      credentialsPath: resolvedCreds.path,
+    });
     expectCliSuccess(out);
     expect(out.text).not.toMatch(/User:\s*—/);
     out.restore();
   });
 
-  it('documents config directory used for smoke run', () => {
-    expect(getConfigDir()).toBeTruthy();
+  it('resolves credentials from cwd (pwd-local preferred over ~/.loxtep)', () => {
+    expect(existsSync(resolvedCreds.path)).toBe(true);
+    expect(['local', 'global']).toContain(resolvedCreds.scope);
   });
 });
 
 if (!smokeEnabled) {
   it('skips staging smoke unless LOXTEP_CLI_SMOKE=1', () => {
+    expect(true).toBe(true);
+  });
+}
+
+if (smokeEnabled && !hasResolvedCreds) {
+  it('skips staging smoke unless credentials resolve from cwd (run: loxtep login)', () => {
     expect(true).toBe(true);
   });
 }

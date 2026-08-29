@@ -45,7 +45,9 @@ export function hashStableJson(value: unknown): string {
 }
 
 export function hashRawBytes(buf: Buffer | string): string {
-  return createHash('sha256').update(buf).digest('hex');
+  // Node 24 Buffer<ArrayBufferLike> is not assignable to crypto BinaryLike under TS 6.
+  const input = typeof buf === 'string' ? buf : new Uint8Array(buf);
+  return createHash('sha256').update(input).digest('hex');
 }
 
 function stableStringify(value: unknown): string {
