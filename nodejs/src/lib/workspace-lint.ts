@@ -264,6 +264,11 @@ export function lintLocalPackage(options: LintOptions): LintResult {
   // Relationship checks
   for (const entity of entities) {
     if (entity.entityType === EntityType.CONNECTION) {
+      const connectionType = entity.data.type;
+      // DP→DP triggers are not bound to an external connector.
+      if (connectionType === 'data_product_trigger') {
+        continue;
+      }
       const connectorId = entity.data.connector_id;
       if (typeof connectorId === 'string' && connectorId.length > 0) {
         // connector may exist only remotely; warn only if local connectors/ is present

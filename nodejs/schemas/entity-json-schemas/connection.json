@@ -288,23 +288,23 @@
       "type": ["string", "null"],
       "enum": ["inbound", "outbound", "bidirectional", null],
       "description": "For enrichment workflows: mid-flow connection must be 'bidirectional'. For ingestion head use 'inbound'; for consumption tail use 'outbound'. Must match connector supported_directions."
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Upstream entity in the flow graph (e.g. data-product in consumption flows). Null for source connections."
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "connections",
+        "transformations",
+        "validations",
+        "data-products",
+        null
+      ],
+      "description": "Entity type of the upstream entity."
     }
-  },
-  "upstream_entity_id": {
-    "type": ["string", "null"],
-    "format": "uuid",
-    "description": "Upstream entity in the flow graph (e.g. data-product in consumption flows). Null for source connections."
-  },
-  "upstream_entity_type": {
-    "type": ["string", "null"],
-    "enum": [
-      "connections",
-      "transformations",
-      "validations",
-      "data-products",
-      null
-    ],
-    "description": "Entity type of the upstream entity."
   },
   "additionalProperties": false
 }
