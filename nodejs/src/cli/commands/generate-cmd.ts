@@ -2,7 +2,7 @@
  * CLI: loxtep generate — wire the codegen pipeline + skill validation.
  *
  * Steps:
- * 1. Call requireAttachedProject() to verify preconditions (R1.7, R1.10)
+ * 1. Call requireAttachedStreamConfig() (attached + stream-config cache)
  * 2. Load workspace context via loadWorkspaceContext(client, projectId) (R1.4)
  * 3. Normalize with normalizeContext(ctx) (R2.5, R2.6)
  * 4. Validate skills against workspace context (R5.8, R5.9)
@@ -16,7 +16,7 @@
 
 import { join } from 'node:path';
 import {
-  requireAttachedProject,
+  requireAttachedStreamConfig,
   preconditionToCliResult,
   type CliResult,
 } from '../project-context.js';
@@ -62,8 +62,8 @@ export async function runGenerateCommand(
     typeof cwdOrOptions === 'string' ? { cwd: cwdOrOptions } : cwdOrOptions ?? {};
   const workingDir = options.cwd ?? process.cwd();
 
-  // 1. Verify preconditions: project exists and is attached (R1.7, R1.10)
-  const precondition = requireAttachedProject(workingDir);
+  // 1. Verify preconditions: project exists, is attached, and has stream-config
+  const precondition = requireAttachedStreamConfig(workingDir);
   if (!precondition.ok) {
     return preconditionToCliResult(precondition.failure);
   }

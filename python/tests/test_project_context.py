@@ -11,12 +11,25 @@ import pytest
 
 from loxtep.project_context import (
     NO_PROJECT_MESSAGE,
+    NO_STREAM_CONFIG_MESSAGE,
     NOT_ATTACHED_MESSAGE,
     ProjectPreconditionError,
     find_project_dir,
     require_attached_project,
+    require_attached_stream_config,
     require_project,
 )
+
+COMPLETE_STREAMS = {
+    "Region": "us-east-1",
+    "LeoEvent": "LeoEvent",
+    "LeoStream": "LeoStream",
+    "LeoCron": "LeoCron",
+    "LeoS3": "LeoS3",
+    "LeoKinesisStream": "LeoKinesis",
+    "LeoFirehoseStream": "LeoFirehose",
+    "LeoSettings": "LeoSettings",
+}
 
 
 def _write_project_json(root, data):
@@ -76,3 +89,26 @@ def test_require_attached_project_succeeds_when_attached(tmp_path):
     project_dir, project = require_attached_project(str(tmp_path))
     assert project["instance_id"] == "inst-1"
     assert project["api_url"] == "https://apidev.loxtep.io"
+
+
+def test_require_attached_stream_config_raises_without_streams(tmp_path):
+    _write_project_json(
+        tmp_path,
+        {"project_id": "proj-1", "instance_id": "inst-1", "api_url": "https://apidev.loxtep.io"},
+    )
+    with pytest.raises(ProjectPreconditionError, match=re.escape(NO_STREAM_CONFIG_MESSAGE)):
+        require_attached_stream_config(str(tmp_path))
+
+
+def test_require_attached_stream_config_succeeds_with_complete_cache(tmp_path):
+    _write_project_json(
+        tmp_path,
+        {
+            "project_id": "proj-1",
+            "instance_id": "inst-1",
+            "api_url": "https://apidev.loxtep.io",
+            "streams": COMPLETE_STREAMS,
+        },
+    )
+    project_dir, project = require_attached_stream_config(str(tmp_path))
+    assert project["streams"]["LeoEvent"] == "LeoEvent"

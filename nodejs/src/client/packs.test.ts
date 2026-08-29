@@ -94,6 +94,9 @@ describe('createPacksApi', () => {
 
     const viaAlias = await api.list_available_packs();
     expect(viaAlias.all_packs).toHaveLength(1);
+    expect(api.list).toBe(api.list_available);
+    const viaList = await api.list();
+    expect(viaList.all_packs).toHaveLength(1);
   });
 
   it('activate POSTs enable with organization_id body', async () => {

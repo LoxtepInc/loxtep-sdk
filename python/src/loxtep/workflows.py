@@ -32,21 +32,32 @@ def _data(res: Any) -> Any:
 class WorkflowsApi:
     """Sync client for workflow list, get, create, graph, deploy, and writer."""
 
-    def __init__(self, http: LoxtepHttpClient, stream_config: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        http: LoxtepHttpClient,
+        stream_config: Optional[Any] = None,
+        project_id: Optional[str] = None,
+    ) -> None:
         self._http = http
         self._stream_config = stream_config
+        self._project_id = project_id
 
     def list(
         self,
-        project_id: str,
+        project_id: Optional[str] = None,
         *,
         page: int = 1,
         page_size: int = 100,
         status: Optional[str] = None,
         search: Optional[str] = None,
     ) -> dict[str, Any]:
+        resolved_project_id = project_id or self._project_id
+        if not resolved_project_id:
+            raise ValueError(
+                "workflows.list requires project_id. Pass project_id or construct the client with one."
+            )
         params: dict[str, Any] = {
-            "project_id": project_id,
+            "project_id": resolved_project_id,
             "page": page,
             "page_size": page_size,
         }
@@ -162,21 +173,32 @@ class WorkflowWriter:
 class AsyncWorkflowsApi:
     """Async client for workflow list, get, create, graph, deploy, and writer."""
 
-    def __init__(self, http: AsyncLoxtepHttpClient, stream_config: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        http: AsyncLoxtepHttpClient,
+        stream_config: Optional[Any] = None,
+        project_id: Optional[str] = None,
+    ) -> None:
         self._http = http
         self._stream_config = stream_config
+        self._project_id = project_id
 
     async def list(
         self,
-        project_id: str,
+        project_id: Optional[str] = None,
         *,
         page: int = 1,
         page_size: int = 100,
         status: Optional[str] = None,
         search: Optional[str] = None,
     ) -> dict[str, Any]:
+        resolved_project_id = project_id or self._project_id
+        if not resolved_project_id:
+            raise ValueError(
+                "workflows.list requires project_id. Pass project_id or construct the client with one."
+            )
         params: dict[str, Any] = {
-            "project_id": project_id,
+            "project_id": resolved_project_id,
             "page": page,
             "page_size": page_size,
         }

@@ -436,16 +436,17 @@ def _cmd_generate() -> int:
     Python equivalent of Node's `loxtep generate`: emits `.loxtep/generated/__init__.py`
     (Node emits `.loxtep/generated/index.ts`) — codegen output has to match the language
     you're coding in, so unlike most other commands this isn't delegated to the Node CLI.
-    Requires an attached project (`.loxtep/project.json` with instance_id/api_url, written
-    by `loxtep init` + `loxtep attach` via the Node CLI).
+    Requires an attached project with a stream-config cache (`.loxtep/project.json`
+    instance_id/api_url plus `streams`). Attach may persist ids and warn when the
+    cache is missing; generate stays blocked.
     """
     from .cli_config import get_token_from_env_or_file
     from .client import LoxtepClient
     from .codegen import GENERATED_ARTIFACT_PATH, emit_artifact, load_workspace_context, normalize_context, write_artifact
-    from .project_context import ProjectPreconditionError, require_attached_project
+    from .project_context import ProjectPreconditionError, require_attached_stream_config
 
     try:
-        project_dir, project = require_attached_project()
+        project_dir, project = require_attached_stream_config()
     except ProjectPreconditionError as exc:
         print(str(exc), file=sys.stderr)
         return 1
