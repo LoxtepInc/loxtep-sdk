@@ -191,6 +191,27 @@ describe('loxtep attach', () => {
     expect(result.stderr[0]).toContain('No instances');
   });
 
+  it('fails when the instance has an empty api_url, leaving file unchanged', async () => {
+    const dir = makeTmpDir();
+    tmpDirs.push(dir);
+    const filePath = scaffoldProject(dir, { project_id: 'proj_test1' });
+    const originalContent = readFileSync(filePath, 'utf-8');
+
+    const instance = makeInstance({
+      instance_id: 'inst_no_gateway',
+      name: 'Patch Stage',
+      api_url: '',
+    });
+    const client = mockClient({ getInstance: instance });
+
+    const result = await runAttach(client, { cwd: dir, instanceId: 'inst_no_gateway' });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr[0]).toContain('has no api_url');
+    expect(result.stderr[0]).toContain('Patch Stage');
+    expect(result.stderr[0]).toContain('inst_no_gateway');
+    expect(readFileSync(filePath, 'utf-8')).toBe(originalContent);
+  });
+
   it('fails when instance get returns an error, leaving file unchanged (R1.9)', async () => {
     const dir = makeTmpDir();
     tmpDirs.push(dir);

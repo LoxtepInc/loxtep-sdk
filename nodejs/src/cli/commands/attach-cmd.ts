@@ -99,6 +99,21 @@ export async function runAttach(
     };
   }
 
+  // 3. Attach requires a non-empty gateway URL. Empty api_url is common on
+  // newly provisioned / misconfigured instances and would otherwise fail later
+  // with an opaque project.json schema error (api_url: z.string().min(1)).
+  const apiUrl = typeof instance.api_url === 'string' ? instance.api_url.trim() : '';
+  if (!apiUrl) {
+    return {
+      exitCode: 1,
+      stdout: [],
+      stderr: [
+        `Attach failed: instance "${instance.name}" (${instance.instance_id}) has no api_url. ` +
+          `Configure the instance gateway URL, then retry attach.`,
+      ],
+    };
+  }
+
   // 4. Resolve stream bus resources when the instance has a stream-config cache.
   // Missing cache is a warning: persist instance_id + api_url so the workspace
   // is attached; generate/stream I/O stay blocked until stream-config exists.
@@ -137,7 +152,7 @@ export async function runAttach(
   const newConfig: ProjectConfig = {
     ...project,
     instance_id: instance.instance_id,
-    api_url: instance.api_url,
+    api_url: apiUrl,
     region: streams?.Region || instance.region,
   };
   if (streams) {
@@ -166,7 +181,7 @@ export async function runAttach(
   // 8. Success output.
   const lines: string[] = [
     `Attached to instance "${instance.name}" (${instance.instance_id}).`,
-    `  api_url: ${instance.api_url}`,
+    `  api_url: ${apiUrl}`,
   ];
   if (newConfig.region) {
     lines.push(`  region: ${newConfig.region}`);

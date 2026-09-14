@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.13] - 2026-09-14
+
+### Fixed
+
+- **`loxtep attach`** — reject instances with an empty `api_url` before writing
+  `.loxtep/project.json`, with a clear error instead of opaque schema validation
+  failure. Project config validation errors now include field-level details.
+
 ## [0.9.12] - 2026-08-17
 
 ### Added
