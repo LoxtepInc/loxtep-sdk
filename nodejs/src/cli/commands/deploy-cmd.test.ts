@@ -476,6 +476,17 @@ describe('runDeployCommand', () => {
         project_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
         instance_id: '44444444-4444-4444-8444-444444444444',
         api_url: 'https://api.test.loxtep.com',
+        // deploy requires requireAttachedStreamConfig (instance_id + api_url + streams).
+        streams: {
+          Region: 'us-east-1',
+          LeoEvent: 'LeoEvent',
+          LeoStream: 'LeoStream',
+          LeoCron: 'LeoCron',
+          LeoS3: 'LeoS3',
+          LeoKinesisStream: 'LeoKinesis',
+          LeoFirehoseStream: 'LeoFirehose',
+          LeoSettings: 'LeoSettings',
+        },
         ...extra,
       }),
       'utf-8'

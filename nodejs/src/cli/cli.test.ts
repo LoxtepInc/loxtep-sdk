@@ -11,9 +11,14 @@ const cliPath = join(process.cwd(), 'dist', 'cli', 'index.js');
 const distExists = existsSync(cliPath);
 
 function runCli(args: string[]): string {
+  // Child must not inherit JEST_WORKER_ID — the CLI bin skips auto-run when it
+  // is set so Jest can import `runCli` without executing process.argv.
+  const env = { ...process.env };
+  delete env.JEST_WORKER_ID;
   return execSync(`node "${cliPath}" ${args.map(a => `"${a}"`).join(' ')}`, {
     encoding: 'utf-8',
     maxBuffer: 10 * 1024,
+    env,
   });
 }
 
