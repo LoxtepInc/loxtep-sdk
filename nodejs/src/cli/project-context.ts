@@ -353,7 +353,7 @@ export async function writeProjectConfig(
   const result = ProjectConfigSchema.safeParse(config);
   if (!result.success) {
     throw new ValidationError(
-      'Invalid .loxtep/project.json contents',
+      `Invalid .loxtep/project.json contents: ${summarizeIssues(result.error)}`,
       issuesToFieldErrors(result.error)
     );
   }
