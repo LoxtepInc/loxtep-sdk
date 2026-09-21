@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.6.4] — 2026-09-21
+
+### Added
+
+- **`instances.create` / `instances.update` / `instances.redeploy_runtimes`**
+  — persist `connection_details.connector_vpc` and reapply the per-instance
+  runtimes stack (`force_runtimes_redeploy`). Same contract as Node SDK and
+  MCP `update_instance`. Requires LoxtepInc/loxtep#2204 on the platform.
+
 ## [0.6.3] — 2026-08-17
 
 ### Fixed

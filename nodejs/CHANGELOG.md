@@ -8,6 +8,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.14] - 2026-09-21
+
+### Added
+
+- **Instance connector VPC** — `client.workspace.instances.create` /
+  `.update` accept `connection_details.connector_vpc` (two private subnet IDs +
+  security group). CLI: `loxtep instances update` and `--subnet-id` /
+  `--subnet-id-2` / `--security-group-id` on create.
+- **On-demand runtimes redeploy** — `client.workspace.instances.redeploy_runtimes(id)`
+  and `loxtep instances redeploy-runtimes <id>` (`force_runtimes_redeploy` on
+  PUT). Requires the matching organizations PUT from LoxtepInc/loxtep#2204.
+
 ## [0.9.13] - 2026-09-14
 
 ### Fixed
