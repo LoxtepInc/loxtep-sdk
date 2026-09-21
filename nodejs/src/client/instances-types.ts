@@ -47,11 +47,13 @@ export interface InstancesListResponse {
 export interface InstanceDetailResponse {
   success: true;
   /** Production returns the instance directly; mocks may wrap `{ instance, organization_id?, deployment_events? }`. */
-  data: Instance | {
-    instance: Instance;
-    organization_id?: string;
-    deployment_events?: unknown[];
-  };
+  data:
+    | Instance
+    | {
+        instance: Instance;
+        organization_id?: string;
+        deployment_events?: unknown[];
+      };
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +61,13 @@ export interface InstanceDetailResponse {
 // Backend: GET /organizations/{id}/deployment-urls, GET/PUT /organizations/{id}/infrastructure.
 // ---------------------------------------------------------------------------
 
-export type InstanceType = 'shared' | 'managed' | 'self-hosted';
+export type InstanceType = "shared" | "managed" | "self-hosted";
+
+/** Two private subnets + SG for connectors-private-512. */
+export interface ConnectorVpc {
+  subnet_ids: [string, string];
+  security_group_id: string;
+}
 
 /** POST /organizations/instances flat body — matches MCP `create_instance` flat input. */
 export interface InstanceCreateInput {
@@ -76,7 +84,17 @@ export interface InstanceCreateInput {
       external_id?: string;
       namespace?: string;
     };
+    connector_vpc?: ConnectorVpc;
   };
+}
+
+/** PUT /organizations/instances/:id — matches MCP `update_instance`. */
+export interface InstanceUpdateInput {
+  name?: string;
+  connection_details?: {
+    connector_vpc?: ConnectorVpc | null;
+  };
+  force_runtimes_redeploy?: boolean;
 }
 
 /** POST /organizations/instances response (async queued). */

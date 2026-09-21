@@ -6,26 +6,30 @@
  *   /organizations/{id}/deployment-urls + /organizations/{id}/infrastructure.
  */
 
-import type { LoxtepHttpClient } from '../http/client.js';
-import { parseInstanceDetailResponse } from './instance-detail-response.js';
-import { parseInstancesListResponse } from './instances-list-response.js';
+import type { LoxtepHttpClient } from "../http/client.js";
+import { parseInstanceDetailResponse } from "./instance-detail-response.js";
+import { parseInstancesListResponse } from "./instances-list-response.js";
 import type {
   Instance,
   InstanceStreamConfig,
   InstancesListResponse,
   InstanceCreateInput,
   InstanceCreateResponse,
+  InstanceUpdateInput,
   DeploymentUrlsResponse,
   OnboardingPackage,
   RegisterInfrastructureInput,
   RegisterInfrastructureResponse,
   GetInfrastructureResponse,
-} from './instances-types.js';
-import { fetchInstanceStreamConfig, type InstanceStreamConfigSource } from '../lib/instance-stream-config.js';
+} from "./instances-types.js";
+import {
+  fetchInstanceStreamConfig,
+  type InstanceStreamConfigSource,
+} from "../lib/instance-stream-config.js";
 
-const INSTANCES_BASE = '/organizations/instances';
+const INSTANCES_BASE = "/organizations/instances";
 
-export type { InstanceStreamConfig } from './instances-types.js';
+export type { InstanceStreamConfig } from "./instances-types.js";
 
 /**
  * Normalizes a `/organizations/{id}/deployment-urls` or
@@ -34,7 +38,7 @@ export type { InstanceStreamConfig } from './instances-types.js';
  */
 function unwrap<T>(res: unknown): T {
   const r = res as { success?: boolean; data?: T } | T;
-  if (r && typeof r === 'object' && 'data' in (r as Record<string, unknown>)) {
+  if (r && typeof r === "object" && "data" in (r as Record<string, unknown>)) {
     return (r as { data: T }).data ?? (r as T);
   }
   return r as T;
@@ -43,21 +47,32 @@ function unwrap<T>(res: unknown): T {
 /**
  * Create the instances API surface.
  */
-export function createInstancesApi(http: LoxtepHttpClient, organization_id?: string): {
+export function createInstancesApi(
+  http: LoxtepHttpClient,
+  organization_id?: string,
+): {
   list: () => Promise<{
     items: Instance[];
-    pagination: InstancesListResponse['data']['pagination'];
+    pagination: InstancesListResponse["data"]["pagination"];
   }>;
   get: (instance_id: string) => Promise<Instance>;
   get_stream_config: (
     instance_id: string,
-    options?: { instance?: Instance }
-  ) => Promise<{ config: InstanceStreamConfig; source: InstanceStreamConfigSource }>;
+    options?: { instance?: Instance },
+  ) => Promise<{
+    config: InstanceStreamConfig;
+    source: InstanceStreamConfigSource;
+  }>;
   create: (input: InstanceCreateInput) => Promise<{
     instance_id: string | undefined;
     correlation_id: string | undefined;
     message: string;
   }>;
+  update: (
+    instance_id: string,
+    input: InstanceUpdateInput,
+  ) => Promise<Instance>;
+  redeploy_runtimes: (instance_id: string) => Promise<Instance>;
   get_deployment_urls: (orgId?: string) => Promise<OnboardingPackage>;
   get_infrastructure: (orgId?: string) => Promise<{
     cross_account_role_arn: string | null;
@@ -67,7 +82,7 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
   }>;
   register_infrastructure: (
     body: RegisterInfrastructureInput,
-    orgId?: string
+    orgId?: string,
   ) => Promise<{
     organization_id: string | undefined;
     cross_account_role_arn: string;
@@ -81,7 +96,7 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
     const id = arg ?? organization_id;
     if (!id) {
       throw new Error(
-        'Self-hosted onboarding operations need an organization_id. Pass --org-id, set LOXTEP_ORGANIZATION_ID, or run `loxtep whoami` and copy from the output.'
+        "Self-hosted onboarding operations need an organization_id. Pass --org-id, set LOXTEP_ORGANIZATION_ID, or run `loxtep whoami` and copy from the output.",
       );
     }
     return id;
@@ -95,7 +110,7 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
 
     async get(instance_id: string): Promise<Instance> {
       const res = await http.get<unknown>(
-        `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}`
+        `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}`,
       );
       return parseInstanceDetailResponse(res);
     },
@@ -107,8 +122,11 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
      */
     async get_stream_config(
       instance_id: string,
-      options?: { instance?: Instance }
-    ): Promise<{ config: InstanceStreamConfig; source: InstanceStreamConfigSource }> {
+      options?: { instance?: Instance },
+    ): Promise<{
+      config: InstanceStreamConfig;
+      source: InstanceStreamConfigSource;
+    }> {
       return fetchInstanceStreamConfig(http, instance_id, options);
     },
 
@@ -120,13 +138,46 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
      * asynchronously (poll `list()` or `get()` for `status: active`).
      */
     async create(input: InstanceCreateInput) {
-      const res = await http.post<InstanceCreateResponse>(INSTANCES_BASE, input);
-      const result = res?.data ?? (res as unknown as InstanceCreateResponse['data']);
+      const { payment_method_id, ...instance_config } = input;
+      const body = {
+        instance_config,
+        ...(payment_method_id ? { payment_method_id } : {}),
+      };
+      const res = await http.post<InstanceCreateResponse>(INSTANCES_BASE, body);
+      const result =
+        res?.data ?? (res as unknown as InstanceCreateResponse["data"]);
       return {
         instance_id: result?.instance_id ?? result?.instance?.instance_id,
         correlation_id: result?.correlation_id,
-        message: result?.message ?? 'Instance creation queued. Provisioning runs asynchronously.',
+        message:
+          result?.message ??
+          "Instance creation queued. Provisioning runs asynchronously.",
       };
+    },
+
+    /**
+     * PUT /organizations/instances/{id}. Set connection_details.connector_vpc
+     * (two subnet IDs + security group) and/or force_runtimes_redeploy to
+     * reapply connectors-private-512.
+     */
+    async update(
+      instance_id: string,
+      input: InstanceUpdateInput,
+    ): Promise<Instance> {
+      const res = await http.put<unknown>(
+        `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}`,
+        input,
+      );
+      return parseInstanceDetailResponse(res);
+    },
+
+    /** Reapply the per-instance runtimes stack without changing VPC. */
+    async redeploy_runtimes(instance_id: string): Promise<Instance> {
+      const res = await http.put<unknown>(
+        `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}`,
+        { force_runtimes_redeploy: true },
+      );
+      return parseInstanceDetailResponse(res);
     },
 
     /**
@@ -140,7 +191,7 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
     async get_deployment_urls(orgIdArg?: string) {
       const orgId = resolveOrgId(orgIdArg);
       const res = await http.get<DeploymentUrlsResponse>(
-        `/organizations/organizations/${encodeURIComponent(orgId)}/deployment-urls`
+        `/organizations/organizations/${encodeURIComponent(orgId)}/deployment-urls`,
       );
       // Handle both snake_case (raw platform response) and camelCase (frontend
       // axios interceptors) variants.
@@ -157,7 +208,7 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
     async get_infrastructure(orgIdArg?: string) {
       const orgId = resolveOrgId(orgIdArg);
       const res = await http.get<GetInfrastructureResponse>(
-        `/organizations/organizations/${encodeURIComponent(orgId)}/infrastructure`
+        `/organizations/organizations/${encodeURIComponent(orgId)}/infrastructure`,
       );
       const data = unwrap<{
         cross_account_role_arn?: string | null;
@@ -169,7 +220,8 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
         cross_account_role_arn: data?.cross_account_role_arn ?? null,
         external_id: data?.external_id ?? null,
         preferred_region: data?.preferred_region ?? null,
-        infrastructure_registered_at: data?.infrastructure_registered_at ?? null,
+        infrastructure_registered_at:
+          data?.infrastructure_registered_at ?? null,
       };
     },
 
@@ -180,11 +232,14 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
      * can find it via `SelfHostedInstanceProvisioner.getCustomerRoleArn()`.
      * Required before `create({ instance_type: 'self-hosted', ... })`.
      */
-    async register_infrastructure(body: RegisterInfrastructureInput, orgIdArg?: string) {
+    async register_infrastructure(
+      body: RegisterInfrastructureInput,
+      orgIdArg?: string,
+    ) {
       const orgId = resolveOrgId(orgIdArg);
       const res = await http.put<RegisterInfrastructureResponse>(
         `/organizations/organizations/${encodeURIComponent(orgId)}/infrastructure`,
-        body
+        body,
       );
       const data = unwrap<{
         organization_id?: string;
@@ -195,9 +250,10 @@ export function createInstancesApi(http: LoxtepHttpClient, organization_id?: str
       }>(res);
       return {
         organization_id: data?.organization_id,
-        cross_account_role_arn: data?.cross_account_role_arn ?? body.cross_account_role_arn,
-        external_id: data?.external_id ?? '',
-        region: data?.region ?? body.region ?? '',
+        cross_account_role_arn:
+          data?.cross_account_role_arn ?? body.cross_account_role_arn,
+        external_id: data?.external_id ?? "",
+        region: data?.region ?? body.region ?? "",
         registered_at: data?.registered_at ?? new Date().toISOString(),
       };
     },

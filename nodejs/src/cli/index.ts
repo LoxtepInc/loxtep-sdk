@@ -97,10 +97,13 @@ import {
   runInstancesGet,
   runInstancesStreamConfig,
   runInstancesCreate,
+  runInstancesUpdate,
+  runInstancesRedeployRuntimes,
   runInstancesDeploymentUrls,
   runInstancesRegistration,
   runInstancesRegister,
   parseCreateInstanceArgs,
+  parseUpdateInstanceArgs,
 } from './commands/instances-cmd.js';
 import {
   runProjectsList,
@@ -1035,6 +1038,16 @@ export async function runCli(argv: string[]): Promise<void> {
           console.error((err as Error).message);
           process.exitCode = 1;
         }
+      } else if (sub === 'update') {
+        try {
+          const { instanceId, input } = parseUpdateInstanceArgs(args.slice(2));
+          await runInstancesUpdate(instanceId, input);
+        } catch (err) {
+          console.error((err as Error).message);
+          process.exitCode = 1;
+        }
+      } else if (sub === 'redeploy-runtimes' && args[2] && !args[2].startsWith('-')) {
+        await runInstancesRedeployRuntimes(args[2]);
       } else if (sub === 'deployment-urls') {
         await runInstancesDeploymentUrls();
       } else if (sub === 'register') {
@@ -1052,7 +1065,7 @@ export async function runCli(argv: string[]): Promise<void> {
         await runInstancesRegistration();
       } else {
         console.error(
-          'Usage: loxtep instances list | get <id> | stream-config [<id>] | create --name ... --region ... --type ... | deployment-urls | register --cross-account-role-arn <arn> | registration'
+          'Usage: loxtep instances list | get <id> | stream-config [<id>] | create --name ... --region ... --type ... | update <id> ... | redeploy-runtimes <id> | deployment-urls | register --cross-account-role-arn <arn> | registration'
         );
         process.exitCode = 1;
       }

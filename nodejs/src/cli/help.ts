@@ -32,7 +32,7 @@ Workspace
                      (alias of status --unpublished). clone = Cloud→Local (git when
                      GitHub-bound; workspace export when unbound). projects pull/push wrap
                      GitHub sync APIs (bound only). Unbound Local→Cloud stays "loxtep push".
-  instances list | get <id> | stream-config [<id>] | create … | deployment-urls | register … | registration
+  instances list | get <id> | stream-config [<id>] | create … | update <id> … | redeploy-runtimes <id> | deployment-urls | register … | registration
                      Provision instances; stream-config prints bus resource names for SDK attach
 
 Build & deploy
