@@ -127,7 +127,10 @@ jest.mock('./commands/instances-cmd.js', () => ({
   runInstancesDeploymentUrls: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   runInstancesRegistration: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   runInstancesRegister: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
+  runInstancesUpdate: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
+  runInstancesRedeployRuntimes: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   parseCreateInstanceArgs: jest.fn(() => ({})),
+  parseUpdateInstanceArgs: jest.fn(() => ({ instanceId: 'i-1', input: {} })),
 }));
 
 jest.mock('./commands/lint-cmd.js', () => ({
@@ -307,6 +310,8 @@ import {
   runInstancesGet,
   runInstancesStreamConfig,
   runInstancesCreate,
+  runInstancesUpdate,
+  runInstancesRedeployRuntimes,
   runInstancesDeploymentUrls,
   runInstancesRegistration,
   runInstancesRegister,
@@ -526,6 +531,10 @@ describe('runCli router', () => {
     expect(runInstancesStreamConfig).toHaveBeenCalled();
     await runCli(['instances', 'create', '--name', 'n', '--region', 'r', '--type', 'shared']);
     expect(runInstancesCreate).toHaveBeenCalled();
+    await runCli(['instances', 'update', 'i-1', '--name', 'n']);
+    expect(runInstancesUpdate).toHaveBeenCalled();
+    await runCli(['instances', 'redeploy-runtimes', 'i-1']);
+    expect(runInstancesRedeployRuntimes).toHaveBeenCalled();
     await runCli(['instances', 'deployment-urls']);
     expect(runInstancesDeploymentUrls).toHaveBeenCalled();
     await runCli(['instances', 'registration']);
