@@ -1126,7 +1126,7 @@ describe('LoxtepClient', () => {
 
     const sdk = await client.resolve_stream_sdk();
     expect(createSpy).toHaveBeenCalledTimes(1);
-    expect(createSpy).toHaveBeenCalledWith(streams);
+    expect(createSpy).toHaveBeenCalledWith(streams, { credentials: undefined });
     expect(sdk).toBeDefined();
 
     createSpy.mockClear();

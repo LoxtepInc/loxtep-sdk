@@ -41,6 +41,7 @@ import type { Instance } from '../../client/instances-types.js';
 import { formatLintResult, runLintCheck } from './lint-cmd.js';
 import { listLocalWorkflowIds, collectFlatBundle } from '../../client/workspace-package.js';
 import { buildLocalToCloudInventory } from '../../client/project-workspace-inventory.js';
+import { importWorkflowFile } from '../load-workflow-module.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -142,16 +143,11 @@ export function discoverModuleFiles(projectDir: string): Array<{ filename: strin
 /**
  * Dynamically import a workflow module file and extract the DataWorkflowModule.
  * Returns null if the file does not export a valid module.
+ * Surfaces TypeScript via the shared tsx-backed loader.
  */
 async function loadModuleFromFile(filePath: string): Promise<DataWorkflowModule | null> {
   try {
-    const mod = await import(filePath);
-    const workflow: DataWorkflowModule | undefined =
-      mod.default ?? mod.workflow ?? mod;
-    if (workflow && typeof workflow.handler === 'function' && workflow.name) {
-      return workflow;
-    }
-    return null;
+    return await importWorkflowFile(filePath);
   } catch {
     return null;
   }
@@ -366,22 +362,36 @@ async function deploySingleWorkflow(
 
 /**
  * Remove workflows that are no longer defined in the project (R3.7).
+ *
+ * Skips workflow IDs that still have a local JSON-entity package under
+ * `workflows/<id>/` (SDK-first ingest/transform/delivery). Those are not
+ * code-first `.ts` modules and must not be deleted by `loxtep deploy`.
  */
 async function removeAbsentWorkflows(
-  client: LoxtepClient,
-  projectId: string,
+  _client: LoxtepClient,
+  _projectId: string,
+  projectDir: string,
   removals: Array<{ name: string; workflow_id: string }>,
-): Promise<Array<{ name: string; status: 'removed' | 'failed'; error?: string }>> {
-  const results: Array<{ name: string; status: 'removed' | 'failed'; error?: string }> = [];
+): Promise<Array<{ name: string; status: 'removed' | 'failed' | 'skipped'; error?: string }>> {
+  const localEntityIds = new Set(listLocalWorkflowIds(projectDir));
+  const results: Array<{ name: string; status: 'removed' | 'failed' | 'skipped'; error?: string }> = [];
 
   for (const { name, workflow_id } of removals) {
-    try {
-      await client.workspace.projects.delete(workflow_id);
-      results.push({ name, status: 'removed' });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      results.push({ name, status: 'failed', error: message });
+    if (localEntityIds.has(workflow_id)) {
+      results.push({
+        name,
+        status: 'skipped',
+        error: 'Kept local entity package (ingest/transform/delivery); not a code-first module',
+      });
+      continue;
     }
+    // No workflow-delete API on the CLI client yet. Never call projects.delete(workflow_id).
+    results.push({
+      name,
+      status: 'skipped',
+      error:
+        'Remote removal not supported via CLI yet; left workflow intact. Delete in Studio if needed.',
+    });
   }
 
   return results;
@@ -690,7 +700,7 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   const projectModuleNames = new Set(compiledModules.map(m => m.compiled.name));
   const { removals } = computeRemovalSet(projectModuleNames, normalized);
   const removalResults = removals.length > 0
-    ? await removeAbsentWorkflows(client, projectId, removals)
+    ? await removeAbsentWorkflows(client, projectId, projectDir, removals)
     : [];
 
   // 12. Check for deployment failures (R3.6)
@@ -727,10 +737,17 @@ export async function runDeployCommand(options: DeployCommandOptions = {}): Prom
   if (removalResults.length > 0) {
     const removed = removalResults.filter(r => r.status === 'removed');
     const removeFailed = removalResults.filter(r => r.status === 'failed');
+    const removeSkipped = removalResults.filter(r => r.status === 'skipped');
     if (removed.length > 0) {
       outputLines.push(`Removed ${removed.length} workflow(s):`);
       for (const r of removed) {
         outputLines.push(`  - ${r.name}`);
+      }
+    }
+    if (removeSkipped.length > 0) {
+      outputLines.push(`Skipped removal of ${removeSkipped.length} workflow(s):`);
+      for (const r of removeSkipped) {
+        outputLines.push(`  ~ ${r.name}: ${r.error}`);
       }
     }
     if (removeFailed.length > 0) {

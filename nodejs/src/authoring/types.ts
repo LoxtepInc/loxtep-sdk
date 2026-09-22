@@ -37,6 +37,9 @@ export interface ConnectorRef {
 
 /**
  * Context object passed to the handler function during execution.
+ *
+ * During `loxtep test`, `toolbox` is the approval-guarded deterministic toolbox
+ * (live instance I/O). Deployed runtimes supply an equivalent surface.
  */
 export interface HandlerContext {
   /** The workflow name. */
@@ -45,6 +48,11 @@ export interface HandlerContext {
   instanceId: string;
   /** The project ID. */
   projectId: string;
+  /**
+   * Deterministic platform toolbox. Present when the CLI test runner (or a
+   * runtime host) injects it — handlers should treat it as required at runtime.
+   */
+  toolbox?: import('./toolbox.js').Toolbox;
 }
 
 /**

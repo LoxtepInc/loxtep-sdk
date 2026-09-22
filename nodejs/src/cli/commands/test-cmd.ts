@@ -15,7 +15,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
 import {
   requireAttachedStreamConfig,
@@ -25,7 +25,8 @@ import {
 import { requireCliClient } from '../create-cli-client.js';
 import { createToolbox, type Toolbox } from '../../authoring/toolbox.js';
 import { ActionTrace, type ActionTraceEntry } from '../../authoring/agent.js';
-import type { HandlerContext, DataWorkflowModule } from '../../authoring/types.js';
+import type { HandlerContext } from '../../authoring/types.js';
+import { loadWorkflowModuleByName } from '../load-workflow-module.js';
 
 // ─── Approval prompt helpers ─────────────────────────────────────────────────
 
@@ -259,43 +260,7 @@ export class GuardedOperationSkipped extends Error {
 }
 
 // ─── Module loader ───────────────────────────────────────────────────────────
-
-/**
- * Attempt to dynamically import a Data_Workflow_Module by name from the
- * `workflows/` directory relative to the project root.
- *
- * Tries `.ts` first, then `.js`, then no extension.
- */
-async function loadWorkflowModule(
-  projectDir: string,
-  moduleName: string
-): Promise<DataWorkflowModule | null> {
-  const workflowsDir = join(projectDir, 'workflows');
-  const candidates = [
-    join(workflowsDir, `${moduleName}.ts`),
-    join(workflowsDir, `${moduleName}.js`),
-    join(workflowsDir, moduleName),
-  ];
-
-  for (const candidate of candidates) {
-    try {
-      // Use dynamic import; for .ts files this requires a loader (tsx, ts-node, etc.)
-      const mod = await import(candidate);
-      // The module should export a default or named `workflow` that is a DataWorkflowModule
-      const workflow: DataWorkflowModule | undefined =
-        mod.default ?? mod.workflow ?? mod;
-
-      if (workflow && typeof workflow.handler === 'function' && workflow.name) {
-        return workflow;
-      }
-    } catch {
-      // Try next candidate
-      continue;
-    }
-  }
-
-  return null;
-}
+// See ../load-workflow-module.ts — TypeScript via tsx; surfaces import errors.
 
 // ─── Trace printer ───────────────────────────────────────────────────────────
 
@@ -316,6 +281,22 @@ function formatTrace(entries: ActionTraceEntry[]): string[] {
   }
   lines.push('────────────────────────────────────────────────────');
   return lines;
+}
+
+function countTraceOutcomes(entries: ActionTraceEntry[]): {
+  succeeded: number;
+  failed: number;
+  blocked: number;
+} {
+  let succeeded = 0;
+  let failed = 0;
+  let blocked = 0;
+  for (const e of entries) {
+    if (e.outcome === 'succeeded') succeeded += 1;
+    else if (e.outcome === 'blocked') blocked += 1;
+    else failed += 1;
+  }
+  return { succeeded, failed, blocked };
 }
 
 // ─── Main test command ───────────────────────────────────────────────────────
@@ -341,6 +322,9 @@ export interface TestCommandOptions {
  * Guarded operations prompt in the terminal (≤300s) and execute only on approval.
  * On rejection/timeout: skip, leave unchanged, record in trace (R6.2, R6.3).
  *
+ * Exit code is nonzero when the handler fails, a guarded op is skipped, or any
+ * toolbox operation fails — skipped work must not look like a successful run.
+ *
  * @param options - Command options.
  * @returns Structured CLI result for testability.
  */
@@ -356,17 +340,21 @@ export async function runTestCommand(options: TestCommandOptions): Promise<CliRe
   const { projectDir, project } = precondition;
   const { project_id: projectId, instance_id: instanceId } = project;
 
-  // 2. Load the named module from workflows/<name>.ts
-  const workflowModule = await loadWorkflowModule(projectDir, options.moduleName);
+  // 2. Load the named module from workflows/<name>.ts (tsx for TypeScript)
+  const loaded = await loadWorkflowModuleByName(projectDir, options.moduleName);
+  const workflowModule = loaded.module;
   if (!workflowModule) {
-    return {
-      exitCode: 1,
-      stdout: [],
-      stderr: [
-        `Module "${options.moduleName}" not found in workflows/ directory.`,
-        `Looked for: workflows/${options.moduleName}.ts, workflows/${options.moduleName}.js`,
-      ],
-    };
+    const stderr = [
+      `Module "${options.moduleName}" not found in workflows/ directory.`,
+      `Looked for: workflows/${options.moduleName}.ts, workflows/${options.moduleName}.js`,
+    ];
+    if (loaded.errors.length > 0) {
+      stderr.push('Underlying load error(s):');
+      for (const err of loaded.errors) {
+        stderr.push(`  ${err.path}: ${err.message}`);
+      }
+    }
+    return { exitCode: 1, stdout: [], stderr };
   }
 
   // 3. Read the event file (JSON)
@@ -390,7 +378,7 @@ export async function runTestCommand(options: TestCommandOptions): Promise<CliRe
 
   const handlerContext: HandlerContext = {
     workflowName: workflowModule.name,
-    instanceId,
+    instanceId: instanceId!,
     projectId,
   };
 
@@ -405,12 +393,13 @@ export async function runTestCommand(options: TestCommandOptions): Promise<CliRe
   const guardedToolbox = createApprovalGuardedToolbox(toolbox, guardedOps, trace, promptFn);
 
   // 7. Execute the handler with the event and guarded context
-  // The handler receives the context object; toolbox operations go through the guard.
-  // We attach the guarded toolbox to the context so the handler can use it.
-  const execContext = {
+  const execContext: HandlerContext = {
     ...handlerContext,
     toolbox: guardedToolbox,
   };
+
+  let handlerFailed = false;
+  let skippedGuardedOp = false;
 
   trace.record({
     kind: 'toolbox',
@@ -432,8 +421,11 @@ export async function runTestCommand(options: TestCommandOptions): Promise<CliRe
       outcome: 'succeeded',
     });
   } catch (err: unknown) {
-    // GuardedOperationSkipped is non-fatal — handler may continue
-    if (!(err instanceof GuardedOperationSkipped)) {
+    if (err instanceof GuardedOperationSkipped) {
+      // Guarded skip is already traced; do not treat as handler.error, but exit nonzero.
+      skippedGuardedOp = true;
+    } else {
+      handlerFailed = true;
       const message = err instanceof Error ? err.message : String(err);
       trace.record({
         kind: 'toolbox',
@@ -448,14 +440,29 @@ export async function runTestCommand(options: TestCommandOptions): Promise<CliRe
   }
 
   // 8. Print the resulting action trace (R1.5)
-  const traceLines = formatTrace(trace.getEntries());
+  const entries = trace.getEntries();
+  const outcomes = countTraceOutcomes(entries);
+  const processedOk =
+    !handlerFailed &&
+    !skippedGuardedOp &&
+    outcomes.failed === 0 &&
+    entries.some((e) => e.operationName === 'handler.complete' && e.outcome === 'succeeded');
+
+  const exitCode = processedOk ? 0 : 1;
   const summaryLines = [
-    `Test completed for module "${workflowModule.name}"`,
-    ...traceLines,
+    `▶ Running ${workflowModule.name} locally (live instance I/O)`,
+    `Test ${processedOk ? 'completed' : 'failed'} for module "${workflowModule.name}"`,
+    ...formatTrace(entries),
+    '',
+    processedOk
+      ? `✓ 1 event processed, ${outcomes.failed} errors`
+      : `✗ Event not successfully processed (${outcomes.failed} failed ops` +
+        `${skippedGuardedOp ? ', guarded operation skipped' : ''}` +
+        `${handlerFailed ? ', handler error' : ''})`,
   ];
 
   return {
-    exitCode: 0,
+    exitCode,
     stdout: summaryLines,
     stderr: [],
   };
