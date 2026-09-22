@@ -41,6 +41,7 @@ import type { Instance } from '../../client/instances-types.js';
 import { formatLintResult, runLintCheck } from './lint-cmd.js';
 import { listLocalWorkflowIds, collectFlatBundle } from '../../client/workspace-package.js';
 import { buildLocalToCloudInventory } from '../../client/project-workspace-inventory.js';
+import { importWorkflowFile } from '../load-workflow-module.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -142,16 +143,11 @@ export function discoverModuleFiles(projectDir: string): Array<{ filename: strin
 /**
  * Dynamically import a workflow module file and extract the DataWorkflowModule.
  * Returns null if the file does not export a valid module.
+ * Surfaces TypeScript via the shared tsx-backed loader.
  */
 async function loadModuleFromFile(filePath: string): Promise<DataWorkflowModule | null> {
   try {
-    const mod = await import(filePath);
-    const workflow: DataWorkflowModule | undefined =
-      mod.default ?? mod.workflow ?? mod;
-    if (workflow && typeof workflow.handler === 'function' && workflow.name) {
-      return workflow;
-    }
-    return null;
+    return await importWorkflowFile(filePath);
   } catch {
     return null;
   }

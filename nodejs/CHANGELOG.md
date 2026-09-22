@@ -8,6 +8,27 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.16] - 2026-09-22
+
+### Added
+
+- **Bundled `shopify-orders` template** — `loxtep init --template shopify-orders`
+  materializes a runnable sample: `workflows/orders-enricher.ts`,
+  `events/order-created.json`, `package.json` / `tsconfig.json`, `AGENTS.md`,
+  and skill YAML (no longer leaves `workflows/` empty).
+- **`loxtep setup`** — idempotent provisioning of `orders_raw` +
+  `orders_enriched` via `ingest create --deploy` for the shopify-orders sample.
+- **Try-it onboarding E2E script** — `pnpm run test:e2e:try-it`.
+
+### Fixed
+
+- **`loxtep test` TypeScript loading** — loads `.ts` workflow modules via bundled
+  `tsx`; surfaces underlying import errors instead of only "module not found".
+- **`loxtep test` exit codes** — handler failures and guarded-operation
+  reject/timeout now exit nonzero (skipped writes can no longer look successful).
+- **HandlerContext.toolbox** — typed optional toolbox for authoring handlers.
+- Import path in sample workflow: `../.loxtep/generated` (not `./.loxtep/...`).
+
 ## [0.9.15] - 2026-09-22
 
 ### Fixed

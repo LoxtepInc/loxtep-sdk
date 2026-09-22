@@ -1,0 +1,11 @@
+{
+  "name": "loxtep-shopify-orders-sample",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@loxtep/sdk": "^0.9.16"
+  }
+}

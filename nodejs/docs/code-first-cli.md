@@ -86,9 +86,10 @@ Scaffolds a **Loxtep workspace** in the current directory.
 | `workflows/` | Workflow modules you author and deploy |
 | `data-products/` | Data product definitions |
 
-With **`--template <slug>`**, init also materializes template content from the
-platform catalog, including **`AGENTS.md`** and a default skill at
-**`.loxtep/skills/<slug>.yaml`**.
+With **`--template shopify-orders`**, init materializes the **bundled runnable
+sample** (workflow, event fixture, AGENTS.md, skill, package/tsconfig). Other
+slugs still write AGENTS.md + a default skill from catalog metadata when
+available.
 
 ### Common flags
 
@@ -141,23 +142,37 @@ Import in workflow modules:
 
 ```typescript
 import { defineDataWorkflow, on } from '@loxtep/sdk';
-import { workspace } from './.loxtep/generated';
+import { workspace } from '../.loxtep/generated/index.js';
 
 export default defineDataWorkflow({
   name: 'orders-enricher',
-  triggers: [on.queueEvent(workspace.queues.orders_raw)],
+  triggers: [on.webhook('/shopify/orders')],
+  requireApproval: ['dataProducts.write'],
   async handler(ctx, event) {
-    await ctx.toolbox.dataProducts.upsert({
-      dataProduct: workspace.dataProducts.orders_enriched,
-      domain: workspace.domains.commerce,
-      record: event,
-    });
+    const order = (event ?? {}) as Record<string, unknown>;
+    await ctx.toolbox!.dataProducts.write(
+      workspace.dataProducts.orders_enriched,
+      { ...order, enriched_at: new Date().toISOString(), source: 'orders-enricher' }
+    );
   },
 });
 ```
 
 Use **`LoxtepClient.fromWorkspace()`** in scripts to read `project.json` +
 credentials without hand-wiring env vars.
+
+---
+
+## `loxtep setup` (shopify-orders)
+
+After attach, provision the sample data products (idempotent):
+
+```bash
+pnpm exec loxtep setup
+```
+
+Creates `orders_raw` and `orders_enriched` via `ingest create --deploy` when
+missing. Requires an org domain.
 
 ---
 
@@ -168,8 +183,9 @@ pnpm exec loxtep test orders-enricher --event ./events/order-created.json
 pnpm exec loxtep deploy
 ```
 
-- **`test`** — runs one workflow module locally against the attached instance and
-  prints an action trace.
+- **`test`** — runs one workflow module **locally with live instance I/O** and
+  prints an action trace. Guarded ops (`requireApproval`) prompt; reject/timeout
+  and handler errors exit **nonzero**.
 - **`deploy`** — compiles modules into the platform workflow graph and deploys to
   the attached instance.
 

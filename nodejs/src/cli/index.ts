@@ -20,6 +20,7 @@ import {
   runConfigExportFromConnector,
 } from './commands/config-cmd.js';
 import { runInitCommand } from './commands/init-cmd.js';
+import { runSetup } from './commands/setup-cmd.js';
 import { runBusLogin } from './commands/bus-cmd.js';
 import { createCliClient, requireCliClient } from './create-cli-client.js';
 import {
@@ -234,6 +235,9 @@ export async function runCli(argv: string[]): Promise<void> {
     }
     case 'generate':
       await runGenerate();
+      break;
+    case 'setup':
+      await runSetup();
       break;
     case 'test':
       await runTest();

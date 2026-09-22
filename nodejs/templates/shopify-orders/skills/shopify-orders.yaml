@@ -1,0 +1,28 @@
+# Default skill for the shopify-orders template.
+# Scoped to the sample resources provisioned by `loxtep setup`.
+name: shopify-orders
+description: Shopify orders enricher sample — orders_raw ingest and orders_enriched write target
+scope:
+  data_products:
+    - orders_raw
+    - orders_enriched
+  connectors: []
+  workflows:
+    - orders-enricher
+  domains: []
+  queues: []
+permissions:
+  data_products:
+    - read
+    - write
+  connectors:
+    - read
+  workflows:
+    - read
+    - write
+    - create
+  domains:
+    - read
+  queues:
+    - read
+    - write

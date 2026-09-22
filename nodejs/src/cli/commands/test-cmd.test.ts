@@ -218,7 +218,7 @@ describe('loxtep test command', () => {
       }
     });
 
-    it('records handler.error when handler throws a non-skip error', async () => {
+    it('returns nonzero exit when handler throws a non-skip error', async () => {
       const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
       const harness = await createLocalProjectHarness();
       try {
@@ -233,7 +233,7 @@ describe('loxtep test command', () => {
           eventFile: 'event.json',
           cliOptions: harness.cliOptions,
         });
-        expect(result.exitCode).toBe(0);
+        expect(result.exitCode).toBe(1);
         expect(result.stdout.join('\n')).toContain('handler.error');
         expect(result.stdout.join('\n')).toContain('handler boom');
       } finally {
@@ -241,7 +241,7 @@ describe('loxtep test command', () => {
       }
     });
 
-    it('treats GuardedOperationSkipped as non-fatal for the handler', async () => {
+    it('returns nonzero exit when GuardedOperationSkipped (rejection)', async () => {
       const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
       const harness = await createLocalProjectHarness();
       try {
@@ -259,12 +259,61 @@ describe('loxtep test command', () => {
           cliOptions: harness.cliOptions,
           promptFn: mockPromptReject(),
         });
-        expect(result.exitCode).toBe(0);
+        expect(result.exitCode).toBe(1);
         expect(result.stdout.join('\n')).toContain('dataProducts.write');
         expect(result.stdout.join('\n')).not.toContain('handler.error');
+        expect(result.stdout.join('\n')).toContain('guarded operation skipped');
       } finally {
         await harness.destroy();
       }
+    });
+
+    it('returns nonzero exit when GuardedOperationSkipped (timeout)', async () => {
+      const { createLocalProjectHarness } = await import('../__tests__/cli-test-harness.js');
+      const harness = await createLocalProjectHarness();
+      try {
+        setupWorkflowModule(harness.projectDir, 'guard-timeout-wf', {
+          requireApproval: ['dataProducts.write'],
+          handlerBody:
+            'await ctx.toolbox.dataProducts.write({ id: "dp", name: "orders" }, event);',
+        });
+        setupEventFile(harness.projectDir, 'event.json', { x: 1 });
+
+        const result = await runTestCommand({
+          cwd: harness.projectDir,
+          moduleName: 'guard-timeout-wf',
+          eventFile: 'event.json',
+          cliOptions: harness.cliOptions,
+          promptFn: mockPromptTimeout(),
+        });
+        expect(result.exitCode).toBe(1);
+        expect(result.stdout.join('\n')).toContain('timed out');
+      } finally {
+        await harness.destroy();
+      }
+    });
+
+    it('surfaces underlying TypeScript load errors instead of only module-not-found', async () => {
+      setupProject(tempDir);
+      setupEventFile(tempDir, 'event.json', { type: 'test' });
+      const workflowsDir = join(tempDir, 'workflows');
+      mkdirSync(workflowsDir, { recursive: true });
+      writeFileSync(
+        join(workflowsDir, 'broken-wf.ts'),
+        `throw new Error('intentional module load failure');\n` +
+          `export default { name: 'broken-wf', triggers: [{ kind: 'webhook', path: '/x' }], handler: async () => {} };\n`
+      );
+
+      const result = await runTestCommand({
+        cwd: tempDir,
+        moduleName: 'broken-wf',
+        eventFile: 'event.json',
+      });
+      expect(result.exitCode).toBe(1);
+      const errText = result.stderr.join('\n');
+      expect(errText).toMatch(/not found|Underlying load error/i);
+      expect(errText).toContain('broken-wf.ts');
+      expect(errText).toContain('intentional module load failure');
     });
   });
 });

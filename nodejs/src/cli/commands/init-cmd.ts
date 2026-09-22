@@ -39,6 +39,10 @@ import { upsertKnownLocal } from '../known-locals-registry.js';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
 import type { TemplateSummary } from '../../client/templates-types.js';
 import type { CreateProjectInput } from '../../client/projects-types.js';
+import {
+  ensureTemplatePackageJson,
+  materializeBundledTemplate,
+} from '../templates-materialize.js';
 
 /* ------------------------------------------------------------------ */
 /*  Doc links (R11.7)                                                  */
@@ -428,33 +432,46 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
 
   // --- Template-specific scaffolding (R16.1, R16.2) ---
   if (templateSlug) {
-    // AGENTS.md (R16.1)
-    const agentsMdContent = template
-      ? buildDefaultAgentsMd(templateSlug, template)
-      : buildDefaultAgentsMd(templateSlug, {
-          template_id: templateSlug,
-          name: templateSlug,
-          description: null,
-          category: '',
-          version: '1.0.0',
-          configuration: {},
-          validation_rules: {},
-          metadata: {},
-          is_public: true,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-    await writeFile(join(cwd, 'AGENTS.md'), agentsMdContent, 'utf-8');
+    // Prefer bundled runnable templates (shopify-orders) over catalog metadata alone.
+    const materialized = await materializeBundledTemplate(cwd, templateSlug);
+    if (materialized && materialized.written.length > 0) {
+      stdout.push(`✓ Scaffolded template files from bundled "${templateSlug}"`);
+      for (const rel of materialized.written) {
+        stdout.push(`  ✓ ${rel}`);
+      }
+      const pkgUpdated = await ensureTemplatePackageJson(cwd);
+      if (pkgUpdated) {
+        stdout.push(`  ✓ ${pkgUpdated} (type=module, @loxtep/sdk dependency)`);
+      }
+    } else {
+      // Catalog / unknown slug: AGENTS.md + default skill only (legacy path)
+      const agentsMdContent = template
+        ? buildDefaultAgentsMd(templateSlug, template)
+        : buildDefaultAgentsMd(templateSlug, {
+            template_id: templateSlug,
+            name: templateSlug,
+            description: null,
+            category: '',
+            version: '1.0.0',
+            configuration: {},
+            validation_rules: {},
+            metadata: {},
+            is_public: true,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+      await writeFile(join(cwd, 'AGENTS.md'), agentsMdContent, 'utf-8');
 
-    // Default skill (.loxtep/skills/<slug>.yaml) (R16.2)
-    const skillsDir = join(loxtepDir, 'skills');
-    await ensureDir(skillsDir);
-    await writeFile(
-      join(skillsDir, `${templateSlug}.yaml`),
-      buildDefaultSkillYaml(templateSlug),
-      'utf-8'
-    );
+      const skillsDir = join(loxtepDir, 'skills');
+      await ensureDir(skillsDir);
+      await writeFile(
+        join(skillsDir, `${templateSlug}.yaml`),
+        buildDefaultSkillYaml(templateSlug),
+        'utf-8'
+      );
+      stdout.push(`✓ Wrote AGENTS.md and .loxtep/skills/${templateSlug}.yaml`);
+    }
   }
 
   stdout.push(`Initialized Loxtep project in ${cwd}`);
@@ -486,13 +503,25 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
     stdout.push('  1. loxtep login');
     stdout.push('  2. loxtep init   (register platform project — or init --project-id <uuid>)');
     stdout.push('  3. loxtep attach --instance <instance-id>');
-    stdout.push('  4. loxtep generate');
+    if (templateSlug === 'shopify-orders') {
+      stdout.push('  4. loxtep setup      # provision sample data products');
+      stdout.push('  5. loxtep generate');
+    } else {
+      stdout.push('  4. loxtep generate');
+    }
   } else if (!isAttached) {
     // Authed but not attached — print attach + generate guidance
     stdout.push('Next steps:');
     stdout.push('  1. loxtep attach --instance <instance-id>   # Instance bind (not link)');
-    stdout.push('  2. loxtep generate');
+    if (templateSlug === 'shopify-orders') {
+      stdout.push('  2. loxtep setup      # provision orders_raw + orders_enriched (idempotent)');
+      stdout.push('  3. loxtep generate');
+    } else {
+      stdout.push('  2. loxtep generate');
+    }
     stdout.push('  (Existing cloud project without scaffold: `loxtep projects link <id>`)');
+  } else if (templateSlug === 'shopify-orders') {
+    stdout.push('Next: loxtep setup   ·   then loxtep generate → test → deploy');
   }
 
   return { exitCode: 0, stdout, stderr };

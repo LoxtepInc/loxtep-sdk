@@ -26,6 +26,8 @@ Workspace
   status [--json]    Cwd-first project workspace status (local / cloud / deployed)
                      Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
+  setup [--template shopify-orders]
+                     Provision sample resources for a bundled template (idempotent)
   projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]
                      | changes [--json] | clone <id|name> [dir] | pull | push
                      List/get/link/clone org projects. changes = unpublished inventory
@@ -56,7 +58,8 @@ Build & deploy
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
                      Persist a workflow entity bundle JSON to the project workspace
   test <module> --event <file>
-                     Run a workflow module locally (action trace)
+                     Run a workflow module locally with live instance I/O (action trace;
+                     requireApproval ops prompt; nonzero exit on failure/skip)
   deploy [--dry-run] Compile workflow modules and deploy (lint preflight first)
   workflows list | get <id> | create … | deploy …
                      List/create/deploy workflows (--project-id; create also --workflow-type, --domain-id)
@@ -125,12 +128,13 @@ Examples:
   pnpm exec loxtep push
   pnpm exec loxtep deploy --dry-run
   pnpm exec loxtep init --template shopify-orders
-  pnpm exec loxtep attach --instance prod && pnpm exec loxtep generate
+  pnpm exec loxtep attach --instance <non-prod-id>
+  pnpm exec loxtep setup && pnpm exec loxtep generate
   pnpm exec loxtep status
   pnpm exec loxtep projects list
   pnpm exec loxtep projects list --source local
   pnpm exec loxtep workflows list
-  pnpm exec loxtep test orders-enricher --event ./events/order.json
+  pnpm exec loxtep test orders-enricher --event ./events/order-created.json
   pnpm exec loxtep deploy
   pnpm exec loxtep data-products list
   pnpm exec loxtep data-products query <id> "SELECT * FROM t LIMIT 10"
