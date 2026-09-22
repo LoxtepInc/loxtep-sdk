@@ -107,6 +107,8 @@ export class LoxtepClient {
   /** Constructor `streams` config — materialize leo-sdk only on first stream I/O. */
   private _pendingStreamResources?: ConfigurationResources;
   private _rsdkResolutionAttempted = false;
+  /** Login STS (BusWriter) — must be passed into leo-sdk or writes use the wrong account. */
+  private _awsCredentials?: AwsCredentialIdentity;
 
   /** Session & org context (MCP: loxtep_session). */
   readonly session: ReturnType<typeof createSessionApi>;
@@ -181,6 +183,7 @@ export class LoxtepClient {
     // (fs.existsSync({})) and is unnecessary for REST-only CLI/SDK use. Keep the
     // resolved bus config and materialize on first resolve_stream_sdk() call.
     this._rsdk = prebuiltSdk;
+    this._awsCredentials = options.credentials;
     this._pendingStreamResources = prebuiltSdk
       ? undefined
       : resolveStreamsConfiguration(busPartial);
@@ -317,6 +320,22 @@ export class LoxtepClient {
   /** Update SigV4 credentials used by the HTTP layer (e.g. CLI after refresh returns STS). */
   set_aws_credentials(credentials: AwsCredentialIdentity | null): void {
     this._http.setAwsCredentials(credentials);
+    this._awsCredentials = credentials ?? undefined;
+    // Force stream SDK rebuild so BusWriter STS lands on Kinesis/DDB clients.
+    if (!this._pendingStreamResources && this._rsdk) {
+      const cfg = this._rsdk.configuration?.resources;
+      if (cfg) {
+        this._pendingStreamResources = cfg as ConfigurationResources;
+      }
+    }
+    this._rsdk = undefined;
+    this._rsdkResolutionAttempted = false;
+  }
+
+  private _createStreamSdk(resources: ConfigurationResources): RStreamsSdk {
+    return createRStreamsSdk(resources, {
+      credentials: this._awsCredentials,
+    });
   }
 
   /**
@@ -379,7 +398,7 @@ export class LoxtepClient {
   async resolve_stream_sdk(): Promise<RStreamsSdk | undefined> {
     if (this._rsdk) return this._rsdk;
     if (this._pendingStreamResources) {
-      this._rsdk = createRStreamsSdk(this._pendingStreamResources);
+      this._rsdk = this._createStreamSdk(this._pendingStreamResources);
       this._pendingStreamResources = undefined;
       return this._rsdk;
     }
@@ -390,7 +409,7 @@ export class LoxtepClient {
     if (cachedConfig) {
       const resolved = resolveStreamsConfiguration(cachedConfig);
       if (resolved) {
-        this._rsdk = createRStreamsSdk(resolved);
+        this._rsdk = this._createStreamSdk(resolved);
         return this._rsdk;
       }
     }
@@ -405,7 +424,7 @@ export class LoxtepClient {
             streamConfigRes.data as Partial<Parameters<typeof resolveStreamsConfiguration>[0] & object>
           );
           if (resolved) {
-            this._rsdk = createRStreamsSdk(resolved);
+            this._rsdk = this._createStreamSdk(resolved);
             return this._rsdk;
           }
         }
@@ -421,7 +440,7 @@ export class LoxtepClient {
           remoteConfig as Partial<Parameters<typeof resolveStreamsConfiguration>[0] & object>
         );
         if (resolved) {
-          this._rsdk = createRStreamsSdk(resolved);
+          this._rsdk = this._createStreamSdk(resolved);
           return this._rsdk;
         }
       }

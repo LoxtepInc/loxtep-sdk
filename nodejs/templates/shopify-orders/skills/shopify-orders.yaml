@@ -3,12 +3,13 @@
 name: shopify-orders
 description: Shopify orders enricher sample — orders_raw ingest and orders_enriched write target
 scope:
+  # workflows left empty until after first `loxtep deploy` of orders-enricher
+  # (generate validates skill refs against the live workspace).
   data_products:
     - orders_raw
     - orders_enriched
   connectors: []
-  workflows:
-    - orders-enricher
+  workflows: []
   domains: []
   queues: []
 permissions:

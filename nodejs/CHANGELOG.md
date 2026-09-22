@@ -28,6 +28,13 @@ and this project adheres to
   reject/timeout now exit nonzero (skipped writes can no longer look successful).
 - **HandlerContext.toolbox** — typed optional toolbox for authoring handlers.
 - Import path in sample workflow: `../.loxtep/generated` (not `./.loxtep/...`).
+- **BusWriter STS for stream I/O** — login STS credentials are passed into
+  `leo-sdk` Kinesis/DDB/S3/Firehose clients; `get_writer` / `get_reader` use the
+  client-wired runtime instead of a bare default-profile SDK (fixes
+  AccessDenied on shared/org buses during `loxtep test`).
+- **`loxtep deploy` removals** — never call `projects.delete` for local
+  entity-package workflow IDs (ingest/transform/delivery); skip remote
+  removals until a real workflow-delete API exists.
 
 ## [0.9.15] - 2026-09-22
 

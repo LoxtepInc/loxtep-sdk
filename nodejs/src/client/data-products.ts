@@ -494,7 +494,23 @@ export function createDataProductsApi(
           }
         );
       }
-      const rsdk = createRStreamsSdk(streamResources);
+      // Prefer the client-wired SDK (login STS → BusWriter). Never invent a bare
+      // leo-sdk with the default AWS profile — that fails on shared/org buses.
+      const rsdk =
+        deps?.rsdk ??
+        (await deps?.get_rsdk?.()) ??
+        createRStreamsSdk(streamResources);
+      if (!rsdk) {
+        throw new StreamingError(
+          `Failed to resolve stream runtime for data product '${dataProduct.name}'.`,
+          {
+            details: {
+              data_product_id: dataProduct.data_product_id,
+              hint: 'Run `loxtep login` so STS BusWriter credentials are available, then retry.',
+            },
+          }
+        );
+      }
       const botId = options?.bot_id ?? dataProduct.bot_id;
       const queueName = dataProduct.queue_name;
 
@@ -541,7 +557,21 @@ export function createDataProductsApi(
           }
         );
       }
-      const rsdk = createRStreamsSdk(streamResources);
+      const rsdk =
+        deps?.rsdk ??
+        (await deps?.get_rsdk?.()) ??
+        createRStreamsSdk(streamResources);
+      if (!rsdk) {
+        throw new StreamingError(
+          `Failed to resolve stream runtime for data product '${dataProduct.name}'.`,
+          {
+            details: {
+              data_product_id: dataProduct.data_product_id,
+              hint: 'Run `loxtep login` so STS BusWriter credentials are available, then retry.',
+            },
+          }
+        );
+      }
       const botId = options?.bot_id ?? `sdk-reader-${dataProduct.name}`;
       const queueName = dataProduct.queue_name;
       const batchSize = options?.batch_size ?? 100;
