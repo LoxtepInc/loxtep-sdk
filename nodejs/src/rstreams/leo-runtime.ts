@@ -7,7 +7,7 @@
  */
 
 import { createRequire } from 'node:module';
-import type { AwsCredentialIdentity } from '@aws-sdk/types';
+import type { AwsCredentialIdentity } from '@smithy/types';
 import type { ConfigurationResources, RStreamsSdk } from 'leo-sdk';
 
 const require = createRequire(import.meta.url);
