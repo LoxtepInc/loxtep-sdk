@@ -46,7 +46,7 @@ import { createObserveFacade } from './observe-facade.js';
 import { createContextFacade } from './context.js';
 import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
-import type { RStreamsSdk } from '../rstreams/leo-runtime.js';
+import type { ConfigurationResources, RStreamsSdk } from '../rstreams/leo-runtime.js';
 import { DataProductResolver } from './data-product-resolver.js';
 import { requireAutoConfig, resolveAutoConfig, type ExplicitConfigFields } from '../config/workspace-config.js';
 import type { FlowWriter } from './flow-types.js';
@@ -104,6 +104,8 @@ export class LoxtepClient {
   private readonly _dataProductsApi: ReturnType<typeof createDataProductsApi>;
   private readonly _workflowsApi: ReturnType<typeof createWorkflowsApi>;
   private _rsdk?: RStreamsSdk;
+  /** Constructor `streams` config — materialize leo-sdk only on first stream I/O. */
+  private _pendingStreamResources?: ConfigurationResources;
   private _rsdkResolutionAttempted = false;
 
   /** Session & org context (MCP: loxtep_session). */
@@ -175,12 +177,13 @@ export class LoxtepClient {
     this._resolver = new DataProductResolver(this._http, options.instance_id);
     const busPartial = options.streams ?? options.rstreams;
     const prebuiltSdk = options.streams_sdk ?? options.rstreams_sdk;
-    const streamResourcesResolved = prebuiltSdk
+    // Do not call createRStreamsSdk here: leo-sdk's module load triggers DEP0187
+    // (fs.existsSync({})) and is unnecessary for REST-only CLI/SDK use. Keep the
+    // resolved bus config and materialize on first resolve_stream_sdk() call.
+    this._rsdk = prebuiltSdk;
+    this._pendingStreamResources = prebuiltSdk
       ? undefined
       : resolveStreamsConfiguration(busPartial);
-    this._rsdk =
-      prebuiltSdk ??
-      (streamResourcesResolved ? createRStreamsSdk(streamResourcesResolved) : undefined);
 
     const queuesApi = createQueuesApi(this._http, {
       rsdk: this._rsdk,
@@ -364,15 +367,22 @@ export class LoxtepClient {
 
   /**
    * Lazily resolve the stream bus SDK. Resolution priority:
-   * 1. If `streams` was passed in constructor options → already set as this._rsdk (instant return)
-   * 2. If a data product resolution has cached stream config → use that
-   * 3. Fall back to GET /instances/{id}/stream-config using the client's instance_id
-   * 4. observe.stream_config() remains available as a last-resort fallback
+   * 1. Already-constructed runtime (`streams_sdk` or prior resolve) → return it
+   * 2. Constructor `streams` / `rstreams` config → createRStreamsSdk on first use
+   * 3. If a data product resolution has cached stream config → use that
+   * 4. Fall back to GET /instances/{id}/stream-config using the client's instance_id
+   * 5. observe.stream_config() remains available as a last-resort fallback
    *
    * Caches the result (or the failure) so subsequent calls are instant.
+   * REST-only callers never pay leo-sdk's module-load DEP0187 side effect.
    */
   async resolve_stream_sdk(): Promise<RStreamsSdk | undefined> {
     if (this._rsdk) return this._rsdk;
+    if (this._pendingStreamResources) {
+      this._rsdk = createRStreamsSdk(this._pendingStreamResources);
+      this._pendingStreamResources = undefined;
+      return this._rsdk;
+    }
     if (this._rsdkResolutionAttempted) return undefined;
     this._rsdkResolutionAttempted = true;
 

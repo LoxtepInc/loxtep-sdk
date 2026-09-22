@@ -1101,6 +1101,40 @@ describe('LoxtepClient', () => {
     expect(client.metrics.get_reporter()).toBeNull();
   });
 
+  it('does not construct stream runtime until resolve_stream_sdk when streams are set', async () => {
+    const leoRuntime = await import('../rstreams/leo-runtime.js');
+    const createSpy = jest.spyOn(leoRuntime, 'createRStreamsSdk');
+    createSpy.mockClear();
+
+    const streams = {
+      Region: 'us-east-1',
+      LeoEvent: 'e',
+      LeoStream: 's',
+      LeoCron: 'c',
+      LeoS3: 'bucket',
+      LeoKinesisStream: 'k',
+      LeoFirehoseStream: 'f',
+      LeoSettings: 'set',
+    };
+    const client = new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'x' },
+      streams,
+    });
+    expect(createSpy).not.toHaveBeenCalled();
+
+    const sdk = await client.resolve_stream_sdk();
+    expect(createSpy).toHaveBeenCalledTimes(1);
+    expect(createSpy).toHaveBeenCalledWith(streams);
+    expect(sdk).toBeDefined();
+
+    createSpy.mockClear();
+    await client.resolve_stream_sdk();
+    expect(createSpy).not.toHaveBeenCalled();
+    createSpy.mockRestore();
+  });
+
   it('resolve_stream_sdk uses observe.stream_config as fallback', async () => {
     const client = new LoxtepClient({
       url_resolution: 'legacy',

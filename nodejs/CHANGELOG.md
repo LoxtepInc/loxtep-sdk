@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.15] - 2026-09-22
+
+### Fixed
+
+- **CLI `DEP0187` with workspace streams** — `LoxtepClient` no longer constructs
+  `leo-sdk` eagerly when `streams` is present in `.loxtep/project.json` /
+  config. REST-only commands (e.g. `loxtep connectors list`) skip the stream
+  runtime until `resolve_stream_sdk()` / reader-writer use. Completes the
+  0.9.6 lazy-import fix for attached workspaces.
+
 ## [0.9.14] - 2026-09-21
 
 ### Added
