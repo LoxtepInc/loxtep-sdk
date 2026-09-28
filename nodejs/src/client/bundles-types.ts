@@ -33,9 +33,16 @@ export interface SemanticBundleImportApplied {
   action: 'created' | 'updated';
 }
 
+export interface SemanticBundleLossReportEntry {
+  artifact_id: string;
+  artifact_type: string;
+  path: string;
+  reason: string;
+}
+
 /**
- * Import result. Phase 0 contract: when skipped_count > 0 the backend may
- * return 207/422; the SDK still surfaces skipped_count + errors.
+ * Import result. Always HTTP 200 with applied / skipped / loss_report.
+ * partial is set when skipped_count > 0 or loss_report is non-empty.
  */
 export interface SemanticBundleImportResult {
   dry_run: boolean;
@@ -43,7 +50,9 @@ export interface SemanticBundleImportResult {
   skipped_count: number;
   errors: SemanticBundleImportError[];
   applied: SemanticBundleImportApplied[];
-  /** True when the HTTP status indicated partial failure (207/422). */
+  /** Constructs that could not be represented (SHACL/OWL residuals). */
+  loss_report?: SemanticBundleLossReportEntry[];
+  /** True when skips or loss_report entries are present. */
   partial?: boolean;
   status_code?: number;
 }

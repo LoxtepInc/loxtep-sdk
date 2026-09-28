@@ -260,6 +260,8 @@ export type {
   OntologyCreateConceptInput,
   OntologyUpdateConceptInput,
   OntologyDeleteConceptResult,
+  OntologyVocabularyRepairInput,
+  OntologyVocabularyRepairResult,
   OntologyRelationship,
   OntologyRelationshipsResult,
   OntologyCreateRelationshipInput,
