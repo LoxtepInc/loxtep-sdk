@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.18] - 2026-09-28
+
+### Added
+
+- **Authored concept registration parity**
+  - `create_concept` accepts optional `canonical_key` and `aliases`.
+  - `client.meaning.ontology.repair_vocabulary` →
+    `POST /semantic-layer/migrations/ontology-vocabulary-repair` (dry-run default).
+  - Thesaurus term type includes `concept_uri`.
+  - Bundle import result surfaces `loss_report` (Python `import_` too).
+
 ## [0.9.17] - 2026-09-28
 
 ### Added

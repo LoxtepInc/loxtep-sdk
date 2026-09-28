@@ -24,6 +24,8 @@ import type {
   OntologyRelationship,
   OntologyRelationshipsResult,
   OntologyUpdateConceptInput,
+  OntologyVocabularyRepairInput,
+  OntologyVocabularyRepairResult,
 } from './ontology-types.js';
 
 function unwrapData<T>(res: unknown): T {
@@ -73,6 +75,13 @@ export function createOntologyApi(
   list_relationships: (
     filters?: OntologyGetRelationshipsFilters
   ) => Promise<OntologyRelationshipsResult>;
+  /**
+   * Report-first repair: link ontology_class nodes to Vocabulary terms.
+   * Default dry_run=true — approve proposed canonical_keys before writing.
+   */
+  repair_vocabulary: (
+    input?: OntologyVocabularyRepairInput
+  ) => Promise<OntologyVocabularyRepairResult>;
 } {
   const api = {
     async list_concepts(
@@ -105,7 +114,7 @@ export function createOntologyApi(
 
     async create_concept(input: OntologyCreateConceptInput): Promise<OntologyConcept> {
       const org = requireOrg(deps, input.organization_id);
-      const body = {
+      const body: Record<string, unknown> = {
         name: input.name,
         namespace: input.namespace,
         node_type: input.node_type,
@@ -113,6 +122,8 @@ export function createOntologyApi(
         uri: input.uri,
         parent_concepts: input.parent_concepts,
       };
+      if (input.canonical_key !== undefined) body.canonical_key = input.canonical_key;
+      if (input.aliases !== undefined) body.aliases = input.aliases;
       const res = await http.post(conceptsBase(org), body);
       return unwrapData<OntologyConcept>(res);
     },
@@ -205,6 +216,21 @@ export function createOntologyApi(
       filters?: OntologyGetRelationshipsFilters
     ): Promise<OntologyRelationshipsResult> {
       return api.get_relationships(filters);
+    },
+
+    async repair_vocabulary(
+      input: OntologyVocabularyRepairInput = {}
+    ): Promise<OntologyVocabularyRepairResult> {
+      const body: Record<string, unknown> = {
+        dry_run: input.dry_run ?? true,
+      };
+      if (input.namespace !== undefined) body.namespace = input.namespace;
+      if (input.limit !== undefined) body.limit = input.limit;
+      const res = await http.post(
+        '/semantic-layer/migrations/ontology-vocabulary-repair',
+        body
+      );
+      return unwrapData<OntologyVocabularyRepairResult>(res);
     },
   };
 

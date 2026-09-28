@@ -22,6 +22,8 @@ export interface ThesaurusTerm {
   term_id: string;
   organization_id: string;
   canonical_key: string;
+  /** Linked ontology concept URI when authored via concept registration. */
+  concept_uri?: string | null;
   scheme?: ThesaurusScheme;
   precedence: number;
   aliases: ThesaurusAlias[];

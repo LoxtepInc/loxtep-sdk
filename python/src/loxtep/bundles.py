@@ -56,6 +56,7 @@ def normalize_import_result(
         "skipped_count": rec["skipped_count"] if isinstance(rec.get("skipped_count"), int) else 0,
         "errors": rec["errors"] if isinstance(rec.get("errors"), list) else [],
         "applied": rec["applied"] if isinstance(rec.get("applied"), list) else [],
+        "loss_report": rec["loss_report"] if isinstance(rec.get("loss_report"), list) else [],
     }
     if partial is not None:
         out["partial"] = partial
@@ -88,7 +89,8 @@ class BundlesApi:
             normalized = normalize_import_result(res)
             if normalized is None:
                 raise ValueError("Unexpected semantic bundle import response shape")
-            if normalized["skipped_count"] > 0 or normalized["errors"]:
+            has_loss = bool(normalized.get("loss_report"))
+            if normalized["skipped_count"] > 0 or normalized["errors"] or has_loss:
                 return {**normalized, "partial": True}
             return normalized
         except LoxtepError as err:
@@ -115,7 +117,8 @@ class AsyncBundlesApi:
             normalized = normalize_import_result(res)
             if normalized is None:
                 raise ValueError("Unexpected semantic bundle import response shape")
-            if normalized["skipped_count"] > 0 or normalized["errors"]:
+            has_loss = bool(normalized.get("loss_report"))
+            if normalized["skipped_count"] > 0 or normalized["errors"] or has_loss:
                 return {**normalized, "partial": True}
             return normalized
         except LoxtepError as err:

@@ -22,6 +22,8 @@ export interface OntologyConcept {
   node_type: OntologyNodeType | string;
   description?: string;
   uri?: string;
+  /** Vocabulary canonical key written by concept registration. */
+  canonical_key?: string;
   parent_concepts?: string[];
   created_at?: string;
   updated_at?: string;
@@ -29,6 +31,7 @@ export interface OntologyConcept {
   lifecycle_state?: string | null;
   change_propagation_policy?: string | null;
   owner?: string | null;
+  node_id?: string;
 }
 
 export interface OntologyConceptListResult {
@@ -48,6 +51,9 @@ export interface OntologyCreateConceptInput {
   node_type: OntologyNodeType;
   description?: string;
   uri?: string;
+  /** Explicit Vocabulary key; defaults to `${namespace}.${name}` when namespace is dotted. */
+  canonical_key?: string;
+  aliases?: Array<{ system?: string; path: string }>;
   parent_concepts?: string[];
   organization_id?: string;
 }
@@ -63,6 +69,33 @@ export interface OntologyUpdateConceptInput {
 export interface OntologyDeleteConceptResult {
   concept: OntologyConcept;
   warnings?: string[];
+}
+
+/** Report-first repair: ontology_class nodes → Vocabulary terms. */
+export interface OntologyVocabularyRepairInput {
+  organization_id?: string;
+  dry_run?: boolean;
+  namespace?: string;
+  limit?: number;
+}
+
+export interface OntologyVocabularyRepairResult {
+  dry_run: boolean;
+  raw_scanned: number;
+  tombstoned: number;
+  duplicate_node: number;
+  eligible: number;
+  already_registered: number;
+  would_create?: number;
+  created?: number;
+  failed: Array<{ node_id: string; uri?: string | null; reason: string }>;
+  proposed?: Array<{
+    node_id: string;
+    uri?: string | null;
+    canonical_key: string;
+    name: string;
+    namespace: string;
+  }>;
 }
 
 export interface OntologyRelationship {

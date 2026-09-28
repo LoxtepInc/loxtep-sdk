@@ -54,6 +54,9 @@ function normalizeImportResult(
     applied: Array.isArray(rec.applied)
       ? (rec.applied as SemanticBundleImportResult['applied'])
       : [],
+    loss_report: Array.isArray(rec.loss_report)
+      ? (rec.loss_report as SemanticBundleImportResult['loss_report'])
+      : [],
     partial: opts?.partial,
     status_code: opts?.status_code,
   };
@@ -87,8 +90,8 @@ export function createBundlesApi(http: LoxtepHttpClient): {
         if (!normalized) {
           throw new Error('Unexpected semantic bundle import response shape');
         }
-        // 207 is < 400 so HTTP client returns normally; mark partial when skips exist
-        if (normalized.skipped_count > 0 || normalized.errors.length > 0) {
+        const hasLoss = (normalized.loss_report?.length ?? 0) > 0;
+        if (normalized.skipped_count > 0 || normalized.errors.length > 0 || hasLoss) {
           return { ...normalized, partial: true };
         }
         return normalized;

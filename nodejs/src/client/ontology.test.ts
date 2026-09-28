@@ -85,6 +85,63 @@ describe('createOntologyApi', () => {
     expect(result).toEqual(concept);
   });
 
+  it('create_concept includes canonical_key and aliases when supplied', async () => {
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (_path: string, body: unknown) => {
+        capturedBody = body;
+        return { success: true as const, data: concept };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createOntologyApi(http, { organization_id: 'org1' });
+    await api.create_concept({
+      name: 'PersonIdentity',
+      namespace: 'patch.semantic',
+      node_type: 'entity',
+      canonical_key: 'patch.semantic.PersonIdentity',
+      aliases: [{ system: 'patch.semantic.v1', path: 'PersonIdentity' }],
+    });
+
+    expect(capturedBody).toEqual(
+      expect.objectContaining({
+        canonical_key: 'patch.semantic.PersonIdentity',
+        aliases: [{ system: 'patch.semantic.v1', path: 'PersonIdentity' }],
+      })
+    );
+  });
+
+  it('repair_vocabulary defaults to dry_run true', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return {
+          success: true as const,
+          data: {
+            dry_run: true,
+            raw_scanned: 0,
+            tombstoned: 0,
+            duplicate_node: 0,
+            eligible: 0,
+            already_registered: 0,
+            would_create: 0,
+            failed: [],
+          },
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createOntologyApi(http, { organization_id: 'org1' });
+    const result = await api.repair_vocabulary();
+
+    expect(capturedPath).toBe('/semantic-layer/migrations/ontology-vocabulary-repair');
+    expect(capturedBody).toEqual({ dry_run: true });
+    expect(result.dry_run).toBe(true);
+  });
+
   it('update_concept PUTs only defined fields', async () => {
     let capturedPath: string | null = null;
     let capturedBody: unknown = null;
