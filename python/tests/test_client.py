@@ -94,8 +94,23 @@ def test_nested_apis_and_snake_case_methods():
     assert hasattr(client.define.quality, "create")
     assert hasattr(client.workspace.projects, "repository")
     assert hasattr(client.workspace.instances, "get_stream_config")
-    for m in ("list_terms", "resolve_canonical_key", "append_synonym"):
+    for m in (
+        "list_terms",
+        "get_term",
+        "create_term",
+        "update_term",
+        "delete_term",
+        "sync_vocabulary",
+        "create_enterprise_override",
+        "resolve_canonical_key",
+        "append_synonym",
+    ):
         assert hasattr(client.meaning.thesaurus, m), m
+    for m in ("create", "list", "get", "apply", "align"):
+        assert hasattr(client.define.shapes, m), m
+    for m in ("list", "accept", "reject", "accept_batch", "reject_batch"):
+        assert hasattr(client.meaning.proposals, m), m
+    assert hasattr(client.meaning.bundles, "import_")
     for m in ("list", "apply", "reject"):
         assert hasattr(client.review.improvements, m), m
     for m in ("list", "list_pending", "approve", "reject"):

@@ -8,6 +8,21 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-09-28
+
+### Added
+
+- **Meaning / define Phase 2** (Node SDK parity):
+  - `client.meaning.thesaurus` — `create_term`, `get_term`, `update_term`,
+    `delete_term`, `sync_vocabulary`, `create_enterprise_override` (keeps
+    `list_terms` / `resolve_canonical_key` / `append_synonym`)
+  - `client.define.shapes` — `create`, `list`, `get`, `apply`, `align`
+  - `client.meaning.proposals` — `list`, `accept`, `reject`, `accept_batch`,
+    `reject_batch`
+  - `client.meaning.bundles.import_` — semantic bundle import with
+    `skipped_count` / `errors` / `partial` surfacing (Python keyword: use
+    `import_`; Node uses `.import`)
+
 ## [0.6.4] — 2026-09-21
 
 ### Added
