@@ -14,8 +14,8 @@ deprecation aliases.
 | `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
 | `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*` (`list`/`get`/`create`; **`get_stream_config` is REST/CLI only** — not an MCP op). `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
-| `loxtep_define` | `client.define` | `.schemas.*`, `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
-| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*` (search/artifact/completeness) |
+| `loxtep_define` | `client.define` | `.schemas.*` (data-product), `.shapes.*` (domain canonical shapes), `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`, `.proposals.*`, `.bundles.import` |
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (get/transition/propagate/lineage/deps + `list_review_queue`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc …`, `loxtep candidates list|act` |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
@@ -58,9 +58,31 @@ Bus physical names (`LeoCron`, `LeoS3`, …): Node `loxtep instances stream-conf
 or `client.workspace.instances.get_stream_config(id)` (Python same method). Not
 MCP `list_instances` or `get_sdk_config`.
 
+## Meaning: thesaurus / vocabulary (Phase 2)
+
+MCP `loxtep_meaning` thesaurus ops map to `client.meaning.thesaurus`:
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `list_terms` | `client.meaning.thesaurus.list_terms()` | `GET /graph/organizations/{org}/thesaurus` |
+| `get_term` | `.get_term(term_id)` | `GET …/thesaurus/{term_id}` |
+| `create_term` | `.create_term({ canonical_key, aliases, … })` | `POST …/thesaurus` |
+| `update_term` | `.update_term(term_id, { … })` | `PUT …/thesaurus/{term_id}` |
+| `delete_term` | `.delete_term(term_id)` | `DELETE …/thesaurus/{term_id}` |
+| `sync_vocabulary` | `.sync_vocabulary({ domain, terms, mode, dry_run? })` | `POST …/thesaurus/sync` |
+| `create_enterprise_override` | `.create_enterprise_override({ canonical_key, enterprise_definition, divergence_reason, … })` | `POST …/thesaurus` (`is_override: true`) |
+| `resolve_canonical_key` | `.resolve_canonical_key(key_or_alias)` | client-side over `list_terms` |
+| append synonym (SDK) | `.append_synonym(canonical_key, alias_path, …)` | `POST …/thesaurus/synonyms` |
+
+MCP-only (no SDK yet): `list_enterprise_overrides`, `resolve_semantic_gap`,
+namespace-mapping CRUD (`register_namespace_mapping`, `list_namespace_mappings`,
+`get_namespace_mapping`).
+
 ## Meaning: ontology concepts (LOX-1241)
 
-MCP `loxtep_meaning` ontology ops map to `client.meaning.ontology`:
+MCP `loxtep_meaning` ontology ops map to `client.meaning.ontology`.
+`node_type` is a **lowercase** enum: `entity` \| `microservice` \| `taxonomy` \|
+`pattern` \| `custom` (not `Entity`).
 
 | MCP operation | SDK |
 | --- | --- |
@@ -73,6 +95,10 @@ MCP `loxtep_meaning` ontology ops map to `client.meaning.ontology`:
 | `get_ontology_relationships` | `client.meaning.ontology.get_relationships({ … })` (alias: `list_relationships`) |
 
 REST: `/graph/organizations/{org}/ontology/concepts` and `…/relationships`.
+
+Ontology concepts are **graph types and relationships** between them. Defining
+**meaning** for agents/stewards is primarily **terms** (`thesaurus`) + **shapes**
+(`client.define.shapes`).
 
 ## Meaning: vocabulary packs (LOX-1242)
 
@@ -116,6 +142,47 @@ Notes:
 - Requires `catalog:read` (platform RBAC).
 - SDK calls the semantic-layer MS REST routes directly. MCP-only enrichments (empty-search / completeness `metadata.activation_state` from pack activation) are not duplicated — use `client.meaning.packs.get_activation_status()` when needed.
 - Pack lifecycle remains under `client.meaning.packs` (see vocabulary packs section above).
+
+## Meaning: semantic proposals (Phase 2)
+
+Agent review of the same inbox Meaning shows. Batch helpers fan out to the
+single-id PUT (no dedicated batch REST).
+
+| Concern | SDK | REST |
+| --- | --- | --- |
+| list proposals | `client.meaning.proposals.list({ disposition?, proposal_type?, … })` | `GET /semantic-layer/semantic-proposals` |
+| accept | `.accept(semantic_proposal_id, { resolution_note? })` | `PUT …/semantic-proposals/{id}` `disposition: accepted` |
+| reject | `.reject(semantic_proposal_id, { resolution_note? })` | `PUT …` `disposition: rejected` |
+| batch accept / reject | `.accept_batch` / `.reject_batch` | N× PUT |
+
+## Meaning: semantic bundles (Phase 2)
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `import_semantic_bundle` | `client.meaning.bundles.import({ bundle, dry_run? })` | `POST /semantic-layer/bundles/import` |
+
+Phase 0 error contract: result always includes `skipped_count` and `errors`.
+When skips/errors exist (or HTTP 207/422 with a parseable body), the SDK sets
+`partial: true` and still returns the result instead of dropping error detail.
+MCP-only sibling: `export_semantic_bundle` (no SDK yet).
+
+## Define: domain shapes (Phase 2)
+
+Domain / org **canonical shapes** (`domain_schemas`) — distinct from
+`client.define.schemas` (data-product schema versions on `/dataproducts`).
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `create_schema` | `client.define.shapes.create({ name, format, … })` | `POST /semantic-layer/schemas` |
+| `list_schemas` | `.list({ domain_id?, format?, search? })` | `GET /semantic-layer/schemas` |
+| `get_schema` (by `schema_id`) | `.get(schema_id)` | `GET /semantic-layer/schemas/{schema_id}` |
+| `apply_schema` | `.apply({ schema_id, data_product_id, schema_version_id? })` | `POST …/schemas/{schema_id}/applications` |
+| `patch_schema` (align) | `.align({ schema_id, aligned_to_concept_uri })` | `PUT …/schemas/{schema_id}` |
+
+MCP-only (no SDK yet): `update_schema`, `delete_schema`, `list_schema_versions`,
+`unapply_schema`, `list_schema_applications`, `add_schema_version`,
+`get_schema_impact`, `install_schema_pack`. Data-product PII tagging stays on
+`client.define.schemas.tag_pii_fields`.
 
 ## Review: CDLC + context mining (LOX-1244…1247)
 

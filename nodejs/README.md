@@ -9,8 +9,8 @@ Client for the Loxtep API. `LoxtepClient` groups platform APIs under
 | Connect | `client.connect` | `.connectors.*`, `.templates.*` |
 | Workspace | `client.workspace` | `.projects.*`, `.instances.*` |
 | Build & deploy | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*` |
-| Governance | `client.define` | `.schemas.*`, `.quality.*`, `.domains.*`, … |
-| Semantics | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*` |
+| Governance | `client.define` | `.schemas.*`, `.shapes.*`, `.quality.*`, `.domains.*`, … |
+| Semantics | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`, `.proposals.*`, `.bundles.*` |
 | Review | `client.review` | `.approvals.*`, `.improvements.*` |
 | Analytics | `client.query` | `.catalog.*`, `.discovery.*`, `.query()` |
 | Observe | `client.observe` | `.stream_config()`, `.open_reader()` |
@@ -244,7 +244,7 @@ Every method is `snake_case`. APIs live on **namespaced areas** of
 
 ### Governance (`client.define`)
 
-- **`.schemas`**, **`.quality`**, **`.standards`**, **`.data_contracts`**, **`.domains`**
+- **`.schemas`** (data-product), **`.shapes`** (domain canonical), **`.quality`**, **`.standards`**, **`.data_contracts`**, **`.domains`**
 
 ### Analytics (`client.query`)
 
@@ -258,7 +258,7 @@ Every method is `snake_case`. APIs live on **namespaced areas** of
 ### Authentication, semantics, review, and context
 
 - **`client.session`** — `get_current_user`, `get_current_organization`, `logout`
-- **`client.meaning`** — `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`
+- **`client.meaning`** — `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`, `.proposals.*`, `.bundles.import`
 - **`client.review`** — `.approvals.*`, `.improvements.*`
 - **`client.context`** — `.procedures.*`, `.activity.*`, `.process_intelligence.*`, `.issues.*`, `.goals.*`, `.workstreams.*`
 - **`client.metrics`** — `log`, `get_reporter` (stub until metrics wiring lands)

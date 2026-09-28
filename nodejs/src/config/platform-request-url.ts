@@ -144,7 +144,11 @@ export const SDK_HTTP_PATHS_BY_FEATURE: {
   { feature: 'connectors', pathPrefixes: ['/connectors'] },
   { feature: 'observe, queues, data_products trace (HTTP fallback)', pathPrefixes: ['/observe'] },
   { feature: 'discovery (MCP tools)', pathPrefixes: ['/ai/mcp/'] },
-  { feature: 'thesaurus', pathPrefixes: ['/graph/organizations/'] },
+  { feature: 'thesaurus, ontology', pathPrefixes: ['/graph/organizations/'] },
+  {
+    feature: 'semantic-layer (search, shapes, proposals, bundles)',
+    pathPrefixes: ['/semantic-layer'],
+  },
   { feature: 'process_intelligence, procedures', pathPrefixes: ['/process-intelligence'] },
   { feature: 'rate limits', pathPrefixes: ['/rate-limits'] },
 ];
