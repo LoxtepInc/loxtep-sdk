@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.17] - 2026-09-28
+
 ### Added
 
 - **Phase 2 meaning/define SDK parity**
