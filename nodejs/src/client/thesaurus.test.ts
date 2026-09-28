@@ -6,6 +6,7 @@ const TERM: ThesaurusTerm = {
   term_id: 't1',
   organization_id: 'org1',
   canonical_key: 'order_id',
+  scheme: 'field',
   precedence: 100,
   aliases: [{ system: 'shopify', path: 'order.id' }, { path: 'OrderId' }],
   created_at: '2026-01-01T00:00:00Z',
@@ -56,6 +57,141 @@ describe('createThesaurusApi', () => {
     const http = { get: async () => ({}) } as unknown as LoxtepHttpClient;
     const api = createThesaurusApi(http);
     await expect(api.list_terms()).rejects.toThrow(/organization_id required/);
+  });
+
+  it('get_term GETs term by id', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: TERM };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createThesaurusApi(http, 'org1');
+    const term = await api.get_term('t1');
+    expect(capturedPath).toBe('/graph/organizations/org1/thesaurus/t1');
+    expect(term).toEqual(TERM);
+  });
+
+  it('create_term POSTs body with defaults', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: TERM };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createThesaurusApi(http, 'org1');
+    await api.create_term({
+      canonical_key: 'order_id',
+      aliases: [{ path: 'order.id' }],
+    });
+
+    expect(capturedPath).toBe('/graph/organizations/org1/thesaurus');
+    expect(capturedBody).toMatchObject({
+      canonical_key: 'order_id',
+      scheme: 'field',
+      precedence: 100,
+      aliases: [{ path: 'order.id' }],
+    });
+  });
+
+  it('update_term PUTs partial fields', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      put: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: TERM };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createThesaurusApi(http, 'org1');
+    await api.update_term('t1', { definition: 'Order identifier' });
+    expect(capturedPath).toBe('/graph/organizations/org1/thesaurus/t1');
+    expect(capturedBody).toEqual({ definition: 'Order identifier' });
+  });
+
+  it('delete_term DELETEs and returns warnings', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      delete: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: TERM, warnings: ['referenced'] };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createThesaurusApi(http, 'org1');
+    const result = await api.delete_term('t1');
+    expect(capturedPath).toBe('/graph/organizations/org1/thesaurus/t1');
+    expect(result.term).toEqual(TERM);
+    expect(result.warnings).toEqual(['referenced']);
+  });
+
+  it('sync_vocabulary POSTs to /sync', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const syncResult = {
+      created: { count: 1, term_ids: ['t1'] },
+      updated: { count: 0, term_ids: [] },
+      tombstoned: { count: 0, term_ids: [] },
+      unchanged: { count: 0 },
+      conflicts: [],
+      dry_run: true,
+    };
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: syncResult };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createThesaurusApi(http, 'org1');
+    const result = await api.sync_vocabulary({
+      domain: 'orders',
+      mode: 'additive_only',
+      dry_run: true,
+      terms: [{ canonical_key: 'order_id', scheme: 'field' }],
+    });
+
+    expect(capturedPath).toBe('/graph/organizations/org1/thesaurus/sync');
+    expect(capturedBody).toMatchObject({
+      domain: 'orders',
+      mode: 'additive_only',
+      dry_run: true,
+    });
+    expect(result).toEqual(syncResult);
+  });
+
+  it('create_enterprise_override POSTs is_override true', async () => {
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (_path: string, body: unknown) => {
+        capturedBody = body;
+        return { success: true as const, data: { ...TERM, is_override: true } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createThesaurusApi(http, 'org1');
+    await api.create_enterprise_override({
+      canonical_key: 'order_id',
+      enterprise_definition: 'Org-specific order id',
+      divergence_reason: 'Different from pack',
+    });
+
+    expect(capturedBody).toMatchObject({
+      canonical_key: 'order_id',
+      is_override: true,
+      enterprise_definition: 'Org-specific order id',
+      divergence_reason: 'Different from pack',
+      override_source: 'manual',
+    });
   });
 
   it('resolve_canonical_key matches canonical key case-insensitively', async () => {

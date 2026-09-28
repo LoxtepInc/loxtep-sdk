@@ -8,6 +8,21 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 2 meaning/define SDK parity**
+  - `client.meaning.thesaurus`: `create_term`, `get_term`, `update_term`,
+    `delete_term`, `sync_vocabulary`, `create_enterprise_override` (plus existing
+    `list_terms` / `resolve_canonical_key` / `append_synonym`).
+  - `client.define.shapes`: domain canonical shapes — `create`, `list`, `get`,
+    `apply`, `align` (`patch_schema` with `aligned_to_concept_uri`). Distinct
+    from `client.define.schemas` (data-product schemas).
+  - `client.meaning.proposals`: `list`, `accept`, `reject`, `accept_batch`,
+    `reject_batch`.
+  - `client.meaning.bundles.import` with Phase 0 skip/error surfacing (`partial`).
+  - Docs: `docs/sdk-mcp-mapping.md` + `AGENTS.md` updated for true MCP↔SDK
+    parity (and explicit MCP-only gaps).
+
 ## [0.9.16] - 2026-09-22
 
 ### Added

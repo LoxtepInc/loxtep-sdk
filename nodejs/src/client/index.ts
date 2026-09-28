@@ -213,7 +213,45 @@ export type {
   ThesaurusTerm,
   ThesaurusListResponse,
   ThesaurusResolveResponse,
+  ThesaurusScheme,
+  ThesaurusAlias,
+  CreateThesaurusTermInput,
+  UpdateThesaurusTermInput,
+  DeleteThesaurusTermResult,
+  SyncVocabularyInput,
+  SyncVocabularyResult,
+  CreateEnterpriseOverrideInput,
 } from './thesaurus-types.js';
+export type { ThesaurusApi } from './thesaurus.js';
+export type {
+  DomainShapeFormat,
+  DomainShapeField,
+  DomainShapeSummary,
+  DomainShapeVersion,
+  DomainShapeDetail,
+  CreateDomainShapeInput,
+  ListDomainShapesFilters,
+  ListDomainShapesResult,
+  ApplyDomainShapeInput,
+  DomainShapeApplication,
+  AlignDomainShapeInput,
+} from './shapes-types.js';
+export type { ShapesApi } from './shapes.js';
+export type {
+  SemanticProposal,
+  SemanticProposalDisposition,
+  ListSemanticProposalsFilters,
+  ListSemanticProposalsResult,
+  ResolveSemanticProposalResult,
+  BatchResolveSemanticProposalsResult,
+} from './proposals-types.js';
+export type { ProposalsApi } from './proposals.js';
+export type {
+  SemanticBundle,
+  ImportSemanticBundleInput,
+  SemanticBundleImportResult,
+} from './bundles-types.js';
+export type { BundlesApi } from './bundles.js';
 export type {
   OntologyNodeType,
   OntologyConcept,

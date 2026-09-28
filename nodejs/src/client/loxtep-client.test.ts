@@ -91,6 +91,12 @@ describe('LoxtepClient', () => {
 
     const thesaurus = (client.meaning as Record<string, unknown>).thesaurus as Record<string, unknown>;
     expect(typeof thesaurus.list_terms).toBe('function');
+    expect(typeof thesaurus.get_term).toBe('function');
+    expect(typeof thesaurus.create_term).toBe('function');
+    expect(typeof thesaurus.update_term).toBe('function');
+    expect(typeof thesaurus.delete_term).toBe('function');
+    expect(typeof thesaurus.sync_vocabulary).toBe('function');
+    expect(typeof thesaurus.create_enterprise_override).toBe('function');
     expect(typeof thesaurus.resolve_canonical_key).toBe('function');
 
     const ontology = (client.meaning as Record<string, unknown>).ontology as Record<string, unknown>;
@@ -102,6 +108,23 @@ describe('LoxtepClient', () => {
     expect(typeof ontology.create_relationship).toBe('function');
     expect(typeof ontology.get_relationships).toBe('function');
     expect(typeof ontology.list_relationships).toBe('function');
+
+    const proposals = (client.meaning as Record<string, unknown>).proposals as Record<string, unknown>;
+    expect(typeof proposals.list).toBe('function');
+    expect(typeof proposals.accept).toBe('function');
+    expect(typeof proposals.reject).toBe('function');
+    expect(typeof proposals.accept_batch).toBe('function');
+    expect(typeof proposals.reject_batch).toBe('function');
+
+    const bundles = (client.meaning as Record<string, unknown>).bundles as Record<string, unknown>;
+    expect(typeof bundles.import).toBe('function');
+
+    const shapes = (client.define as Record<string, unknown>).shapes as Record<string, unknown>;
+    expect(typeof shapes.create).toBe('function');
+    expect(typeof shapes.list).toBe('function');
+    expect(typeof shapes.get).toBe('function');
+    expect(typeof shapes.apply).toBe('function');
+    expect(typeof shapes.align).toBe('function');
 
     const dataProducts = build.data_products as Record<string, unknown>;
     expect(typeof dataProducts.get_usage_map).toBe('function');

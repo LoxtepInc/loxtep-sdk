@@ -14,6 +14,7 @@ import { createDeploymentsApi } from './deployments.js';
 
 import { createCatalogApi } from './catalog.js';
 import { createSchemasApi } from './schemas.js';
+import { createShapesApi } from './shapes.js';
 import { createDiscoveryApi } from './discovery.js';
 import { createWorkflowsApi } from './workflows.js';
 import { createProjectsApi } from './projects.js';
@@ -23,6 +24,8 @@ import { createThesaurusApi } from './thesaurus.js';
 import { createOntologyApi } from './ontology.js';
 import { createPacksApi } from './packs.js';
 import { createSemanticLayerApi } from './semantic-layer.js';
+import { createProposalsApi } from './proposals.js';
+import { createBundlesApi } from './bundles.js';
 import { createProcessIntelligenceApi } from './process-intelligence.js';
 import { createTargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
@@ -122,10 +125,10 @@ export class LoxtepClient {
   /** Workflows, triggers, data products, targets, deploy (MCP: loxtep_build). */
   readonly build: ReturnType<typeof createBuildFacade>;
 
-  /** Schemas, quality, standards, contracts, domains (MCP: loxtep_define). */
+  /** Schemas (DP), shapes (domain), quality, standards, contracts, domains (MCP: loxtep_define). */
   readonly define: ReturnType<typeof createDefineFacade>;
 
-  /** Thesaurus + ontology + packs + semantic search/completeness (MCP: loxtep_meaning). */
+  /** Thesaurus + ontology + packs + semantic + proposals + bundles (MCP: loxtep_meaning). */
   readonly meaning: ReturnType<typeof createMeaningFacade>;
 
   /** Approvals + improvements + CDLC + mining (MCP: loxtep_review). */
@@ -224,6 +227,7 @@ export class LoxtepClient {
     const catalogApi = createCatalogApi(this._http);
     const discoveryApi = createDiscoveryApi(this._http);
     const schemasApi = createSchemasApi(this._http);
+    const shapesApi = createShapesApi(this._http);
     const thesaurusApi = createThesaurusApi(this._http, options.organization_id);
     const ontologyApi = createOntologyApi(this._http, {
       organization_id: options.organization_id,
@@ -232,6 +236,8 @@ export class LoxtepClient {
       organization_id: options.organization_id,
     });
     const semanticApi = createSemanticLayerApi(this._http);
+    const proposalsApi = createProposalsApi(this._http);
+    const bundlesApi = createBundlesApi(this._http);
     const processIntelligenceApi = createProcessIntelligenceApi(this._http);
     const targetsApi = createTargetsApi(this._http);
     const connectorsApi = createConnectorsApi(this._http);
@@ -263,6 +269,7 @@ export class LoxtepClient {
     });
     this.define = createDefineFacade({
       schemas: schemasApi,
+      shapes: shapesApi,
       quality: qualityApi,
       standards: standardsApi,
       data_contracts: dataContractsApi,
@@ -273,6 +280,8 @@ export class LoxtepClient {
       ontology: ontologyApi,
       packs: packsApi,
       semantic: semanticApi,
+      proposals: proposalsApi,
+      bundles: bundlesApi,
     });
     this.review = createReviewFacade({
       approvals: approvalsApi,
