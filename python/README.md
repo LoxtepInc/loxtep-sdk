@@ -4,8 +4,9 @@ Python client for the Loxtep API, organized around one journey: **ingest →
 define → deliver**. Reach for the namespace that matches the stage you're in:
 
 - **Ingest** — `triggers`, `connectors`, `workflows`, `data_products.get_writer`
-- **Define** — `data_products`, `schemas`, `quality`, `catalog`, `discovery`,
-  `thesaurus`, `domains`, `standards`, `data_contracts`
+- **Define** — `data_products`, `schemas`, `shapes`, `quality`, `catalog`,
+  `discovery`, `thesaurus`, `proposals`, `bundles`, `domains`, `standards`,
+  `data_contracts`
 - **Deliver** — `data_products` (get_reader/stream/replay/query), `targets`
 - **Advanced / platform** — `projects`, `templates`, `instances`, `observe`,
   `queues`, `metrics`*, `process_intelligence`
@@ -169,7 +170,10 @@ Grouped by journey stage; kind labels: **Resource** (full CRUD), **Reference**
 | **quality** | Resource | `list`, `get`, `create` |
 | **catalog** | Reference | `search` |
 | **discovery** | Reference | `search`, `get_evidence`, `get_lineage_impact`, `get_governance_flags`, `run` |
-| **thesaurus** | Reference | `list_terms`, `resolve_canonical_key`, `append_synonym` |
+| **thesaurus** | Resource | `list_terms`, `get_term`, `create_term`, `update_term`, `delete_term`, `sync_vocabulary`, `create_enterprise_override`, `resolve_canonical_key`, `append_synonym` |
+| **shapes** | Resource | `create`, `list`, `get`, `apply`, `align` (domain canonical schemas) |
+| **proposals** | Resource | `list`, `accept`, `reject`, `accept_batch`, `reject_batch` |
+| **bundles** | Resource | `import_` (Node: `.import`) |
 | **domains** | Reference | `list`, `get` |
 | **standards** | Reference | `list`, `get` |
 | **data_contracts** | Resource | `list`, `get`, `create`, `update`, `delete` |
@@ -298,15 +302,42 @@ Delivery sink bindings — how a data product delivers data to external systems
 > `auto_checkpoint=True` (or call `reader.checkpoint()`) to persist read
 > position to LeoCron. See the `loxtep.rstreams` module.
 
-### `client.thesaurus`
+### `client.meaning.thesaurus`
 
-Canonical correlation keys + aliases.
+Canonical correlation keys + aliases (`client.meaning.thesaurus`).
 
 | Method | Description |
 | --- | --- |
 | `list_terms(org_id=None)` | List thesaurus terms for the organization |
+| `get_term(term_id, org_id=None)` | Get a term by id |
+| `create_term(input)` | Create a term (`canonical_key`, optional aliases/scheme/…) |
+| `update_term(term_id, input)` | Update a term |
+| `delete_term(term_id, org_id=None)` | Delete a term; returns `{ term, warnings? }` |
+| `sync_vocabulary(input)` | Sync domain vocabulary (`domain`, `terms`, `mode`, `dry_run?`) |
+| `create_enterprise_override(input)` | Create an enterprise override term |
 | `resolve_canonical_key(key_or_alias, org_id=None)` | Resolve a key/alias to its canonical key (client-side match) |
 | `append_synonym(canonical_key, alias_path, *, system, precedence, org_id)` | Append a synonym/alias to a canonical key |
+
+### `client.define.shapes`
+
+Org / domain canonical schemas (distinct from `client.define.schemas` data-product versions).
+
+| Method | Description |
+| --- | --- |
+| `create(input)` | Create a domain shape (`name`, `format`, …) |
+| `list(*, domain_id, format, search)` | List shapes |
+| `get(schema_id)` | Get shape + versions |
+| `apply(input)` | Apply shape to a data product |
+| `align(input)` | Set `aligned_to_concept_uri` via patch |
+
+### `client.meaning.proposals` / `client.meaning.bundles`
+
+| Method | Description |
+| --- | --- |
+| `proposals.list(...)` | List semantic proposals |
+| `proposals.accept` / `reject` | Resolve one proposal |
+| `proposals.accept_batch` / `reject_batch` | Fan-out resolve |
+| `bundles.import_(input)` | Import a semantic bundle; surfaces `skipped_count` / `errors` / `partial` |
 
 ### `client.instances`
 
@@ -370,9 +401,11 @@ names, same ingest → define → deliver grouping. `flows` merged into `workflo
 `connections`→`triggers`, `delivery`→`targets`, `data_products` writer/reader +
 `get_lexicon`/`readiness`/`promote`/`invalidate_cache`, `schemas.list`/
 `tag_pii_fields`, `quality.create`, `projects.repository`,
-`instances.get_stream_config`, and the `thesaurus` namespace are all present.
-`improvements`/`activity`/`process_intelligence` exist and are internal/
-experimental (excluded from the documented surface), matching Node.
+`instances.get_stream_config`, and meaning/define Phase 2 (`thesaurus` CRUD,
+`define.shapes`, `meaning.proposals`, `meaning.bundles.import_`) are present.
+Python uses `bundles.import_` because `import` is a keyword (Node:
+`bundles.import`). `improvements`/`activity`/`process_intelligence` exist and
+are internal/experimental (excluded from the documented surface), matching Node.
 
 `LoxtepClient.from_workspace()` / `AsyncLoxtepClient.from_workspace()` match Node's
 `fromWorkspace()`: env > explicit kwargs > `.loxtep/project.json` + credentials,

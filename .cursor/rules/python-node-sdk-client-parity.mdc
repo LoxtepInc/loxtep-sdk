@@ -1,0 +1,41 @@
+---
+description: Keep Python SDK meaning/define client APIs in parity with Node
+globs: nodejs/src/client/**/*.{ts,md},python/src/loxtep/**/*.py,python/tests/**/*.py
+alwaysApply: false
+---
+
+# Python ↔ Node SDK client parity (meaning / define)
+
+When **Node** SDK client surfaces change — especially
+`meaning` / `define` / `thesaurus` / `shapes` / `proposals` / `bundles` —
+**Python must be updated in the same change set or an immediate follow-up PR**.
+Do not ship Node-only for these APIs and leave `python/` behind.
+
+## Paths
+
+| Language | Client root |
+| --- | --- |
+| Node | `nodejs/src/client/` |
+| Python | `python/src/loxtep/` |
+
+Also update `nodejs/docs/sdk-mcp-mapping.md` (Node) and `python/README.md` +
+`python/CHANGELOG.md` (Python) when methods are added.
+
+## Required surfaces (Phase 2 baseline)
+
+- `client.meaning.thesaurus` — CRUD + `sync_vocabulary` + `create_enterprise_override` + existing list/resolve/append
+- `client.define.shapes` — `create` / `list` / `get` / `apply` / `align`
+- `client.meaning.proposals` — `list` / `accept` / `reject` / `accept_batch` / `reject_batch`
+- `client.meaning.bundles.import` (Python: `import_` — `import` is a keyword)
+
+## Checklist when changing Node client APIs
+
+1. Mirror methods on the Python sync + async classes (same `snake_case` names).
+2. Wire facades in `python/src/loxtep/client.py` (`DefineFacade` / `MeaningFacade`).
+3. Add or extend tests under `python/tests/`.
+4. Bump `python/pyproject.toml` version + CHANGELOG when publishing a release.
+
+```text
+❌ Node PR merges shapes/proposals; Python still only has list_terms
+✅ Same PR (or follow-up opened immediately) ports python/ + tests + docs
+```

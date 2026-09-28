@@ -17,6 +17,7 @@ from .agent_workspace import (
 )
 from .approvals import ApprovalsApi, AsyncApprovalsApi
 from .build import BuildFacade
+from .bundles import AsyncBundlesApi, BundlesApi
 from .catalog import AsyncCatalogApi, CatalogApi
 from .connect import ConnectFacade
 from .connectors import AsyncConnectorsApi, ConnectorsApi
@@ -36,6 +37,7 @@ from .observe_facade import ObserveFacade
 from .procedures import AsyncProceduresApi, ProceduresApi
 from .process_intelligence import AsyncProcessIntelligenceApi, ProcessIntelligenceApi
 from .projects import AsyncProjectsApi, ProjectsApi
+from .proposals import AsyncProposalsApi, ProposalsApi
 from .quality import AsyncQualityApi, QualityApi
 from .query import QueryFacade
 from .queues import AsyncQueuesApi, QueuesApi
@@ -43,6 +45,7 @@ from .review import ReviewFacade
 from .rstreams import resolve_stream_config
 from .schemas import AsyncSchemasApi, SchemasApi
 from .session import SessionApi
+from .shapes import AsyncShapesApi, ShapesApi
 from .standards import AsyncStandardsApi, StandardsApi
 from .targets import AsyncTargetsApi, TargetsApi
 from .templates import AsyncTemplatesApi, TemplatesApi
@@ -172,12 +175,17 @@ class LoxtepClient:
         )
         self.define = DefineFacade(
             schemas=SchemasApi(self._http),
+            shapes=ShapesApi(self._http),
             quality=QualityApi(self._http),
             standards=StandardsApi(self._http),
             data_contracts=DataContractsApi(self._http),
             domains=DomainsApi(self._http),
         )
-        self.meaning = MeaningFacade(thesaurus=ThesaurusApi(self._http, organization_id))
+        self.meaning = MeaningFacade(
+            thesaurus=ThesaurusApi(self._http, organization_id),
+            proposals=ProposalsApi(self._http),
+            bundles=BundlesApi(self._http),
+        )
         self.review = ReviewFacade(
             approvals=ApprovalsApi(self._http, organization_id=organization_id),
             improvements=ImprovementsApi(self._http),
@@ -333,12 +341,17 @@ class AsyncLoxtepClient:
         )
         self.define = DefineFacade(
             schemas=AsyncSchemasApi(self._http),
+            shapes=AsyncShapesApi(self._http),
             quality=AsyncQualityApi(self._http),
             standards=AsyncStandardsApi(self._http),
             data_contracts=AsyncDataContractsApi(self._http),
             domains=AsyncDomainsApi(self._http),
         )
-        self.meaning = MeaningFacade(thesaurus=AsyncThesaurusApi(self._http, organization_id))
+        self.meaning = MeaningFacade(
+            thesaurus=AsyncThesaurusApi(self._http, organization_id),
+            proposals=AsyncProposalsApi(self._http),
+            bundles=AsyncBundlesApi(self._http),
+        )
         self.review = ReviewFacade(
             approvals=AsyncApprovalsApi(self._http, organization_id=organization_id),
             improvements=AsyncImprovementsApi(self._http),
