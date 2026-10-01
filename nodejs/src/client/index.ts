@@ -428,6 +428,17 @@ export {
 
 export type { BuildFacade } from './build.js';
 export type { DefineFacade } from './define.js';
+export type { ProductDefinitionApi } from './product-definition.js';
+export type {
+  DefinitionBatchAction,
+  DefinitionProposalType,
+  ListDefinitionProposalsFilters,
+  ProductDefinitionAction,
+  ReviseDefinitionProposalInput,
+  RunDefinitionBatchInput,
+  SubmitSemanticBindingsInput,
+  SubmitShapeProposalInput,
+} from './product-definition-types.js';
 export type { MeaningFacade } from './meaning.js';
 export type { ReviewFacade } from './review.js';
 export type { QueryFacade } from './query.js';

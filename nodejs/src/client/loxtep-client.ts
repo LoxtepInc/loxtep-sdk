@@ -42,6 +42,7 @@ import { createConnectFacade } from './connect.js';
 import { createWorkspaceFacade } from './workspace.js';
 import { createBuildFacade } from './build.js';
 import { createDefineFacade } from './define.js';
+import { createProductDefinitionApi } from './product-definition.js';
 import { createMeaningFacade } from './meaning.js';
 import { createReviewFacade } from './review.js';
 import { createQueryFacade } from './query.js';
@@ -274,6 +275,7 @@ export class LoxtepClient {
       standards: standardsApi,
       data_contracts: dataContractsApi,
       domains: domainsApi,
+      product_definition: createProductDefinitionApi(this._http),
     });
     this.meaning = createMeaningFacade({
       thesaurus: thesaurusApi,
