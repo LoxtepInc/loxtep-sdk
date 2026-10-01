@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.19] - 2026-10-01
+
+### Added
+
+- **Product definition proposals** (`client.define.product_definition`)
+  - MCP `loxtep_define` ops: evidence, submit/revise/list shape + semantic
+    bindings, skill, batch, start procedure.
+  - Thin REST: status, approve, apply, withdraw
+    (`/semantic-layer/product-definition`).
+  - CLI: `loxtep define status|evidence|list|get|submit-shape|submit-semantic|
+    approve|apply|withdraw|skill|start-procedure|batch`.
+  - Docs: `docs/sdk-mcp-mapping.md` product-definition section.
+
 ## [0.9.18] - 2026-09-28
 
 ### Added

@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-10-01
+
+### Added
+
+- **Product definition proposals** (`client.define.product_definition`, sync +
+  async) — Node 0.9.19 parity for MCP `loxtep_define` definition ops and thin
+  REST status / approve / apply / withdraw.
+
 ## [0.7.0] — 2026-09-28
 
 ### Added
