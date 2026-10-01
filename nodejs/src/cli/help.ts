@@ -72,6 +72,15 @@ Governance
   domains list | get <id>
   standards list | get <id>              Standards (policies)
   data-contracts list | get <id> | create …
+  define status <data_product_id>
+                     Definition readiness / blockers (approve ≠ apply)
+  define evidence <data_product_id>
+  define list | get <semantic_proposal_id>
+  define submit-shape <data_product_id> --definition <json>
+  define submit-semantic <data_product_id> [--definition <json>]
+  define approve|apply|withdraw <semantic_proposal_id>
+  define skill | start-procedure <data_product_id>
+  define batch --data-product-ids <id,id> [--action status|evidence]
 
 Review
   approvals list [--status …] [--page N] [--page-size N] [--organization-id <id>]

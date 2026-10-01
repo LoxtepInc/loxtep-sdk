@@ -89,6 +89,21 @@ import {
   runPacksStatusCommand,
 } from './commands/packs-cmd.js';
 import {
+  DEFINE_USAGE,
+  runDefineStatusCommand,
+  runDefineEvidenceCommand,
+  runDefineListCommand,
+  runDefineGetCommand,
+  runDefineSubmitShapeCommand,
+  runDefineSubmitSemanticCommand,
+  runDefineApproveCommand,
+  runDefineApplyCommand,
+  runDefineWithdrawCommand,
+  runDefineSkillCommand,
+  runDefineStartProcedureCommand,
+  runDefineBatchCommand,
+} from './commands/define-cmd.js';
+import {
   runDeploymentsListCommand,
   runDeploymentsGetCommand,
 } from './commands/deployments-cmd.js';
@@ -893,6 +908,66 @@ export async function runCli(argv: string[]): Promise<void> {
             '       loxtep packs activate <pack_id> [--organization-id <id>]\n' +
             '       loxtep packs status'
         );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'define': {
+      const authResult = await requireCliClient();
+      const printResult = (result: { exitCode: number; stdout: string[]; stderr: string[] }) => {
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      };
+      if (sub === 'status' && args[2]) {
+        printResult(await runDefineStatusCommand(authResult.client, args[2]));
+      } else if (sub === 'evidence' && args[2]) {
+        printResult(await runDefineEvidenceCommand(authResult.client, args[2]));
+      } else if (sub === 'list') {
+        printResult(
+          await runDefineListCommand(authResult.client, {
+            data_product_id: getArg('--data-product-id'),
+            disposition: getArg('--disposition'),
+            proposal_type: getArg('--proposal-type'),
+          })
+        );
+      } else if (sub === 'get' && args[2]) {
+        printResult(await runDefineGetCommand(authResult.client, args[2]));
+      } else if (sub === 'submit-shape' && args[2]) {
+        printResult(
+          await runDefineSubmitShapeCommand(authResult.client, args[2], {
+            definition_json: getArg('--definition'),
+            rationale: getArg('--rationale'),
+            base_revision: getArg('--base-revision'),
+            evidence_refs: getArg('--evidence-refs'),
+          })
+        );
+      } else if (sub === 'submit-semantic' && args[2]) {
+        printResult(
+          await runDefineSubmitSemanticCommand(authResult.client, args[2], {
+            definition_json: getArg('--definition'),
+            rationale: getArg('--rationale'),
+          })
+        );
+      } else if (sub === 'approve' && args[2]) {
+        printResult(await runDefineApproveCommand(authResult.client, args[2]));
+      } else if (sub === 'apply' && args[2]) {
+        printResult(await runDefineApplyCommand(authResult.client, args[2]));
+      } else if (sub === 'withdraw' && args[2]) {
+        printResult(await runDefineWithdrawCommand(authResult.client, args[2]));
+      } else if (sub === 'skill') {
+        printResult(await runDefineSkillCommand(authResult.client));
+      } else if (sub === 'start-procedure' && args[2]) {
+        printResult(await runDefineStartProcedureCommand(authResult.client, args[2]));
+      } else if (sub === 'batch') {
+        printResult(
+          await runDefineBatchCommand(authResult.client, {
+            data_product_ids: getArg('--data-product-ids'),
+            action: getArg('--action'),
+          })
+        );
+      } else {
+        console.error(DEFINE_USAGE);
         process.exitCode = 1;
       }
       break;

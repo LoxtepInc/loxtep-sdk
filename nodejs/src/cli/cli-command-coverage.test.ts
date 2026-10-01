@@ -124,6 +124,11 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     kind: 'integration',
     tests: ['cli-integration.test.ts', 'cli-integration-mutations.test.ts'],
   },
+  define: {
+    kind: 'unit',
+    tests: ['commands/define-cmd.test.ts', 'client/product-definition.test.ts'],
+    notes: 'product definition proposals (MCP loxtep_define + thin REST)',
+  },
   improvements: {
     kind: 'integration',
     tests: [
@@ -205,6 +210,7 @@ describe('CLI command coverage registry', () => {
       'domains',
       'standards',
       'data-contracts',
+      'define',
       'approvals',
       'improvements',
       'cdlc',

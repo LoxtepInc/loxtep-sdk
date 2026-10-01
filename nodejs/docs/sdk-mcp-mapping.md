@@ -14,7 +14,7 @@ deprecation aliases.
 | `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
 | `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*` (`list`/`get`/`create`; **`get_stream_config` is REST/CLI only** — not an MCP op). `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
 | `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
-| `loxtep_define` | `client.define` | `.schemas.*` (data-product), `.shapes.*` (domain canonical shapes), `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*` |
+| `loxtep_define` | `client.define` | `.schemas.*` (data-product), `.shapes.*` (domain canonical shapes), `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*`, `.product_definition.*` (agent definition proposals) |
 | `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`, `.proposals.*`, `.bundles.import` |
 | `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (get/transition/propagate/lineage/deps + `list_review_queue`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc …`, `loxtep candidates list|act` |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
@@ -183,6 +183,44 @@ MCP-only (no SDK yet): `update_schema`, `delete_schema`, `list_schema_versions`,
 `unapply_schema`, `list_schema_applications`, `add_schema_version`,
 `get_schema_impact`, `install_schema_pack`. Data-product PII tagging stays on
 `client.define.schemas.tag_pii_fields`.
+
+## Define: product definition proposals
+
+Agent-authored shape / semantic binding proposals (approve ≠ apply). Skill:
+`define-data-product-shape`. Procedure: `procedure#define-data-product-via-agent`.
+
+SDK surface: `client.define.product_definition`. CLI: `loxtep define …`.
+
+| MCP operation | SDK | Transport |
+| --- | --- | --- |
+| `get_definition_status` | `.get_definition_status(data_product_id)` | `GET /semantic-layer/product-definition?data_product_id=` |
+| `approve_definition_proposal` | `.approve_definition_proposal(id)` | `POST /semantic-layer/product-definition` `{ action: 'approve', … }` |
+| `apply_definition_proposal` | `.apply_definition_proposal(id)` | `POST …` `{ action: 'apply', … }` |
+| `withdraw_definition_proposal` | `.withdraw_definition_proposal(id)` | `POST …` `{ action: 'withdraw', … }` |
+| `get_definition_evidence` | `.get_definition_evidence(data_product_id)` | MCP `loxtep_define` |
+| `submit_shape_proposal` | `.submit_shape_proposal({ … })` | MCP `loxtep_define` |
+| `revise_shape_proposal` | `.revise_shape_proposal({ … })` | MCP `loxtep_define` |
+| `revise_semantic_bindings_proposal` | `.revise_semantic_bindings_proposal({ … })` | MCP `loxtep_define` |
+| `get_definition_proposal` | `.get_definition_proposal(id)` | MCP `loxtep_define` |
+| `list_definition_proposals` | `.list_definition_proposals({ … })` | MCP `loxtep_define` |
+| `submit_semantic_bindings_proposal` | `.submit_semantic_bindings_proposal({ … })` | MCP `loxtep_define` |
+| `run_definition_batch` | `.run_definition_batch({ data_product_ids, action? })` | MCP `loxtep_define` |
+| `get_definition_skill` | `.get_definition_skill()` | MCP `loxtep_define` |
+| `start_definition_procedure_run` | `.start_definition_procedure_run(data_product_id)` | MCP `loxtep_define` |
+
+CLI verbs:
+
+| CLI | SDK |
+| --- | --- |
+| `loxtep define status <dp>` | `get_definition_status` |
+| `loxtep define evidence <dp>` | `get_definition_evidence` |
+| `loxtep define list \| get <id>` | `list_definition_proposals` / `get_definition_proposal` |
+| `loxtep define submit-shape <dp> --definition <json>` | `submit_shape_proposal` |
+| `loxtep define submit-semantic <dp> [--definition <json>]` | `submit_semantic_bindings_proposal` |
+| `loxtep define approve\|apply\|withdraw <id>` | matching REST actions |
+| `loxtep define skill` | `get_definition_skill` |
+| `loxtep define start-procedure <dp>` | `start_definition_procedure_run` |
+| `loxtep define batch --data-product-ids <csv>` | `run_definition_batch` |
 
 ## Review: CDLC + context mining (LOX-1244…1247)
 

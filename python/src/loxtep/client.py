@@ -36,6 +36,7 @@ from .observe import AsyncObserveApi, ObserveApi
 from .observe_facade import ObserveFacade
 from .procedures import AsyncProceduresApi, ProceduresApi
 from .process_intelligence import AsyncProcessIntelligenceApi, ProcessIntelligenceApi
+from .product_definition import AsyncProductDefinitionApi, ProductDefinitionApi
 from .projects import AsyncProjectsApi, ProjectsApi
 from .proposals import AsyncProposalsApi, ProposalsApi
 from .quality import AsyncQualityApi, QualityApi
@@ -180,6 +181,7 @@ class LoxtepClient:
             standards=StandardsApi(self._http),
             data_contracts=DataContractsApi(self._http),
             domains=DomainsApi(self._http),
+            product_definition=ProductDefinitionApi(self._http),
         )
         self.meaning = MeaningFacade(
             thesaurus=ThesaurusApi(self._http, organization_id),
@@ -346,6 +348,7 @@ class AsyncLoxtepClient:
             standards=AsyncStandardsApi(self._http),
             data_contracts=AsyncDataContractsApi(self._http),
             domains=AsyncDomainsApi(self._http),
+            product_definition=AsyncProductDefinitionApi(self._http),
         )
         self.meaning = MeaningFacade(
             thesaurus=AsyncThesaurusApi(self._http, organization_id),
