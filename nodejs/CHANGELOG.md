@@ -8,7 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.9.19] - 2026-10-01
+## [0.9.20] - 2026-10-01
+
+> Note: `0.9.19` was accepted by npm as a staged version but never became
+> publicly installable (`Cannot publish over previously staged version`).
+> This release is the public ship of the same product-definition work.
 
 ### Added
 
