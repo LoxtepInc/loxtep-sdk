@@ -32,6 +32,40 @@ interface DiscoveredEntity {
   data: Record<string, unknown>;
 }
 
+/**
+ * Canonical trigger type used by templates, backend validation, and runtime.
+ * Only the hyphenated spelling is accepted.
+ */
+export const DATA_PRODUCT_TRIGGER_TYPE = 'data-product-trigger' as const;
+
+/** Rejected legacy spelling — lint fails with a rename message. */
+export const DATA_PRODUCT_TRIGGER_TYPE_LEGACY = 'data_product_trigger' as const;
+
+/** Entity-type-specific primary ID fields (mirrors platform ENTITY_ID_KEYS). */
+const ENTITY_PRIMARY_ID_KEYS: Partial<
+  Record<(typeof EntityType)[keyof typeof EntityType], string>
+> = {
+  [EntityType.CONNECTOR]: 'connector_id',
+  [EntityType.CONNECTION]: 'connection_id',
+  [EntityType.WORKFLOW]: 'workflow_id',
+  [EntityType.TRANSFORMATION]: 'transformation_id',
+  [EntityType.VALIDATION]: 'validation_id',
+  [EntityType.DATA_PRODUCT]: 'data_product_id',
+  [EntityType.DOMAIN]: 'domain_id',
+  [EntityType.SCHEMA]: 'schema_id',
+  [EntityType.CONTRACT]: 'contract_id',
+  [EntityType.QUALITY_RULE]: 'quality_rule_id',
+  [EntityType.EXPORT]: 'export_id',
+};
+
+/** Entity types that may appear as upstream_entity_id targets within a package. */
+const UPSTREAM_REFERENCE_ENTITY_TYPES = new Set<(typeof EntityType)[keyof typeof EntityType]>([
+  EntityType.CONNECTION,
+  EntityType.TRANSFORMATION,
+  EntityType.VALIDATION,
+  EntityType.DATA_PRODUCT,
+]);
+
 function readJsonObject(filePath: string): Record<string, unknown> | null {
   try {
     const raw = JSON.parse(readFileSync(filePath, 'utf8')) as unknown;
@@ -115,7 +149,6 @@ function discoverEntities(projectDir: string, workflowId?: string): DiscoveredEn
           entityType,
           data: {},
         });
-        // mark unreadable via empty + special handling below
         continue;
       }
       entities.push({ path: rel, entityType, data });
@@ -133,22 +166,53 @@ function entityName(entity: DiscoveredEntity): string | undefined {
 }
 
 function entityStableId(entity: DiscoveredEntity): string {
-  if (entity.entityType === EntityType.DATA_PRODUCT) {
-    const id = entity.data.data_product_id;
-    if (typeof id === 'string' && id.length > 0) return id;
-  }
+  const primary = primaryEntityId(entity);
+  if (primary) return primary;
   if (entity.entityType === EntityType.WORKFLOW) {
-    const id = entity.data.workflow_id;
-    if (typeof id === 'string' && id.length > 0) return id;
     const match = entity.path.match(/^workflows\/([^/]+)\/workflow\.json$/);
     if (match?.[1]) return match[1];
   }
   return entity.path;
 }
 
+/**
+ * Resolve the entity's own primary ID for its type.
+ * Never prefers parent/reference IDs (workflow_id, connector_id on connections, etc.).
+ */
+export function primaryEntityId(entity: {
+  entityType: (typeof EntityType)[keyof typeof EntityType];
+  data: Record<string, unknown>;
+}): string | undefined {
+  const key = ENTITY_PRIMARY_ID_KEYS[entity.entityType];
+  if (!key) return undefined;
+  const id = entity.data[key];
+  return typeof id === 'string' && id.length > 0 ? id : undefined;
+}
+
+/**
+ * True when a connection is a data-product trigger (canonical hyphen spelling only).
+ * Checks `type` then `connector_type`, matching backend resolveConnectionConnectorType.
+ */
+export function isDataProductTriggerConnection(data: Record<string, unknown>): boolean {
+  const raw = data.type ?? data.connector_type;
+  return typeof raw === 'string' && raw.trim() === DATA_PRODUCT_TRIGGER_TYPE;
+}
+
+/**
+ * True when a connection uses the rejected underscore spelling of the trigger type.
+ */
+export function isLegacyDataProductTriggerSpelling(data: Record<string, unknown>): boolean {
+  const candidates = [data.type, data.connector_type];
+  return candidates.some(
+    raw => typeof raw === 'string' && raw.trim() === DATA_PRODUCT_TRIGGER_TYPE_LEGACY
+  );
+}
+
 function pathInWorkflow(relPath: string, workflowId: string): boolean {
-  return relPath === `workflows/${workflowId}/workflow.json` ||
-    relPath.startsWith(`workflows/${workflowId}/`);
+  return (
+    relPath === `workflows/${workflowId}/workflow.json` ||
+    relPath.startsWith(`workflows/${workflowId}/`)
+  );
 }
 
 /**
@@ -211,6 +275,97 @@ function checkProjectScopedNameUniqueness(
   }
 }
 
+function buildEntityIndex(
+  entities: DiscoveredEntity[]
+): Map<(typeof EntityType)[keyof typeof EntityType], Map<string, DiscoveredEntity>> {
+  const byType = new Map<(typeof EntityType)[keyof typeof EntityType], Map<string, DiscoveredEntity>>();
+  for (const entity of entities) {
+    const id = primaryEntityId(entity);
+    if (!id) continue;
+    let typeMap = byType.get(entity.entityType);
+    if (!typeMap) {
+      typeMap = new Map();
+      byType.set(entity.entityType, typeMap);
+    }
+    typeMap.set(id, entity);
+  }
+  return byType;
+}
+
+function resolveUpstreamEntityType(
+  data: Record<string, unknown>
+): (typeof EntityType)[keyof typeof EntityType] | undefined {
+  const upstreamType = data.upstream_entity_type;
+  if (typeof upstreamType !== 'string') return undefined;
+  if ((Object.values(EntityType) as string[]).includes(upstreamType)) {
+    return upstreamType as (typeof EntityType)[keyof typeof EntityType];
+  }
+  return undefined;
+}
+
+function findUpstreamInIndex(
+  byType: Map<(typeof EntityType)[keyof typeof EntityType], Map<string, DiscoveredEntity>>,
+  upstreamId: string,
+  preferredType?: (typeof EntityType)[keyof typeof EntityType]
+): { entity: DiscoveredEntity; entityType: (typeof EntityType)[keyof typeof EntityType] } | undefined {
+  if (preferredType) {
+    const typed = byType.get(preferredType)?.get(upstreamId);
+    if (typed) return { entity: typed, entityType: preferredType };
+    return undefined;
+  }
+  for (const entityType of UPSTREAM_REFERENCE_ENTITY_TYPES) {
+    const typed = byType.get(entityType)?.get(upstreamId);
+    if (typed) return { entity: typed, entityType };
+  }
+  return undefined;
+}
+
+function checkUpstreamReferences(
+  entities: DiscoveredEntity[],
+  byType: Map<(typeof EntityType)[keyof typeof EntityType], Map<string, DiscoveredEntity>>,
+  issues: LintIssue[]
+): void {
+  const upstreamCarriers: Array<(typeof EntityType)[keyof typeof EntityType]> = [
+    EntityType.DATA_PRODUCT,
+    EntityType.TRANSFORMATION,
+    EntityType.VALIDATION,
+    EntityType.CONNECTION,
+  ];
+
+  for (const entity of entities) {
+    if (!upstreamCarriers.includes(entity.entityType)) continue;
+    const upstream = entity.data.upstream_entity_id;
+    if (typeof upstream !== 'string' || upstream.length === 0) continue;
+
+    const preferredType = resolveUpstreamEntityType(entity.data);
+    const found = findUpstreamInIndex(byType, upstream, preferredType);
+
+    if (!found) {
+      // Wrong-type: ID exists under another entity type when a type was declared.
+      if (preferredType) {
+        const elsewhere = findUpstreamInIndex(byType, upstream);
+        if (elsewhere) {
+          issues.push({
+            path: entity.path,
+            severity: 'error',
+            message:
+              `upstream_entity_id "${upstream}" is a ${elsewhere.entityType} entity, ` +
+              `but upstream_entity_type is "${preferredType}"`,
+          });
+          continue;
+        }
+      }
+      issues.push({
+        path: entity.path,
+        severity: 'error',
+        message: preferredType
+          ? `upstream_entity_id "${upstream}" not found as ${preferredType} in local package`
+          : `upstream_entity_id "${upstream}" not found in local package`,
+      });
+    }
+  }
+}
+
 /**
  * Lint local entity JSON against shipped schemas and basic relationship checks.
  */
@@ -227,7 +382,7 @@ export function lintLocalPackage(options: LintOptions): LintResult {
   }
 
   const entities = discoverEntities(projectDir, workflow_id);
-  const byId = new Map<string, DiscoveredEntity>();
+  const byType = buildEntityIndex(entities);
 
   for (const entity of entities) {
     if (Object.keys(entity.data).length === 0) {
@@ -249,24 +404,23 @@ export function lintLocalPackage(options: LintOptions): LintResult {
         });
       }
     }
-
-    const idKey =
-      (entity.data.connector_id as string | undefined) ||
-      (entity.data.connection_id as string | undefined) ||
-      (entity.data.workflow_id as string | undefined) ||
-      (entity.data.data_product_id as string | undefined) ||
-      (entity.data.domain_id as string | undefined);
-    if (idKey) {
-      byId.set(idKey, entity);
-    }
   }
 
   // Relationship checks
   for (const entity of entities) {
     if (entity.entityType === EntityType.CONNECTION) {
-      const connectionType = entity.data.type;
+      if (isLegacyDataProductTriggerSpelling(entity.data)) {
+        issues.push({
+          path: entity.path,
+          severity: 'error',
+          message:
+            `connection type must be "${DATA_PRODUCT_TRIGGER_TYPE}" ` +
+            `(not "${DATA_PRODUCT_TRIGGER_TYPE_LEGACY}")`,
+        });
+        continue;
+      }
       // DP→DP triggers are not bound to an external connector.
-      if (connectionType === 'data_product_trigger') {
+      if (isDataProductTriggerConnection(entity.data)) {
         continue;
       }
       const connectorId = entity.data.connector_id;
@@ -292,30 +446,13 @@ export function lintLocalPackage(options: LintOptions): LintResult {
         });
       }
     }
-
-    if (entity.entityType === EntityType.DATA_PRODUCT) {
-      const upstream = entity.data.upstream_entity_id;
-      if (typeof upstream === 'string' && upstream.length > 0 && !byId.has(upstream)) {
-        // Upstream may be a connection in the same workflow — check connection ids
-        const conn = entities.find(
-          e =>
-            e.entityType === EntityType.CONNECTION && e.data.connection_id === upstream
-        );
-        if (!conn) {
-          issues.push({
-            path: entity.path,
-            severity: 'error',
-            message: `upstream_entity_id "${upstream}" not found in local package`,
-          });
-        }
-      }
-    }
   }
+
+  checkUpstreamReferences(entities, byType, issues);
 
   // Name uniqueness is project-scoped in Postgres — always scan the full local tree,
   // even when --workflow narrows schema validation to one package.
-  const uniquenessEntities =
-    workflow_id != null ? discoverEntities(projectDir) : entities;
+  const uniquenessEntities = workflow_id != null ? discoverEntities(projectDir) : entities;
   checkProjectScopedNameUniqueness(uniquenessEntities, issues, workflow_id);
 
   return {
@@ -335,5 +472,8 @@ export function hasLocalEntityPackage(projectDir: string): boolean {
     const wfJson = join(workflowsDir, name, 'workflow.json');
     if (existsSync(wfJson)) return true;
   }
-  return existsSync(join(projectDir, 'connectors')) && listJsonFiles(join(projectDir, 'connectors')).length > 0;
+  return (
+    existsSync(join(projectDir, 'connectors')) &&
+    listJsonFiles(join(projectDir, 'connectors')).length > 0
+  );
 }

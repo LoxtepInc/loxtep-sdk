@@ -54,7 +54,7 @@ Build & deploy
   lint [--workflow <id>]
                      Validate local entity JSON (schemas, relationships, unique names)
   push [--workflow-id <id>] [--dry-run] [--skip-reindex]
-                     Upload local workflows via save_workflow_bundle + reindex
+                     Lint selected packages, then upload via save_workflow_bundle + reindex
   bundle save [--file .loxtep/sdk-ingest-bundle.json] [--dry-run]
                      Persist a workflow entity bundle JSON to the project workspace
   test <module> --event <file>

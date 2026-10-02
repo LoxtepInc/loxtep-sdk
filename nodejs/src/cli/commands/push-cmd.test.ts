@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { LoxtepError } from '../../errors/base.js';
 import {
   createCliTestHarness,
@@ -9,7 +9,41 @@ import {
   writeMinimalWorkflowModule,
 } from '../__tests__/cli-test-harness.js';
 import { MOCK_IDS, createPlatformMockFetch } from '../__tests__/mock-platform-api.js';
+import { buildSdkIngestLocalPackage } from '../../lib/sdk-ingest-bundle.js';
 import { formatPushError, runPush } from './push-cmd.js';
+
+const CONNECTOR_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const CONNECTION_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const DATA_PRODUCT_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const USER_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+
+function writeValidEntityPackage(
+  projectDir: string,
+  workflowId = MOCK_IDS.workflow_id
+): void {
+  const pkg = buildSdkIngestLocalPackage({
+    organization_id: MOCK_IDS.organization_id,
+    project_id: MOCK_IDS.project_id,
+    domain_id: MOCK_IDS.domain_id,
+    connector_id: CONNECTOR_ID,
+    data_product_name: 'app-events',
+    user_id: USER_ID,
+    workflow_id: workflowId,
+    connection_id: CONNECTION_ID,
+    data_product_id: DATA_PRODUCT_ID,
+    connector: {
+      connector_id: CONNECTOR_ID,
+      organization_id: MOCK_IDS.organization_id,
+      connector_type: 'sdk',
+      metadata: { name: 'SDK' },
+    },
+  });
+  for (const [rel, entity] of Object.entries(pkg.files)) {
+    const full = join(projectDir, rel);
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, JSON.stringify(entity, null, 2), 'utf-8');
+  }
+}
 
 describe('formatPushError', () => {
   it('returns Error.message for plain errors', () => {
@@ -72,29 +106,8 @@ describe('runPush dry_run', () => {
   it('lists local entity packages without calling save_workflow_bundle', async () => {
     const harness = await createLocalProjectHarness();
     try {
-      // Code-first module (deploy path); push itself discovers entity-JSON packages.
       await writeMinimalWorkflowModule(harness.projectDir, 'echo-test');
-
-      const wfDir = join(harness.projectDir, 'workflows', MOCK_IDS.workflow_id);
-      mkdirSync(wfDir, { recursive: true });
-      writeFileSync(
-        join(wfDir, 'workflow.json'),
-        JSON.stringify(
-          {
-            workflow_id: MOCK_IDS.workflow_id,
-            organization_id: MOCK_IDS.organization_id,
-            project_id: MOCK_IDS.project_id,
-            name: 'echo-test',
-            workflow_type: 'ingestion',
-            status: 'active',
-            configuration: {},
-            metadata: {},
-          },
-          null,
-          2
-        ),
-        'utf-8'
-      );
+      writeValidEntityPackage(harness.projectDir);
 
       const out = captureCliOutput();
       await runPush({ dry_run: true }, harness.cliOptions);
@@ -111,29 +124,6 @@ describe('runPush write paths', () => {
   afterEach(() => {
     process.exitCode = 0;
   });
-
-  function writeEntityPackage(projectDir: string, workflowId = MOCK_IDS.workflow_id): void {
-    const wfDir = join(projectDir, 'workflows', workflowId);
-    mkdirSync(wfDir, { recursive: true });
-    writeFileSync(
-      join(wfDir, 'workflow.json'),
-      JSON.stringify(
-        {
-          workflow_id: workflowId,
-          organization_id: MOCK_IDS.organization_id,
-          project_id: MOCK_IDS.project_id,
-          name: 'echo-test',
-          workflow_type: 'ingestion',
-          status: 'active',
-          configuration: {},
-          metadata: {},
-        },
-        null,
-        2
-      ),
-      'utf-8'
-    );
-  }
 
   it('exits 1 when project_id is missing', async () => {
     const harness = await createCliTestHarness({ project_id: '' });
@@ -161,10 +151,46 @@ describe('runPush write paths', () => {
     }
   });
 
+  it('refuses push when lint fails before any mutation', async () => {
+    const harness = await createLocalProjectHarness();
+    let bundlePosts = 0;
+    const fetchFn = createPlatformMockFetch({
+      extra: (pathname, init) => {
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'POST' && pathname.includes('/workflow-bundle')) {
+          bundlePosts += 1;
+          return new Response(JSON.stringify({ success: true, data: { success: true } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+    try {
+      const wfDir = join(harness.projectDir, 'workflows', MOCK_IDS.workflow_id);
+      mkdirSync(wfDir, { recursive: true });
+      writeFileSync(
+        join(wfDir, 'workflow.json'),
+        JSON.stringify({ name: 'broken-incomplete' }, null, 2),
+        'utf-8'
+      );
+
+      const out = captureCliOutput();
+      await runPush({}, { ...harness.cliOptions, fetch_fn: fetchFn });
+      expect(process.exitCode).toBe(1);
+      expect(out.stderr).toContain('Push refused: local entity package failed lint');
+      expect(bundlePosts).toBe(0);
+      out.restore();
+    } finally {
+      await harness.destroy();
+    }
+  });
+
   it('pushes bundle, reindexes, and writes push manifest', async () => {
     const harness = await createLocalProjectHarness();
     try {
-      writeEntityPackage(harness.projectDir);
+      writeValidEntityPackage(harness.projectDir);
       const out = captureCliOutput();
       await runPush({ dry_run: false }, harness.cliOptions);
       expect(process.exitCode ?? 0).toBe(0);
@@ -195,7 +221,7 @@ describe('runPush write paths', () => {
       },
     });
     try {
-      writeEntityPackage(harness.projectDir);
+      writeValidEntityPackage(harness.projectDir);
       const out = captureCliOutput();
       await runPush({}, { ...harness.cliOptions, fetch_fn: fetchFn });
       expect(process.exitCode).toBe(1);
@@ -221,7 +247,7 @@ describe('runPush write paths', () => {
       },
     });
     try {
-      writeEntityPackage(harness.projectDir);
+      writeValidEntityPackage(harness.projectDir);
       const out = captureCliOutput();
       await runPush({}, { ...harness.cliOptions, fetch_fn: fetchFn });
       expect(process.exitCode ?? 0).toBe(0);

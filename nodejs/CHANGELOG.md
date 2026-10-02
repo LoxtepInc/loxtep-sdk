@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.21] - 2026-10-01
+
+### Fixed
+
+- **Workspace lint / push / deploy alignment**
+  - Index entities by type-specific primary IDs (`transformation_id`,
+    `validation_id`, `connection_id`, …) so upstream references resolve.
+  - Require canonical `data-product-trigger` spelling (reject
+    `data_product_trigger`).
+  - `loxtep push` runs the same entity-package lint as deploy before any
+    `save_workflow_bundle` mutation.
+  - CLI `transform` / `delivery create` emit `data-product-trigger` (via `type` only; omit invalid `connector_type` so post-create lint passes).
+
 ## [0.9.20] - 2026-10-01
 
 > Note: `0.9.19` was accepted by npm as a staged version but never became
