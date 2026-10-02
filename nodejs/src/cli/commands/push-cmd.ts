@@ -12,6 +12,7 @@ import {
 import { writePushManifestFromProjectDir } from '../../client/project-workspace-inventory.js';
 import { LoxtepError } from '../../errors/base.js';
 import { sanitizePlatformErrorMessage } from '../../errors/sanitize-message.js';
+import { formatLintResult, runLintCheck } from './lint-cmd.js';
 
 export interface PushCmdOptions {
   configFilePath?: string;
@@ -73,6 +74,20 @@ export async function runPush(
 
   if (workflowIds.length === 0) {
     console.error('No local workflows found under workflows/. Run ingest/transform/delivery create first.');
+    process.exitCode = 1;
+    return;
+  }
+
+  // Same entity-package rules as `loxtep deploy` — refuse before any mutation.
+  const lint = runLintCheck({
+    cwd: projectDir,
+    workflow_id: params.workflow_id,
+  });
+  if (!lint.ok) {
+    console.error('Push refused: local entity package failed lint.');
+    for (const line of formatLintResult(lint)) {
+      console.error(line);
+    }
     process.exitCode = 1;
     return;
   }

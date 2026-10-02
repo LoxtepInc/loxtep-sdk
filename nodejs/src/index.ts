@@ -26,5 +26,13 @@ export {
   validateEntity,
   validateEntityOrThrow,
 } from './lib/entity-json-schemas/index.js';
-export { lintLocalPackage, hasLocalEntityPackage } from './lib/workspace-lint.js';
+export {
+  lintLocalPackage,
+  hasLocalEntityPackage,
+  isDataProductTriggerConnection,
+  isLegacyDataProductTriggerSpelling,
+  primaryEntityId,
+  DATA_PRODUCT_TRIGGER_TYPE,
+  DATA_PRODUCT_TRIGGER_TYPE_LEGACY,
+} from './lib/workspace-lint.js';
 export type { LintIssue, LintResult } from './lib/workspace-lint.js';

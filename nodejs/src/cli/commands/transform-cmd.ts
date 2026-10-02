@@ -110,7 +110,8 @@ export async function runTransformCreate(
       workflow_id: workflowId,
       key: 'data-product-trigger',
       name: `From ${params.from}`,
-      type: 'data_product_trigger',
+      type: 'data-product-trigger',
+      connector_type: 'data-product-trigger',
       status: 'active',
       configuration: {
         source_data_product_name: params.from,
