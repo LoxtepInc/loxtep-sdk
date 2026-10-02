@@ -111,7 +111,6 @@ export async function runTransformCreate(
       key: 'data-product-trigger',
       name: `From ${params.from}`,
       type: 'data-product-trigger',
-      connector_type: 'data-product-trigger',
       status: 'active',
       configuration: {
         source_data_product_name: params.from,

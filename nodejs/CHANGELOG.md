@@ -19,7 +19,7 @@ and this project adheres to
     `data_product_trigger`).
   - `loxtep push` runs the same entity-package lint as deploy before any
     `save_workflow_bundle` mutation.
-  - CLI `transform` / `delivery create` emit `data-product-trigger`.
+  - CLI `transform` / `delivery create` emit `data-product-trigger` (via `type` only; omit invalid `connector_type` so post-create lint passes).
 
 ## [0.9.20] - 2026-10-01
 
