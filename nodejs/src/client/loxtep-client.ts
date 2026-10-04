@@ -26,6 +26,7 @@ import { createPacksApi } from './packs.js';
 import { createSemanticLayerApi } from './semantic-layer.js';
 import { createProposalsApi } from './proposals.js';
 import { createBundlesApi } from './bundles.js';
+import { createPackagesApi } from './packages.js';
 import { createProcessIntelligenceApi } from './process-intelligence.js';
 import { createTargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
@@ -129,7 +130,7 @@ export class LoxtepClient {
   /** Schemas (DP), shapes (domain), quality, standards, contracts, domains (MCP: loxtep_define). */
   readonly define: ReturnType<typeof createDefineFacade>;
 
-  /** Thesaurus + ontology + packs + semantic + proposals + bundles (MCP: loxtep_meaning). */
+  /** Thesaurus + ontology + packs + semantic + proposals + bundles + packages (MCP: loxtep_meaning). */
   readonly meaning: ReturnType<typeof createMeaningFacade>;
 
   /** Approvals + improvements + CDLC + mining (MCP: loxtep_review). */
@@ -239,6 +240,7 @@ export class LoxtepClient {
     const semanticApi = createSemanticLayerApi(this._http);
     const proposalsApi = createProposalsApi(this._http);
     const bundlesApi = createBundlesApi(this._http);
+    const packagesApi = createPackagesApi(this._http);
     const processIntelligenceApi = createProcessIntelligenceApi(this._http);
     const targetsApi = createTargetsApi(this._http);
     const connectorsApi = createConnectorsApi(this._http);
@@ -284,6 +286,7 @@ export class LoxtepClient {
       semantic: semanticApi,
       proposals: proposalsApi,
       bundles: bundlesApi,
+      packages: packagesApi,
     });
     this.review = createReviewFacade({
       approvals: approvalsApi,

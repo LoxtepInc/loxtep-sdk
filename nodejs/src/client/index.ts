@@ -250,8 +250,15 @@ export type {
   SemanticBundle,
   ImportSemanticBundleInput,
   SemanticBundleImportResult,
+  ExportSemanticBundleQuery,
 } from './bundles-types.js';
 export type { BundlesApi } from './bundles.js';
+export type { PackagesApi } from './packages.js';
+export type {
+  SaveSemanticPackageInput,
+  PackageRevisionRef,
+  ImportExternalSemanticPackageInput,
+} from './packages.js';
 export type {
   OntologyNodeType,
   OntologyConcept,

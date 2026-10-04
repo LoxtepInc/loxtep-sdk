@@ -1,7 +1,7 @@
 /**
  * Meaning facade (MCP: loxtep_meaning).
  * Thesaurus + ontology + vocabulary packs + semantic search/completeness +
- * proposals + bundles.
+ * proposals + bundles + packages.
  */
 
 import type { createThesaurusApi } from './thesaurus.js';
@@ -10,6 +10,7 @@ import type { createPacksApi } from './packs.js';
 import type { createSemanticLayerApi } from './semantic-layer.js';
 import type { createProposalsApi } from './proposals.js';
 import type { createBundlesApi } from './bundles.js';
+import type { createPackagesApi } from './packages.js';
 
 export interface MeaningFacadeDeps {
   thesaurus: ReturnType<typeof createThesaurusApi>;
@@ -18,6 +19,7 @@ export interface MeaningFacadeDeps {
   semantic: ReturnType<typeof createSemanticLayerApi>;
   proposals: ReturnType<typeof createProposalsApi>;
   bundles: ReturnType<typeof createBundlesApi>;
+  packages: ReturnType<typeof createPackagesApi>;
 }
 
 export function createMeaningFacade(deps: MeaningFacadeDeps): {
@@ -27,6 +29,7 @@ export function createMeaningFacade(deps: MeaningFacadeDeps): {
   semantic: MeaningFacadeDeps['semantic'];
   proposals: MeaningFacadeDeps['proposals'];
   bundles: MeaningFacadeDeps['bundles'];
+  packages: MeaningFacadeDeps['packages'];
 } {
   return {
     thesaurus: deps.thesaurus,
@@ -35,6 +38,7 @@ export function createMeaningFacade(deps: MeaningFacadeDeps): {
     semantic: deps.semantic,
     proposals: deps.proposals,
     bundles: deps.bundles,
+    packages: deps.packages,
   };
 }
 

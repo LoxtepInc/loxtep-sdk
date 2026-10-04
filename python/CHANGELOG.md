@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Semantic package lifecycle** (`client.meaning.packages`, sync + async) —
+  `save` / `plan` / `approve` / `deploy` / `verify` / `status` /
+  `import_external` → `POST /semantic-layer/packages`.
+- **`bundles.export_`** — export semantic bundles (Node: `bundles.export`).
+- **`bundles.import_`** — `activation` (`stage`|`deploy`), `package_id`,
+  `package_label`; staged responses are not treated as partial failures.
+
 ## [0.7.1] — 2026-10-01
 
 ### Added
