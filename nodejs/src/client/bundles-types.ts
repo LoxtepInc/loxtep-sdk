@@ -19,6 +19,10 @@ export interface SemanticBundle {
 export interface ImportSemanticBundleInput {
   bundle: SemanticBundle;
   dry_run?: boolean;
+  /** stage (default) = save package + approval; deploy = legacy immediate apply */
+  activation?: 'stage' | 'deploy';
+  package_id?: string;
+  package_label?: string;
 }
 
 export interface SemanticBundleImportError {
@@ -46,13 +50,35 @@ export interface SemanticBundleLossReportEntry {
  */
 export interface SemanticBundleImportResult {
   dry_run: boolean;
+  activation?: 'stage' | 'deploy';
   applied_count: number;
   skipped_count: number;
   errors: SemanticBundleImportError[];
   applied: SemanticBundleImportApplied[];
   /** Constructs that could not be represented (SHACL/OWL residuals). */
   loss_report?: SemanticBundleLossReportEntry[];
+  /** Staged package when activation=stage */
+  package?: {
+    package_id: string;
+    revision: number;
+    content_hash: string;
+    approval_request_id?: string;
+    status: string;
+  };
+  plan?: Record<string, unknown>;
   /** True when skips or loss_report entries are present. */
   partial?: boolean;
   status_code?: number;
+}
+
+export interface ExportSemanticBundleQuery {
+  domain_id?: string;
+  include_thesaurus?: boolean;
+  include_glossary?: boolean;
+  include_entities?: boolean;
+  include_shapes?: boolean;
+  include_ontology?: boolean;
+  include_mappings?: boolean;
+  include_metrics?: boolean;
+  include_policies?: boolean;
 }

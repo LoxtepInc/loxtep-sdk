@@ -18,6 +18,7 @@ from .agent_workspace import (
 from .approvals import ApprovalsApi, AsyncApprovalsApi
 from .build import BuildFacade
 from .bundles import AsyncBundlesApi, BundlesApi
+from .packages import AsyncPackagesApi, PackagesApi
 from .catalog import AsyncCatalogApi, CatalogApi
 from .connect import ConnectFacade
 from .connectors import AsyncConnectorsApi, ConnectorsApi
@@ -187,6 +188,7 @@ class LoxtepClient:
             thesaurus=ThesaurusApi(self._http, organization_id),
             proposals=ProposalsApi(self._http),
             bundles=BundlesApi(self._http),
+            packages=PackagesApi(self._http),
         )
         self.review = ReviewFacade(
             approvals=ApprovalsApi(self._http, organization_id=organization_id),
@@ -354,6 +356,7 @@ class AsyncLoxtepClient:
             thesaurus=AsyncThesaurusApi(self._http, organization_id),
             proposals=AsyncProposalsApi(self._http),
             bundles=AsyncBundlesApi(self._http),
+            packages=AsyncPackagesApi(self._http),
         )
         self.review = ReviewFacade(
             approvals=AsyncApprovalsApi(self._http, organization_id=organization_id),

@@ -118,6 +118,12 @@ describe('LoxtepClient', () => {
 
     const bundles = (client.meaning as Record<string, unknown>).bundles as Record<string, unknown>;
     expect(typeof bundles.import).toBe('function');
+    expect(typeof bundles.export).toBe('function');
+
+    const packages = (client.meaning as Record<string, unknown>).packages as Record<string, unknown>;
+    expect(typeof packages.save).toBe('function');
+    expect(typeof packages.approve).toBe('function');
+    expect(typeof packages.deploy).toBe('function');
 
     const shapes = (client.define as Record<string, unknown>).shapes as Record<string, unknown>;
     expect(typeof shapes.create).toBe('function');

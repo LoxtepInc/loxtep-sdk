@@ -155,16 +155,24 @@ single-id PUT (no dedicated batch REST).
 | reject | `.reject(semantic_proposal_id, { resolution_note? })` | `PUT …` `disposition: rejected` |
 | batch accept / reject | `.accept_batch` / `.reject_batch` | N× PUT |
 
-## Meaning: semantic bundles (Phase 2)
+## Meaning: semantic bundles + packages
 
 | MCP operation | SDK | REST |
 | --- | --- | --- |
-| `import_semantic_bundle` | `client.meaning.bundles.import({ bundle, dry_run? })` | `POST /semantic-layer/bundles/import` |
+| `import_semantic_bundle` | `client.meaning.bundles.import({ bundle, dry_run?, activation?, package_id? })` | `POST /semantic-layer/bundles/import` |
+| `export_semantic_bundle` | `client.meaning.bundles.export({ …filters })` | `GET /semantic-layer/bundles/export` |
+| `save_semantic_package` | `client.meaning.packages.save({ bundle, … })` | `POST /semantic-layer/packages` `action=save` |
+| `plan_semantic_package` | `.plan({ package_id, revision })` | `action=plan` |
+| `approve_semantic_package` | `.approve({ package_id, revision, content_hash })` | `action=approve` |
+| `deploy_semantic_package` | `.deploy({ package_id, revision, content_hash })` | `action=deploy` |
+| `verify_semantic_package` | `.verify({ package_id, revision, include_r2rml? })` | `action=verify` |
+| `get_semantic_package_status` | `.status({ package_id, revision? })` | `action=status` |
+| `import_external_semantic_package` | `.import_external({ format, content, … })` | `action=import_external` |
 
-Phase 0 error contract: result always includes `skipped_count` and `errors`.
-When skips/errors exist (or HTTP 207/422 with a parseable body), the SDK sets
-`partial: true` and still returns the result instead of dropping error detail.
-MCP-only sibling: `export_semantic_bundle` (no SDK yet).
+Default import `activation` is `stage` (package revision + approval). Use
+`activation: 'deploy'` only for legacy immediate apply. Phase 0 error contract:
+result always includes `skipped_count` and `errors`. Staged / dry_run responses
+are not treated as failures when plan skips exist.
 
 ## Define: domain shapes (Phase 2)
 
