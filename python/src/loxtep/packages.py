@@ -8,7 +8,7 @@ MCP: save/plan/approve/deploy/verify/get_status/import_external_semantic_package
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 
