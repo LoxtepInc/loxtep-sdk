@@ -84,6 +84,16 @@ class ConnectorsApi:
         res = self._http.post(f"{CONNECTORS_BASE}/{connector_id}/test", {})
         return res.get("data", res) if isinstance(res, dict) else res
 
+    def list_entities(self, connector_id: str) -> dict[str, Any]:
+        res = self._http.get(f"{CONNECTORS_BASE}/{connector_id}/entities")
+        data = res.get("data", res) if isinstance(res, dict) else res
+        if not isinstance(data, dict):
+            return {"connector_id": connector_id, "entities": []}
+        return {
+            "connector_id": data.get("connector_id", connector_id),
+            "entities": data.get("entities", []) if isinstance(data.get("entities"), list) else [],
+        }
+
     def capture_samples(
         self,
         connector_id: str,
@@ -183,6 +193,16 @@ class AsyncConnectorsApi:
     async def test(self, connector_id: str) -> dict[str, Any]:
         res = await self._http.post(f"{CONNECTORS_BASE}/{connector_id}/test", {})
         return res.get("data", res) if isinstance(res, dict) else res
+
+    async def list_entities(self, connector_id: str) -> dict[str, Any]:
+        res = await self._http.get(f"{CONNECTORS_BASE}/{connector_id}/entities")
+        data = res.get("data", res) if isinstance(res, dict) else res
+        if not isinstance(data, dict):
+            return {"connector_id": connector_id, "entities": []}
+        return {
+            "connector_id": data.get("connector_id", connector_id),
+            "entities": data.get("entities", []) if isinstance(data.get("entities"), list) else [],
+        }
 
     async def capture_samples(
         self,

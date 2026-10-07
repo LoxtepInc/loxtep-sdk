@@ -50,6 +50,7 @@ import {
   runConnectorsList,
   runConnectorsTest,
   runConnectorsCaptureSamples,
+  runConnectorsListEntities,
 } from './commands/connectors-cmd.js';
 import { runObserveStatus } from './commands/observe-cmd.js';
 import {
@@ -661,6 +662,11 @@ export async function runCli(argv: string[]): Promise<void> {
       } else if (sub === 'test' && args[2]) {
         await runConnectorsTest(args[2], { debug: args.includes('--debug') });
       } else if (
+        (sub === 'list-entities' || sub === 'list_entities') &&
+        args[2]
+      ) {
+        await runConnectorsListEntities(args[2], { debug: args.includes('--debug') });
+      } else if (
         (sub === 'capture-samples' || sub === 'capture_samples') &&
         args[2]
       ) {
@@ -680,6 +686,7 @@ export async function runCli(argv: string[]): Promise<void> {
             'Usage:',
             '  loxtep connectors list [--type sdk]',
             '  loxtep connectors test <connector_id>',
+            '  loxtep connectors list-entities <connector_id>',
             '  loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]',
           ].join('\n')
         );

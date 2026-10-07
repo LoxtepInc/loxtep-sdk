@@ -50,7 +50,8 @@ Low-level workflow writer escape hatch: `client.build.get_writer(workflow_id, { 
 
 Vocabulary: MCP `loxtep_build` trigger operations (backend: connections) and target operations
 (backend: consumptions). Connector OAuth uses `get_oauth_url`; connectivity
-probe uses `test_connector` / `loxtep connectors test <id>`; sample capture uses
+probe uses `test_connector` / `loxtep connectors test <id>`; entity discovery uses
+`list_connector_entities` / `loxtep connectors list-entities <id>`; sample capture uses
 `capture_samples` / `loxtep connectors capture-samples <id> --entity-type <name>`.
 
 When unsure: **MCP for provisioning and agent tool calls**; **SDK/CLI for runtime**.
