@@ -99,8 +99,9 @@ writer.write({"id": "e1", "name": "Alice"})
 writer.close()
 
 # Workflows (the ingestion → transformation → export DAG)
-workflows = client.workflows.list(project_id="project-id")
-graph = client.workflows.get_graph("workflow-id", "project-id")
+workflows = client.build.workflows.list(project_id="project-id")
+graph = client.build.workflows.get_graph("workflow-id", "project-id")
+# Enrichment query_trigger (D14): preview_query_trigger / run_query_trigger
 
 # --- Define: data products, schema, quality, discovery ---
 asset = client.data_products.get("data-product-id")

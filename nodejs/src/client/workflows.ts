@@ -40,6 +40,69 @@ import { resolveIngestionQueueName } from './flow-queue-resolve.js';
 
 const WORKFLOWS_BASE = '/workflows/workflows';
 const PROJECTS_BASE = '/workflows/projects';
+const MCP_TOOLS_PATH = '/ai/mcp/tools/call';
+
+export type PreviewQueryTriggerInput = {
+  workflow_id: string;
+  query?: string;
+  primary_key?: string[];
+  limit?: number;
+};
+
+export type RunQueryTriggerInput = {
+  workflow_id: string;
+  query?: string;
+  primary_key?: string[];
+  sink_data_product_id?: string;
+};
+
+type McpToolCallResponse = {
+  data?: {
+    content?: Array<{ type?: string; text?: string }>;
+  };
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value != null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function parseToolResponse(res: McpToolCallResponse): unknown {
+  const first = res?.data?.content?.[0];
+  if (first?.type === 'text' && typeof first.text === 'string') {
+    try {
+      return JSON.parse(first.text) as unknown;
+    } catch {
+      return { raw: first.text };
+    }
+  }
+  return res;
+}
+
+function unwrapToolPayload<T>(parsed: unknown): T {
+  const rec = asRecord(parsed);
+  if (rec && rec.success === false) {
+    const err = typeof rec.error === 'string' ? rec.error : 'Build operation failed';
+    throw new Error(err);
+  }
+  if (rec && 'data' in rec) {
+    return rec.data as T;
+  }
+  return parsed as T;
+}
+
+async function callBuildOp<T>(
+  http: LoxtepHttpClient,
+  operation: string,
+  args: Record<string, unknown> = {}
+): Promise<T> {
+  const res = await http.post<McpToolCallResponse>(MCP_TOOLS_PATH, {
+    name: 'loxtep_build',
+    arguments: { operation, ...args },
+  });
+  return unwrapToolPayload<T>(parseToolResponse(res));
+}
 
 export interface WorkflowsApiDeps {
   /** Stream runtime; required for get_writer().close() */
@@ -182,6 +245,10 @@ export type WorkflowsApi = {
     project_id: string,
     input: SaveWorkflowBundleInput
   ) => Promise<SaveWorkflowBundleResult>;
+  /** Dry-run SELECT sample for enrichment `trigger.query_trigger` (MCP `preview_query_trigger`). */
+  preview_query_trigger: (input: PreviewQueryTriggerInput) => Promise<unknown>;
+  /** On-demand invoke of query_trigger producer (MCP `run_query_trigger`). */
+  run_query_trigger: (input: RunQueryTriggerInput) => Promise<unknown>;
   /**
    * @internal
    * Low-level stream-writer escape hatch. Requires explicit `bot_id` and an
@@ -264,6 +331,26 @@ export function createWorkflowsApi(
         }
       );
       return res.data;
+    },
+
+    async preview_query_trigger(input: PreviewQueryTriggerInput): Promise<unknown> {
+      if (!input?.workflow_id) throw new Error('workflow_id is required');
+      const args: Record<string, unknown> = { workflow_id: input.workflow_id };
+      if (input.query !== undefined) args.query = input.query;
+      if (input.primary_key !== undefined) args.primary_key = input.primary_key;
+      if (input.limit !== undefined) args.limit = input.limit;
+      return callBuildOp(http, 'preview_query_trigger', args);
+    },
+
+    async run_query_trigger(input: RunQueryTriggerInput): Promise<unknown> {
+      if (!input?.workflow_id) throw new Error('workflow_id is required');
+      const args: Record<string, unknown> = { workflow_id: input.workflow_id };
+      if (input.query !== undefined) args.query = input.query;
+      if (input.primary_key !== undefined) args.primary_key = input.primary_key;
+      if (input.sink_data_product_id !== undefined) {
+        args.sink_data_product_id = input.sink_data_product_id;
+      }
+      return callBuildOp(http, 'run_query_trigger', args);
     },
 
     async get_writer(workflow_id: string, options?: GetWriterOptions): Promise<FlowWriter> {

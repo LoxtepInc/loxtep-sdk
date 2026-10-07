@@ -115,6 +115,8 @@ loxtep workflows list --project-id <id>
 loxtep workflows get <id>
 loxtep workflows create --name <n> --project-id <id> [--template-id <id>]
 loxtep workflows deploy --project-id <id> [--instance-id <id>]
+loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]
+loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]
 
 loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id>
 loxtep connectors list [--type sdk]

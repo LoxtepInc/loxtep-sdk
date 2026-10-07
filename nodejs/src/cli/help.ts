@@ -64,6 +64,10 @@ Build & deploy
   deploy [--dry-run] Compile workflow modules and deploy (lint preflight first)
   workflows list | get <id> | create … | deploy …
                      List/create/deploy workflows (--project-id; create also --workflow-type, --domain-id)
+  workflows preview-query-trigger --workflow-id <uuid> [--query] [--limit] [--primary-key]
+                     Dry-run SELECT sample for enrichment query_trigger
+  workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id]
+                     On-demand invoke of deployed query_trigger producer
   triggers list | get <id> | create … | test <id>
                      Ingest trigger bindings (project entities; --project-id required)
   data-products list | get <id> | create … | readiness <id> | promote <id> --target …

@@ -110,8 +110,12 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
   },
   workflows: {
     kind: 'integration',
-    tests: ['cli-integration.test.ts', 'cli-integration-mutations.test.ts'],
-    notes: 'list/get/create/deploy',
+    tests: [
+      'cli-integration.test.ts',
+      'cli-integration-mutations.test.ts',
+      'client/workflows-query-trigger.test.ts',
+    ],
+    notes: 'list/get/create/deploy + preview/run-query-trigger (MCP unit)',
   },
   triggers: {
     kind: 'integration',

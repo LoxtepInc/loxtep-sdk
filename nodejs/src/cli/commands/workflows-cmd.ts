@@ -112,3 +112,55 @@ export async function runWorkflowsDeploy(
   });
   console.log(JSON.stringify(result, null, 2));
 }
+
+export async function runWorkflowsPreviewQueryTrigger(
+  params: {
+    workflow_id: string;
+    query?: string;
+    primary_key?: string[];
+    limit?: number;
+  },
+  options: WorkflowsCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  if (!params.workflow_id) {
+    console.error(
+      'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]'
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const result = await client.build.workflows.preview_query_trigger({
+    workflow_id: params.workflow_id,
+    query: params.query,
+    primary_key: params.primary_key,
+    limit: params.limit,
+  });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+export async function runWorkflowsRunQueryTrigger(
+  params: {
+    workflow_id: string;
+    query?: string;
+    primary_key?: string[];
+    sink_data_product_id?: string;
+  },
+  options: WorkflowsCmdOptions = {}
+): Promise<void> {
+  const { client } = await requireCliClient(options);
+  if (!params.workflow_id) {
+    console.error(
+      'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]'
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const result = await client.build.workflows.run_query_trigger({
+    workflow_id: params.workflow_id,
+    query: params.query,
+    primary_key: params.primary_key,
+    sink_data_product_id: params.sink_data_product_id,
+  });
+  console.log(JSON.stringify(result, null, 2));
+}

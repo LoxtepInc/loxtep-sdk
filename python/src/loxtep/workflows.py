@@ -1,13 +1,18 @@
 """
-Workflows API: list, get (with nodes), create, get_graph, deploy, get_writer.
+Workflows API: list, get (with nodes), create, get_graph, deploy, get_writer,
+preview/run query_trigger.
 Backend: workflows microservice (/workflows/workflows, graph, projects/:id/deploy).
 snake_case per backend conventions.
 
 The former ``flows`` namespace has been folded in here (same backend entity).
 ``get_writer`` is a low-level stream-writer escape hatch — internal; customers
 should use ``data_products.get_writer``.
+Query-trigger preview/run call MCP ``loxtep_build`` via ``POST /ai/mcp/tools/call``.
 """
 
+from __future__ import annotations
+
+import json
 from typing import Any, Literal, Optional
 from urllib.parse import quote
 
@@ -15,6 +20,7 @@ from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 
 WORKFLOWS_BASE = "/workflows/workflows"
 PROJECTS_BASE = "/workflows/projects"
+MCP_TOOLS_PATH = "/ai/mcp/tools/call"
 
 WorkflowType = Literal["ingestion", "enrichment", "delivery"]
 """Required by backend POST /workflows (nodejs/src/client/flow-types.ts FlowCreateInput)."""
@@ -29,6 +35,28 @@ def _data(res: Any) -> Any:
     return res.get("data", res) if isinstance(res, dict) else res
 
 
+def _parse_tool_response(res: Any) -> Any:
+    data = res.get("data") if isinstance(res, dict) else None
+    content = data.get("content") if isinstance(data, dict) else None
+    if content and isinstance(content, list) and len(content) > 0:
+        first = content[0]
+        if isinstance(first, dict) and first.get("type") == "text" and "text" in first:
+            try:
+                return json.loads(first["text"])
+            except (json.JSONDecodeError, TypeError):
+                return {"raw": first["text"]}
+    return res
+
+
+def _unwrap_tool_payload(parsed: Any) -> Any:
+    if isinstance(parsed, dict) and parsed.get("success") is False:
+        err = parsed.get("error") or "Build operation failed"
+        raise RuntimeError(str(err))
+    if isinstance(parsed, dict) and "data" in parsed:
+        return parsed["data"]
+    return parsed
+
+
 class WorkflowsApi:
     """Sync client for workflow list, get, create, graph, deploy, and writer."""
 
@@ -41,6 +69,11 @@ class WorkflowsApi:
         self._http = http
         self._stream_config = stream_config
         self._project_id = project_id
+
+    def _call_build(self, operation: str, args: Optional[dict[str, Any]] = None) -> Any:
+        body = {"name": "loxtep_build", "arguments": {"operation": operation, **(args or {})}}
+        res = self._http.post(MCP_TOOLS_PATH, body)
+        return _unwrap_tool_payload(_parse_tool_response(res))
 
     def list(
         self,
@@ -139,6 +172,46 @@ class WorkflowsApi:
         res = self._http.post(path, body)
         return _data(res)
 
+    def preview_query_trigger(
+        self,
+        workflow_id: str,
+        *,
+        query: Optional[str] = None,
+        primary_key: Optional[list[str]] = None,
+        limit: Optional[int] = None,
+    ) -> Any:
+        """Dry-run SELECT sample for enrichment ``trigger.query_trigger``."""
+        if not workflow_id:
+            raise ValueError("workflow_id is required")
+        args: dict[str, Any] = {"workflow_id": workflow_id}
+        if query is not None:
+            args["query"] = query
+        if primary_key is not None:
+            args["primary_key"] = primary_key
+        if limit is not None:
+            args["limit"] = limit
+        return self._call_build("preview_query_trigger", args)
+
+    def run_query_trigger(
+        self,
+        workflow_id: str,
+        *,
+        query: Optional[str] = None,
+        primary_key: Optional[list[str]] = None,
+        sink_data_product_id: Optional[str] = None,
+    ) -> Any:
+        """On-demand invoke of query_trigger producer (upsert; does not wipe)."""
+        if not workflow_id:
+            raise ValueError("workflow_id is required")
+        args: dict[str, Any] = {"workflow_id": workflow_id}
+        if query is not None:
+            args["query"] = query
+        if primary_key is not None:
+            args["primary_key"] = primary_key
+        if sink_data_product_id is not None:
+            args["sink_data_product_id"] = sink_data_product_id
+        return self._call_build("run_query_trigger", args)
+
     def get_writer(
         self, workflow_id: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
     ) -> Any:
@@ -182,6 +255,11 @@ class AsyncWorkflowsApi:
         self._http = http
         self._stream_config = stream_config
         self._project_id = project_id
+
+    async def _call_build(self, operation: str, args: Optional[dict[str, Any]] = None) -> Any:
+        body = {"name": "loxtep_build", "arguments": {"operation": operation, **(args or {})}}
+        res = await self._http.post(MCP_TOOLS_PATH, body)
+        return _unwrap_tool_payload(_parse_tool_response(res))
 
     async def list(
         self,
@@ -279,6 +357,46 @@ class AsyncWorkflowsApi:
         path = f"{PROJECTS_BASE}/{quote(project_id)}/deploy"
         res = await self._http.post(path, body)
         return _data(res)
+
+    async def preview_query_trigger(
+        self,
+        workflow_id: str,
+        *,
+        query: Optional[str] = None,
+        primary_key: Optional[list[str]] = None,
+        limit: Optional[int] = None,
+    ) -> Any:
+        """Dry-run SELECT sample for enrichment ``trigger.query_trigger``."""
+        if not workflow_id:
+            raise ValueError("workflow_id is required")
+        args: dict[str, Any] = {"workflow_id": workflow_id}
+        if query is not None:
+            args["query"] = query
+        if primary_key is not None:
+            args["primary_key"] = primary_key
+        if limit is not None:
+            args["limit"] = limit
+        return await self._call_build("preview_query_trigger", args)
+
+    async def run_query_trigger(
+        self,
+        workflow_id: str,
+        *,
+        query: Optional[str] = None,
+        primary_key: Optional[list[str]] = None,
+        sink_data_product_id: Optional[str] = None,
+    ) -> Any:
+        """On-demand invoke of query_trigger producer (upsert; does not wipe)."""
+        if not workflow_id:
+            raise ValueError("workflow_id is required")
+        args: dict[str, Any] = {"workflow_id": workflow_id}
+        if query is not None:
+            args["query"] = query
+        if primary_key is not None:
+            args["primary_key"] = primary_key
+        if sink_data_product_id is not None:
+            args["sink_data_product_id"] = sink_data_product_id
+        return await self._call_build("run_query_trigger", args)
 
     def get_writer(
         self, workflow_id: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
