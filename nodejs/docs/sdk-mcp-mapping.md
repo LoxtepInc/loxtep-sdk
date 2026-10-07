@@ -175,6 +175,19 @@ Default import `activation` is `stage` (package revision + approval). Use
 result always includes `skipped_count` and `errors`. Staged / dry_run responses
 are not treated as failures when plan skips exist.
 
+## Build: query_trigger preview / run (D14)
+
+MCP `loxtep_build` ops for enrichment SQL derivation (`workflow.json` →
+`trigger.query_trigger`). SDK surface: `client.build.workflows`.
+
+| MCP operation | SDK | CLI |
+| --- | --- | --- |
+| `preview_query_trigger` | `client.build.workflows.preview_query_trigger({ workflow_id, query?, primary_key?, limit? })` | `loxtep workflows preview-query-trigger --workflow-id <uuid> [--query] [--limit] [--primary-key a,b]` |
+| `run_query_trigger` | `client.build.workflows.run_query_trigger({ workflow_id, query?, primary_key?, sink_data_product_id? })` | `loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id]` |
+
+These call `POST /ai/mcp/tools/call` with facade `loxtep_build` (no dedicated REST
+in this release). Requires a saved enrichment workflow with `trigger.query_trigger`.
+
 ## Define: domain shapes (Phase 2)
 
 Domain / org **canonical shapes** (`domain_schemas`) — distinct from

@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **`client.build.workflows.preview_query_trigger` / `run_query_trigger`** — MCP
+  `loxtep_build` ops for enrichment D14 SQL derivation (dry-run SELECT sample /
+  on-demand producer invoke).
+- **CLI** `loxtep workflows preview-query-trigger` and
+  `loxtep workflows run-query-trigger`.
+
 ## [0.9.21] - 2026-10-01
 
 ### Fixed

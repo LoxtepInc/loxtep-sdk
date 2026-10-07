@@ -39,6 +39,8 @@ import {
   runWorkflowsGet,
   runWorkflowsCreate,
   runWorkflowsDeploy,
+  runWorkflowsPreviewQueryTrigger,
+  runWorkflowsRunQueryTrigger,
 } from './commands/workflows-cmd.js';
 import { runBundleSave } from './commands/bundle-cmd.js';
 import { runIngestCreate } from './commands/ingest-cmd.js';
@@ -555,9 +557,58 @@ export async function runCli(argv: string[]): Promise<void> {
             force_redeploy: force,
           });
         }
+      } else if (sub === 'preview-query-trigger') {
+        const workflowId = getArg('--workflow-id');
+        const query = getArg('--query');
+        const limitRaw = getArg('--limit');
+        const primaryKeyRaw = getArg('--primary-key');
+        const primary_key = primaryKeyRaw
+          ? primaryKeyRaw
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : undefined;
+        const limit = limitRaw != null && limitRaw !== '' ? Number(limitRaw) : undefined;
+        if (!workflowId || (limitRaw != null && limitRaw !== '' && Number.isNaN(limit))) {
+          console.error(
+            'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]'
+          );
+          process.exitCode = 1;
+        } else {
+          await runWorkflowsPreviewQueryTrigger({
+            workflow_id: workflowId,
+            query,
+            primary_key,
+            limit,
+          });
+        }
+      } else if (sub === 'run-query-trigger') {
+        const workflowId = getArg('--workflow-id');
+        const query = getArg('--query');
+        const primaryKeyRaw = getArg('--primary-key');
+        const primary_key = primaryKeyRaw
+          ? primaryKeyRaw
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : undefined;
+        const sinkDataProductId = getArg('--sink-data-product-id');
+        if (!workflowId) {
+          console.error(
+            'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]'
+          );
+          process.exitCode = 1;
+        } else {
+          await runWorkflowsRunQueryTrigger({
+            workflow_id: workflowId,
+            query,
+            primary_key,
+            sink_data_product_id: sinkDataProductId,
+          });
+        }
       } else {
         console.error(
-          'Usage: loxtep workflows list [--project-id <id>] | get <id> | create --name <name> --project-id <id> | deploy --project-id <id> --instance-id <id>'
+          'Usage: loxtep workflows list [--project-id <id>] | get <id> | create --name <name> --project-id <id> | deploy --project-id <id> --instance-id <id> | preview-query-trigger --workflow-id <uuid> | run-query-trigger --workflow-id <uuid>'
         );
         process.exitCode = 1;
       }

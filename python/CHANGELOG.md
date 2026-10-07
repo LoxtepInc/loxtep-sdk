@@ -10,6 +10,9 @@ and this project adheres to
 
 ### Added
 
+- **`client.build.workflows.preview_query_trigger` / `run_query_trigger`**
+  (sync + async) — MCP `loxtep_build` parity with Node for enrichment
+  `query_trigger` dry-run and on-demand run.
 - **Semantic package lifecycle** (`client.meaning.packages`, sync + async) —
   `save` / `plan` / `approve` / `deploy` / `verify` / `status` /
   `import_external` → `POST /semantic-layer/packages`.
