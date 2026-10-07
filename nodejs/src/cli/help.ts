@@ -41,6 +41,7 @@ Build & deploy
   connectors list [--type sdk]
                      List org connectors (reuse SDK connector before create)
   connectors test <connector_id>
+  connectors list-entities <connector_id>
                      Connectivity probe (POST /connectors/{id}/test). Not samples.
   connectors capture-samples <connector_id> --entity-type <name> [--limit N]
                      Fetch bounded entity samples. Limit 1–25.
@@ -129,6 +130,7 @@ Examples:
   pnpm exec loxtep init && pnpm exec loxtep attach --instance <id>
   pnpm exec loxtep connectors list --type sdk
   pnpm exec loxtep connectors test <connector_id>
+  pnpm exec loxtep connectors list-entities <connector_id>
   pnpm exec loxtep connectors capture-samples <connector_id> --entity-type products --limit 10
   pnpm exec loxtep ingest create --name app-events
   pnpm exec loxtep transform create --from app-events --name cleaned-events

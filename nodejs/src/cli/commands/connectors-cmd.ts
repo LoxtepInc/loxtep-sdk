@@ -1,8 +1,9 @@
 /**
- * CLI: loxtep connectors list | test | capture-samples
+ * CLI: loxtep connectors list | test | list-entities | capture-samples
  *
  * Org-level connectors. Connectivity probe vs sample capture are separate:
  *   - `test`            → POST /connectors/{id}/test
+ *   - `list-entities`   → GET /connectors/{id}/entities (discovery; no ingest)
  *   - `capture-samples` → POST /connectors/{id}/capture-samples (needs --entity-type)
  *
  * There is no `loxtep connector test` (singular) command — always `connectors`.
@@ -74,6 +75,25 @@ export async function runConnectorsTest(
     if (!result.passed) {
       process.exitCode = 1;
     }
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+  }
+}
+
+export async function runConnectorsListEntities(
+  connectorId: string,
+  options: ConnectorsCmdOptions = {}
+): Promise<void> {
+  if (!connectorId) {
+    console.error('Usage: loxtep connectors list-entities <connector_id>');
+    process.exitCode = 1;
+    return;
+  }
+  const { client } = await requireCliClient(options);
+  try {
+    const result = await client.connect.connectors.list_entities(connectorId);
+    console.log(JSON.stringify(result, null, 2));
   } catch (err) {
     console.error((err as Error).message);
     process.exitCode = 1;

@@ -75,3 +75,15 @@ export interface CaptureConnectorSamplesResult {
   captured_at: string;
   sample_payloads: Record<string, unknown>;
 }
+
+export interface ConnectorEntityListItem {
+  entity: string;
+  label: string;
+  source: string;
+  supports_incremental?: boolean;
+}
+
+export interface ListConnectorEntitiesResult {
+  connector_id: string;
+  entities: ConnectorEntityListItem[];
+}

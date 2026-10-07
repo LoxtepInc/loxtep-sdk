@@ -13,6 +13,7 @@ import type {
   ConnectorTestResult,
   CaptureConnectorSamplesInput,
   CaptureConnectorSamplesResult,
+  ListConnectorEntitiesResult,
 } from './connectors-types.js';
 
 const CONNECTORS_BASE = '/connectors/connectors';
@@ -39,6 +40,7 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
   update: (connector_id: string, input: UpdateConnectorInput) => Promise<Connector>;
   delete: (connector_id: string) => Promise<void>;
   test: (connector_id: string) => Promise<ConnectorTestResult>;
+  list_entities: (connector_id: string) => Promise<ListConnectorEntitiesResult>;
   capture_samples: (
     connector_id: string,
     input: CaptureConnectorSamplesInput
@@ -114,6 +116,18 @@ export function createConnectorsApi(http: LoxtepHttpClient): {
       >(`${CONNECTORS_BASE}/${encodeURIComponent(connector_id)}/test`, {});
       const r = res as { data?: ConnectorTestResult };
       return r?.data ?? (res as ConnectorTestResult);
+    },
+
+    async list_entities(connector_id: string): Promise<ListConnectorEntitiesResult> {
+      const res = await http.get<
+        { success: true; data: ListConnectorEntitiesResult } | ListConnectorEntitiesResult
+      >(`${CONNECTORS_BASE}/${encodeURIComponent(connector_id)}/entities`);
+      const r = res as { data?: ListConnectorEntitiesResult };
+      const data = r?.data ?? (res as ListConnectorEntitiesResult);
+      return {
+        connector_id: data.connector_id ?? connector_id,
+        entities: Array.isArray(data.entities) ? data.entities : [],
+      };
     },
 
     async capture_samples(
