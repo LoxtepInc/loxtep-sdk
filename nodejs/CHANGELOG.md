@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.22] - 2026-10-07
+
 ### Added
 
 - **`client.build.workflows.preview_query_trigger` / `run_query_trigger`** — MCP
