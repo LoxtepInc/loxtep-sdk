@@ -76,4 +76,59 @@ describe('createQueueWriter', () => {
     await writer.close();
     expect(() => writer.write({ a: 1 })).toThrow('writer is closed');
   });
+
+  it('rejects close() when end surfaces a flush error (no unhandled crash)', async () => {
+    const listeners: Array<(err: Error) => void> = [];
+    const stream = {
+      write(): boolean {
+        return true;
+      },
+      end(cb: (err?: unknown) => void): void {
+        const err = new Error('ResourceNotFoundException: stream missing');
+        // Emit 'error' (would be unhandled without our listener) then fail end.
+        for (const l of [...listeners]) l(err);
+        cb(err);
+      },
+      on(event: string, listener: (err: Error) => void): void {
+        if (event === 'error') listeners.push(listener);
+      },
+      once(event: string, listener: (err: Error) => void): void {
+        if (event === 'error') listeners.push(listener);
+      },
+      removeListener(event: string, listener: (err: Error) => void): void {
+        if (event !== 'error') return;
+        const idx = listeners.indexOf(listener);
+        if (idx >= 0) listeners.splice(idx, 1);
+      },
+    };
+    const rsdk = {
+      load: () => stream,
+    } as unknown as RStreamsSdk;
+
+    const writer = createQueueWriter(rsdk, 'bot', 'q', () => new Error('closed'));
+    writer.write({ a: 1 });
+    await expect(writer.close()).rejects.toThrow(/ResourceNotFoundException/);
+  });
+
+  it('throws on write after a prior stream error event', async () => {
+    const listeners: Array<(err: Error) => void> = [];
+    const stream = {
+      write(): boolean {
+        return true;
+      },
+      end(cb: (err?: unknown) => void): void {
+        cb();
+      },
+      on(event: string, listener: (err: Error) => void): void {
+        if (event === 'error') listeners.push(listener);
+      },
+      once(): void {},
+      removeListener(): void {},
+    };
+    const rsdk = { load: () => stream } as unknown as RStreamsSdk;
+    const writer = createQueueWriter(rsdk, 'bot', 'q', () => new Error('closed'));
+    writer.write({ a: 1 });
+    for (const l of listeners) l(new Error('stream exploded'));
+    expect(() => writer.write({ b: 2 })).toThrow(/stream exploded/);
+  });
 });

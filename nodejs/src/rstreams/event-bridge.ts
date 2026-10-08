@@ -48,6 +48,13 @@ export function toLeoEnvelope(businessObject: unknown, options?: WriteOptions): 
 interface LeoLoadStream {
   write(chunk: unknown): boolean;
   end(cb: (err?: unknown) => void): void;
+  on?(event: 'error', listener: (err: Error) => void): void;
+  once?(event: 'error', listener: (err: Error) => void): void;
+  removeListener?(event: 'error', listener: (err: Error) => void): void;
+}
+
+function asError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
 }
 
 /**
@@ -55,6 +62,9 @@ interface LeoLoadStream {
  * backoff, and checkpointing — this wrapper does NOT buffer or retry; it only wraps each business
  * object into a leo envelope (source = `botId`) and forwards it to `rsdk.load(botId, queueName)`,
  * then flushes on `close()`. Callers pass the business object to `write()`.
+ *
+ * Stream `error` events (e.g. Kinesis ResourceNotFoundException) are captured and cause
+ * `close()` / subsequent `write()` to reject/throw instead of becoming an unhandled rejection.
  */
 export function createQueueWriter(
   rsdk: RStreamsSdk,
@@ -66,18 +76,62 @@ export function createQueueWriter(
     rsdk as unknown as { load: (b: string, q: string) => LeoLoadStream }
   ).load(botId, queueName);
   let closed = false;
+  let streamError: Error | null = null;
+
+  const onStreamError = (err: Error): void => {
+    streamError = asError(err);
+  };
+  if (typeof stream.on === 'function') {
+    stream.on('error', onStreamError);
+  }
 
   return {
     write(event: unknown, options?: WriteOptions): void {
       if (closed) throw closedError();
+      if (streamError) throw streamError;
       stream.write(toLeoEnvelope(event, options));
     },
     async close(): Promise<void> {
       if (closed) return;
       closed = true;
-      await new Promise<void>((resolve, reject) =>
-        stream.end(err => (err ? reject(err) : resolve()))
-      );
+      if (streamError) {
+        throw streamError;
+      }
+      try {
+        await new Promise<void>((resolve, reject) => {
+          let settled = false;
+          const fail = (err: unknown): void => {
+            if (settled) return;
+            settled = true;
+            streamError = asError(err);
+            reject(streamError);
+          };
+          const succeed = (): void => {
+            if (settled) return;
+            if (streamError) {
+              fail(streamError);
+              return;
+            }
+            settled = true;
+            resolve();
+          };
+          if (typeof stream.once === 'function') {
+            stream.once('error', fail);
+          }
+          stream.end(err => {
+            if (err) {
+              fail(err);
+              return;
+            }
+            // leo-sdk may emit 'error' shortly after end(); give it a turn.
+            setImmediate(succeed);
+          });
+        });
+      } finally {
+        if (typeof stream.removeListener === 'function') {
+          stream.removeListener('error', onStreamError);
+        }
+      }
     },
   };
 }

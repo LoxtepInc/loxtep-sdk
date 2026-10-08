@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.23] - 2026-10-08
+
+### Fixed
+
+- **Self-hosted `get_writer`** — route writes through
+  `POST /observe/queues/{queue}/events` (with `x-loxtep-instance-id`) instead of
+  central-account BusWriter Kinesis, which cannot see customer-account streams.
+- **`createQueueWriter.close()`** — surface load-stream flush errors as rejected
+  promises instead of unhandled `error` events.
+
 ## [0.9.22] - 2026-10-07
 
 ### Added

@@ -30,12 +30,45 @@ import {
   createQueueWriter,
   type ReadQueueBatchResult,
 } from '../rstreams/event-bridge.js';
+import { createHttpQueueWriter } from '../rstreams/http-queue-writer.js';
 import { NotFoundError } from '../errors/resource.js';
 import { AuthorizationError } from '../errors/auth.js';
 import { StreamingError } from '../errors/streaming.js';
 import { DataProductResolver } from './data-product-resolver.js';
 import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
+import { resolveInstanceType } from './instance-list-summary.js';
+import type { Instance } from './instances-types.js';
+
+/** True when BusWriter STS (central account) cannot reach the instance Kinesis bus. */
+function isSelfHostedWriteTarget(instanceType: string): boolean {
+  const t = instanceType.trim().toLowerCase();
+  return t === 'self-hosted' || t === 'selfhosted' || t === 'customer';
+}
+
+async function resolveInstanceWriteTransport(
+  http: LoxtepHttpClient,
+  instanceId: string
+): Promise<'kinesis' | 'http_proxy'> {
+  try {
+    const res = await http.get<{ success?: boolean; data: Instance }>(
+      `/organizations/instances/${encodeURIComponent(instanceId)}`
+    );
+    const instance = res?.data;
+    if (!instance) return 'kinesis';
+    const fromMeta = resolveInstanceType(instance);
+    const fromConnType =
+      typeof instance.connection_details?.type === 'string'
+        ? String(instance.connection_details.type)
+        : undefined;
+    if (isSelfHostedWriteTarget(fromMeta) || (fromConnType && isSelfHostedWriteTarget(fromConnType))) {
+      return 'http_proxy';
+    }
+  } catch {
+    // Fall through — prefer Kinesis when instance type cannot be resolved.
+  }
+  return 'kinesis';
+}
 
 function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams();
@@ -481,6 +514,29 @@ export function createDataProductsApi(
       }
 
       const { dataProduct, streamConfig } = await resolver.resolve(idOrName);
+      const botId = options?.bot_id ?? dataProduct.bot_id;
+      const queueName = dataProduct.queue_name;
+      const closedError = () =>
+        new StreamingError(
+          'Cannot write to a closed FlowWriter. Create a new writer via data_products.get_writer().',
+          { details: { data_product_id: dataProduct.data_product_id, queue_name: queueName } }
+        );
+
+      // Self-hosted buses live in the customer AWS account. Login BusWriter STS is
+      // central-account only — route writes through the observe HTTP proxy instead.
+      const transport = await resolveInstanceWriteTransport(http, dataProduct.instance_id);
+      if (transport === 'http_proxy') {
+        return createHttpQueueWriter({
+          http,
+          bot_id: botId,
+          queue_name: queueName,
+          instance_id: dataProduct.instance_id,
+          data_product_id: dataProduct.data_product_id,
+          batch_size: options?.batch_size,
+          closedError,
+        });
+      }
+
       const streamResources = resolveStreamsConfiguration(streamConfig);
       if (!streamResources) {
         throw new StreamingError(
@@ -511,21 +567,10 @@ export function createDataProductsApi(
           }
         );
       }
-      const botId = options?.bot_id ?? dataProduct.bot_id;
-      const queueName = dataProduct.queue_name;
 
       // The rstreams `load` stream (inside createQueueWriter) owns buffering, batching, backoff,
       // and checkpointing — the wrapper just forwards business objects to it.
-      return createQueueWriter(
-        rsdk,
-        botId,
-        queueName,
-        () =>
-          new StreamingError(
-            'Cannot write to a closed FlowWriter. Create a new writer via data_products.get_writer().',
-            { details: { data_product_id: dataProduct.data_product_id, queue_name: queueName } }
-          )
-      );
+      return createQueueWriter(rsdk, botId, queueName, closedError);
     },
 
     /**
