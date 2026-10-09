@@ -280,3 +280,78 @@ describe('lintLocalPackage trigger + upstream regressions', () => {
     expect(result.issues.some(i => i.message.includes('missing connector_id'))).toBe(true);
   });
 });
+
+describe('schema and contract bindings', () => {
+  const SHAPE = '12121212-1212-4121-8121-121212121212';
+  const BROKEN = '13131313-1313-4131-8131-131313131313';
+  const CONTRACT = '14141414-1414-4141-8141-141414141414';
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'loxtep-lint-shape-'));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function shape(schemaId: string = SHAPE): Record<string, unknown> {
+    return {
+      schema_id: schemaId,
+      organization_id: ORG,
+      data_product_id: DP,
+      name: 'Orders',
+      version: '1.0.0',
+      format: 'json-schema',
+      fields: [{ name: 'order_id', type: 'string', required: true }],
+      status: 'draft',
+      created_at: NOW,
+      updated_at: NOW,
+    };
+  }
+
+  function contract(versionId: string): Record<string, unknown> {
+    return {
+      contract_id: CONTRACT,
+      organization_id: ORG,
+      data_product_id: DP,
+      name: 'Orders contract',
+      version: '1.0.0',
+      status: 'draft',
+      created_at: NOW,
+      updated_at: NOW,
+      schema_ref: {
+        schema_version_id: versionId,
+        version: '1.0.0',
+        format: 'json-schema',
+      },
+    };
+  }
+
+  it('fails a binding that is not in the package', () => {
+    writeJson(root, `schemas/${SHAPE}.json`, shape());
+    writeJson(root, `workflows/${WF}/schemas/${SHAPE}.json`, shape());
+    writeJson(root, `contracts/${CONTRACT}.json`, contract(BROKEN));
+    const result = lintLocalPackage({ projectDir: root });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some(issue => issue.message.includes(BROKEN))).toBe(true);
+  });
+
+  it('accepts a binding to a schema id in the package', () => {
+    writeJson(root, `schemas/${SHAPE}.json`, shape());
+    writeJson(root, `contracts/${CONTRACT}.json`, contract(SHAPE));
+    const result = lintLocalPackage({ projectDir: root });
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts a binding that is already published', () => {
+    writeJson(root, `contracts/${CONTRACT}.json`, contract(BROKEN));
+    const result = lintLocalPackage({
+      projectDir: root,
+      publishedSchemaVersionIds: [BROKEN],
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+});

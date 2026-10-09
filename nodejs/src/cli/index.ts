@@ -163,6 +163,11 @@ function formatCliError(err: unknown): string {
  * Does not read `process.argv` so callers can inject argv.
  */
 export async function runCli(argv: string[]): Promise<void> {
+  if (argv.includes('--help') || argv.includes('-h')) {
+    printHelp();
+    return;
+  }
+
   const args = argv;
   const command = args[0];
   const sub = args[1];
@@ -833,15 +838,20 @@ export async function runCli(argv: string[]): Promise<void> {
           );
           process.exitCode = 1;
         } else {
+          const schemaVersionId = getArg('--schema-version-id');
           await runDataContractsCreate({
             data_product_id: dpId,
             name,
             description: getArg('--description'),
+            ...(schemaVersionId ? { schema_version_id: schemaVersionId } : {}),
           });
         }
       } else {
         console.error(
           'Usage: loxtep data-contracts list | get <id> | create --data-product-id <id> --name <name>'
+        );
+        console.error(
+          'Bind an existing contract with PUT /dataproducts/datacontracts/{id} (schema_ref or schema_version_id).'
         );
         process.exitCode = 1;
       }

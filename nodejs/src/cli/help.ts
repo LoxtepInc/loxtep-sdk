@@ -77,6 +77,8 @@ Governance
   domains list | get <id>
   standards list | get <id>              Standards (policies)
   data-contracts list | get <id> | create …
+                     Create accepts schema_ref or schema_version_id.
+                     Bind an existing contract with PUT /dataproducts/datacontracts/{id}.
   define status <data_product_id>
                      Definition readiness / blockers (approve ≠ apply)
   define evidence <data_product_id>
