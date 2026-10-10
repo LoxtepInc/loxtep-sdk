@@ -40,6 +40,11 @@ export async function runDataContractsGet(
   }
 }
 
+/**
+ * Create a contract. `schema_ref` or `schema_version_id` binds a shape on create.
+ * Bind a contract that already exists with PUT /dataproducts/datacontracts/{id}
+ * (`client.define.data_contracts.update`), which accepts the same fields.
+ */
 export async function runDataContractsCreate(
   payload: {
     data_product_id: string;
@@ -48,6 +53,12 @@ export async function runDataContractsCreate(
     version?: string;
     status?: string;
     terms?: Record<string, unknown>;
+    schema_version_id?: string;
+    schema_ref?: {
+      schema_version_id: string;
+      version?: string;
+      format?: string;
+    };
   },
   options: DataContractsCmdOptions = {}
 ): Promise<void> {

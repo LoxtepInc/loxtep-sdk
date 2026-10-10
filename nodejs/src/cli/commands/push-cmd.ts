@@ -7,6 +7,7 @@ import { findProjectDir } from '../project-context.js';
 import { requireCliClient } from '../create-cli-client.js';
 import {
   collectFlatBundle,
+  collectProjectShapeContractFiles,
   listLocalWorkflowIds,
 } from '../../client/workspace-package.js';
 import { writePushManifestFromProjectDir } from '../../client/project-workspace-inventory.js';
@@ -93,11 +94,18 @@ export async function runPush(
   }
 
   const results: Array<{ workflow_id: string; ok: boolean; error?: string }> = [];
+  const projectFiles = collectProjectShapeContractFiles(projectDir);
+  let attachedProjectFiles = false;
 
   for (const workflowId of workflowIds) {
     const files = collectFlatBundle(projectDir, workflowId);
+    const includeProjectFiles = !attachedProjectFiles && Object.keys(projectFiles).length > 0;
     if (params.dry_run) {
-      console.error(`[dry-run] would push workflow ${workflowId} (${Object.keys(files).length} files)`);
+      const projectNote = includeProjectFiles ? `, ${Object.keys(projectFiles).length} project files` : '';
+      console.error(
+        `[dry-run] would push workflow ${workflowId} (${Object.keys(files).length} files${projectNote})`
+      );
+      if (includeProjectFiles) attachedProjectFiles = true;
       results.push({ workflow_id: workflowId, ok: true });
       continue;
     }
@@ -107,7 +115,9 @@ export async function runPush(
       await client.build.workflows.save_workflow_bundle(projectId, {
         files,
         dry_run: false,
+        ...(includeProjectFiles ? { project_files: projectFiles } : {}),
       });
+      if (includeProjectFiles) attachedProjectFiles = true;
       results.push({ workflow_id: workflowId, ok: true });
     } catch (err) {
       const message = formatPushError(err);

@@ -63,7 +63,17 @@ export function createPromisesApi(http: LoxtepHttpClient): {
       version?: string;
       status?: string;
       terms?: Record<string, unknown>;
+      /** Binds the contract to a shape version. Still accepted on its own. */
       schema_version_id?: string;
+      /**
+       * Shape binding. Prefer this on create. Bind an existing contract with
+       * update (PUT /dataproducts/datacontracts/{id}), which accepts the same fields.
+       */
+      schema_ref?: {
+        schema_version_id: string;
+        version?: string;
+        format?: string;
+      };
     }): Promise<Promise_> {
       const res = await http.post<{ success: true; data: Promise_ }>(PROMISES_BASE, payload);
       return res.data;

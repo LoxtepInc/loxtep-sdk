@@ -42,6 +42,8 @@ export function collectFlatBundle(
     'data-products',
     'transformations',
     'validations',
+    'schemas',
+    'contracts',
   ] as const) {
     const dir = join(root, entityDir);
     if (!existsSync(dir)) continue;
@@ -78,6 +80,26 @@ export function listLocalSchemaPackageFiles(projectDir: string): string[] {
   const schemasRoot = join(projectDir, 'schemas');
   if (!existsSync(schemasRoot)) return [];
   return walkJsonFilesRelative(schemasRoot, 'schemas');
+}
+
+/** Project-level contract JSON files under `contracts/` (when present). */
+export function listLocalContractPackageFiles(projectDir: string): string[] {
+  const contractsRoot = join(projectDir, 'contracts');
+  if (!existsSync(contractsRoot)) return [];
+  return walkJsonFilesRelative(contractsRoot, 'contracts');
+}
+
+/** Top-level `schemas/{id}.json` and `contracts/{id}.json` for workflow-bundle project_files. */
+export function collectProjectShapeContractFiles(
+  projectDir: string
+): Record<string, Record<string, unknown>> {
+  const files: Record<string, Record<string, unknown>> = {};
+  const rels = [...listLocalSchemaPackageFiles(projectDir), ...listLocalContractPackageFiles(projectDir)];
+  for (const rel of rels) {
+    if (!/^(schemas|contracts)\/[^/]+\.json$/.test(rel)) continue;
+    files[rel] = JSON.parse(readFileSync(join(projectDir, rel), 'utf8')) as Record<string, unknown>;
+  }
+  return files;
 }
 
 function walkJsonFilesRelative(absDir: string, relPrefix: string): string[] {

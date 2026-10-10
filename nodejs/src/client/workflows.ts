@@ -328,6 +328,7 @@ export function createWorkflowsApi(
         {
           files: input.files,
           dry_run: input.dry_run ?? false,
+          ...(input.project_files ? { project_files: input.project_files } : {}),
         }
       );
       return res.data;

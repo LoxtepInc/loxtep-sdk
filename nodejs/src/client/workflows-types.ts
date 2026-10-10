@@ -119,6 +119,8 @@ export type CreateWorkflowInput = FlowCreateInput;
 export interface SaveWorkflowBundleInput {
   files: Record<string, Record<string, unknown>>;
   dry_run?: boolean;
+  /** Project-root schemas/{id}.json and contracts/{id}.json. */
+  project_files?: Record<string, Record<string, unknown>>;
 }
 
 export interface WorkflowBundleCreatedEntity {

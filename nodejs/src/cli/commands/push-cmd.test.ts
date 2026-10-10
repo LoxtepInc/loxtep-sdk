@@ -258,4 +258,81 @@ describe('runPush write paths', () => {
       await harness.destroy();
     }
   });
+
+  it('attaches project schema and contract files on the bundle save', async () => {
+    const harness = await createLocalProjectHarness();
+    const shapeId = '12121212-1212-4121-8121-121212121212';
+    const contractId = '14141414-1414-4141-8141-141414141414';
+    const now = '2026-08-04T12:00:00.000Z';
+    const shape = {
+      schema_id: shapeId,
+      organization_id: MOCK_IDS.organization_id,
+      data_product_id: DATA_PRODUCT_ID,
+      name: 'Orders',
+      version: '1.0.0',
+      format: 'json-schema',
+      fields: [{ name: 'order_id', type: 'string', required: true }],
+      status: 'draft',
+      created_at: now,
+      updated_at: now,
+    };
+    const contract = {
+      contract_id: contractId,
+      organization_id: MOCK_IDS.organization_id,
+      data_product_id: DATA_PRODUCT_ID,
+      name: 'Orders contract',
+      version: '1.0.0',
+      status: 'draft',
+      created_at: now,
+      updated_at: now,
+      schema_ref: {
+        schema_version_id: shapeId,
+        version: '1.0.0',
+        format: 'json-schema',
+      },
+    };
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchFn = createPlatformMockFetch({
+      extra: (pathname, init) => {
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'POST' && pathname.includes('/workflow-bundle') && init?.body) {
+          bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        }
+        return new Response(JSON.stringify({ success: false }), { status: 404 });
+      },
+    });
+    try {
+      writeValidEntityPackage(harness.projectDir);
+      mkdirSync(join(harness.projectDir, 'schemas'), { recursive: true });
+      mkdirSync(join(harness.projectDir, 'contracts'), { recursive: true });
+      writeFileSync(
+        join(harness.projectDir, 'schemas', `${shapeId}.json`),
+        JSON.stringify(shape),
+        'utf-8'
+      );
+      writeFileSync(
+        join(harness.projectDir, 'contracts', `${contractId}.json`),
+        JSON.stringify(contract),
+        'utf-8'
+      );
+
+      const dry = captureCliOutput();
+      await runPush({ dry_run: true }, harness.cliOptions);
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(dry.stderr).toContain('2 project files');
+      dry.restore();
+
+      const out = captureCliOutput();
+      await runPush({ dry_run: false }, { ...harness.cliOptions, fetch_fn: fetchFn });
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(bodies).toHaveLength(1);
+      expect(bodies[0]?.project_files).toEqual({
+        [`schemas/${shapeId}.json`]: shape,
+        [`contracts/${contractId}.json`]: contract,
+      });
+      out.restore();
+    } finally {
+      await harness.destroy();
+    }
+  });
 });

@@ -369,6 +369,8 @@ describe('runCli router', () => {
     expect(runAttach).toHaveBeenCalled();
     await runCli(['status', '--json', '--unpublished']);
     expect(runStatus).toHaveBeenCalled();
+    await runCli(['generate', '--help']);
+    expect(runGenerate).not.toHaveBeenCalled();
     await runCli(['generate']);
     expect(runGenerate).toHaveBeenCalled();
     await runCli(['test']);

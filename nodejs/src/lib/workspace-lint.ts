@@ -24,6 +24,11 @@ export interface LintOptions {
   projectDir: string;
   /** When set, only lint this workflow directory under workflows/<id>/. */
   workflow_id?: string;
+  /**
+   * Shape version ids already published for this org. Offline lint cannot see them.
+   * A contract may bind one of these without a local schema file.
+   */
+  publishedSchemaVersionIds?: string[];
 }
 
 interface DiscoveredEntity {
@@ -124,12 +129,23 @@ function classifyEntity(
   if (rel.startsWith('domains/') && rel.endsWith('.json')) {
     return EntityType.DOMAIN;
   }
+  if (rel.match(/^(?:schemas|workflows\/[^/]+\/schemas)\/[^/]+\.json$/)) {
+    return EntityType.SCHEMA;
+  }
+  if (rel.match(/^(?:contracts|workflows\/[^/]+\/contracts)\/[^/]+\.json$/)) {
+    return EntityType.CONTRACT;
+  }
   return null;
 }
 
 function discoverEntities(projectDir: string, workflowId?: string): DiscoveredEntity[] {
   const entities: DiscoveredEntity[] = [];
-  const roots: string[] = [join(projectDir, 'connectors'), join(projectDir, 'domains')];
+  const roots: string[] = [
+    join(projectDir, 'connectors'),
+    join(projectDir, 'domains'),
+    join(projectDir, 'schemas'),
+    join(projectDir, 'contracts'),
+  ];
 
   if (workflowId) {
     roots.push(join(projectDir, 'workflows', workflowId));
@@ -449,6 +465,7 @@ export function lintLocalPackage(options: LintOptions): LintResult {
   }
 
   checkUpstreamReferences(entities, byType, issues);
+  checkContractSchemaBindings(entities, issues, options.publishedSchemaVersionIds);
 
   // Name uniqueness is project-scoped in Postgres — always scan the full local tree,
   // even when --workflow narrows schema validation to one package.
@@ -465,7 +482,54 @@ export function lintLocalPackage(options: LintOptions): LintResult {
 /**
  * True when the project has at least one entity JSON package file to lint.
  */
+function directoryHasJson(dir: string): boolean {
+  return existsSync(dir) && listJsonFiles(dir).length > 0;
+}
+
+
+function collectPackageSchemaIds(entities: DiscoveredEntity[]): Set<string> {
+  const ids = new Set<string>();
+  for (const entity of entities) {
+    if (entity.entityType !== EntityType.SCHEMA) continue;
+    for (const key of ['schema_id', 'schema_version_id'] as const) {
+      const value = entity.data[key];
+      if (typeof value === 'string' && value.length > 0) ids.add(value);
+    }
+  }
+  return ids;
+}
+
+/**
+ * A contract binding must name a schema file in this package (schema_id or
+ * schema_version_id) or a version id the caller already published.
+ */
+function checkContractSchemaBindings(
+  entities: DiscoveredEntity[],
+  issues: LintIssue[],
+  publishedSchemaVersionIds?: string[]
+): void {
+  const localIds = collectPackageSchemaIds(entities);
+  const published = new Set(publishedSchemaVersionIds ?? []);
+  for (const entity of entities) {
+    if (entity.entityType !== EntityType.CONTRACT) continue;
+    const ref = entity.data.schema_ref;
+    if (!ref || typeof ref !== 'object') continue;
+    const versionId = (ref as { schema_version_id?: unknown }).schema_version_id;
+    if (typeof versionId !== 'string' || versionId.length === 0) continue;
+    if (localIds.has(versionId) || published.has(versionId)) continue;
+    issues.push({
+      path: entity.path,
+      severity: 'error',
+      message:
+        `schema_ref.schema_version_id "${versionId}" is not in this package or already published`,
+    });
+  }
+}
+
 export function hasLocalEntityPackage(projectDir: string): boolean {
+  if (directoryHasJson(join(projectDir, 'schemas')) || directoryHasJson(join(projectDir, 'contracts'))) {
+    return true;
+  }
   const workflowsDir = join(projectDir, 'workflows');
   if (!existsSync(workflowsDir)) return false;
   for (const name of readdirSync(workflowsDir)) {
