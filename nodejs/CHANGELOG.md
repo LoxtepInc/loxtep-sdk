@@ -8,6 +8,26 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.24] - 2026-10-09
+
+### Added
+
+- **Workspace lint and push include project schemas and contracts.** `loxtep lint`
+  checks project-root `schemas/` and `contracts/`, plus workflow-scoped copies.
+  A contract `schema_ref.schema_version_id` must name a schema in the package
+  or a version id that is already published.
+- **`loxtep push`** sends those project files once, on the first workflow's
+  `save_workflow_bundle` call.
+- **`dataContracts.create`** accepts `schema_ref` and still accepts
+  `schema_version_id`. Help documents
+  `PUT /dataproducts/datacontracts/{id}` as the way to bind an existing contract.
+
+### Fixed
+
+- **`loxtep generate --help`** prints usage and returns before generate, so it
+  does not write `.loxtep/generated/index.ts`.
+
+
 ## [0.9.23] - 2026-10-08
 
 ### Fixed
