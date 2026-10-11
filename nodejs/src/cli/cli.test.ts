@@ -17,7 +17,7 @@ function runCli(args: string[]): string {
   delete env.JEST_WORKER_ID;
   return execSync(`node "${cliPath}" ${args.map(a => `"${a}"`).join(' ')}`, {
     encoding: 'utf-8',
-    maxBuffer: 10 * 1024,
+    maxBuffer: 256 * 1024,
     env,
   });
 }
