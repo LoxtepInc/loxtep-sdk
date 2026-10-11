@@ -350,6 +350,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 - **[Code-first CLI](./docs/code-first-cli.md)** – `loxtep init`, attach, generate, test, deploy.
 - **[Quick reference](./docs/quick-reference.md)** – Single-page cheat sheet.
 - **[Event replay cookbook](./docs/event-replay-cookbook.md)** – Replay events from a data product or queue.
+- **[Data plane CLI](./docs/data-plane-cli.md)** – Iceberg rebuild and inspection, SQL receipts, read-only export.
 - **[SDK + agent pairing](./docs/sdk-pairing.md)** – When to use the SDK vs IDE agent integrations.
 - **Typed errors** – `import { … } from '@loxtep/sdk/errors'`.
 - **API reference** – `pnpm run docs` (Typedoc).

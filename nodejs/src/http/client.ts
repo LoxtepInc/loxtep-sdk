@@ -24,6 +24,8 @@ export interface LoxtepHttpRequestOptions {
 
 export interface LoxtepHttpClientOptions {
   base_url: string;
+  /** Headers sent on every request. Per-request headers override these. */
+  default_headers?: Record<string, string>;
   /**
    * When `true`, `base_url` must be the API origin only (e.g. `https://apidev.example.com`); each path is
    * resolved with {@link buildPlatformRequestUrl} (microservice as first public segment on shared hosts).
@@ -85,6 +87,7 @@ export class LoxtepHttpClient {
   private readonly fetch_fn: typeof fetch;
   private lastRateLimit: RateLimitInfo | null = null;
   private readonly refresh_auth?: () => Promise<boolean>;
+  private readonly defaultHeaders: Record<string, string>;
 
   constructor(options: LoxtepHttpClientOptions) {
     this.base_url = options.base_url.replace(/\/$/, '');
@@ -93,6 +96,7 @@ export class LoxtepHttpClient {
     this.region = options.region ?? DEFAULT_REGION;
     this.fetch_fn = options.fetch_fn ?? fetch;
     this.refresh_auth = options.refresh_auth;
+    this.defaultHeaders = { ...(options.default_headers ?? {}) };
     if (options.credentials) {
       this.credentials = options.credentials;
     }
@@ -101,6 +105,19 @@ export class LoxtepHttpClient {
   /** Replace static SigV4 credentials (e.g. after /auth/refresh returns STS). */
   setAwsCredentials(credentials: AwsCredentialIdentity | null): void {
     this.credentials = credentials;
+  }
+
+  /** Set or clear a header sent on every later request. */
+  setDefaultHeader(name: string, value: string | null): void {
+    if (value == null || value === '') {
+      delete this.defaultHeaders[name];
+      return;
+    }
+    this.defaultHeaders[name] = value;
+  }
+
+  getDefaultHeader(name: string): string | undefined {
+    return this.defaultHeaders[name];
   }
 
   private async getCredentials(): Promise<AwsCredentialIdentity> {
@@ -131,7 +148,10 @@ export class LoxtepHttpClient {
     const url = new URL(pathPart);
     const bodyString = body !== undefined ? JSON.stringify(body) : undefined;
 
-    const headers: Record<string, string> = { ...(requestOptions?.headers ?? {}) };
+    const headers: Record<string, string> = {
+      ...this.defaultHeaders,
+      ...(requestOptions?.headers ?? {}),
+    };
     if (this.get_token) {
       const token = await this.get_token();
       if (token) headers['x-jwt-token'] = token;

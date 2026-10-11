@@ -96,6 +96,10 @@ export function createSemanticLayerApi(http: LoxtepHttpClient): {
   get_semantic_completeness: (
     input?: GetSemanticCompletenessInput
   ) => Promise<SemanticCompletenessResult>;
+  apply_glossary_bindings: (input: {
+    data_product_id: string;
+    mapping_revision?: number;
+  }) => Promise<unknown>;
 } {
   async function search(
     input: SearchSemanticLayerInput | string
@@ -137,6 +141,17 @@ export function createSemanticLayerApi(http: LoxtepHttpClient): {
     return normalizeCompleteness(unwrapData(res));
   }
 
+  async function apply_glossary_bindings(input: {
+    data_product_id: string;
+    mapping_revision?: number;
+  }): Promise<unknown> {
+    const res = await http.post('/semantic-layer/glossary/bindings', {
+      data_product_id: input.data_product_id,
+      ...(input.mapping_revision != null ? { mapping_revision: input.mapping_revision } : {}),
+    });
+    return unwrapData(res);
+  }
+
   return {
     search,
     search_semantic_layer: search,
@@ -144,6 +159,7 @@ export function createSemanticLayerApi(http: LoxtepHttpClient): {
     get_semantic_artifact: get_artifact,
     get_completeness,
     get_semantic_completeness: get_completeness,
+    apply_glossary_bindings,
   };
 }
 

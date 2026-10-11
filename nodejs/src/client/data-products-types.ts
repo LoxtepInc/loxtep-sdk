@@ -186,6 +186,78 @@ export interface DataProductQueryResult {
   };
 }
 
+/**
+ * Native warehouse execute receipt. `completion_evidence` is `native` only when
+ * the response includes a status string. A missing status is not rewritten to completed.
+ */
+export interface DataProductQueryReceipt {
+  data_product_id: string;
+  query_id?: string;
+  status?: string;
+  columns?: string[];
+  rows: Record<string, unknown>[];
+  row_count?: number;
+  execution_time_ms?: number;
+  error?: string;
+  error_code?: string;
+  tables_referenced?: unknown;
+  recovery?: unknown;
+  iceberg_health_status?: string;
+  completion_evidence: 'native' | 'missing';
+}
+
+export class WarehouseQueryError extends Error {
+  readonly query_id?: string;
+  readonly status?: string;
+  readonly code: string;
+
+  constructor(
+    message: string,
+    fields: { query_id?: string; status?: string; code: string }
+  ) {
+    super(message);
+    this.name = 'WarehouseQueryError';
+    this.query_id = fields.query_id;
+    this.status = fields.status;
+    this.code = fields.code;
+  }
+}
+
+/** Body for POST /dataproducts/{id}/iceberg/rebuild. The API requires confirm: true. */
+export interface IcebergRebuildRequest {
+  confirm: true;
+  backfill_from: string;
+  start_checkpoint?: string;
+  end_checkpoint?: string;
+  dry_run?: boolean;
+}
+
+/** Read-only retained-event export. Does not commit a reader checkpoint. */
+export interface DataProductExportOptions {
+  start?: string;
+  end?: string;
+  from_beginning?: boolean;
+  limit?: number;
+  max_pages?: number;
+}
+
+export interface DataProductExportResult {
+  data_product_id: string;
+  instance_id: string;
+  queue_name: string;
+  start_sent: string;
+  end?: string;
+  from_beginning: boolean;
+  events: StreamEvent[];
+  truncated: boolean;
+  truncation: 'client_limit' | 'max_pages' | null;
+  server_cursor: string | null;
+  next_start: string | null;
+  next_start_semantics: string;
+  checkpoint_committed: false;
+  read_only: true;
+}
+
 /** Single table info from data_products.list_tables(id). */
 export interface DataProductTableInfo {
   name: string;

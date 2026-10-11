@@ -368,4 +368,6 @@ export const DEFINE_USAGE =
   '       loxtep define approve|apply|withdraw <semantic_proposal_id>\n' +
   '       loxtep define skill\n' +
   '       loxtep define start-procedure <data_product_id>\n' +
-  '       loxtep define batch --data-product-ids <id,id> [--action status|evidence]';
+  '       loxtep define batch --data-product-ids <id,id> [--action status|evidence]\n' +
+  '       loxtep define glossary <data_product_id>\n' +
+  '       loxtep define apply-glossary <data_product_id> [--mapping-revision N]';

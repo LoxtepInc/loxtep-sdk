@@ -32,6 +32,14 @@ import {
   runDataProductsReadiness,
   runDataProductsPromote,
 } from './commands/data-products-cmd.js';
+import {
+  runDataPlaneIceberg,
+  runDataPlaneExport,
+  runPrimaryEntity,
+  runDefineGlossary,
+  runDataContractsUpdate,
+  runQualityRules,
+} from './commands/data-plane-cmd.js';
 import { runMetricsRateLimits, runMetricsLog } from './commands/metrics-cmd.js';
 import { runQueueInfo, runQueueCheckpoint } from './commands/queue-cmd.js';
 import {
@@ -420,10 +428,14 @@ export async function runCli(argv: string[]): Promise<void> {
             process.exitCode = 1;
           } else {
             const sqlFromFile = (await fs.readFile(path, 'utf-8')).trim();
-            await runDataProductsQuery(args[2], sqlFromFile);
+            await runDataProductsQuery(args[2], sqlFromFile, {
+              receipt: args.includes('--receipt') || args.includes('--json'),
+            });
           }
         } else if (sql) {
-          await runDataProductsQuery(args[2], sql);
+          await runDataProductsQuery(args[2], sql, {
+            receipt: args.includes('--receipt') || args.includes('--json'),
+          });
         } else {
           console.error(
             'Usage: loxtep data-products query <id> "SQL" | loxtep data-products query <id> --file <path>'
@@ -455,9 +467,15 @@ export async function runCli(argv: string[]): Promise<void> {
         } else {
           await runDataProductsPromote(args[2], target);
         }
+      } else if (sub === 'iceberg') {
+        await runDataPlaneIceberg(args.slice(2));
+      } else if (sub === 'export' && args[2]) {
+        await runDataPlaneExport(args.slice(2));
+      } else if (sub === 'primary-entity' && args[2]) {
+        await runPrimaryEntity(args[2], { json: args.includes('--json') });
       } else {
         console.error(
-          'Usage: loxtep data-products list | get <id> | create --name ... --domain-id ... | query <id> "SQL" | tables <id>'
+          'Usage: loxtep data-products list | get <id> | create --name ... --domain-id ... | query <id> "SQL" [--receipt] | tables <id> | iceberg ... | export <id> --start <eid> | primary-entity <id>'
         );
         process.exitCode = 1;
       }
@@ -492,7 +510,7 @@ export async function runCli(argv: string[]): Promise<void> {
           );
           process.exitCode = 1;
         } else {
-          await runQueueInfo(idOrName, { queueName: queueIdx >= 0 });
+          await runQueueInfo(idOrName, { queueName: queueIdx >= 0, instanceId: getArg('--instance') });
         }
       } else if (sub === 'checkpoint' && args[2]) {
         const botIdx = args.indexOf('--bot');
@@ -501,7 +519,7 @@ export async function runCli(argv: string[]): Promise<void> {
           console.error('Usage: loxtep queue checkpoint <data-product-id> --bot <bot-id>');
           process.exitCode = 1;
         } else {
-          await runQueueCheckpoint(args[2], botId);
+          await runQueueCheckpoint(args[2], botId, { instanceId: getArg('--instance') });
         }
       } else {
         console.error(
@@ -846,6 +864,8 @@ export async function runCli(argv: string[]): Promise<void> {
             ...(schemaVersionId ? { schema_version_id: schemaVersionId } : {}),
           });
         }
+      } else if (sub === 'update' && args[2]) {
+        await runDataContractsUpdate(args.slice(2));
       } else {
         console.error(
           'Usage: loxtep data-contracts list | get <id> | create --data-product-id <id> --name <name>'
@@ -1034,6 +1054,8 @@ export async function runCli(argv: string[]): Promise<void> {
             action: getArg('--action'),
           })
         );
+      } else if (sub === 'glossary' || sub === 'apply-glossary') {
+        await runDefineGlossary(args.slice(1));
       } else {
         console.error(DEFINE_USAGE);
         process.exitCode = 1;
@@ -1218,6 +1240,9 @@ export async function runCli(argv: string[]): Promise<void> {
       }
       break;
     }
+    case 'quality-rules':
+      await runQualityRules(args.slice(1));
+      break;
     default:
       console.error(`Unknown command: ${command}`);
       printHelp();

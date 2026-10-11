@@ -123,7 +123,8 @@ describe('createDataProductsApi HTTP methods', () => {
         return {
           success: true,
           data: {
-            status: 'ok',
+            status: 'completed',
+            query_id: 'q-ok',
             rows: [{ n: 1 }],
             row_count: 1,
             total_count: 1,
@@ -138,14 +139,120 @@ describe('createDataProductsApi HTTP methods', () => {
     expect(result.metadata.query_time_ms).toBe(12);
   });
 
-  it('query throws when warehouse status is failed', async () => {
+  it('query throws when warehouse status is failed and keeps query_id', async () => {
     const http = mockHttp({
       post: () => ({
-        data: { status: 'failed', error: 'syntax error' },
+        data: { status: 'failed', error: 'syntax error', query_id: 'q-9', error_code: 'query_error' },
       }),
     });
     const api = createDataProductsApi(http);
-    await expect(api.query('dp-1', 'BAD')).rejects.toThrow(/syntax error/);
+    await expect(api.query('dp-1', 'BAD')).rejects.toMatchObject({
+      message: expect.stringMatching(/syntax error/),
+      query_id: 'q-9',
+      code: 'query_error',
+    });
+  });
+
+  it('query_receipt keeps native failure evidence and does not invent completion', async () => {
+    const http = mockHttp({
+      post: () => ({
+        data: { status: 'failed', error: 'schema_mismatch: event_type', query_id: 'q-9', rows: [] },
+      }),
+    });
+    const api = createDataProductsApi(http);
+    const receipt = await api.query_receipt('dp-1', 'SELECT event_type FROM t');
+    expect(receipt.query_id).toBe('q-9');
+    expect(receipt.status).toBe('failed');
+    expect(receipt.completion_evidence).toBe('native');
+    expect(receipt.rows).toEqual([]);
+  });
+
+  it('query rejects a body with rows and no status', async () => {
+    const http = mockHttp({
+      post: () => ({ data: { rows: [{ n: 1 }] } }),
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.query('dp-1', 'SELECT 1')).rejects.toMatchObject({ code: 'missing_completion' });
+  });
+
+  it('export reads trace events without a checkpoint write', async () => {
+    const calls: string[] = [];
+    const http = {
+      getDefaultHeader: () => 'instance-a',
+      get: jest.fn(async (path: string) => {
+        calls.push(path);
+        if (path.startsWith('/dataproducts/')) return { data: DP };
+        return { events: [{ eid: 'z/1', payload: { n: 1 } }] };
+      }),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as LoxtepHttpClient;
+    const api = createDataProductsApi(http);
+    const result = await api.export_events('dp-1', { start: 'z/1', limit: 10 });
+    expect(result.events).toEqual([{ eid: 'z/1', payload: { n: 1 } }]);
+    expect(result.checkpoint_committed).toBe(false);
+    expect(result.instance_id).toBe('instance-a');
+    expect(calls.some(path => path.includes('/observe/trace/q-orders/events'))).toBe(true);
+    expect(http.post).not.toHaveBeenCalled();
+    await expect(api.export_events('dp-1', {})).rejects.toMatchObject({ code: 'start_required' });
+  });
+
+  it('export refuses to fetch when no instance header is set', async () => {
+    const http = mockHttp({
+      get: () => {
+        throw new Error('should not fetch');
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.export_events('dp-1', { start: 'z/1' })).rejects.toMatchObject({
+      code: 'instance_required',
+    });
+    expect(http.get).not.toHaveBeenCalled();
+  });
+
+  it('export slices a full page and discloses inclusive overlap when the server has no cursor', async () => {
+    const http = {
+      getDefaultHeader: () => 'instance-a',
+      get: jest.fn(async (path: string) => {
+        if (path.startsWith('/dataproducts/')) return { data: DP };
+        return { events: [{ eid: 'z/1' }, { eid: 'z/2' }, { eid: 'z/3' }] };
+      }),
+      post: jest.fn(),
+    } as unknown as LoxtepHttpClient;
+    const api = createDataProductsApi(http);
+    const result = await api.export_events('dp-1', { from_beginning: true, limit: 2 });
+    expect(result.start_sent).toBe('0');
+    expect(result.events.map(event => (event as { eid?: string }).eid)).toEqual(['z/1', 'z/2']);
+    expect(result.truncated).toBe(true);
+    expect(result.truncation).toBe('client_limit');
+    expect(result.server_cursor).toBeNull();
+    expect(result.next_start).toBe('z/2');
+    expect(result.next_start_semantics).toMatch(/inclusive/);
+    expect(result.checkpoint_committed).toBe(false);
+    expect(result.read_only).toBe(true);
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
+  it('iceberg rebuild posts the caller body and does not rewrite scope', async () => {
+    const http = mockHttp({
+      post: (path, body) => {
+        expect(path).toBe('/dataproducts/dp-1/iceberg/rebuild');
+        expect(body).toEqual({
+          confirm: true,
+          backfill_from: 'start',
+          dry_run: true,
+        });
+        return { data: { job_id: 'job-1', status: 'dry_run', queue_name: 'q-orders' } };
+      },
+    });
+    const api = createDataProductsApi(http);
+    const result = await api.iceberg.rebuild('dp-1', {
+      confirm: true,
+      backfill_from: 'start',
+      dry_run: true,
+    });
+    expect(result.job_id).toBe('job-1');
   });
 
   it('list_tables filters to data product id', async () => {

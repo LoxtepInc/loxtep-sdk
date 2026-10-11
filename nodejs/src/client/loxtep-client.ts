@@ -7,6 +7,7 @@ import type { DataProductWriterOptions, DataProductReaderOptions } from './data-
 import { createQueuesApi } from './queues.js';
 import { createTriggersApi } from './triggers.js';
 import { createQualityApi } from './quality.js';
+import { createQualityRulesApi } from './quality-rules.js';
 import { createApprovalsApi } from './approvals.js';
 import { createCdlcApi } from './cdlc.js';
 import { createMiningApi } from './mining.js';
@@ -102,7 +103,7 @@ export class LoxtepClient {
   readonly auth: LoxtepClientOptions['auth'];
   readonly organization_id?: string;
   readonly project_id?: string;
-  readonly instance_id?: string;
+  instance_id?: string;
 
   private readonly _http: LoxtepHttpClient;
   private readonly _resolver: DataProductResolver;
@@ -180,6 +181,9 @@ export class LoxtepClient {
       fetch_fn: options.fetch_fn,
       credentials: options.credentials,
       refresh_auth: options.refresh_auth,
+      default_headers: options.instance_id
+        ? { 'x-loxtep-instance-id': options.instance_id }
+        : undefined,
     });
     this._resolver = new DataProductResolver(this._http, options.instance_id);
     const busPartial = options.streams ?? options.rstreams;
@@ -217,6 +221,7 @@ export class LoxtepClient {
       resolver: this._resolver,
     });
     const qualityApi = createQualityApi(this._http);
+    const qualityRulesApi = createQualityRulesApi(this._http);
     const approvalsApi = createApprovalsApi(this._http, {
       organization_id: options.organization_id,
     });
@@ -274,6 +279,7 @@ export class LoxtepClient {
       schemas: schemasApi,
       shapes: shapesApi,
       quality: qualityApi,
+      quality_rules: qualityRulesApi,
       standards: standardsApi,
       data_contracts: dataContractsApi,
       domains: domainsApi,
@@ -313,6 +319,12 @@ export class LoxtepClient {
       workstreams: agentWorkspaceApi.workstreams,
     });
     this.metrics = this.createMetricsSurface(options.metrics);
+  }
+
+  /** Select the instance sent as x-loxtep-instance-id on later requests. */
+  setInstanceId(instanceId: string | undefined): void {
+    this.instance_id = instanceId;
+    this._http.setDefaultHeader('x-loxtep-instance-id', instanceId ?? null);
   }
 
   /** Resolve a data product writer by name or id (delegates to data-products stream logic). */

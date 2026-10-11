@@ -73,6 +73,15 @@ jest.mock('./commands/data-contracts-cmd.js', () => ({
   runDataContractsCreate: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
 }));
 
+jest.mock('./commands/data-plane-cmd.js', () => ({
+  runDataPlaneIceberg: jest.fn(async () => undefined),
+  runDataPlaneExport: jest.fn(async () => undefined),
+  runPrimaryEntity: jest.fn(async () => undefined),
+  runDefineGlossary: jest.fn(async () => undefined),
+  runDataContractsUpdate: jest.fn(async () => undefined),
+  runQualityRules: jest.fn(async () => undefined),
+}));
+
 jest.mock('./commands/data-products-cmd.js', () => ({
   runDataProductsList: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   runDataProductsGet: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
@@ -276,6 +285,14 @@ import {
   runDataContractsCreate,
 } from './commands/data-contracts-cmd.js';
 import { runQueueInfo, runQueueCheckpoint } from './commands/queue-cmd.js';
+import {
+  runDataPlaneIceberg,
+  runDataPlaneExport,
+  runPrimaryEntity,
+  runDefineGlossary,
+  runDataContractsUpdate,
+  runQualityRules,
+} from './commands/data-plane-cmd.js';
 import { runMetricsRateLimits, runMetricsLog } from './commands/metrics-cmd.js';
 import {
   runImprovementsListCommand,
@@ -473,6 +490,20 @@ describe('runCli router', () => {
     expect(runDataContractsGet).toHaveBeenCalled();
     await runCli(['data-contracts', 'create', '--data-product-id', 'dp-1', '--name', 'c']);
     expect(runDataContractsCreate).toHaveBeenCalled();
+    await runCli(['data-products', 'iceberg', 'rebuild', 'dp-1']);
+    expect(runDataPlaneIceberg).toHaveBeenCalledWith(['rebuild', 'dp-1']);
+    await runCli(['data-products', 'export', 'dp-1', '--start', 'z/1']);
+    expect(runDataPlaneExport).toHaveBeenCalledWith(['dp-1', '--start', 'z/1']);
+    await runCli(['data-products', 'primary-entity', 'dp-1', '--json']);
+    expect(runPrimaryEntity).toHaveBeenCalledWith('dp-1', { json: true });
+    await runCli(['data-contracts', 'update', 'dc-1', '--schema-version-id', 'sv-1']);
+    expect(runDataContractsUpdate).toHaveBeenCalledWith(['dc-1', '--schema-version-id', 'sv-1']);
+    await runCli(['quality-rules', 'list']);
+    expect(runQualityRules).toHaveBeenCalledWith(['list']);
+    await runCli(['define', 'glossary', 'dp-1']);
+    expect(runDefineGlossary).toHaveBeenCalledWith(['glossary', 'dp-1']);
+    await runCli(['define', 'apply-glossary', 'dp-1']);
+    expect(runDefineGlossary).toHaveBeenCalledWith(['apply-glossary', 'dp-1']);
   });
 
   it('ops and governance', async () => {

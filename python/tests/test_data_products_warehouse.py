@@ -16,6 +16,7 @@ def test_query_calls_warehouse_execute_and_normalizes_rows():
             "success": True,
             "data": {
                 "status": "success",
+                "query_id": "q-1",
                 "rows": [{"id": 1}, {"id": 2}],
                 "row_count": 2,
                 "total_count": 2,
@@ -29,6 +30,7 @@ def test_query_calls_warehouse_execute_and_normalizes_rows():
     )
     assert result["items"] == [{"id": 1}, {"id": 2}]
     assert result["metadata"]["data_product_id"] == "dp_1"
+    assert result["metadata"]["query_id"] == "q-1"
     assert result["metadata"]["returned_rows"] == 2
     assert result["metadata"]["query_time_ms"] == 42
     client.close()
@@ -37,12 +39,16 @@ def test_query_calls_warehouse_execute_and_normalizes_rows():
 def test_query_raises_on_failed_status():
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "post") as mock_post:
-        mock_post.return_value = {"success": True, "data": {"status": "failed", "error": "bad sql"}}
+        mock_post.return_value = {
+            "success": True,
+            "data": {"status": "failed", "error": "bad sql", "query_id": "q-fail"},
+        }
         try:
             client.build.data_products.query("dp_1", "SELECT bad")
             assert False, "expected RuntimeError"
         except RuntimeError as e:
             assert "bad sql" in str(e)
+            assert "q-fail" in str(e)
     client.close()
 
 

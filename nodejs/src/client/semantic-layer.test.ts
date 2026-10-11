@@ -138,4 +138,24 @@ describe('createSemanticLayerApi', () => {
       '/semantic-layer/completeness?domain_id=33333333-3333-3333-3333-333333333333'
     );
   });
+
+  it('apply_glossary_bindings posts the product id and optional revision', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: { applied: true } };
+      },
+    } as unknown as LoxtepHttpClient;
+    const api = createSemanticLayerApi(http);
+    const result = await api.apply_glossary_bindings({
+      data_product_id: 'dp-1',
+      mapping_revision: 3,
+    });
+    expect(capturedPath).toBe('/semantic-layer/glossary/bindings');
+    expect(capturedBody).toEqual({ data_product_id: 'dp-1', mapping_revision: 3 });
+    expect(result).toEqual({ applied: true });
+  });
 });

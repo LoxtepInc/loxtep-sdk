@@ -72,13 +72,33 @@ Build & deploy
                      Ingest trigger bindings (project entities; --project-id required)
   data-products list | get <id> | create … | readiness <id> | promote <id> --target …
                      Data product CRUD and medallion promotion
+  data-products iceberg rebuild <id> --backfill-from <z/eid|checkpoint|start_of_queue>
+                     [--start-checkpoint <z/eid>] [--end-checkpoint <z/eid>]
+                     [--dry-run] [--confirm] [--wait 30s] [--interval 5s] [--json]
+                     Dry run is read-only. A queued job is not completion.
+                     Timeout keeps the job id and does not resubmit or cancel.
+  data-products iceberg status <id> [--job-id <uuid>] [--wait 30s] [--json]
+  data-products iceberg cancel <id> [--json]
+                     Cancel reports endpoint_missing when the instance route is absent.
+  data-products iceberg enable <id> --config <json> | --file <path>
+                     [--backfill-from now|1h|6h|1d|7d|30d|all]
+                     Omitted history loads nothing. The file supplies iceberg_config.
+  data-products iceberg config <id> [--put --file <json>]
+  data-products iceberg health|files|snapshots|schema <id> [--json]
+                     schema prints catalog, physical, materialization, and inspection.
+  data-products export <id> --start <eid> | --from-beginning [--end <eid>]
+                     [--limit N] [--max-pages N] [--instance <uuid>] [--json]
+                     Read-only trace export. It does not commit a checkpoint.
+  data-products primary-entity <id> [--json]
+                     Read schema.entities. It does not write a key.
 
 Governance
   domains list | get <id>
   standards list | get <id>              Standards (policies)
-  data-contracts list | get <id> | create …
-                     Create accepts schema_ref or schema_version_id.
-                     Bind an existing contract with PUT /dataproducts/datacontracts/{id}.
+  data-contracts list | get <id> | create … | update <id> --schema-version-id <uuid>
+                     Create and update accept schema_ref or schema_version_id.
+  quality-rules list|get <id>|create --file <json>|update <id> --file <json>|delete <id>
+                     get scans the list. There is no GET-by-id route.
   define status <data_product_id>
                      Definition readiness / blockers (approve ≠ apply)
   define evidence <data_product_id>
@@ -88,6 +108,8 @@ Governance
   define approve|apply|withdraw <semantic_proposal_id>
   define skill | start-procedure <data_product_id>
   define batch --data-product-ids <id,id> [--action status|evidence]
+  define glossary <data_product_id>
+  define apply-glossary <data_product_id> [--mapping-revision N]
 
 Review
   approvals list [--status …] [--page N] [--page-size N] [--organization-id <id>]
@@ -110,7 +132,9 @@ Meaning
   packs status                           Current pack activation state
 
 Analytics
-  data-products query <id> "SQL" | --file <path>
+  data-products query <id> "SQL" | --file <path> [--receipt | --json]
+                     --receipt and --json keep query_id, status, errors, and timing.
+                     Failed or unfinished queries exit nonzero.
   data-products tables <id>              List tables for analytics SQL
 
 Observe
@@ -154,12 +178,14 @@ Examples:
   pnpm exec loxtep test orders-enricher --event ./events/order-created.json
   pnpm exec loxtep deploy
   pnpm exec loxtep data-products list
-  pnpm exec loxtep data-products query <id> "SELECT * FROM t LIMIT 10"
+  pnpm exec loxtep data-products query <id> "SELECT * FROM t LIMIT 10" --receipt
+  pnpm exec loxtep data-products iceberg rebuild <id> --backfill-from z/2026/10/10/00/00/1 --dry-run --json
+  pnpm exec loxtep data-products export <id> --start z/2026/10/10/00/00/1 --limit 100 --json
   pnpm exec loxtep queue info <data-product-id>
   pnpm exec loxtep observe status
   pnpm exec loxtep config export --from-connector <connector-id> --format json
 
-Docs: nodejs/docs/sdk-first-ingest.md · nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md · nodejs/docs/project-workspace-status.md
+Docs: nodejs/docs/sdk-first-ingest.md · nodejs/docs/code-first-cli.md · nodejs/docs/getting-started.md · nodejs/docs/quick-reference.md · nodejs/docs/data-plane-cli.md · nodejs/docs/project-workspace-status.md
 
 Update checks: newer npm versions are announced on stderr (cached daily under ./.loxtep).
 Disable with LOXTEP_NO_UPDATE_NOTIFIER=1 (or NO_UPDATE_NOTIFIER / CI).
