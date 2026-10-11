@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- `DataProductsApi.query` keeps the warehouse `query_id` on the row result
+  metadata and on a failed-query error. The return value stays row-shaped.
+
 ## [0.7.2] — 2026-10-07
 
 ### Added

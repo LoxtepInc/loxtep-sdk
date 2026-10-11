@@ -36,6 +36,11 @@ describe('CLI help', () => {
     expect(CLI_HELP).toContain('deploy');
     expect(CLI_HELP).toContain('workflows list');
     expect(CLI_HELP).toContain('data-products list');
+    expect(CLI_HELP).toContain('data-products iceberg rebuild <id>');
+    expect(CLI_HELP).toContain('data-products export <id>');
+    expect(CLI_HELP).toContain('quality-rules list|get <id>');
+    expect(CLI_HELP).toContain('define apply-glossary <data_product_id>');
+    expect(CLI_HELP).toContain('--receipt');
   });
 
   it('lists CDLC steward verbs under Review', () => {

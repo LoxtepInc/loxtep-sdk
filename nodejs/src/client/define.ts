@@ -7,6 +7,7 @@
 import type { createSchemasApi } from './schemas.js';
 import type { createShapesApi } from './shapes.js';
 import type { createQualityApi } from './quality.js';
+import type { createQualityRulesApi } from './quality-rules.js';
 import type { createStandardsApi } from './standards.js';
 import type { createPromisesApi } from './promises.js';
 import type { createDomainsApi } from './domains.js';
@@ -16,6 +17,7 @@ export interface DefineFacadeDeps {
   schemas: ReturnType<typeof createSchemasApi>;
   shapes: ReturnType<typeof createShapesApi>;
   quality: ReturnType<typeof createQualityApi>;
+  quality_rules: ReturnType<typeof createQualityRulesApi>;
   standards: ReturnType<typeof createStandardsApi>;
   data_contracts: ReturnType<typeof createPromisesApi>;
   domains: ReturnType<typeof createDomainsApi>;
@@ -26,6 +28,7 @@ export function createDefineFacade(deps: DefineFacadeDeps): {
   schemas: DefineFacadeDeps['schemas'];
   shapes: DefineFacadeDeps['shapes'];
   quality: DefineFacadeDeps['quality'];
+  quality_rules: DefineFacadeDeps['quality_rules'];
   standards: DefineFacadeDeps['standards'];
   data_contracts: DefineFacadeDeps['data_contracts'];
   domains: DefineFacadeDeps['domains'];
@@ -35,6 +38,7 @@ export function createDefineFacade(deps: DefineFacadeDeps): {
     schemas: deps.schemas,
     shapes: deps.shapes,
     quality: deps.quality,
+    quality_rules: deps.quality_rules,
     standards: deps.standards,
     data_contracts: deps.data_contracts,
     domains: deps.domains,

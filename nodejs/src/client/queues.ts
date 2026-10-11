@@ -143,18 +143,26 @@ export function createQueuesApi(
           (q.queue_name ?? (q as Record<string, unknown>).name ?? '') === queue_name
       );
       if (match) return match;
+      const instanceId = http.getDefaultHeader?.('x-loxtep-instance-id');
       return {
         queue_name,
-        checkpoints: [],
-        readers: [],
-        writers: [],
-        stats: {},
+        visibility: queues.length === 0 ? 'empty_on_selected_instance' : 'not_visible',
+        instance_id: instanceId,
       };
     },
 
     async get_reader_checkpoint(queue_name: string, bot_id: string): Promise<ReaderCheckpoint> {
       // No dedicated /observe/queues/checkpoint route — derive from queue metadata.
       const meta = await this.get_queue_metadata(queue_name);
+      if (meta.visibility === 'not_visible' || meta.visibility === 'empty_on_selected_instance') {
+        const err = new Error(
+          meta.visibility === 'empty_on_selected_instance'
+            ? `Queue list is empty on the selected instance${meta.instance_id ? ` ${meta.instance_id}` : ''}`
+            : `Queue ${queue_name} is not visible on the selected instance${meta.instance_id ? ` ${meta.instance_id}` : ''}`
+        );
+        (err as { code?: string }).code = String(meta.visibility);
+        throw err;
+      }
       const fromCheckpoints = (meta.checkpoints ?? []).find(
         c => (c.bot_id ?? '') === bot_id || (c as { reader_id?: string }).reader_id === bot_id
       );

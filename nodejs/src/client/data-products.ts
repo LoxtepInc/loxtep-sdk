@@ -16,6 +16,10 @@ import type {
   DataProductReplayOptions,
   StreamEvent,
   DataProductQueryResult,
+  DataProductQueryReceipt,
+  DataProductExportOptions,
+  DataProductExportResult,
+  IcebergRebuildRequest,
   DataProductListTablesResult,
   DataProductLexicon,
   DataProductCreateInput,
@@ -23,6 +27,7 @@ import type {
   DataProductPromotionReadiness,
   DataProductPromotionResult,
 } from './data-products-types.js';
+import { WarehouseQueryError } from './data-products-types.js';
 import type { QueueMetadata, ReaderCheckpoint } from './queue-types.js';
 import type { FlowWriter } from './flow-types.js';
 import {
@@ -115,6 +120,24 @@ export interface DataProductReaderOptions {
   batch_size?: number;
 }
 
+function unwrapRecord(res: unknown): Record<string, unknown> {
+  if (!res || typeof res !== 'object' || Array.isArray(res)) return {};
+  const record = res as Record<string, unknown>;
+  if (record.data && typeof record.data === 'object' && !Array.isArray(record.data)) {
+    return record.data as Record<string, unknown>;
+  }
+  return record;
+}
+
+function eventIdentity(event: StreamEvent | undefined): string | null {
+  if (!event) return null;
+  const record = event as Record<string, unknown>;
+  for (const key of ['eid', 'event_id', 'id']) {
+    if (typeof record[key] === 'string' && record[key]) return record[key] as string;
+  }
+  return null;
+}
+
 /**
  * Create the data_products API surface (get, list, search, query, list_tables, get_queue_info, get_reader_checkpoint, stream, replay, get_writer, get_reader, invalidate_cache).
  */
@@ -130,6 +153,18 @@ export function createDataProductsApi(
     filters?: { type?: string; limit?: number; offset?: number }
   ) => Promise<DataProductsSearchResponse>;
   query: (id: string, sql: string) => Promise<DataProductQueryResult>;
+  query_receipt: (id: string, sql: string) => Promise<DataProductQueryReceipt>;
+  export_events: (id: string, options?: DataProductExportOptions) => Promise<DataProductExportResult>;
+  iceberg: {
+    rebuild: (id: string, body: IcebergRebuildRequest) => Promise<Record<string, unknown>>;
+    health: (id: string) => Promise<Record<string, unknown>>;
+    status: (id: string) => Promise<Record<string, unknown>>;
+    cancel: (id: string) => Promise<Record<string, unknown>>;
+    enable: (id: string, body: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    put_config: (id: string, body: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    files: (id: string) => Promise<Record<string, unknown>>;
+    snapshots: (id: string) => Promise<Record<string, unknown>>;
+  };
   list_tables: (id: string) => Promise<DataProductListTablesResult>;
   get_queue_info: (id: string) => Promise<QueueMetadata>;
   get_reader_checkpoint: (id: string, bot_id: string) => Promise<ReaderCheckpoint>;
@@ -212,42 +247,217 @@ export function createDataProductsApi(
       return http.get<DataProductsSearchResponse>(`/search${qs}`);
     },
 
-    async query(id: string, sql: string): Promise<DataProductQueryResult> {
-      // JWT path: warehouse execute (analytics:execute). Avoid /dataproducts/query (API-key only).
-      const res = await http.post<{
-        success?: true;
-        data?: {
-          status?: string;
-          rows?: Record<string, unknown>[];
-          row_count?: number;
-          total_count?: number;
-          execution_time_ms?: number;
-          error?: string;
-        };
-        status?: string;
-        rows?: Record<string, unknown>[];
-        row_count?: number;
-        total_count?: number;
-        execution_time_ms?: number;
-        error?: string;
-      }>('/dataproducts/warehouse/execute', {
+    async query_receipt(id: string, sql: string): Promise<DataProductQueryReceipt> {
+      const res = await http.post<Record<string, unknown>>('/dataproducts/warehouse/execute', {
         sql,
         data_product_ids_hint: [id],
       });
-      const body = (res as { data?: typeof res }).data ?? res;
-      if (body.status === 'failed') {
-        throw new Error(body.error || 'Warehouse query failed');
+      const wrapped = res.data;
+      const body =
+        wrapped && typeof wrapped === 'object' && !Array.isArray(wrapped)
+          ? (wrapped as Record<string, unknown>)
+          : res;
+      const status = typeof body.status === 'string' && body.status.length > 0 ? body.status : undefined;
+      const rows = Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : [];
+      const columns = Array.isArray(body.columns)
+        ? body.columns.map(column => String(column))
+        : undefined;
+      return {
+        data_product_id: id,
+        query_id: typeof body.query_id === 'string' ? body.query_id : undefined,
+        status,
+        columns,
+        rows,
+        row_count: typeof body.row_count === 'number' ? body.row_count : rows.length,
+        execution_time_ms:
+          typeof body.execution_time_ms === 'number' ? body.execution_time_ms : undefined,
+        error: typeof body.error === 'string' ? body.error : undefined,
+        error_code: typeof body.error_code === 'string' ? body.error_code : undefined,
+        tables_referenced: body.tables_referenced,
+        recovery: body.recovery,
+        iceberg_health_status:
+          typeof body.iceberg_health_status === 'string' ? body.iceberg_health_status : undefined,
+        completion_evidence: status ? 'native' : 'missing',
+      };
+    },
+
+    async query(id: string, sql: string): Promise<DataProductQueryResult> {
+      const receipt = await this.query_receipt(id, sql);
+      if (receipt.completion_evidence !== 'native' || receipt.status !== 'completed') {
+        const code =
+          receipt.status === 'failed'
+            ? receipt.error_code || 'query_failed'
+            : 'missing_completion';
+        throw new WarehouseQueryError(
+          receipt.error ||
+            (receipt.status
+              ? `Warehouse query status is ${receipt.status}`
+              : 'Warehouse query is missing completion evidence'),
+          { query_id: receipt.query_id, status: receipt.status, code }
+        );
       }
-      const rows = body.rows ?? [];
+      const rows = receipt.rows;
       return {
         items: rows,
         metadata: {
           data_product_id: id,
-          total_rows: body.total_count ?? body.row_count ?? rows.length,
-          returned_rows: body.row_count ?? rows.length,
-          query_time_ms: body.execution_time_ms,
+          total_rows: receipt.row_count ?? rows.length,
+          returned_rows: receipt.row_count ?? rows.length,
+          query_time_ms: receipt.execution_time_ms,
         },
       };
+    },
+
+    async export_events(
+      id: string,
+      options: DataProductExportOptions = {}
+    ): Promise<DataProductExportResult> {
+      const instanceId = http.getDefaultHeader?.('x-loxtep-instance-id');
+      if (!instanceId) {
+        const err = new Error(
+          'instance_required: export needs --instance or an attached project instance_id'
+        );
+        (err as { code?: string }).code = 'instance_required';
+        throw err;
+      }
+      if (!options.from_beginning && !options.start) {
+        const err = new Error('export requires start or from_beginning');
+        (err as { code?: string }).code = 'start_required';
+        throw err;
+      }
+      const asset = await this.get(id);
+      const queueName = (asset.storage as { rstreams_queue?: string } | undefined)?.rstreams_queue;
+      if (!queueName) {
+        const err = new Error(`Data product ${id} has no stream queue in storage`);
+        (err as { code?: string }).code = 'no_queue';
+        throw err;
+      }
+      const limit = options.limit ?? 100;
+      const maxPages = options.max_pages ?? 1;
+      const startSent = options.from_beginning ? '0' : String(options.start);
+      const events: StreamEvent[] = [];
+      let start: string | undefined = startSent;
+      let pages = 0;
+      let truncated = false;
+      let truncation: DataProductExportResult['truncation'] = null;
+      let serverCursor: string | null = null;
+      let nextStart: string | null = null;
+      let nextStartSemantics =
+        'The trace API does not document a next cursor. This page did not fill the requested limit.';
+
+      while (pages < maxPages && events.length < limit && start !== undefined) {
+        pages += 1;
+        const qs = buildQueryString({ start, end: options.end });
+        const res = await http.get<Record<string, unknown>>(
+          `/observe/trace/${encodeURIComponent(queueName)}/events${qs}`
+        );
+        const payload =
+          res.data && typeof res.data === 'object' && !Array.isArray(res.data)
+            ? (res.data as Record<string, unknown>)
+            : res;
+        const batch = Array.isArray(payload.events)
+          ? (payload.events as StreamEvent[])
+          : Array.isArray(res.events)
+            ? (res.events as StreamEvent[])
+            : [];
+        const cursorRaw = payload.next ?? payload.next_start ?? payload.next_cursor ?? res.next;
+        const cursor = typeof cursorRaw === 'string' && cursorRaw.length > 0 ? cursorRaw : null;
+        serverCursor = cursor;
+        const room = limit - events.length;
+        const slice = batch.slice(0, room);
+        events.push(...slice);
+        if (slice.length < batch.length) {
+          truncated = true;
+          truncation = 'client_limit';
+          nextStart = eventIdentity(slice[slice.length - 1]);
+          nextStartSemantics =
+            'client_limit: the server did not apply this limit. next_start is the last included event id. Trace start is inclusive, so the next page may repeat that event.';
+          break;
+        }
+        if (events.length >= limit) {
+          truncated = true;
+          truncation = pages >= maxPages && cursor ? 'max_pages' : 'client_limit';
+          nextStart = cursor ?? eventIdentity(events[events.length - 1]);
+          nextStartSemantics = cursor
+            ? 'server next cursor'
+            : 'client_limit: the server did not provide a next cursor. next_start is the last included event id and may overlap if start is inclusive.';
+          break;
+        }
+        if (!cursor) {
+          nextStartSemantics =
+            'The server did not provide a next cursor. This response is the page that was returned.';
+          break;
+        }
+        if (pages >= maxPages) {
+          truncated = true;
+          truncation = 'max_pages';
+          nextStart = cursor;
+          nextStartSemantics = 'server next cursor; max_pages stopped the loop';
+          break;
+        }
+        start = cursor;
+      }
+
+      return {
+        data_product_id: id,
+        instance_id: instanceId,
+        queue_name: queueName,
+        start_sent: startSent,
+        end: options.end,
+        from_beginning: Boolean(options.from_beginning),
+        events,
+        truncated,
+        truncation,
+        server_cursor: serverCursor,
+        next_start: nextStart,
+        next_start_semantics: nextStartSemantics,
+        checkpoint_committed: false,
+        read_only: true,
+      };
+    },
+
+    iceberg: {
+      async rebuild(id: string, body: IcebergRebuildRequest): Promise<Record<string, unknown>> {
+        const res = await http.post(
+          `/dataproducts/${encodeURIComponent(id)}/iceberg/rebuild`,
+          body
+        );
+        return unwrapRecord(res);
+      },
+      async health(id: string): Promise<Record<string, unknown>> {
+        const res = await http.get(`/dataproducts/${encodeURIComponent(id)}/iceberg/health`);
+        return unwrapRecord(res);
+      },
+      async status(id: string): Promise<Record<string, unknown>> {
+        const res = await http.get(`/dataproducts/${encodeURIComponent(id)}/iceberg`);
+        return unwrapRecord(res);
+      },
+      async cancel(id: string): Promise<Record<string, unknown>> {
+        const res = await http.post(
+          `/dataproducts/${encodeURIComponent(id)}/iceberg/rebuild/cancel`,
+          {}
+        );
+        return unwrapRecord(res);
+      },
+      async enable(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+        const res = await http.post(`/dataproducts/${encodeURIComponent(id)}/iceberg`, body);
+        return unwrapRecord(res);
+      },
+      async put_config(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+        const res = await http.put(
+          `/dataproducts/${encodeURIComponent(id)}/iceberg/config`,
+          body
+        );
+        return unwrapRecord(res);
+      },
+      async files(id: string): Promise<Record<string, unknown>> {
+        const res = await http.get(`/dataproducts/${encodeURIComponent(id)}/iceberg/files`);
+        return unwrapRecord(res);
+      },
+      async snapshots(id: string): Promise<Record<string, unknown>> {
+        const res = await http.get(`/dataproducts/${encodeURIComponent(id)}/iceberg/snapshots`);
+        return unwrapRecord(res);
+      },
     },
 
     async list_tables(id: string): Promise<DataProductListTablesResult> {

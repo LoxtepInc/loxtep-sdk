@@ -33,11 +33,31 @@ export async function runDataProductsGet(
 export async function runDataProductsQuery(
   dataProductId: string,
   sql: string,
-  options: DataProductsCmdOptions = {}
+  options: DataProductsCmdOptions & { receipt?: boolean } = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
-  const result = await client.build.data_products.query(dataProductId, sql);
-  console.log(JSON.stringify(result, null, 2));
+  if (options.receipt) {
+    const receipt = await client.build.data_products.query_receipt(dataProductId, sql);
+    console.log(JSON.stringify(receipt, null, 2));
+    if (receipt.completion_evidence !== 'native' || receipt.status !== 'completed') {
+      process.exitCode = 1;
+    }
+    return;
+  }
+  try {
+    const result = await client.build.data_products.query(dataProductId, sql);
+    console.log(JSON.stringify(result, null, 2));
+  } catch (err) {
+    const record = err && typeof err === 'object' ? (err as { query_id?: string; code?: string }) : {};
+    console.error(
+      JSON.stringify({
+        code: record.code || 'query_failed',
+        message: err instanceof Error ? err.message : String(err),
+        query_id: record.query_id,
+      })
+    );
+    process.exitCode = 1;
+  }
 }
 
 export async function runDataProductsTables(

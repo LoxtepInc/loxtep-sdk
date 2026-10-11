@@ -8,6 +8,24 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.25] - 2026-10-10
+
+### Added
+
+- `data_products.query_receipt` keeps the native warehouse `query_id`, status, errors, timing, and execution metadata. `query` still returns rows, and only when status is `completed`. A failed query throws `WarehouseQueryError` with `query_id`. Any other status, including a missing status, is an error and is not rewritten to completed.
+- `data_products.iceberg` wraps enable, config, health, files, snapshots, rebuild, and cancel.
+- `data_products.export_events` reads retained trace events with an explicit start or `from_beginning`. It does not commit a reader checkpoint.
+- `define.quality_rules` wraps `/dataproducts/quality-rules`. `get` scans the list because there is no GET-by-id route.
+- `meaning.semantic.apply_glossary_bindings` posts `/semantic-layer/glossary/bindings`.
+- CLI: `data-products iceberg`, `data-products export`, `data-products primary-entity`, `data-products query --receipt`, `data-contracts update`, `quality-rules`, `define glossary`, and `define apply-glossary`. Usage is in `nodejs/docs/data-plane-cli.md`. `--wait` finishes only when health `job_id` or `backfill_job_id` is the accepted job.
+- HTTP requests send `x-loxtep-instance-id` from the client instance. `setInstanceId` changes it. Queue metadata for a name absent from that instance is `not_visible` or `empty_on_selected_instance` and does not invent checkpoints.
+
+### Notes
+
+- Python stays 0.7.2. `loxtep` on Python delegates these commands to the Node CLI. Python `DataProductsApi.query` still returns rows only.
+- Rebuild cancel returns the native error. Stage instances without a cancel route report `endpoint_missing`. A queued rebuild is not completion.
+- This package is source 0.9.25 until the `v0.9.25` tag is published. The deployed data-products service must include the read-only dry-run handler before a live dry run is read-only.
+
 ## [0.9.24] - 2026-10-09
 
 ### Added

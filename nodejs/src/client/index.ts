@@ -64,6 +64,10 @@ export type {
   DataProductReplayOptions,
   StreamEvent,
   DataProductQueryResult,
+  DataProductQueryReceipt,
+  IcebergRebuildRequest,
+  DataProductExportOptions,
+  DataProductExportResult,
   DataProductListTablesResult,
   DataProductTableInfo,
   PaginationMeta,
@@ -74,6 +78,7 @@ export type {
   UsageMapEdge,
   UsageMapResponse,
 } from './data-products-types.js';
+export { WarehouseQueryError } from './data-products-types.js';
 export type {
   QueueMetadata,
   QueueCheckpoint,

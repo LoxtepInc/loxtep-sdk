@@ -187,15 +187,18 @@ class DataProductsApi:
         )
         body = _unwrap(res)
         if isinstance(body, dict) and body.get("status") == "failed":
-            raise RuntimeError(body.get("error") or "Warehouse query failed")
+            message = body.get("error") or "Warehouse query failed"
+            query_id = body.get("query_id")
+            raise RuntimeError(f"{message} (query_id={query_id})" if query_id else message)
         rows = body.get("rows", []) if isinstance(body, dict) else []
         return {
             "items": rows,
             "metadata": {
                 "data_product_id": id,
-                "total_rows": body.get("total_count", body.get("row_count", len(rows))),
-                "returned_rows": body.get("row_count", len(rows)),
-                "query_time_ms": body.get("execution_time_ms"),
+                "query_id": body.get("query_id") if isinstance(body, dict) else None,
+                "total_rows": body.get("total_count", body.get("row_count", len(rows))) if isinstance(body, dict) else len(rows),
+                "returned_rows": body.get("row_count", len(rows)) if isinstance(body, dict) else len(rows),
+                "query_time_ms": body.get("execution_time_ms") if isinstance(body, dict) else None,
             },
         }
 
@@ -459,15 +462,18 @@ class AsyncDataProductsApi:
         )
         body = _unwrap(res)
         if isinstance(body, dict) and body.get("status") == "failed":
-            raise RuntimeError(body.get("error") or "Warehouse query failed")
+            message = body.get("error") or "Warehouse query failed"
+            query_id = body.get("query_id")
+            raise RuntimeError(f"{message} (query_id={query_id})" if query_id else message)
         rows = body.get("rows", []) if isinstance(body, dict) else []
         return {
             "items": rows,
             "metadata": {
                 "data_product_id": id,
-                "total_rows": body.get("total_count", body.get("row_count", len(rows))),
-                "returned_rows": body.get("row_count", len(rows)),
-                "query_time_ms": body.get("execution_time_ms"),
+                "query_id": body.get("query_id") if isinstance(body, dict) else None,
+                "total_rows": body.get("total_count", body.get("row_count", len(rows))) if isinstance(body, dict) else len(rows),
+                "returned_rows": body.get("row_count", len(rows)) if isinstance(body, dict) else len(rows),
+                "query_time_ms": body.get("execution_time_ms") if isinstance(body, dict) else None,
             },
         }
 

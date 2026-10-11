@@ -229,6 +229,19 @@ in application code.
 
 ---
 
+## Data plane
+
+Iceberg rebuild, inspection, SQL receipts, and read-only export are in
+[Data plane CLI](./data-plane-cli.md). A queued rebuild is not a finished table.
+
+```bash
+pnpm exec loxtep data-products iceberg rebuild <id> --backfill-from z/2026/10/10/00/00/1 --dry-run --json
+pnpm exec loxtep data-products query <id> "SELECT 1" --receipt
+pnpm exec loxtep data-products export <id> --start z/2026/10/10/00/00/1 --limit 100 --json
+```
+
+---
+
 ## Further Reading
 
 | Resource | Description |
@@ -236,3 +249,4 @@ in application code.
 | [Getting Started Guide](./getting-started.md) | Zero-to-first-event walkthrough |
 | [Event Replay Cookbook](./event-replay-cookbook.md) | Replay patterns (`build.data_products`, `observe`) |
 | [Code-first CLI guide](./code-first-cli.md) | `loxtep init` through deploy |
+| [Data plane CLI](./data-plane-cli.md) | Iceberg rebuild, SQL receipts, read-only export |
