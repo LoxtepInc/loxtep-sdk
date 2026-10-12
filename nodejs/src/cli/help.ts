@@ -130,6 +130,11 @@ Meaning
   packs list                             Available vocabulary packs (+ recommendation)
   packs activate <pack_id> [--organization-id <id>]
   packs status                           Current pack activation state
+  proposals list [--disposition pending] [--proposal-type vocabulary_term]
+  proposals accept <id> [--definition "…"] [--resolution-note "…"]
+  proposals reject <id> [--resolution-note "…"]
+  proposals infer-definitions <id> [<id>…]
+                     Agent vocabulary proposal review (infer drafts, then accept/reject)
 
 Analytics
   data-products query <id> "SQL" | --file <path> [--receipt | --json]

@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `client.meaning.proposals.infer_definitions(ids)` drafts glossary text onto
+  pending `vocabulary_term` proposals. `accept(id, { definition? })` can supply
+  a definition on resolve. CLI: `loxtep proposals list|accept|reject|infer-definitions`.
+
 ## [0.9.25] - 2026-10-10
 
 ### Added

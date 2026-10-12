@@ -111,6 +111,7 @@ describe('LoxtepClient', () => {
 
     const proposals = (client.meaning as Record<string, unknown>).proposals as Record<string, unknown>;
     expect(typeof proposals.list).toBe('function');
+    expect(typeof proposals.infer_definitions).toBe('function');
     expect(typeof proposals.accept).toBe('function');
     expect(typeof proposals.reject).toBe('function');
     expect(typeof proposals.accept_batch).toBe('function');

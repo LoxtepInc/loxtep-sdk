@@ -165,6 +165,11 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     tests: ['commands/candidates-cmd.test.ts', 'client/mining.test.ts'],
     notes: 'list/act on context-mining candidates (client.review.mining)',
   },
+  proposals: {
+    kind: 'unit',
+    tests: ['client/proposals.test.ts'],
+    notes: 'list/accept/reject/infer-definitions (client.meaning.proposals + MCP loxtep_meaning)',
+  },
   deployments: {
     kind: 'unit',
     tests: ['commands/deployments-cmd.test.ts', 'client/deployments.test.ts'],
@@ -219,6 +224,7 @@ describe('CLI command coverage registry', () => {
       'improvements',
       'cdlc',
       'candidates',
+      'proposals',
       'deployments',
       'observe',
       'queue',

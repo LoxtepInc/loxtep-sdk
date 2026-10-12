@@ -67,6 +67,51 @@ describe('createProposalsApi', () => {
     expect(result.disposition).toBe('accepted');
   });
 
+  it('accept with definition uses edited disposition', async () => {
+    let capturedBody: unknown = null;
+    const http = {
+      put: async (_path: string, body: unknown) => {
+        capturedBody = body;
+        return {
+          success: true as const,
+          data: { semantic_proposal_id: 'p1', disposition: 'edited' },
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createProposalsApi(http);
+    await api.accept('p1', { definition: 'Count of coalesced notifications.' });
+    expect(capturedBody).toEqual({
+      disposition: 'edited',
+      definition: 'Count of coalesced notifications.',
+    });
+  });
+
+  it('infer_definitions POSTs ids', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return {
+          success: true as const,
+          data: {
+            defined: [{ semantic_proposal_id: 'p1', definition: 'Email address.' }],
+            undefined_ids: [],
+            skipped_ids: [],
+          },
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createProposalsApi(http);
+    const result = await api.infer_definitions(['p1']);
+    expect(capturedPath).toBe('/semantic-layer/semantic-proposals/infer-definitions');
+    expect(capturedBody).toEqual({ semantic_proposal_ids: ['p1'] });
+    expect(result.defined).toHaveLength(1);
+  });
+
   it('reject PUTs disposition rejected', async () => {
     let capturedBody: unknown = null;
     const http = {
