@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Union
 
 from .approvals import ApprovalsApi, AsyncApprovalsApi
+from .cdlc import AsyncCdlcApi, CdlcApi
 from .improvements import AsyncImprovementsApi, ImprovementsApi
 
 
@@ -13,3 +14,4 @@ from .improvements import AsyncImprovementsApi, ImprovementsApi
 class ReviewFacade:
     approvals: Union[ApprovalsApi, AsyncApprovalsApi]
     improvements: Union[ImprovementsApi, AsyncImprovementsApi]
+    cdlc: Union[CdlcApi, AsyncCdlcApi]

@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.27] - 2026-10-12
+
+### Added
+
+- `client.governance.policies` and `client.governance.access_requests` wrap policy CRUD and access-request create, list, and decide. `client.build.data_products.semantic_inference` requests, reads, and promotes hosted inference. `client.meaning.ontology` discovers and accepts relationships, and `client.entities.infer_projection` infers an entity projection. `client.review.cdlc` adds `list_artifacts`, `submit_for_review`, `list_cdlc_review_queue` (alias of `list_review_queue`), `list_identity_clusters`, `approve_review`, and `bridge_semantics`. `emit_semantic_gap_candidate` stays MCP-only.
+
 ## [0.9.26] - 2026-10-12
 
 ### Added

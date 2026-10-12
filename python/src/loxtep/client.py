@@ -1,6 +1,7 @@
 """
 LoxtepClient (sync) and AsyncLoxtepClient (async).
 Ten MCP-aligned namespaces: session, connect, workspace, build, define, meaning, review, query, observe, context.
+Plus governance (policies, access requests) and entities (projection inference).
 Top-level get_writer / get_reader delegate to data-products stream logic.
 """
 
@@ -21,6 +22,7 @@ from .bundles import AsyncBundlesApi, BundlesApi
 from .packages import AsyncPackagesApi, PackagesApi
 from .catalog import AsyncCatalogApi, CatalogApi
 from .connect import ConnectFacade
+from .cdlc import AsyncCdlcApi, CdlcApi
 from .connectors import AsyncConnectorsApi, ConnectorsApi
 from .context import ContextFacade
 from .data_contracts import AsyncDataContractsApi, DataContractsApi
@@ -29,12 +31,15 @@ from .define import DefineFacade
 from .deployments import AsyncDeploymentsApi, DeploymentsApi
 from .discovery import AsyncDiscoveryApi, DiscoveryApi
 from .domains import AsyncDomainsApi, DomainsApi
+from .entities import AsyncEntitiesApi, EntitiesApi
+from .governance import AsyncGovernanceApi, GovernanceApi
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient, RateLimitInfo
 from .improvements import AsyncImprovementsApi, ImprovementsApi
 from .instances import AsyncInstancesApi, InstancesApi
 from .meaning import MeaningFacade
 from .observe import AsyncObserveApi, ObserveApi
 from .observe_facade import ObserveFacade
+from .ontology import AsyncOntologyApi, OntologyApi
 from .procedures import AsyncProceduresApi, ProceduresApi
 from .process_intelligence import AsyncProcessIntelligenceApi, ProcessIntelligenceApi
 from .product_definition import AsyncProductDefinitionApi, ProductDefinitionApi
@@ -46,6 +51,7 @@ from .queues import AsyncQueuesApi, QueuesApi
 from .review import ReviewFacade
 from .rstreams import resolve_stream_config
 from .schemas import AsyncSchemasApi, SchemasApi
+from .semantic import AsyncSemanticLayerApi, SemanticLayerApi
 from .session import SessionApi
 from .shapes import AsyncShapesApi, ShapesApi
 from .standards import AsyncStandardsApi, StandardsApi
@@ -189,11 +195,16 @@ class LoxtepClient:
             proposals=ProposalsApi(self._http),
             bundles=BundlesApi(self._http),
             packages=PackagesApi(self._http),
+            ontology=OntologyApi(self._http),
+            semantic=SemanticLayerApi(self._http),
         )
         self.review = ReviewFacade(
             approvals=ApprovalsApi(self._http, organization_id=organization_id),
             improvements=ImprovementsApi(self._http),
+            cdlc=CdlcApi(self._http, organization_id=organization_id),
         )
+        self.governance = GovernanceApi(self._http, organization_id=organization_id)
+        self.entities = EntitiesApi(self._http)
         self.query = QueryFacade(
             catalog=CatalogApi(self._http),
             discovery=DiscoveryApi(self._http),
@@ -280,7 +291,7 @@ class _MetricsStub:
 
 
 class AsyncLoxtepClient:
-    """Async Loxtep SDK client. Same ten namespaces as LoxtepClient."""
+    """Async Loxtep SDK client. Same namespaces as LoxtepClient."""
 
     def __init__(
         self,
@@ -357,11 +368,16 @@ class AsyncLoxtepClient:
             proposals=AsyncProposalsApi(self._http),
             bundles=AsyncBundlesApi(self._http),
             packages=AsyncPackagesApi(self._http),
+            ontology=AsyncOntologyApi(self._http),
+            semantic=AsyncSemanticLayerApi(self._http),
         )
         self.review = ReviewFacade(
             approvals=AsyncApprovalsApi(self._http, organization_id=organization_id),
             improvements=AsyncImprovementsApi(self._http),
+            cdlc=AsyncCdlcApi(self._http, organization_id=organization_id),
         )
+        self.governance = AsyncGovernanceApi(self._http, organization_id=organization_id)
+        self.entities = AsyncEntitiesApi(self._http)
         self.query = QueryFacade(
             catalog=AsyncCatalogApi(self._http),
             discovery=AsyncDiscoveryApi(self._http),

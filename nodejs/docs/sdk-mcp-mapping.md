@@ -4,22 +4,27 @@ This is a **guide for agents**, not an exhaustive OpenAPI listing. MCP stays on
 **HTTP**; the SDK adds **typed REST** and the **stream data plane** for live
 I/O.
 
-The SDK exposes **10 namespaces** that mirror hosted MCP tools. Old flat
-namespaces (`data_products`, `workflows`, `connectors`, …) are **removed** — no
-deprecation aliases.
+The SDK exposes **10 namespaces** that mirror hosted MCP tools, plus HTTP
+namespaces `client.governance` (policies and access requests) and
+`client.entities` (projection inference). Old flat namespaces
+(`data_products`, `workflows`, `connectors`, …) are **removed** — no
+deprecation aliases. `emit_semantic_gap_candidate` stays MCP-only: it enqueues
+inside the AI lambda and has no HTTP route.
 
 | MCP facade | SDK namespace | Nested APIs / notes |
 | --- | --- | --- |
 | `loxtep_session` | `client.session` | `get_current_user`, `get_current_organization`, `logout` |
 | `loxtep_connect` | `client.connect` | `.connectors.*`, `.templates.*` |
 | `loxtep_workspace` | `client.workspace` | `.projects.*`, `.instances.*` (`list`/`get`/`create`; **`get_stream_config` is REST/CLI only** — not an MCP op). `.versions` (REST pending); planned MCP `get_project_workspace_status` → `ProjectWorkspaceStatus` ([docs](./project-workspace-status.md)) |
-| `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*`, `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
-| `loxtep_define` | `client.define` | `.schemas.*` (data-product), `.shapes.*` (domain canonical shapes), `.quality.*`, `.standards.*`, `.data_contracts.*`, `.domains.*`, `.product_definition.*` (agent definition proposals) |
-| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*`, `.packs.*`, `.semantic.*`, `.proposals.*`, `.bundles.import` |
-| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (get/transition/propagate/lineage/deps + `list_review_queue`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc …`, `loxtep candidates list|act` |
+| `loxtep_build` | `client.build` | `.workflows.*`, `.triggers.*`, `.data_products.*` (includes `.semantic_inference.request/get/promote`), `.targets.*`, deploy writes, `.get_writer({ bot_id, queue })` escape hatch |
+| `loxtep_define` | `client.define` | `.schemas.*` (data-product), `.shapes.*` (domain canonical shapes), `.quality.*`, `.standards.*` (`/governance/standards`), `.data_contracts.*`, `.domains.*`, `.product_definition.*` (agent definition proposals). Policy CRUD and access requests are `client.governance`, not `define.standards`. |
+| `loxtep_meaning` | `client.meaning` | `.thesaurus.*`, `.ontology.*` (includes `discover_ontology_relationships` / `accept_ontology_relationships`), `.packs.*`, `.semantic.*` (`apply_glossary_bindings`), `.proposals.*`, `.bundles.import` |
+| `loxtep_review` | `client.review` | `.approvals.*`, `.improvements.*`, `.cdlc.*` (lifecycle, propagation, `list_artifacts`, `submit_for_review`, `list_review_queue` / `list_cdlc_review_queue`, `list_identity_clusters`, `approve_review`, `bridge_semantics`); `.mining.*` (`run_mining_pass`, `list_candidates`, `act_on_candidate`). CLI: `loxtep cdlc …`, `loxtep candidates list|act` |
 | `loxtep_query` | `client.query` | `.catalog.*`, `.discovery.*`, `.query()`, `.list_tables()`, `.search()` |
 | `loxtep_observe` | `client.observe` | `.status()`, `.stream_config()`, queue `.open_reader` / `.open_writer`, `.list_deployments()`, `.get_deployment()`, trust signals |
 | `loxtep_context` | `client.context` | `.process_intelligence.*`, `.procedures.*`, `.activity.*`, `.issues.*`, `.goals.*`, `.workstreams.*` |
+| — | `client.governance` | `.policies.*` (`/governance/policies`), `.access_requests.*` (`/governance/access-requests`). Not a hosted MCP facade name; the operations ship on the SDK. |
+| — | `client.entities` | `.infer_projection` → `POST /entities/entities/{id}/projections/infer` |
 
 ## Approvals fixture / env bootstrap
 
@@ -182,6 +187,37 @@ Default import `activation` is `stage` (package revision + approval). Use
 result always includes `skipped_count` and `errors`. Staged / dry_run responses
 are not treated as failures when plan skips exist.
 
+## Meaning: glossary, relationships, semantic inference, entity projection
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `apply_glossary_bindings` | `client.meaning.semantic.apply_glossary_bindings({ data_product_id, mapping_revision? })` | `POST /semantic-layer/glossary/bindings` |
+| `discover_ontology_relationships` | `client.meaning.ontology.discover_ontology_relationships({ limit? })` | `POST /graph/relationships/discover` (`limit` omitted when absent) |
+| `accept_ontology_relationships` | `client.meaning.ontology.accept_ontology_relationships({ relationships, data_product_id? })` | `POST /graph/relationships/accept` |
+| `request_semantic_inference` | `client.build.data_products.semantic_inference.request(id)` | `POST /dataproducts/dataproducts/{id}/semantic-inference` body `{}` |
+| `get_semantic_inference` | `.semantic_inference.get(id)` | `GET` same path |
+| `promote_semantic_inference` | `.semantic_inference.promote(id, { run_id, action, issue_id? })` | `POST …/semantic-inference/promote` |
+| infer entity projection | `client.entities.infer_projection(entity_definition_id, { linked_data_product_ids? })` | `POST /entities/entities/{id}/projections/infer` |
+
+`emit_semantic_gap_candidate` remains MCP-only (queue enqueue inside the AI lambda, no HTTP).
+
+## Governance: policies and access requests
+
+Standards stay on `client.define.standards` (`/governance/standards`). These
+routes are not doubled and are not org-scoped in the path. `organization_id`
+still comes from the client.
+
+| MCP operation | SDK | REST |
+| --- | --- | --- |
+| `list_governance_policies` | `client.governance.policies.list({ page?, page_size?, search?, domain_id?, include_org_policies?, type? })` | `GET /governance/policies` |
+| `get_governance_policy` | `.get(policy_id)` | `GET /governance/policies/{policy_id}` |
+| `create_governance_policy` | `.create({ name, rules, … })` | `POST /governance/policies` (`type` omitted when absent; platform default `data_governance`) |
+| `update_governance_policy` | `.update(policy_id, partial)` | `PUT /governance/policies/{policy_id}` (id stays off the body) |
+| `delete_governance_policy` | `.delete(policy_id)` | `DELETE /governance/policies/{policy_id}` |
+| `create_access_request` | `client.governance.access_requests.create({ resource_type, resource_id, access_type, justification?, metadata? })` | `POST /governance/access-requests` |
+| `list_access_requests` | `.list({ page?, page_size?, status?, resource_type?, resource_id? })` | `GET /governance/access-requests` |
+| `decide_access_request` | `.decide(access_request_id, { action, rejection_reason? })` | `PUT /governance/access-requests/{access_request_id}` |
+
 ## Build: query_trigger preview / run (D14)
 
 MCP `loxtep_build` ops for enrichment SQL derivation (`workflow.json` →
@@ -264,6 +300,12 @@ MCP `loxtep_review` CDLC / mining ops map to `client.review.cdlc` and
 | `list_propagation_lineage` | `.list_propagation_lineage({ … })` | `GET …/cdlc/propagation-lineage` |
 | `list_context_dependencies` | `.list_context_dependencies({ … })` | `GET …/cdlc/dependencies` |
 | `list_review_queue` | `.list_review_queue({ … })` | `GET …/cdlc/review-queue` |
+| `list_cdlc_review_queue` | `.list_cdlc_review_queue({ … })` | same GET as `list_review_queue` |
+| `list_artifacts` | `.list_artifacts({ lifecycle_state?, scope?, artifact_type?, owner?, domain_id? })` | `GET …/cdlc/artifacts` |
+| `submit_for_review` | `.submit_for_review({ artifact_refs })` | `POST …/cdlc/artifacts/submit-for-review` |
+| `list_identity_clusters` | `.list_identity_clusters()` | `GET …/cdlc/identity-clusters` |
+| `approve_review` | `.approve_review({ task_id })` | `POST …/cdlc/review-queue/{task_id}/approve` body `{}` |
+| `bridge_semantics` | `.bridge_semantics({ data_product_id })` | `POST /graph/cdlc/bridge-semantics` (not under `/organizations/{org}/cdlc`) |
 | `run_mining_pass` | `client.review.mining.run_mining_pass({ … })` | `POST …/mining/run` |
 | `list_candidates` | `.list_candidates({ … })` | `GET …/mining/candidates` |
 | `act_on_candidate` | `.act_on_candidate(candidate_id, { action, … })` | `POST …/mining/candidates/{id}/act` |

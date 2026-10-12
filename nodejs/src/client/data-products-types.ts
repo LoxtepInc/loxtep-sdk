@@ -317,3 +317,12 @@ export interface DataProductPromotionResult {
   diagnostics?: DataProductPromotionPrerequisite[];
   error?: string;
 }
+
+export type SemanticInferencePromoteAction = 'accept' | 'dismiss';
+
+/** POST …/semantic-inference/promote. `issue_id` is omitted when absent. */
+export interface SemanticInferencePromoteInput {
+  run_id: string;
+  action: SemanticInferencePromoteAction;
+  issue_id?: string;
+}

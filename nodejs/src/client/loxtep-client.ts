@@ -10,6 +10,8 @@ import { createQualityApi } from './quality.js';
 import { createQualityRulesApi } from './quality-rules.js';
 import { createApprovalsApi } from './approvals.js';
 import { createCdlcApi } from './cdlc.js';
+import { createEntitiesApi } from './entities.js';
+import { createGovernanceApi } from './governance.js';
 import { createMiningApi } from './mining.js';
 import { createDeploymentsApi } from './deployments.js';
 
@@ -96,6 +98,8 @@ export interface FromWorkspaceOptions {
 /**
  * Main SDK client. Ten namespaces mirror hosted MCP tool facades:
  * session, connect, workspace, build, define, meaning, review, query, observe, context.
+ * `governance` and `entities` are extra HTTP namespaces (policies, access
+ * requests, projection inference). Standards stay on `define.standards`.
  * Top-level `get_writer` / `get_reader` resolve data products for stream I/O.
  */
 export class LoxtepClient {
@@ -148,6 +152,12 @@ export class LoxtepClient {
 
   /** Metrics: log, get_reporter (stub until metrics wiring is added). */
   readonly metrics: MetricsSurface;
+
+  /** Policies and access requests. Standards stay on `define.standards`. */
+  readonly governance: ReturnType<typeof createGovernanceApi>;
+
+  /** Entity definition projection inference. */
+  readonly entities: ReturnType<typeof createEntitiesApi>;
 
   constructor(options: LoxtepClientOptions) {
     const useLegacy = options.url_resolution === 'legacy';
@@ -319,6 +329,10 @@ export class LoxtepClient {
       workstreams: agentWorkspaceApi.workstreams,
     });
     this.metrics = this.createMetricsSurface(options.metrics);
+    this.governance = createGovernanceApi(this._http, {
+      organization_id: options.organization_id,
+    });
+    this.entities = createEntitiesApi(this._http);
   }
 
   /** Select the instance sent as x-loxtep-instance-id on later requests. */

@@ -4,22 +4,34 @@
  * MCP: loxtep_review CDLC ops (get_artifact_lifecycle, transition_lifecycle,
  * propagate_change, list_propagation_lineage, list_context_dependencies).
  * REST steward path: list_review_queue (GET .../cdlc/review-queue).
+ * list_cdlc_review_queue is the same GET. bridge_semantics is not org-scoped.
  *
+ *   GET  /graph/organizations/{org}/cdlc/artifacts
  *   GET  /graph/organizations/{org}/cdlc/artifacts/{artifact_ref}
  *   POST /graph/organizations/{org}/cdlc/artifacts/{artifact_ref}/transition
+ *   POST /graph/organizations/{org}/cdlc/artifacts/submit-for-review
  *   POST /graph/organizations/{org}/cdlc/propagate
  *   GET  /graph/organizations/{org}/cdlc/propagation-lineage
  *   GET  /graph/organizations/{org}/cdlc/dependencies
  *   GET  /graph/organizations/{org}/cdlc/review-queue
+ *   GET  /graph/organizations/{org}/cdlc/identity-clusters
+ *   POST /graph/organizations/{org}/cdlc/review-queue/{task_id}/approve
+ *   POST /graph/cdlc/bridge-semantics
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
 import type {
+  ApproveReviewInput,
   ArtifactLifecycle,
+  ArtifactListResult,
+  BridgeSemanticsInput,
   CdlcApiDeps,
+  CdlcArtifactSummary,
   ContextDependenciesListResult,
   GetArtifactLifecycleInput,
+  IdentityClusterListResult,
   LifecycleTransitionResult,
+  ListArtifactsFilters,
   ListContextDependenciesFilters,
   ListPropagationLineageFilters,
   ListReviewQueueFilters,
@@ -29,6 +41,8 @@ import type {
   PropagationLineageRecord,
   ReviewQueueListResult,
   ReviewTask,
+  SubmitForReviewInput,
+  SubmitForReviewResult,
   TransitionLifecycleInput,
 } from './cdlc-types.js';
 
@@ -125,6 +139,42 @@ function normalizeReviewQueue(payload: unknown): ReviewQueueListResult {
   return { tasks, count: tasks.length };
 }
 
+function normalizeArtifacts(payload: unknown): ArtifactListResult {
+  if (Array.isArray(payload)) {
+    const artifacts = payload as CdlcArtifactSummary[];
+    return { artifacts, count: artifacts.length };
+  }
+  const obj = (payload ?? {}) as {
+    artifacts?: CdlcArtifactSummary[];
+    items?: CdlcArtifactSummary[];
+    count?: number;
+  };
+  const artifacts = Array.isArray(obj.artifacts)
+    ? obj.artifacts
+    : Array.isArray(obj.items)
+      ? obj.items
+      : [];
+  return { artifacts, count: obj.count ?? artifacts.length };
+}
+
+function normalizeClusters(payload: unknown): IdentityClusterListResult {
+  if (Array.isArray(payload)) {
+    const clusters = payload as Array<Record<string, unknown>>;
+    return { clusters, count: clusters.length };
+  }
+  const obj = (payload ?? {}) as {
+    clusters?: Array<Record<string, unknown>>;
+    items?: Array<Record<string, unknown>>;
+    count?: number;
+  };
+  const clusters = Array.isArray(obj.clusters)
+    ? obj.clusters
+    : Array.isArray(obj.items)
+      ? obj.items
+      : [];
+  return { clusters, count: obj.count ?? clusters.length };
+}
+
 export interface CdlcApi {
   get_artifact_lifecycle: (input: GetArtifactLifecycleInput) => Promise<ArtifactLifecycle>;
   transition_lifecycle: (input: TransitionLifecycleInput) => Promise<LifecycleTransitionResult>;
@@ -137,10 +187,18 @@ export interface CdlcApi {
   ) => Promise<ContextDependenciesListResult>;
   /** Steward review queue (pending `in_review` / queue_review tasks). */
   list_review_queue: (filters?: ListReviewQueueFilters) => Promise<ReviewQueueListResult>;
+  /** MCP name for `list_review_queue` (same GET). */
+  list_cdlc_review_queue: (filters?: ListReviewQueueFilters) => Promise<ReviewQueueListResult>;
+  list_artifacts: (filters?: ListArtifactsFilters) => Promise<ArtifactListResult>;
+  submit_for_review: (input: SubmitForReviewInput) => Promise<SubmitForReviewResult>;
+  list_identity_clusters: (filters?: { organization_id?: string }) => Promise<IdentityClusterListResult>;
+  approve_review: (input: ApproveReviewInput) => Promise<unknown>;
+  /** POST /graph/cdlc/bridge-semantics — not under /organizations/{org}/cdlc. */
+  bridge_semantics: (input: BridgeSemanticsInput) => Promise<unknown>;
 }
 
 export function createCdlcApi(http: LoxtepHttpClient, deps: CdlcApiDeps = {}): CdlcApi {
-  return {
+  const api: CdlcApi = {
     async get_artifact_lifecycle(input: GetArtifactLifecycleInput): Promise<ArtifactLifecycle> {
       const org = requireOrg(deps, input.organization_id);
       const path = `${orgBase(org)}/artifacts/${encodeURIComponent(input.artifact_ref)}`;
@@ -222,5 +280,58 @@ export function createCdlcApi(http: LoxtepHttpClient, deps: CdlcApiDeps = {}): C
       const res = await http.get<unknown>(`${orgBase(org)}/review-queue${qs}`);
       return normalizeReviewQueue(unwrapData(res));
     },
+
+    list_cdlc_review_queue(filters?: ListReviewQueueFilters): Promise<ReviewQueueListResult> {
+      return api.list_review_queue(filters);
+    },
+
+    async list_artifacts(filters: ListArtifactsFilters = {}): Promise<ArtifactListResult> {
+      const org = requireOrg(deps, filters.organization_id);
+      const search = new URLSearchParams();
+      if (filters.lifecycle_state) search.set('lifecycle_state', filters.lifecycle_state);
+      if (filters.scope) search.set('scope', filters.scope);
+      if (filters.artifact_type) search.set('artifact_type', filters.artifact_type);
+      if (filters.owner) search.set('owner', filters.owner);
+      if (filters.domain_id) search.set('domain_id', filters.domain_id);
+      const qs = search.toString() ? `?${search.toString()}` : '';
+      const res = await http.get<unknown>(`${orgBase(org)}/artifacts${qs}`);
+      return normalizeArtifacts(unwrapData(res));
+    },
+
+    async submit_for_review(input: SubmitForReviewInput): Promise<SubmitForReviewResult> {
+      const org = requireOrg(deps, input.organization_id);
+      if (!input.artifact_refs?.length) {
+        throw new Error('artifact_refs is required');
+      }
+      const res = await http.post<unknown>(`${orgBase(org)}/artifacts/submit-for-review`, {
+        artifact_refs: input.artifact_refs,
+      });
+      return unwrapData<SubmitForReviewResult>(res);
+    },
+
+    async list_identity_clusters(
+      filters: { organization_id?: string } = {}
+    ): Promise<IdentityClusterListResult> {
+      const org = requireOrg(deps, filters.organization_id);
+      const res = await http.get<unknown>(`${orgBase(org)}/identity-clusters`);
+      return normalizeClusters(unwrapData(res));
+    },
+
+    async approve_review(input: ApproveReviewInput): Promise<unknown> {
+      if (!input.task_id) throw new Error('task_id is required');
+      const org = requireOrg(deps, input.organization_id);
+      const path = `${orgBase(org)}/review-queue/${encodeURIComponent(input.task_id)}/approve`;
+      const res = await http.post<unknown>(path, {});
+      return unwrapData(res);
+    },
+
+    async bridge_semantics(input: BridgeSemanticsInput): Promise<unknown> {
+      if (!input.data_product_id) throw new Error('data_product_id is required');
+      const res = await http.post<unknown>('/graph/cdlc/bridge-semantics', {
+        data_product_id: input.data_product_id,
+      });
+      return unwrapData(res);
+    },
   };
+  return api;
 }

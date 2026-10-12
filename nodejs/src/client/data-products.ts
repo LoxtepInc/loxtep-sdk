@@ -26,6 +26,7 @@ import type {
   UsageMapResponse,
   DataProductPromotionReadiness,
   DataProductPromotionResult,
+  SemanticInferencePromoteInput,
 } from './data-products-types.js';
 import { WarehouseQueryError } from './data-products-types.js';
 import type { QueueMetadata, ReaderCheckpoint } from './queue-types.js';
@@ -129,6 +130,14 @@ function unwrapRecord(res: unknown): Record<string, unknown> {
   return record;
 }
 
+function unwrapData<T>(res: unknown): T {
+  return ((res as { data?: T }).data ?? res) as T;
+}
+
+function semanticInferencePath(id: string): string {
+  return `/dataproducts/dataproducts/${encodeURIComponent(id)}/semantic-inference`;
+}
+
 function eventIdentity(event: StreamEvent | undefined): string | null {
   if (!event) return null;
   const record = event as Record<string, unknown>;
@@ -180,6 +189,11 @@ export function createDataProductsApi(
     data_product_id: string,
     target_tier: 'silver' | 'gold'
   ) => Promise<DataProductPromotionResult>;
+  semantic_inference: {
+    request: (id: string) => Promise<unknown>;
+    get: (id: string) => Promise<unknown>;
+    promote: (id: string, body: SemanticInferencePromoteInput) => Promise<unknown>;
+  };
 } {
   return {
     async get(id: string, options?: DataProductGetOptions): Promise<DataProduct> {
@@ -904,6 +918,29 @@ export function createDataProductsApi(
         { target_tier }
       );
       return res.data;
+    },
+
+    semantic_inference: {
+      async request(id: string): Promise<unknown> {
+        if (!id) throw new Error('id is required');
+        const res = await http.post(semanticInferencePath(id), {});
+        return unwrapData(res);
+      },
+      async get(id: string): Promise<unknown> {
+        if (!id) throw new Error('id is required');
+        const res = await http.get(semanticInferencePath(id));
+        return unwrapData(res);
+      },
+      async promote(id: string, body: SemanticInferencePromoteInput): Promise<unknown> {
+        if (!id) throw new Error('id is required');
+        const payload: Record<string, unknown> = {
+          run_id: body.run_id,
+          action: body.action,
+        };
+        if (body.issue_id !== undefined) payload.issue_id = body.issue_id;
+        const res = await http.post(`${semanticInferencePath(id)}/promote`, payload);
+        return unwrapData(res);
+      },
     },
   };
 }

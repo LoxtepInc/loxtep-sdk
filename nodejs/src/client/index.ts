@@ -34,7 +34,43 @@ export type {
   ReviewTaskStatus,
   ReviewTask,
   ReviewQueueListResult,
+  ListArtifactsFilters,
+  CdlcArtifactScope,
+  CdlcArtifactSummary,
+  ArtifactListResult,
+  SubmitForReviewInput,
+  SubmitForReviewResult,
+  ApproveReviewInput,
+  BridgeSemanticsInput,
+  IdentityClusterListResult,
 } from './cdlc-types.js';
+export type { GovernanceApi } from './governance.js';
+export type {
+  AccessRequest,
+  AccessRequestListFilters,
+  AccessRequestListResult,
+  AccessRequestStatus,
+  AccessResourceType,
+  AccessType,
+  CreateAccessRequestInput,
+  CreatePolicyInput,
+  DecideAccessRequestInput,
+  GovernancePolicy,
+  PolicyEnforcement,
+  PolicyListFilters,
+  PolicyListResult,
+  PolicyRule,
+  PolicyRuleAction,
+  PolicyScope,
+  UpdatePolicyInput,
+} from './governance-types.js';
+export type { EntitiesApi, InferEntityProjectionInput } from './entities.js';
+export type {
+  AcceptOntologyRelationshipInput,
+  AcceptOntologyRelationshipsInput,
+  DiscoverOntologyRelationshipsInput,
+} from './ontology-types.js';
+export type { SemanticInferencePromoteInput } from './data-products-types.js';
 export type { CdlcApi } from './cdlc.js';
 export type {
   MiningApiDeps,

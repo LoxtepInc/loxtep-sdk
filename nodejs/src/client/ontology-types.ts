@@ -138,3 +138,23 @@ export interface OntologyGetRelationshipsFilters {
   relation_type?: string;
   namespace?: string;
 }
+
+/** POST /graph/relationships/discover — omit `limit` when absent. */
+export interface DiscoverOntologyRelationshipsInput {
+  limit?: number;
+}
+
+export interface AcceptOntologyRelationshipInput {
+  source_entity_type: string;
+  target_entity_type: string;
+  relation_type: string;
+  relation_uri?: string;
+  join_field?: string;
+  description?: string;
+}
+
+/** POST /graph/relationships/accept — omit `data_product_id` when absent. */
+export interface AcceptOntologyRelationshipsInput {
+  relationships: AcceptOntologyRelationshipInput[];
+  data_product_id?: string;
+}

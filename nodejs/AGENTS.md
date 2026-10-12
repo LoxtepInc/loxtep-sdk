@@ -170,8 +170,10 @@ const fromWs = LoxtepClient.fromWorkspace();
 
 ### Client namespaces (MCP facades)
 
-`LoxtepClient` exposes **10 facades** that mirror hosted MCP tools. See
+`LoxtepClient` exposes **10 facades** that mirror hosted MCP tools, plus
+`client.governance` and `client.entities`. See
 [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
+`emit_semantic_gap_candidate` stays MCP-only (no HTTP).
 
 | Facade | Nested APIs | Purpose |
 | --- | --- | --- |
@@ -181,7 +183,9 @@ const fromWs = LoxtepClient.fromWorkspace();
 | `client.build` | `.workflows`, `.triggers`, `.data_products`, `.targets` | Authoring, deploy, CRUD, stream/replay |
 | `client.define` | `.schemas`, `.shapes`, `.quality`, `.standards`, `.data_contracts`, `.domains` | Data-product schemas + domain shapes + quality + governance |
 | `client.meaning` | `.thesaurus`, `.ontology`, `.packs`, `.semantic`, `.proposals`, `.bundles` | Vocabulary + ontology + packs + semantic search + proposal review + bundle import |
-| `client.review` | `.approvals`, `.improvements`, `.cdlc`, `.mining` | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation + review-queue list, context mining (run/list/act) |
+| `client.review` | `.approvals`, `.improvements`, `.cdlc`, `.mining` | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation, artifact list, submit-for-review, review-queue list/approve, identity clusters, bridge-semantics, context mining (run/list/act) |
+| `client.governance` | `.policies`, `.access_requests` | Policy CRUD and access-request create/list/decide. Standards stay on `define.standards`. |
+| `client.entities` | `.infer_projection` | Infer an entity projection from optional linked data products |
 | `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
 | `client.observe` | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O |
 | `client.context` | `.procedures`, `.activity`, `.process_intelligence`, `.issues`, `.goals`, `.workstreams` | Process intel, activity feed, agent-workspace reads |

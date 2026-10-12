@@ -179,6 +179,29 @@ describe('LoxtepClient', () => {
     expect(client.api_url).toBe('https://api.example.com');
   });
 
+  it('wires governance, entities, semantic inference, and CDLC lifecycle methods', () => {
+    const client = new LoxtepClient({
+      url_resolution: 'legacy',
+      api_url: 'https://api.example.com',
+      auth: { type: 'jwt', token: 'x' },
+      organization_id: 'org-1',
+    });
+    expect(typeof client.governance.policies.list).toBe('function');
+    expect(typeof client.governance.access_requests.decide).toBe('function');
+    expect(typeof client.define.standards.list).toBe('function');
+    expect(typeof client.entities.infer_projection).toBe('function');
+    expect(typeof client.build.data_products.semantic_inference.request).toBe('function');
+    expect(typeof client.build.data_products.semantic_inference.get).toBe('function');
+    expect(typeof client.build.data_products.semantic_inference.promote).toBe('function');
+    expect(typeof client.meaning.semantic.apply_glossary_bindings).toBe('function');
+    expect(typeof client.meaning.ontology.discover_ontology_relationships).toBe('function');
+    expect(typeof client.meaning.ontology.accept_ontology_relationships).toBe('function');
+    expect(typeof client.review.cdlc.list_artifacts).toBe('function');
+    expect(typeof client.review.cdlc.list_cdlc_review_queue).toBe('function');
+    expect(typeof client.review.cdlc.list_review_queue).toBe('function');
+    expect(typeof client.review.cdlc.bridge_semantics).toBe('function');
+  });
+
   it('data_products.get calls GET /dataproducts/:id and returns data when fetch is mocked', async () => {
     const id = '550e8400-e29b-41d4-a716-446655440000';
     const mockData = {
