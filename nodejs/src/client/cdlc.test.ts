@@ -243,4 +243,127 @@ describe('createCdlcApi', () => {
       api.get_artifact_lifecycle({ artifact_ref: 'thesaurus_term:t1' })
     ).rejects.toThrow('organization_id is required');
   });
+
+  it('list_artifacts GETs .../cdlc/artifacts with snake_case filters', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return {
+          success: true as const,
+          data: [{ artifact_ref: 'thesaurus_term:t1', lifecycle_state: 'draft' }],
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http, { organization_id: 'org1' });
+    const result = await api.list_artifacts({
+      lifecycle_state: 'draft',
+      scope: 'personal',
+      artifact_type: 'thesaurus_term',
+      owner: 'alice',
+      domain_id: 'dom-1',
+    });
+
+    expect(capturedPath).toBe(
+      '/graph/organizations/org1/cdlc/artifacts?lifecycle_state=draft&scope=personal&artifact_type=thesaurus_term&owner=alice&domain_id=dom-1'
+    );
+    expect(result.count).toBe(1);
+    expect(result.artifacts[0]?.artifact_ref).toBe('thesaurus_term:t1');
+  });
+
+  it('submit_for_review POSTs artifact_refs only', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: { results: [{ artifact_ref: 'thesaurus_term:t1' }] } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http, { organization_id: 'org1' });
+    const result = await api.submit_for_review({
+      artifact_refs: ['thesaurus_term:t1', 'ontology_concept:c1'],
+    });
+
+    expect(capturedPath).toBe('/graph/organizations/org1/cdlc/artifacts/submit-for-review');
+    expect(capturedBody).toEqual({
+      artifact_refs: ['thesaurus_term:t1', 'ontology_concept:c1'],
+    });
+    expect(result.results).toHaveLength(1);
+  });
+
+  it('list_cdlc_review_queue is the same GET as list_review_queue', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: { tasks: [], count: 0 } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http, { organization_id: 'org1' });
+    await api.list_cdlc_review_queue({ domain_id: 'dom-1' });
+    expect(capturedPath).toBe('/graph/organizations/org1/cdlc/review-queue?domain_id=dom-1');
+  });
+
+  it('list_identity_clusters GETs .../identity-clusters', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: [{ cluster_key: 'ck1' }] };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http, { organization_id: 'org1' });
+    const result = await api.list_identity_clusters();
+    expect(capturedPath).toBe('/graph/organizations/org1/cdlc/identity-clusters');
+    expect(result.count).toBe(1);
+    expect(result.clusters[0]?.cluster_key).toBe('ck1');
+  });
+
+  it('approve_review POSTs an empty body', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: { id: 'task-1', status: 'approved' } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http, { organization_id: 'org1' });
+    const result = await api.approve_review({ task_id: 'task-1' });
+    expect(capturedPath).toBe('/graph/organizations/org1/cdlc/review-queue/task-1/approve');
+    expect(capturedBody).toEqual({});
+    expect(result).toEqual({ id: 'task-1', status: 'approved' });
+  });
+
+  it('bridge_semantics POSTs /graph/cdlc/bridge-semantics without an org prefix', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return {
+          success: true as const,
+          data: { data_product_id: 'dp-1', artifact_ref: 'semantic_attachment:dp-1' },
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createCdlcApi(http);
+    const result = await api.bridge_semantics({ data_product_id: 'dp-1' });
+    expect(capturedPath).toBe('/graph/cdlc/bridge-semantics');
+    expect(capturedBody).toEqual({ data_product_id: 'dp-1' });
+    expect(result).toEqual({
+      data_product_id: 'dp-1',
+      artifact_ref: 'semantic_attachment:dp-1',
+    });
+  });
 });

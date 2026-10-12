@@ -248,4 +248,55 @@ describe('createOntologyApi', () => {
     const api = createOntologyApi(http);
     await expect(api.list_concepts()).rejects.toThrow('organization_id is required');
   });
+
+  it('discover_ontology_relationships omits limit when absent', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: { relationships: [] } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createOntologyApi(http, { organization_id: 'org1' });
+    await api.discover_ontology_relationships();
+    expect(capturedPath).toBe('/graph/relationships/discover');
+    expect(capturedBody).toEqual({});
+
+    await api.discover_ontology_relationships({ limit: 25 });
+    expect(capturedBody).toEqual({ limit: 25 });
+  });
+
+  it('accept_ontology_relationships posts relationships and omits data_product_id when absent', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (path: string, body: unknown) => {
+        capturedPath = path;
+        capturedBody = body;
+        return { success: true as const, data: { accepted: 1 } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createOntologyApi(http);
+    const relationships = [
+      {
+        source_entity_type: 'Order',
+        target_entity_type: 'Person',
+        relation_type: 'customer',
+        join_field: 'customer_id',
+      },
+    ];
+    await api.accept_ontology_relationships({ relationships });
+    expect(capturedPath).toBe('/graph/relationships/accept');
+    expect(capturedBody).toEqual({ relationships });
+
+    await api.accept_ontology_relationships({
+      relationships,
+      data_product_id: 'dp-1',
+    });
+    expect(capturedBody).toEqual({ relationships, data_product_id: 'dp-1' });
+  });
 });

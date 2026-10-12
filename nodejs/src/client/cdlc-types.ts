@@ -174,3 +174,53 @@ export interface ReviewQueueListResult {
   tasks: ReviewTask[];
   count: number;
 }
+
+export type CdlcArtifactScope = 'personal' | 'domain_review' | 'canonical';
+
+export interface ListArtifactsFilters {
+  organization_id?: string;
+  lifecycle_state?: string;
+  scope?: CdlcArtifactScope;
+  artifact_type?: string;
+  owner?: string;
+  domain_id?: string;
+}
+
+export interface CdlcArtifactSummary {
+  artifact_ref?: string;
+  lifecycle_state?: string;
+  artifact_type?: string;
+  owner?: string | null;
+  scope?: string;
+  domain_id?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ArtifactListResult {
+  artifacts: CdlcArtifactSummary[];
+  count: number;
+}
+
+export interface SubmitForReviewInput {
+  artifact_refs: string[];
+  organization_id?: string;
+}
+
+export interface SubmitForReviewResult {
+  results?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export interface ApproveReviewInput {
+  task_id: string;
+  organization_id?: string;
+}
+
+export interface BridgeSemanticsInput {
+  data_product_id: string;
+}
+
+export interface IdentityClusterListResult {
+  clusters: Array<Record<string, unknown>>;
+  count: number;
+}

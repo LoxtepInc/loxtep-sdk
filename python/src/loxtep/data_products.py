@@ -10,7 +10,8 @@ Node.js SDK uses the rstreams stream bus for the same surface.
 from __future__ import annotations
 
 import re
-from typing import Any, AsyncIterator, Iterator, Optional
+from typing import Any, AsyncIterator, Iterator, Mapping, Optional
+from urllib.parse import quote
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 from .models import DataProductKind, UsageMap, UsageMapEdge, UsageMapNode
@@ -27,6 +28,64 @@ def _query_string(params: dict[str, Any]) -> str:
 
 def _unwrap(res: Any) -> Any:
     return res.get("data", res) if isinstance(res, dict) else res
+
+
+def _semantic_base(data_product_id: str) -> str:
+    encoded = quote(str(data_product_id), safe="")
+    return f"/dataproducts/dataproducts/{encoded}/semantic-inference"
+
+
+def _promote_inference_body(body: Mapping[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {"run_id": body["run_id"], "action": body["action"]}
+    if body.get("issue_id") is not None:
+        payload["issue_id"] = body["issue_id"]
+    return payload
+
+
+class SemanticInferenceApi:
+    """Hosted semantic inference for one data product (doubled gateway prefix)."""
+
+    def __init__(self, http: Any) -> None:
+        self._http = http
+
+    def request(self, data_product_id: str) -> Any:
+        if not data_product_id:
+            raise ValueError("id is required")
+        return _unwrap(self._http.post(_semantic_base(data_product_id), {}))
+
+    def get(self, data_product_id: str) -> Any:
+        if not data_product_id:
+            raise ValueError("id is required")
+        return _unwrap(self._http.get(_semantic_base(data_product_id)))
+
+    def promote(self, data_product_id: str, body: Mapping[str, Any]) -> Any:
+        if not data_product_id:
+            raise ValueError("id is required")
+        return _unwrap(
+            self._http.post(f"{_semantic_base(data_product_id)}/promote", _promote_inference_body(body))
+        )
+
+
+class AsyncSemanticInferenceApi:
+    def __init__(self, http: Any) -> None:
+        self._http = http
+
+    async def request(self, data_product_id: str) -> Any:
+        if not data_product_id:
+            raise ValueError("id is required")
+        return _unwrap(await self._http.post(_semantic_base(data_product_id), {}))
+
+    async def get(self, data_product_id: str) -> Any:
+        if not data_product_id:
+            raise ValueError("id is required")
+        return _unwrap(await self._http.get(_semantic_base(data_product_id)))
+
+    async def promote(self, data_product_id: str, body: Mapping[str, Any]) -> Any:
+        if not data_product_id:
+            raise ValueError("id is required")
+        return _unwrap(
+            await self._http.post(f"{_semantic_base(data_product_id)}/promote", _promote_inference_body(body))
+        )
 
 
 def _derive_lexicon(asset: dict[str, Any]) -> dict[str, Any]:
@@ -86,6 +145,7 @@ class DataProductsApi:
         self._get_reader_checkpoint = get_reader_checkpoint
         self._stream_config = stream_config
         self._resolve_cache: dict[str, str] = {}
+        self.semantic_inference = SemanticInferenceApi(http)
 
     def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = self.get(dp_id)
@@ -365,6 +425,7 @@ class AsyncDataProductsApi:
         self._get_reader_checkpoint = get_reader_checkpoint
         self._stream_config = stream_config
         self._resolve_cache: dict[str, str] = {}
+        self.semantic_inference = AsyncSemanticInferenceApi(http)
 
     async def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = await self.get(dp_id)

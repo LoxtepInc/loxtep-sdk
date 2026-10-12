@@ -1,7 +1,7 @@
 """Meaning facade (MCP: loxtep_meaning).
 
-Thesaurus + proposals + bundles + packages. Ontology / packs / semantic remain
-Node-first until ported.
+Thesaurus + proposals + bundles + packages, plus ontology relationship
+discovery/accept and semantic glossary binding apply.
 """
 
 from __future__ import annotations
@@ -20,3 +20,5 @@ class MeaningFacade:
     proposals: ProposalsApi | Any
     bundles: Any
     packages: Any
+    ontology: Any
+    semantic: Any

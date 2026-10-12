@@ -13,6 +13,8 @@
 
 import type { LoxtepHttpClient } from '../http/client.js';
 import type {
+  AcceptOntologyRelationshipsInput,
+  DiscoverOntologyRelationshipsInput,
   OntologyApiDeps,
   OntologyConcept,
   OntologyConceptListResult,
@@ -75,6 +77,12 @@ export function createOntologyApi(
   list_relationships: (
     filters?: OntologyGetRelationshipsFilters
   ) => Promise<OntologyRelationshipsResult>;
+  /** POST /graph/relationships/discover. Omit `limit` when absent. */
+  discover_ontology_relationships: (
+    input?: DiscoverOntologyRelationshipsInput
+  ) => Promise<unknown>;
+  /** POST /graph/relationships/accept. Omit `data_product_id` when absent. */
+  accept_ontology_relationships: (input: AcceptOntologyRelationshipsInput) => Promise<unknown>;
   /**
    * Report-first repair: link ontology_class nodes to Vocabulary terms.
    * Default dry_run=true — approve proposed canonical_keys before writing.
@@ -216,6 +224,28 @@ export function createOntologyApi(
       filters?: OntologyGetRelationshipsFilters
     ): Promise<OntologyRelationshipsResult> {
       return api.get_relationships(filters);
+    },
+
+    async discover_ontology_relationships(
+      input: DiscoverOntologyRelationshipsInput = {}
+    ): Promise<unknown> {
+      const body: Record<string, unknown> = {};
+      if (input.limit !== undefined) body.limit = input.limit;
+      const res = await http.post('/graph/relationships/discover', body);
+      return unwrapData(res);
+    },
+
+    async accept_ontology_relationships(
+      input: AcceptOntologyRelationshipsInput
+    ): Promise<unknown> {
+      const body: Record<string, unknown> = {
+        relationships: input.relationships,
+      };
+      if (input.data_product_id !== undefined) {
+        body.data_product_id = input.data_product_id;
+      }
+      const res = await http.post('/graph/relationships/accept', body);
+      return unwrapData(res);
     },
 
     async repair_vocabulary(
