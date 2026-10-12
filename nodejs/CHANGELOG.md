@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.26] - 2026-10-12
+
 ### Added
 
 - `client.meaning.proposals.infer_definitions(ids)` drafts glossary text onto
