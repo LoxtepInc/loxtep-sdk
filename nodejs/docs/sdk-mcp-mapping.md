@@ -147,15 +147,22 @@ Notes:
 ## Meaning: semantic proposals (Phase 2)
 
 Agent review of the same inbox Meaning shows. Batch helpers fan out to the
-single-id PUT (no dedicated batch REST).
+single-id PUT (no dedicated batch REST yet).
 
-| Concern | SDK | REST |
-| --- | --- | --- |
-| list proposals | `client.meaning.proposals.list({ disposition?, proposal_type?, … })` | `GET /semantic-layer/semantic-proposals` |
-| accept | `.accept(semantic_proposal_id, { resolution_note? })` | `PUT …/semantic-proposals/{id}` `disposition: accepted` |
-| reject | `.reject(semantic_proposal_id, { resolution_note? })` | `PUT …` `disposition: rejected` |
-| batch accept / reject | `.accept_batch` / `.reject_batch` | N× PUT |
+| Concern | MCP `loxtep_meaning` | SDK | REST | CLI |
+| --- | --- | --- | --- | --- |
+| list proposals | `list_semantic_proposals` | `client.meaning.proposals.list({ disposition?, proposal_type?, … })` | `GET /semantic-layer/semantic-proposals` | `loxtep proposals list` |
+| infer definitions | `infer_proposal_definitions` | `.infer_definitions(ids)` | `POST …/infer-definitions` | `loxtep proposals infer-definitions <id>…` |
+| accept (+ optional definition) | `accept_semantic_proposal` | `.accept(id, { definition?, resolution_note? })` | `PUT …` | `loxtep proposals accept <id> [--definition …]` |
+| reject | `reject_semantic_proposal` | `.reject(id, { resolution_note? })` | `PUT …` `disposition: rejected` | `loxtep proposals reject <id>` |
+| batch accept / reject | — | `.accept_batch` / `.reject_batch` | N× PUT | — |
 
+Notes:
+
+- Confidence on proposals is **business-field** score (Medium ≠ ready). Check
+  `proposal_payload.definition` before accept; use Infer for missing drafts.
+- Detection metadata on the payload is not a sample event and not the glossary
+  definition.
 ## Meaning: semantic bundles + packages
 
 | MCP operation | SDK | REST |

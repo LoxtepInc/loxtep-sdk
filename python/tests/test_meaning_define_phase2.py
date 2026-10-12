@@ -34,7 +34,7 @@ def test_nested_phase2_methods_exist():
         assert hasattr(client.meaning.thesaurus, m), m
     for m in ("create", "list", "get", "apply", "align"):
         assert hasattr(client.define.shapes, m), m
-    for m in ("list", "accept", "reject", "accept_batch", "reject_batch"):
+    for m in ("list", "infer_definitions", "accept", "reject", "accept_batch", "reject_batch"):
         assert hasattr(client.meaning.proposals, m), m
     assert hasattr(client.meaning.bundles, "import_")
     client.close()
@@ -227,6 +227,36 @@ def test_proposals_list_accept_reject_batch():
             "disposition": "accepted",
             "resolution_note": "ok",
         }
+
+    with patch.object(client._http, "put") as mock_put:
+        mock_put.return_value = {
+            "success": True,
+            "data": {"semantic_proposal_id": "p1", "disposition": "edited"},
+        }
+        edited = client.meaning.proposals.accept(
+            "p1", definition="Count of coalesced notifications."
+        )
+        assert edited["disposition"] == "edited"
+        assert mock_put.call_args[0][1] == {
+            "disposition": "edited",
+            "definition": "Count of coalesced notifications.",
+        }
+
+    with patch.object(client._http, "post") as mock_post:
+        mock_post.return_value = {
+            "success": True,
+            "data": {
+                "defined": [{"semantic_proposal_id": "p1", "definition": "Email address."}],
+                "undefined_ids": [],
+                "skipped_ids": [],
+            },
+        }
+        inferred = client.meaning.proposals.infer_definitions(["p1"])
+        assert inferred["defined"][0]["definition"] == "Email address."
+        assert mock_post.call_args[0][0] == (
+            "/semantic-layer/semantic-proposals/infer-definitions"
+        )
+        assert mock_post.call_args[0][1] == {"semantic_proposal_ids": ["p1"]}
 
     with patch.object(client._http, "put") as mock_put:
         mock_put.return_value = {

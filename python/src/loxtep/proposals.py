@@ -86,10 +86,16 @@ def _normalize_list(res: Any) -> dict[str, Any]:
     }
 
 
-def _resolve_body(disposition: str, resolution_note: Optional[str]) -> dict[str, Any]:
+def _resolve_body(
+    disposition: str,
+    resolution_note: Optional[str],
+    definition: Optional[str] = None,
+) -> dict[str, Any]:
     body: dict[str, Any] = {"disposition": disposition}
     if resolution_note is not None:
         body["resolution_note"] = resolution_note
+    if definition is not None:
+        body["definition"] = definition
     return body
 
 
@@ -122,17 +128,28 @@ class ProposalsApi:
         qs = f"?{urlencode(params)}" if params else ""
         return _normalize_list(self._http.get(f"{PROPOSALS_BASE}{qs}"))
 
+    def infer_definitions(self, semantic_proposal_ids: Sequence[str]) -> dict[str, Any]:
+        if not semantic_proposal_ids:
+            raise ValueError("semantic_proposal_ids is required")
+        res = self._http.post(
+            f"{PROPOSALS_BASE}/infer-definitions",
+            {"semantic_proposal_ids": list(semantic_proposal_ids)},
+        )
+        return _unwrap(res)
+
     def accept(
         self,
         semantic_proposal_id: str,
         *,
         resolution_note: Optional[str] = None,
+        definition: Optional[str] = None,
     ) -> dict[str, Any]:
         if not semantic_proposal_id:
             raise ValueError("semantic_proposal_id is required")
+        disposition = "edited" if definition else "accepted"
         res = self._http.put(
             f"{PROPOSALS_BASE}/{quote(semantic_proposal_id)}",
-            _resolve_body("accepted", resolution_note),
+            _resolve_body(disposition, resolution_note, definition),
         )
         return _unwrap(res)
 
@@ -255,17 +272,28 @@ class AsyncProposalsApi:
         qs = f"?{urlencode(params)}" if params else ""
         return _normalize_list(await self._http.get(f"{PROPOSALS_BASE}{qs}"))
 
+    async def infer_definitions(self, semantic_proposal_ids: Sequence[str]) -> dict[str, Any]:
+        if not semantic_proposal_ids:
+            raise ValueError("semantic_proposal_ids is required")
+        res = await self._http.post(
+            f"{PROPOSALS_BASE}/infer-definitions",
+            {"semantic_proposal_ids": list(semantic_proposal_ids)},
+        )
+        return _unwrap(res)
+
     async def accept(
         self,
         semantic_proposal_id: str,
         *,
         resolution_note: Optional[str] = None,
+        definition: Optional[str] = None,
     ) -> dict[str, Any]:
         if not semantic_proposal_id:
             raise ValueError("semantic_proposal_id is required")
+        disposition = "edited" if definition else "accepted"
         res = await self._http.put(
             f"{PROPOSALS_BASE}/{quote(semantic_proposal_id)}",
-            _resolve_body("accepted", resolution_note),
+            _resolve_body(disposition, resolution_note, definition),
         )
         return _unwrap(res)
 

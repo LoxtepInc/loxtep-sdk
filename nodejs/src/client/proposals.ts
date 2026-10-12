@@ -4,6 +4,7 @@
  *
  *   GET /semantic-layer/semantic-proposals
  *   PUT /semantic-layer/semantic-proposals/{semantic_proposal_id}
+ *   POST /semantic-layer/semantic-proposals/infer-definitions
  *
  * Batch accept/reject fan out to the single-id PUT (no dedicated batch REST yet).
  */
@@ -12,6 +13,7 @@ import type { LoxtepHttpClient } from '../http/client.js';
 import type {
   BatchResolveSemanticProposalsInput,
   BatchResolveSemanticProposalsResult,
+  InferProposalDefinitionsResult,
   ListSemanticProposalsFilters,
   ListSemanticProposalsResult,
   ResolveSemanticProposalInput,
@@ -91,6 +93,7 @@ async function resolveOne(
   if (!semantic_proposal_id) throw new Error('semantic_proposal_id is required');
   const body: Record<string, unknown> = { disposition: input.disposition };
   if (input.resolution_note !== undefined) body.resolution_note = input.resolution_note;
+  if (input.definition !== undefined) body.definition = input.definition;
   const res = await http.put(
     `${PROPOSALS_BASE}/${encodeURIComponent(semantic_proposal_id)}`,
     body
@@ -111,6 +114,7 @@ async function resolveBatch(
       const one = await resolveOne(http, semantic_proposal_id, {
         disposition: input.disposition,
         resolution_note: input.resolution_note,
+        definition: input.definition,
       });
       results.push({
         semantic_proposal_id: one.semantic_proposal_id,
@@ -132,9 +136,10 @@ async function resolveBatch(
 
 export function createProposalsApi(http: LoxtepHttpClient): {
   list: (filters?: ListSemanticProposalsFilters) => Promise<ListSemanticProposalsResult>;
+  infer_definitions: (semantic_proposal_ids: string[]) => Promise<InferProposalDefinitionsResult>;
   accept: (
     semantic_proposal_id: string,
-    options?: { resolution_note?: string }
+    options?: { resolution_note?: string; definition?: string }
   ) => Promise<ResolveSemanticProposalResult>;
   reject: (
     semantic_proposal_id: string,
@@ -160,13 +165,26 @@ export function createProposalsApi(http: LoxtepHttpClient): {
       return normalizeList(res);
     },
 
+    async infer_definitions(
+      semantic_proposal_ids: string[]
+    ): Promise<InferProposalDefinitionsResult> {
+      if (!semantic_proposal_ids?.length) {
+        throw new Error('semantic_proposal_ids is required');
+      }
+      const res = await http.post(`${PROPOSALS_BASE}/infer-definitions`, {
+        semantic_proposal_ids,
+      });
+      return unwrapData<InferProposalDefinitionsResult>(res);
+    },
+
     async accept(
       semantic_proposal_id: string,
-      options?: { resolution_note?: string }
+      options?: { resolution_note?: string; definition?: string }
     ): Promise<ResolveSemanticProposalResult> {
       return resolveOne(http, semantic_proposal_id, {
-        disposition: 'accepted',
+        disposition: options?.definition ? 'edited' : 'accepted',
         resolution_note: options?.resolution_note,
+        definition: options?.definition,
       });
     },
 

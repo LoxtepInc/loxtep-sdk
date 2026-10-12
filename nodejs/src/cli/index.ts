@@ -100,6 +100,13 @@ import {
   runPacksStatusCommand,
 } from './commands/packs-cmd.js';
 import {
+  PROPOSALS_USAGE,
+  runProposalsListCommand,
+  runProposalsAcceptCommand,
+  runProposalsRejectCommand,
+  runProposalsInferDefinitionsCommand,
+} from './commands/proposals-cmd.js';
+import {
   DEFINE_USAGE,
   runDefineStatusCommand,
   runDefineEvidenceCommand,
@@ -996,6 +1003,47 @@ export async function runCli(argv: string[]): Promise<void> {
             '       loxtep packs activate <pack_id> [--organization-id <id>]\n' +
             '       loxtep packs status'
         );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'proposals': {
+      const authResult = await requireCliClient();
+      const printResult = (result: { exitCode: number; stdout: string[]; stderr: string[] }) => {
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      };
+      if (sub === 'list') {
+        const page = getArg('--page');
+        const pageSize = getArg('--page-size');
+        printResult(
+          await runProposalsListCommand(authResult.client, {
+            disposition: getArg('--disposition') ?? 'pending',
+            proposal_type: getArg('--proposal-type'),
+            data_product_id: getArg('--data-product-id'),
+            page: page ? Number(page) : undefined,
+            page_size: pageSize ? Number(pageSize) : undefined,
+          })
+        );
+      } else if (sub === 'accept' && args[2]) {
+        printResult(
+          await runProposalsAcceptCommand(authResult.client, args[2], {
+            definition: getArg('--definition'),
+            resolution_note: getArg('--resolution-note'),
+          })
+        );
+      } else if (sub === 'reject' && args[2]) {
+        printResult(
+          await runProposalsRejectCommand(authResult.client, args[2], {
+            resolution_note: getArg('--resolution-note'),
+          })
+        );
+      } else if (sub === 'infer-definitions') {
+        const ids = args.slice(2).filter(a => a && !a.startsWith('--'));
+        printResult(await runProposalsInferDefinitionsCommand(authResult.client, ids));
+      } else {
+        console.error(PROPOSALS_USAGE);
         process.exitCode = 1;
       }
       break;

@@ -336,7 +336,8 @@ Org / domain canonical schemas (distinct from `client.define.schemas` data-produ
 | Method | Description |
 | --- | --- |
 | `proposals.list(...)` | List semantic proposals |
-| `proposals.accept` / `reject` | Resolve one proposal |
+| `proposals.infer_definitions(ids)` | Draft missing vocabulary_term definitions |
+| `proposals.accept` / `reject` | Resolve one proposal (`accept(..., definition=...)` for glossary text) |
 | `proposals.accept_batch` / `reject_batch` | Fan-out resolve |
 | `bundles.import_(input)` | Stage/import a semantic bundle (`activation=stage` default); surfaces plan / package / `skipped_count` |
 | `bundles.export_(query?)` | Export a semantic bundle |

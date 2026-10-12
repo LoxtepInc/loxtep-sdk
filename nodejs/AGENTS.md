@@ -89,6 +89,7 @@ internal to the SDK and are not shown in CLI help.
 | `loxtep cdlc review-queue [--domain-id <id>]` | Steward review queue list (`client.review.cdlc.list_review_queue`). | required |
 | `loxtep candidates list \| act <id> --action approve\|reject` | Context-mining candidates (`client.review.mining`). | required |
 | `loxtep packs list \| activate <pack_id> \| status` | Vocabulary packs (`client.meaning.packs`). | required |
+| `loxtep proposals list \| accept \| reject \| infer-definitions` | Semantic proposal review (`client.meaning.proposals`). | required |
 | `loxtep activity list [filters]` | List unified activity + audit entries. | required |
 | `loxtep improvements list \| apply <id> \| reject <id>` | Review and adopt AI-Eval-derived workflow improvements. | required |
 
@@ -128,6 +129,7 @@ loxtep instances list | get <id> | stream-config [<id>]
 loxtep standards list | get <id>
 loxtep data-contracts list | get <id>
 loxtep packs list | activate <pack_id> | status
+loxtep proposals list | accept <id> | reject <id> | infer-definitions <id>…
 loxtep candidates list | act <id> --action approve|reject
 loxtep cdlc transition <ref> --from <state> --to <state>
 loxtep cdlc review-queue [--domain-id <id>]

@@ -48,6 +48,14 @@ export interface ListSemanticProposalsResult {
 export interface ResolveSemanticProposalInput {
   disposition: 'accepted' | 'edited' | 'rejected';
   resolution_note?: string;
+  /** Glossary definition for vocabulary_term accept/edited. */
+  definition?: string;
+}
+
+export interface InferProposalDefinitionsResult {
+  defined: Array<{ semantic_proposal_id: string; definition: string }>;
+  undefined_ids: string[];
+  skipped_ids: string[];
 }
 
 export interface ResolveSemanticProposalResult {
@@ -59,6 +67,7 @@ export interface BatchResolveSemanticProposalsInput {
   semantic_proposal_ids: string[];
   disposition: 'accepted' | 'edited' | 'rejected';
   resolution_note?: string;
+  definition?: string;
 }
 
 export interface BatchResolveSemanticProposalsResult {

@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `client.meaning.proposals.infer_definitions(ids)` and optional `definition=` on
+  `accept` (Node/MCP parity for vocabulary proposal review).
+
 ### Changed
 
 - `DataProductsApi.query` keeps the warehouse `query_id` on the row result
