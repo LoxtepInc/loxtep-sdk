@@ -163,6 +163,10 @@ jest.mock('./commands/observe-cmd.js', () => ({
   runObserveStatus: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
 }));
 
+jest.mock('./commands/ontology-cmd.js', () => ({
+  runOntologyLinkClassCommand: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
+}));
+
 jest.mock('./commands/packs-cmd.js', () => ({
   runPacksListCommand: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   runPacksActivateCommand: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
@@ -312,6 +316,7 @@ import {
   runCandidatesListCommand,
   runCandidatesActCommand,
 } from './commands/candidates-cmd.js';
+import { runOntologyLinkClassCommand } from './commands/ontology-cmd.js';
 import {
   runPacksListCommand,
   runPacksActivateCommand,
@@ -541,6 +546,17 @@ describe('runCli router', () => {
     expect(runCandidatesListCommand).toHaveBeenCalled();
     await runCli(['candidates', 'act', 'c-1', '--action', 'accept']);
     expect(runCandidatesActCommand).toHaveBeenCalled();
+    await runCli([
+      'ontology',
+      'link-class',
+      '--source-uri',
+      'https://example.org/CanonicalRecord',
+      '--predicate-uri',
+      'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+      '--target-uri',
+      'http://www.w3.org/ns/prov#Entity',
+    ]);
+    expect(runOntologyLinkClassCommand).toHaveBeenCalled();
     await runCli(['packs', 'list']);
     expect(runPacksListCommand).toHaveBeenCalled();
     await runCli(['packs', 'activate', 'p-1']);

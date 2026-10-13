@@ -127,6 +127,10 @@ Review
                      Context-mining candidates (approve → CDLC in_review; reject discards)
 
 Meaning
+  ontology link-class --source-uri <uri> --predicate-uri <uri> --target-uri <uri>
+                     [--description <text>] [--organization-id <id>]
+                     Assert rdfs:subClassOf from a tenant class URI to a visible
+                     system-pack class. Does not copy the system class.
   packs list                             Available vocabulary packs (+ recommendation)
   packs activate <pack_id> [--organization-id <id>]
   packs status                           Current pack activation state

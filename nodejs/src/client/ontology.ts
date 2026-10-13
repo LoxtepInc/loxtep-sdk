@@ -178,14 +178,26 @@ export function createOntologyApi(
       input: OntologyCreateRelationshipInput
     ): Promise<OntologyRelationship> {
       const org = requireOrg(deps, input.organization_id);
-      const body = {
-        source_entity_type: input.source_entity_type,
-        target_entity_type: input.target_entity_type,
-        relation_type: input.relation_type,
-        relation_uri: input.relation_uri,
-        join_field: input.join_field,
-        description: input.description,
-      };
+      const body: Record<string, unknown> =
+        'source_uri' in input
+          ? {
+              source_uri: input.source_uri,
+              predicate_uri: input.predicate_uri,
+              target_uri: input.target_uri,
+              ...(input.description ? { description: input.description } : {}),
+              ...(input.content_hash ? { content_hash: input.content_hash } : {}),
+              ...(input.target_organization_id
+                ? { target_organization_id: input.target_organization_id }
+                : {}),
+            }
+          : {
+              source_entity_type: input.source_entity_type,
+              target_entity_type: input.target_entity_type,
+              relation_type: input.relation_type,
+              ...(input.relation_uri ? { relation_uri: input.relation_uri } : {}),
+              ...(input.join_field ? { join_field: input.join_field } : {}),
+              ...(input.description ? { description: input.description } : {}),
+            };
       const res = await http.post(relationshipsBase(org), body);
       return unwrapData<OntologyRelationship>(res);
     },

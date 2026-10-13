@@ -210,6 +210,42 @@ describe('createOntologyApi', () => {
     expect(result).toEqual(relationship);
   });
 
+  it('create_relationship posts an external class assertion by exact URI', async () => {
+    let capturedBody: unknown = null;
+    const http = {
+      post: async (_path: string, body: unknown) => {
+        capturedBody = body;
+        return {
+          success: true as const,
+          data: {
+            ...relationship,
+            assertion_kind: 'ontology_class_assertion',
+            source_uri: 'https://example.org/CanonicalRecord',
+            predicate_uri: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+            target_uri: 'http://www.w3.org/ns/prov#Entity',
+            target_pack_id: 'prov-o',
+            target_system_organization_id: '00000000-0000-0000-0000-000000000000',
+          },
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createOntologyApi(http, { organization_id: 'org1' });
+    const result = await api.create_relationship({
+      source_uri: 'https://example.org/CanonicalRecord',
+      predicate_uri: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+      target_uri: 'http://www.w3.org/ns/prov#Entity',
+    });
+
+    expect(capturedBody).toEqual({
+      source_uri: 'https://example.org/CanonicalRecord',
+      predicate_uri: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+      target_uri: 'http://www.w3.org/ns/prov#Entity',
+    });
+    expect(result.target_uri).toBe('http://www.w3.org/ns/prov#Entity');
+    expect(result.target_pack_id).toBe('prov-o');
+  });
+
   it('get_relationships / list_relationships share GET path + filters', async () => {
     let capturedPath: string | null = null;
     const http = {
