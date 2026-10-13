@@ -8,9 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.28] - 2026-10-13
+
 ### Added
 
 - `client.meaning.ontology.create_relationship` accepts `source_uri`, `predicate_uri`, and `target_uri` for a system-pack class assertion. CLI: `loxtep ontology link-class`.
+
+### Fixed
+
+- `client.build.workflows.preview_query_trigger` and `run_query_trigger` send `project_id` from the call or the client. They refuse before any request when neither is set. CLI: `--project-id` on `workflows preview-query-trigger` and `workflows run-query-trigger`.
 
 ## [0.9.27] - 2026-10-12
 
