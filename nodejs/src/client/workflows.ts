@@ -44,6 +44,8 @@ const MCP_TOOLS_PATH = '/ai/mcp/tools/call';
 
 export type PreviewQueryTriggerInput = {
   workflow_id: string;
+  /** Project that owns the workflow. Defaults to the client's project; refused when neither is set. */
+  project_id?: string;
   query?: string;
   primary_key?: string[];
   limit?: number;
@@ -51,6 +53,8 @@ export type PreviewQueryTriggerInput = {
 
 export type RunQueryTriggerInput = {
   workflow_id: string;
+  /** Project that owns the workflow. Defaults to the client's project; refused when neither is set. */
+  project_id?: string;
   query?: string;
   primary_key?: string[];
   sink_data_product_id?: string;
@@ -336,7 +340,13 @@ export function createWorkflowsApi(
 
     async preview_query_trigger(input: PreviewQueryTriggerInput): Promise<unknown> {
       if (!input?.workflow_id) throw new Error('workflow_id is required');
-      const args: Record<string, unknown> = { workflow_id: input.workflow_id };
+      const project_id = input.project_id ?? deps?.project_id;
+      if (!project_id) {
+        throw new Error(
+          'preview_query_trigger requires project_id (pass it, or create the client with a project)'
+        );
+      }
+      const args: Record<string, unknown> = { workflow_id: input.workflow_id, project_id };
       if (input.query !== undefined) args.query = input.query;
       if (input.primary_key !== undefined) args.primary_key = input.primary_key;
       if (input.limit !== undefined) args.limit = input.limit;
@@ -345,7 +355,13 @@ export function createWorkflowsApi(
 
     async run_query_trigger(input: RunQueryTriggerInput): Promise<unknown> {
       if (!input?.workflow_id) throw new Error('workflow_id is required');
-      const args: Record<string, unknown> = { workflow_id: input.workflow_id };
+      const project_id = input.project_id ?? deps?.project_id;
+      if (!project_id) {
+        throw new Error(
+          'run_query_trigger requires project_id (pass it, or create the client with a project)'
+        );
+      }
+      const args: Record<string, unknown> = { workflow_id: input.workflow_id, project_id };
       if (input.query !== undefined) args.query = input.query;
       if (input.primary_key !== undefined) args.primary_key = input.primary_key;
       if (input.sink_data_product_id !== undefined) {

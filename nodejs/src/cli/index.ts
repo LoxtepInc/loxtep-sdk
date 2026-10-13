@@ -601,12 +601,13 @@ export async function runCli(argv: string[]): Promise<void> {
         const limit = limitRaw != null && limitRaw !== '' ? Number(limitRaw) : undefined;
         if (!workflowId || (limitRaw != null && limitRaw !== '' && Number.isNaN(limit))) {
           console.error(
-            'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]'
+            'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--query <sql>] [--limit N] [--primary-key a,b]'
           );
           process.exitCode = 1;
         } else {
           await runWorkflowsPreviewQueryTrigger({
             workflow_id: workflowId,
+            project_id: getArg('--project-id'),
             query,
             primary_key,
             limit,
@@ -625,12 +626,13 @@ export async function runCli(argv: string[]): Promise<void> {
         const sinkDataProductId = getArg('--sink-data-product-id');
         if (!workflowId) {
           console.error(
-            'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]'
+            'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--sink-data-product-id <uuid>]'
           );
           process.exitCode = 1;
         } else {
           await runWorkflowsRunQueryTrigger({
             workflow_id: workflowId,
+            project_id: getArg('--project-id'),
             query,
             primary_key,
             sink_data_product_id: sinkDataProductId,
