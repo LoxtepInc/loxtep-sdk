@@ -116,6 +116,7 @@ export async function runWorkflowsDeploy(
 export async function runWorkflowsPreviewQueryTrigger(
   params: {
     workflow_id: string;
+    project_id?: string;
     query?: string;
     primary_key?: string[];
     limit?: number;
@@ -125,13 +126,14 @@ export async function runWorkflowsPreviewQueryTrigger(
   const { client } = await requireCliClient(options);
   if (!params.workflow_id) {
     console.error(
-      'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]'
+      'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--query <sql>] [--limit N] [--primary-key a,b]'
     );
     process.exitCode = 1;
     return;
   }
   const result = await client.build.workflows.preview_query_trigger({
     workflow_id: params.workflow_id,
+    project_id: params.project_id,
     query: params.query,
     primary_key: params.primary_key,
     limit: params.limit,
@@ -142,6 +144,7 @@ export async function runWorkflowsPreviewQueryTrigger(
 export async function runWorkflowsRunQueryTrigger(
   params: {
     workflow_id: string;
+    project_id?: string;
     query?: string;
     primary_key?: string[];
     sink_data_product_id?: string;
@@ -151,13 +154,14 @@ export async function runWorkflowsRunQueryTrigger(
   const { client } = await requireCliClient(options);
   if (!params.workflow_id) {
     console.error(
-      'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]'
+      'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--sink-data-product-id <uuid>]'
     );
     process.exitCode = 1;
     return;
   }
   const result = await client.build.workflows.run_query_trigger({
     workflow_id: params.workflow_id,
+    project_id: params.project_id,
     query: params.query,
     primary_key: params.primary_key,
     sink_data_product_id: params.sink_data_product_id,
