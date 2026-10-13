@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `client.meaning.ontology.create_relationship` accepts `source_uri`, `predicate_uri`, and `target_uri` for a system-pack class assertion. CLI: `loxtep ontology link-class`.
+
 ## [0.9.27] - 2026-10-12
 
 ### Added

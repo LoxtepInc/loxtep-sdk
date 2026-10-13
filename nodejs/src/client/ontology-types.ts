@@ -111,6 +111,25 @@ export interface OntologyRelationship {
   source?: 'registry' | 'discovered' | 'authored' | 'merged';
   confidence?: number;
   namespace?: string;
+  assertion_kind?: 'ontology_class_assertion';
+  source_uri?: string;
+  predicate_uri?: string;
+  target_uri?: string;
+  source_node_id?: string;
+  target_node_id?: string;
+  target_system_organization_id?: string;
+  target_system_node_id?: string;
+  target_pack_id?: string;
+  target_pack_version?: string;
+  target_ingest_version?: string | null;
+  target_status?: 'active' | 'inactive' | 'unresolved' | 'version_drift';
+  content_hash?: string;
+  provenance?: {
+    authored_by?: string;
+    authored_at?: string;
+    source_system?: string;
+  };
+  idempotent_replay?: boolean;
 }
 
 export interface OntologyRelationshipsResult {
@@ -119,7 +138,7 @@ export interface OntologyRelationshipsResult {
   source?: 'registry' | 'discovered' | 'merged';
 }
 
-export interface OntologyCreateRelationshipInput {
+export interface OntologyCreateRelationshipByNameInput {
   source_entity_type: string;
   target_entity_type: string;
   relation_type: string;
@@ -128,6 +147,21 @@ export interface OntologyCreateRelationshipInput {
   description?: string;
   organization_id?: string;
 }
+
+/** Link a tenant class URI to an existing system-pack class URI. Does not copy the class. */
+export interface OntologyLinkClassInput {
+  source_uri: string;
+  predicate_uri: string;
+  target_uri: string;
+  description?: string;
+  content_hash?: string;
+  target_organization_id?: string;
+  organization_id?: string;
+}
+
+export type OntologyCreateRelationshipInput =
+  | OntologyCreateRelationshipByNameInput
+  | OntologyLinkClassInput;
 
 export interface OntologyGetRelationshipsFilters {
   organization_id?: string;

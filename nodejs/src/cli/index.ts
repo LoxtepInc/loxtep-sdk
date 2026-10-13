@@ -149,6 +149,7 @@ import {
   runProjectsGithubPushCmd,
 } from './commands/projects-cmd.js';
 import { runStatus } from './commands/status-cmd.js';
+import { runOntologyLinkClassCommand } from './commands/ontology-cmd.js';
 import { printCliHelp } from './help.js';
 import { printCliVersion } from './version.js';
 import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
@@ -972,6 +973,21 @@ export async function runCli(argv: string[]): Promise<void> {
           'Usage: loxtep approvals list [--status pending|approved|rejected|expired] [--page N] [--page-size N] [--organization-id <id>]\n' +
             '       loxtep approvals approve <approval_request_id> [--response <val>] [--form-response <json>] [--organization-id <id>]\n' +
             '       loxtep approvals reject <approval_request_id> [--response <val>] [--form-response <json>] [--organization-id <id>]'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'ontology': {
+      const authResult = await requireCliClient();
+      if (sub === 'link-class') {
+        const result = await runOntologyLinkClassCommand(authResult.client, args);
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+      } else {
+        console.error(
+          'Usage: loxtep ontology link-class --source-uri <uri> --predicate-uri <uri> --target-uri <uri> [--description <text>] [--organization-id <id>]'
         );
         process.exitCode = 1;
       }

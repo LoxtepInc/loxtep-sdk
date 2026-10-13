@@ -313,6 +313,8 @@ export type {
   OntologyRelationship,
   OntologyRelationshipsResult,
   OntologyCreateRelationshipInput,
+  OntologyCreateRelationshipByNameInput,
+  OntologyLinkClassInput,
   OntologyGetRelationshipsFilters,
 } from './ontology-types.js';
 export type { OntologyApi } from './ontology.js';
