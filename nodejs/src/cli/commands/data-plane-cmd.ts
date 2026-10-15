@@ -131,7 +131,30 @@ export function validateRebuildArgs(
   return { ok: true, body, end_bound: end ? 'checkpoint' : 'evergreen' };
 }
 
-function errorFields(err: unknown): { message: string; code?: string; job_id?: string } {
+/** Failed dry-run checks the API returns in details.result.validations (422). */
+function failedValidations(details: Record<string, unknown>): Array<Record<string, unknown>> {
+  const result =
+    details.result && typeof details.result === 'object'
+      ? (details.result as Record<string, unknown>)
+      : undefined;
+  const validations = Array.isArray(result?.validations) ? result.validations : [];
+  return validations.filter(
+    (v): v is Record<string, unknown> =>
+      !!v && typeof v === 'object' && (v as Record<string, unknown>).ok === false
+  );
+}
+
+/**
+ * The refusal reason must be in the printed message, not only in details:
+ * append details.error / downstream_message and any failed dry-run checks
+ * that the API's message does not already contain.
+ */
+export function errorFields(err: unknown): {
+  message: string;
+  code?: string;
+  job_id?: string;
+  validations?: Array<Record<string, unknown>>;
+} {
   const record = err && typeof err === 'object' ? (err as Record<string, unknown>) : {};
   const details =
     record.details && typeof record.details === 'object'
@@ -149,10 +172,23 @@ function errorFields(err: unknown): { message: string; code?: string; job_id?: s
       : typeof record.job_id === 'string'
         ? record.job_id
         : undefined;
+  let message = err instanceof Error ? err.message : String(err);
+  for (const key of ['error', 'downstream_message'] as const) {
+    const extra = details[key];
+    if (typeof extra === 'string' && extra.trim() && !message.includes(extra.trim())) {
+      message = `${message}: ${extra.trim()}`;
+    }
+  }
+  const failed = failedValidations(details);
+  for (const v of failed) {
+    const line = `${String(v.check ?? 'check')}: ${String(v.detail ?? 'failed')}`;
+    if (!message.includes(line)) message = `${message}; ${line}`;
+  }
   return {
-    message: err instanceof Error ? err.message : String(err),
+    message,
     code,
     job_id: jobId,
+    ...(failed.length > 0 ? { validations: failed } : {}),
   };
 }
 
@@ -509,6 +545,7 @@ export async function executeIceberg(
     const fields = errorFields(err);
     return fail(io, json, fields.code || 'request_failed', fields.message, {
       job_id: fields.job_id,
+      ...(fields.validations ? { validations: fields.validations } : {}),
     });
   }
 }

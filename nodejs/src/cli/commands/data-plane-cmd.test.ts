@@ -179,6 +179,61 @@ describe('executeIceberg', () => {
     ]);
   });
 
+  it('prints the instance refusal text and failed dry-run checks, not only a generic title', async () => {
+    const refusal =
+      'downstream 400 iceberg_identifier_field_type_invalid {"field":"seq","type":"double"}: Iceberg spec: float and double fields cannot be identifier fields';
+    const rebuild = jest.fn(async () => {
+      throw Object.assign(new Error('Failed to queue Iceberg rebuild on instance'), {
+        details: {
+          error: refusal,
+          result: {
+            validations: [
+              { check: 'start_point', ok: true, detail: 'z/1' },
+              { check: 'sample_event_key', ok: false, detail: 'iceberg_lx_id_disagrees_with_key' },
+            ],
+          },
+        },
+      });
+    });
+    const { io, errors } = capture();
+    const code = await executeIceberg(
+      client({ rebuild }),
+      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--dry-run'],
+      io
+    );
+    expect(code).toBe(1);
+    expect(errors[0]).toContain('iceberg_identifier_field_type_invalid');
+    expect(errors[0]).toContain('sample_event_key: iceberg_lx_id_disagrees_with_key');
+    expect(errors[0]).not.toContain('start_point');
+
+    const json = capture();
+    await executeIceberg(
+      client({ rebuild }),
+      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--dry-run', '--json'],
+      json.io
+    );
+    const payload = parse(json.errors);
+    expect(String(payload.message)).toContain('iceberg_identifier_field_type_invalid');
+    expect(payload.validations).toEqual([
+      { check: 'sample_event_key', ok: false, detail: 'iceberg_lx_id_disagrees_with_key' },
+    ]);
+  });
+
+  it('does not repeat details.error the message already carries', async () => {
+    const rebuild = jest.fn(async () => {
+      throw Object.assign(new Error('Iceberg rebuild refused by the instance: downstream 409 busy'), {
+        details: { error: 'downstream 409 busy' },
+      });
+    });
+    const { io, errors } = capture();
+    await executeIceberg(
+      client({ rebuild }),
+      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--dry-run'],
+      io
+    );
+    expect(errors[0].match(/downstream 409 busy/g)).toHaveLength(1);
+  });
+
   it('preserves already_running and endpoint_missing', async () => {
     const running = Object.assign(new Error('rebuild already running'), {
       details: { code: 'already_running', job_id: 'job-live' },

@@ -29,6 +29,8 @@ const GENERIC_ERROR_TITLES = new Set([
   // Opaque API wrappers that bury the real cause in details.error
   'workflow bundle catalog index failed',
   'workflow bundle save failed',
+  // Older dataproducts rebuild API: the instance refusal sat only in details.error
+  'failed to queue iceberg rebuild on instance',
 ]);
 
 function isGenericErrorTitle(message: string): boolean {
