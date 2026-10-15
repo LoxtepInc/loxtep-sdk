@@ -106,6 +106,17 @@ describe('parseHttpError', () => {
     expect(err.details?.message).toContain('metadata.instance_id');
   });
 
+  it('uses details.error when the rebuild API title is the old generic queue failure', () => {
+    const err = parseHttpError(502, {
+      success: false,
+      error: {
+        message: 'Failed to queue Iceberg rebuild on instance',
+        details: { error: 'downstream 400 iceberg_identifier_field_type_invalid' },
+      },
+    });
+    expect(err.message).toContain('iceberg_identifier_field_type_invalid');
+  });
+
   it('should read field_errors nested under error envelope', () => {
     const err = parseHttpError(400, {
       success: false,
