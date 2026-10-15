@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.29] - 2026-10-15
+
+### Fixed
+
+- CLI `data-products iceberg rebuild` prints the instance refusal (`details.error` / `downstream_message`) and each failed dry-run check from `details.result.validations`, not only the generic queue-failure title.
+
+
 ## [0.9.28] - 2026-10-13
 
 ### Added
