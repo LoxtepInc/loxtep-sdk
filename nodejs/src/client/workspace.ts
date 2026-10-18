@@ -7,11 +7,13 @@
 import type { createProjectsApi } from './projects.js';
 import type { createInstancesApi } from './instances.js';
 import type { createDeploymentsApi } from './deployments.js';
+import type { createCustomBotsApi } from './custom-bots.js';
 
 export interface WorkspaceFacadeDeps {
   projects: ReturnType<typeof createProjectsApi>;
   instances: ReturnType<typeof createInstancesApi>;
   deployments: ReturnType<typeof createDeploymentsApi>;
+  custom_bots: ReturnType<typeof createCustomBotsApi>;
 }
 
 /** Placeholder until version/snapshot REST endpoints ship (MCP-only today). */
@@ -24,12 +26,14 @@ export function createWorkspaceFacade(deps: WorkspaceFacadeDeps): {
   projects: WorkspaceFacadeDeps['projects'];
   instances: WorkspaceFacadeDeps['instances'];
   deployments: WorkspaceFacadeDeps['deployments'];
+  custom_bots: WorkspaceFacadeDeps['custom_bots'];
   versions: VersionsFacade;
 } {
   return {
     projects: deps.projects,
     instances: deps.instances,
     deployments: deps.deployments,
+    custom_bots: deps.custom_bots,
     versions: { unavailable: true },
   };
 }
