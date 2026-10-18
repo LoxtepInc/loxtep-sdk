@@ -140,6 +140,14 @@ import {
   parseUpdateInstanceArgs,
 } from './commands/instances-cmd.js';
 import {
+  runBotsList,
+  runBotsGet,
+  runBotsRegister,
+  runBotsUpdate,
+  runBotsDeregister,
+  runBotsReconcile,
+} from './commands/bots-cmd.js';
+import {
   runProjectsList,
   runProjectsGet,
   runProjectsLink,
@@ -1301,6 +1309,90 @@ export async function runCli(argv: string[]): Promise<void> {
       } else {
         console.error(
           'Usage: loxtep instances list | get <id> | stream-config [<id>] | create --name ... --region ... --type ... | update <id> ... | redeploy-runtimes <id> | deployment-urls | register --cross-account-role-arn <arn> | registration'
+        );
+        process.exitCode = 1;
+      }
+      break;
+    }
+    case 'bots': {
+      const instanceFlag = getArg('--instance');
+      if (sub === 'list') {
+        await runBotsList(instanceFlag);
+      } else if (sub === 'get') {
+        const botId = getArg('--bot-id') || (args[2] && !args[2].startsWith('-') ? args[2] : undefined);
+        if (!botId) {
+          console.error('Usage: loxtep bots get --instance <id> --bot-id <bot_id>');
+          process.exitCode = 1;
+        } else {
+          await runBotsGet(instanceFlag, botId);
+        }
+      } else if (sub === 'register') {
+        const name = getArg('--name');
+        const lambdaName = getArg('--lambda-name');
+        if (!name || !lambdaName) {
+          console.error(
+            'Usage: loxtep bots register --instance <id> --name <n> --lambda-name <fn> [--slug …] [--schedule …] [--paused|--unpaused]'
+          );
+          process.exitCode = 1;
+        } else {
+          const paused = args.includes('--unpaused')
+            ? false
+            : args.includes('--paused')
+              ? true
+              : undefined;
+          const batchRaw = getArg('--batch-size');
+          await runBotsRegister(instanceFlag, {
+            name,
+            lambda_name: lambdaName,
+            slug: getArg('--slug'),
+            description: getArg('--description'),
+            source_queue: getArg('--source-queue'),
+            destination_queue: getArg('--destination-queue'),
+            error_queue: getArg('--error-queue'),
+            schedule: getArg('--schedule'),
+            batch_size: batchRaw ? Number(batchRaw) : undefined,
+            paused,
+          });
+        }
+      } else if (sub === 'update') {
+        const botId = getArg('--bot-id');
+        if (!botId) {
+          console.error(
+            'Usage: loxtep bots update --instance <id> --bot-id <bot_id> [--name …] [--lambda-name …] …'
+          );
+          process.exitCode = 1;
+        } else {
+          const paused = args.includes('--unpaused')
+            ? false
+            : args.includes('--paused')
+              ? true
+              : undefined;
+          const batchRaw = getArg('--batch-size');
+          await runBotsUpdate(instanceFlag, botId, {
+            name: getArg('--name'),
+            lambda_name: getArg('--lambda-name'),
+            description: getArg('--description'),
+            source_queue: getArg('--source-queue'),
+            destination_queue: getArg('--destination-queue'),
+            error_queue: getArg('--error-queue'),
+            schedule: getArg('--schedule'),
+            batch_size: batchRaw ? Number(batchRaw) : undefined,
+            paused,
+          });
+        }
+      } else if (sub === 'deregister') {
+        const botId = getArg('--bot-id');
+        if (!botId) {
+          console.error('Usage: loxtep bots deregister --instance <id> --bot-id <bot_id>');
+          process.exitCode = 1;
+        } else {
+          await runBotsDeregister(instanceFlag, botId);
+        }
+      } else if (sub === 'reconcile') {
+        await runBotsReconcile(instanceFlag);
+      } else {
+        console.error(
+          'Usage: loxtep bots register|list|get|update|deregister|reconcile --instance <id> …'
         );
         process.exitCode = 1;
       }

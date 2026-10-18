@@ -34,6 +34,7 @@ import { createProcessIntelligenceApi } from './process-intelligence.js';
 import { createTargetsApi } from './targets.js';
 import { createConnectorsApi } from './connectors.js';
 import { createInstancesApi } from './instances.js';
+import { createCustomBotsApi } from './custom-bots.js';
 import { createProceduresApi } from './procedures.js';
 import { createAgentWorkspaceApi } from './agent-workspace.js';
 import { createDomainsApi } from './domains.js';
@@ -260,6 +261,7 @@ export class LoxtepClient {
     const targetsApi = createTargetsApi(this._http);
     const connectorsApi = createConnectorsApi(this._http);
     const instancesApi = createInstancesApi(this._http, options.organization_id);
+    const customBotsApi = createCustomBotsApi(this._http);
     const proceduresApi = createProceduresApi(this._http, {
       organization_id: options.organization_id,
     });
@@ -278,6 +280,7 @@ export class LoxtepClient {
       projects: projectsApi,
       instances: instancesApi,
       deployments: deploymentsApi,
+      custom_bots: customBotsApi,
     });
     this.build = createBuildFacade({
       workflows: this._workflowsApi,

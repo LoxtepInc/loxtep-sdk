@@ -36,6 +36,8 @@ Workspace
                      GitHub sync APIs (bound only). Unbound Local→Cloud stays "loxtep push".
   instances list | get <id> | stream-config [<id>] | create … | update <id> … | redeploy-runtimes <id> | deployment-urls | register … | registration
                      Provision instances; stream-config prints bus resource names for SDK attach
+  bots register|list|get|update|deregister|reconcile --instance <id> …
+                     BYOL: register a customer Lambda with LeoCron (dedicated instances)
 
 Build & deploy
   connectors list [--type sdk]
