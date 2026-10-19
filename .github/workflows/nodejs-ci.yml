@@ -41,6 +41,11 @@ jobs:
       - name: Lint
         run: echo "Skipping lint — eslint is not configured (see workflow TODO)."
 
+      # Vendored entity schemas must equal the pinned LoxtepInc/loxtep commit
+      # (schemas/entity-json-schemas/SOURCE.json). Fails on any drift or hand edit.
+      - name: Check entity schemas against pinned loxtep commit
+        run: pnpm run check:entity-schemas
+
       - name: Build
         run: pnpm run build
 

@@ -1,0 +1,24 @@
+{
+  "repository": "LoxtepInc/loxtep",
+  "path": "platform-backend/_core/src/workspace/entity-json-schemas",
+  "commit": "7ef107ee3527e1e08800b1b759bfbb2406c0a6d8",
+  "files": {
+    "agent.json": "925caaa71058fea41f4820a92232169af9e391b3",
+    "approval.json": "b341fe232f1f2a7ceb3d100f9475abc3ca790c22",
+    "connection.json": "7252312151bdaebd2ee579208636b0b1c73aacb2",
+    "connector.json": "712b7f7abb0c06aecd29a76b667950a0eda070d7",
+    "container.json": "3b5b3a51d4f27645e3db2e8e2992aeee984de5ee",
+    "contract.json": "04fec0f7f4c26890e8163d88770a5613316b245d",
+    "data-product.json": "ceb1b6211740b85be37dd4ce64753db240c42851",
+    "domain.json": "42e83648bdebec54fabdb1ba9f7d7a1369f3ba05",
+    "export.json": "44ef4bb5c21860a66cd57d86e06a66ff7813c225",
+    "odps-product.json": "53b8eb5eb070d0d1e60a91fe908e038ee3e5d599",
+    "projection.json": "5457e3f233f936d3fba38bc8513fb99a54961607",
+    "quality-rule.json": "917a26d325d47c39d68630df5bd9e0c0c411a246",
+    "schema.json": "38940cc4e8b59a70cf44699459af0b8a09f0fc52",
+    "transformation.json": "7f5c8a5f771964d0637ec2f38def6d7c8dbd3fd1",
+    "validation.json": "bba581abb2f12a360ba910f7ed912bafdefa81dd",
+    "workflow-graph.json": "9715eea18965bea97fc5546edb4b37629c77315b",
+    "workflow.json": "afe25e55833ac957bdcd62d32e6c9df83779c54b"
+  }
+}

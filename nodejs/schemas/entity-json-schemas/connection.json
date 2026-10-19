@@ -67,6 +67,11 @@
       "minLength": 1,
       "description": "Connection type: database, api, webhook, file, or connector type (e.g. spotify, shopify)"
     },
+    "connector_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Connector package type emitted on connection-created (for example data-product-trigger). Distinct from type when a template sets both."
+    },
     "status": {
       "type": "string",
       "enum": ["active", "inactive", "error"],
@@ -186,6 +191,15 @@
           "type": ["string", "null"],
           "description": "Cron expression (LeoCron `time`) or platform-supported schedule string for this connection's registered bot. Distinct from `polling_interval_ms`, which is a millisecond gap for application-level throttling between requests—not the Leo schedule field."
         },
+        "primary_key": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Business-identity field names. A top-level primary_key is still read, and the next connection save moves it here.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "runtime_memory_mb": {
           "description": "Shared runtimes tier for trigger registration (256–2048). Defaults to 256 when unset. LeoCron `lambdaName`: `w-{org4}-{inst4}-bot-connectors-{mb}-rtime`; bot id: `w-{org4}-{inst4}-{workflow4}-bot-connectors-{mb}-{container_id}`. Instance `connection_details.runtimes_stack_identifier` may override the org/instance middle segment (CDK `microserviceIdentifier` = `w-{that middle}`).",
           "oneOf": [
@@ -212,6 +226,80 @@
         "timeout_ms": {
           "type": ["integer", "null"],
           "description": "Request/timeout in milliseconds"
+        },
+        "type": {
+          "type": ["string", "null"],
+          "description": "Ingestion mode. Use api_poll for REST pollers."
+        },
+        "url": {
+          "type": ["string", "null"],
+          "description": "Request URL or URL template. For entity_loop include {key} (e.g. https://api.example.com/V2/products?styleID={styleID}). The rest-api runtime refuses to fire if the required key would be missing (unfiltered child collection URLs)."
+        },
+        "pagination": {
+          "type": ["object", "null"],
+          "description": "Page-to-exhaustion settings for rest-api pollers. S&S uses type=page, page_param=page, page_size_param=perPage, page_size=100, start_page=1.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["page", "offset", "cursor", "none"]
+            },
+            "page_param": {
+              "type": "string",
+              "description": "Query param for page index. Default page."
+            },
+            "page_size_param": {
+              "type": "string",
+              "description": "Query param for page size (pageSize or perPage)."
+            },
+            "page_size": { "type": "integer" },
+            "start_page": {
+              "type": "integer",
+              "description": "First page index. Default 1."
+            },
+            "cursor_field": { "type": "string" },
+            "next_url_field": { "type": "string" },
+            "offset_param": { "type": "string" },
+            "limit_param": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "entity_loop": {
+          "type": ["object", "null"],
+          "description": "Generic rest-api fan-out: resolve entity keys from a parent data product or parent_poll, substitute {key} into the child URL, page each entity to exhaustion, skip per-entity 4xx, and checkpoint across scheduled runs. Not vendor-specific.",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "Entity field / URL placeholder (e.g. styleID)."
+            },
+            "source": {
+              "type": "string",
+              "enum": ["data_product", "parent_poll"],
+              "description": "data_product uses data_product_id (optional parent_poll to enumerate keys). parent_poll pages parent_poll.url."
+            },
+            "data_product_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Parent data product that holds the entity keys (graph bind / lineage)."
+            },
+            "source_queue": {
+              "type": "string",
+              "description": "Optional parent rstreams queue name."
+            },
+            "parent_poll": {
+              "type": "object",
+              "description": "HTTP parent catalog used to resolve keys (page to exhaustion).",
+              "properties": {
+                "url": { "type": "string" },
+                "base_url": { "type": "string" },
+                "pagination": { "type": "object" },
+                "data_path": { "type": "string" },
+                "query_params": { "type": "object" }
+              },
+              "additionalProperties": true
+            }
+          },
+          "required": ["key", "source"],
+          "additionalProperties": true
         }
       },
       "additionalProperties": true
@@ -233,7 +321,7 @@
       ],
       "description": "Authentication type for the connection (optional, backwards compat)."
     },
-    "ingestion_type": {
+    "transfer_mechanism": {
       "type": ["string", "null"],
       "enum": [
         "polling",
@@ -246,7 +334,7 @@
         "other",
         null
       ],
-      "description": "How data is ingested (optional)."
+      "description": "How data moves for this connection (optional). Formerly ingestion_type; renamed because connector_mode now carries direction and this field only ever described mechanism."
     },
     "export_type": {
       "type": ["string", "null"],
@@ -287,12 +375,12 @@
     "connector_mode": {
       "type": ["string", "null"],
       "enum": ["inbound", "outbound", "bidirectional", null],
-      "description": "For enrichment workflows: mid-flow connection must be 'bidirectional'. For ingestion head use 'inbound'; for consumption tail use 'outbound'. Must match connector supported_directions."
+      "description": "For enrichment workflows: mid-flow connection must be 'bidirectional'. For ingestion head use 'inbound'; for delivery tail use 'outbound'. Must match connector supported_directions."
     },
     "upstream_entity_id": {
       "type": ["string", "null"],
       "format": "uuid",
-      "description": "Upstream entity in the flow graph (e.g. data-product in consumption flows). Null for source connections."
+      "description": "Upstream entity in the flow graph (e.g. data-product in delivery flows). Null for source connections."
     },
     "upstream_entity_type": {
       "type": ["string", "null"],

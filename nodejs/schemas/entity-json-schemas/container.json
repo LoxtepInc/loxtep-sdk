@@ -33,7 +33,7 @@
     "workflow_id": {
       "type": "string",
       "format": "uuid",
-      "description": "Workflow this container belongs to"
+      "description": "Workflow (flow) this container belongs to"
     },
     "wrapped_entity_type": {
       "type": "string",

@@ -39,12 +39,12 @@
     "upstream_entity_id": {
       "type": ["string", "null"],
       "format": "uuid",
-      "description": "Reference to the upstream entity in the flow graph (connection or previous transformation). Null only when this is the first transformation directly after the trigger connection."
+      "description": "Reference to the upstream entity in the flow graph (connection, previous transformation, or the Records data product Studio inserts after a REST trigger). Null only when this is the first transformation directly after the trigger connection."
     },
     "upstream_entity_type": {
       "type": ["string", "null"],
-      "enum": ["connections", "transformations", null],
-      "description": "Entity type of the upstream entity (connections or transformations)"
+      "enum": ["connections", "transformations", "data-products", null],
+      "description": "Entity type of the upstream entity (connections, transformations, or data-products)"
     },
     "name": {
       "type": "string",
@@ -67,6 +67,7 @@
         "drop_duplicates",
         "flatten",
         "explode_array",
+        "zip_arrays",
         "array_to_column",
         "capitalize",
         "format_timestamp",
@@ -85,6 +86,7 @@
         "batch",
         "delay",
         "split",
+        "route",
         "execute_code_function",
         "crypto",
         "formatter",
@@ -112,6 +114,12 @@
         {
           "field": "name",
           "case": "upper"
+        },
+        {
+          "source_path": "daily",
+          "index_field": "time",
+          "index_as": "obs_date",
+          "carry_fields": ["latitude", "longitude", "elevation", "timezone"]
         }
       ]
     },

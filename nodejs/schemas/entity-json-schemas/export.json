@@ -26,10 +26,36 @@
       "format": "uuid",
       "description": "Organization that owns this export"
     },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this export"
+    },
+    "workflow_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Workflow this export belongs to when saved in a workflow bundle"
+    },
     "data_product_id": {
       "type": "string",
       "format": "uuid",
       "description": "Reference to the data product this export applies to"
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Upstream canvas node this export is wired from"
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "connections",
+        "transformations",
+        "validations",
+        "data-products",
+        null
+      ],
+      "description": "Entity type of upstream_entity_id"
     },
     "name": {
       "type": "string",

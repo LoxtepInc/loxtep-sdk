@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/approval.json",
+  "title": "Approval Node Entity",
+  "description": "JSON Schema for Approval node entity (workflows/{workflow_id}/approvals/{id}.json). Human-in-the-loop gate that pauses event flow pending a decision. Bounds match graph-patch-apply validateApprovalNodePayload. additionalProperties stays open because ApprovalNodeEntity ([key: string]: unknown) and graph patch node_config carry runtime-specific keys; known fields are typed and required fields are enforced.",
+  "type": "object",
+  "required": [
+    "approval_node_id",
+    "workflow_id",
+    "name",
+    "approval_channel",
+    "timeout_hours"
+  ],
+  "properties": {
+    "approval_node_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for the approval node"
+    },
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow this approval node belongs to"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Display name (1-128 characters)"
+    },
+    "approval_channel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Channel where approval requests are sent (1-256 characters)"
+    },
+    "timeout_hours": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 168,
+      "description": "Hours before the approval request times out (1-168)"
+    },
+    "approved_queue_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Queue that receives approved events"
+    },
+    "rejected_queue_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Queue that receives rejected events"
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "description": "Upstream node in the workflow graph"
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "description": "Entity type of the upstream node"
+    },
+    "upstream_label": {
+      "type": "string",
+      "enum": ["approved", "rejected", "error"],
+      "description": "Labelled edge from the upstream node (approval branches)"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "description": "Free-text description"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this node"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that owns this node"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the node was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the node was last updated"
+    }
+  },
+  "additionalProperties": true
+}

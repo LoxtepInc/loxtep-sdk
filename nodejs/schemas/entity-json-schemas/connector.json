@@ -48,6 +48,7 @@
     "category": {
       "type": "string",
       "enum": [
+        "basic",
         "e_commerce",
         "crm",
         "marketing",
@@ -57,6 +58,7 @@
         "analytics",
         "communication",
         "productivity",
+        "fulfillment",
         "custom"
       ],
       "description": "Connector category"

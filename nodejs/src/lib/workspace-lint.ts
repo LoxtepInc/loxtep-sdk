@@ -61,6 +61,10 @@ const ENTITY_PRIMARY_ID_KEYS: Partial<
   [EntityType.CONTRACT]: 'contract_id',
   [EntityType.QUALITY_RULE]: 'quality_rule_id',
   [EntityType.EXPORT]: 'export_id',
+  [EntityType.CONTAINER]: 'container_id',
+  [EntityType.PROJECTION]: 'projection_id',
+  [EntityType.APPROVAL]: 'approval_node_id',
+  [EntityType.AGENT]: 'agent_node_id',
 };
 
 /** Entity types that may appear as upstream_entity_id targets within a package. */
@@ -103,42 +107,74 @@ function listJsonFiles(dir: string): string[] {
   return out;
 }
 
-function classifyEntity(
-  projectDir: string,
-  filePath: string
+/** Workflow-scoped entity folders (`workflows/<id>/<segment>/<file>.json`). */
+const WORKFLOW_SCOPED_SEGMENTS: ReadonlyArray<
+  [string, (typeof EntityType)[keyof typeof EntityType]]
+> = [
+  ['connections', EntityType.CONNECTION],
+  ['data-products', EntityType.DATA_PRODUCT],
+  ['transformations', EntityType.TRANSFORMATION],
+  ['validations', EntityType.VALIDATION],
+  ['schemas', EntityType.SCHEMA],
+  ['contracts', EntityType.CONTRACT],
+  ['quality-rules', EntityType.QUALITY_RULE],
+  ['exports', EntityType.EXPORT],
+  ['containers', EntityType.CONTAINER],
+  ['projections', EntityType.PROJECTION],
+  ['approvals', EntityType.APPROVAL],
+  ['agents', EntityType.AGENT],
+];
+
+/** Human-readable list of the paths lint understands (used in the unrecognised-file issue). */
+export const RECOGNISED_PACKAGE_PATHS: readonly string[] = [
+  'connectors/<file>.json',
+  'domains/<file>.json',
+  'schemas/<file>.json',
+  'contracts/<file>.json',
+  'workflows/<id>/workflow.json',
+  'workflows/<id>/_graph.json',
+  ...WORKFLOW_SCOPED_SEGMENTS.map(([segment]) => `workflows/<id>/${segment}/<file>.json`),
+];
+
+/**
+ * Map a package-relative path to the entity type whose shipped schema validates it.
+ * Returns null for a path lint does not recognise; callers must report it, not skip it.
+ */
+export function classifyPackagePath(
+  relPath: string
 ): (typeof EntityType)[keyof typeof EntityType] | null {
-  const rel = relative(projectDir, filePath).replace(/\\/g, '/');
+  const rel = relPath.replace(/\\/g, '/');
   if (rel.startsWith('connectors/') && rel.endsWith('.json')) {
     return EntityType.CONNECTOR;
-  }
-  if (rel.match(/^workflows\/[^/]+\/workflow\.json$/)) {
-    return EntityType.WORKFLOW;
-  }
-  if (rel.match(/^workflows\/[^/]+\/connections\/[^/]+\.json$/)) {
-    return EntityType.CONNECTION;
-  }
-  if (rel.match(/^workflows\/[^/]+\/data-products\/[^/]+\.json$/)) {
-    return EntityType.DATA_PRODUCT;
-  }
-  if (rel.match(/^workflows\/[^/]+\/transformations\/[^/]+\.json$/)) {
-    return EntityType.TRANSFORMATION;
-  }
-  if (rel.match(/^workflows\/[^/]+\/validations\/[^/]+\.json$/)) {
-    return EntityType.VALIDATION;
   }
   if (rel.startsWith('domains/') && rel.endsWith('.json')) {
     return EntityType.DOMAIN;
   }
-  if (rel.match(/^(?:schemas|workflows\/[^/]+\/schemas)\/[^/]+\.json$/)) {
+  if (/^schemas\/[^/]+\.json$/.test(rel)) {
     return EntityType.SCHEMA;
   }
-  if (rel.match(/^(?:contracts|workflows\/[^/]+\/contracts)\/[^/]+\.json$/)) {
+  if (/^contracts\/[^/]+\.json$/.test(rel)) {
     return EntityType.CONTRACT;
+  }
+  if (/^workflows\/[^/]+\/workflow\.json$/.test(rel)) {
+    return EntityType.WORKFLOW;
+  }
+  if (/^workflows\/[^/]+\/_graph\.json$/.test(rel)) {
+    return EntityType.WORKFLOW_GRAPH;
+  }
+  const scoped = rel.match(/^workflows\/[^/]+\/([^/]+)\/[^/]+\.json$/);
+  if (scoped) {
+    const hit = WORKFLOW_SCOPED_SEGMENTS.find(([segment]) => segment === scoped[1]);
+    if (hit) return hit[1];
   }
   return null;
 }
 
-function discoverEntities(projectDir: string, workflowId?: string): DiscoveredEntity[] {
+function discoverEntities(
+  projectDir: string,
+  workflowId?: string,
+  unrecognised: string[] = []
+): DiscoveredEntity[] {
   const entities: DiscoveredEntity[] = [];
   const roots: string[] = [
     join(projectDir, 'connectors'),
@@ -155,10 +191,13 @@ function discoverEntities(projectDir: string, workflowId?: string): DiscoveredEn
 
   for (const root of roots) {
     for (const filePath of listJsonFiles(root)) {
-      const entityType = classifyEntity(projectDir, filePath);
-      if (!entityType) continue;
-      const data = readJsonObject(filePath);
       const rel = relative(projectDir, filePath).replace(/\\/g, '/');
+      const entityType = classifyPackagePath(rel);
+      if (!entityType) {
+        unrecognised.push(rel);
+        continue;
+      }
+      const data = readJsonObject(filePath);
       if (!data) {
         entities.push({
           path: rel,
@@ -397,8 +436,21 @@ export function lintLocalPackage(options: LintOptions): LintResult {
     };
   }
 
-  const entities = discoverEntities(projectDir, workflow_id);
+  const unrecognised: string[] = [];
+  const entities = discoverEntities(projectDir, workflow_id, unrecognised);
   const byType = buildEntityIndex(entities);
+
+  // A file lint cannot classify is never silently skipped: it is reported so the
+  // author either moves it to a recognised path or removes it.
+  for (const rel of unrecognised.sort()) {
+    issues.push({
+      path: rel,
+      severity: 'error',
+      message:
+        'Unrecognised file: not a Loxtep entity path, so lint cannot validate it. ' +
+        `Expected one of: ${RECOGNISED_PACKAGE_PATHS.join(', ')}`,
+    });
+  }
 
   for (const entity of entities) {
     if (Object.keys(entity.data).length === 0) {
@@ -475,7 +527,7 @@ export function lintLocalPackage(options: LintOptions): LintResult {
   return {
     ok: issues.length === 0,
     issues,
-    files_checked: entities.length,
+    files_checked: entities.length + unrecognised.length,
   };
 }
 

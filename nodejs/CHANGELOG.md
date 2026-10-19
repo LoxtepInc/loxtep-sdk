@@ -8,6 +8,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.32] - 2026-10-19
+
+### Fixed
+
+- Vendored entity JSON Schemas re-synced from the platform's single source (`platform-backend/_core/src/workspace/entity-json-schemas/`, LoxtepInc/loxtep#3002). The old copy dated from 2026-07-24 and was read from an unused platform directory, so `loxtep lint` rejected valid entities: connection `connector_type` / `transfer_mechanism` / `ingestion_config.primary_key`, transform types `zip_arrays` / `route`, workflow `status: archived` / `archived_at` / `trigger.query_trigger`, data-product `kind` / `schema`, and more. Adds `projection.json`, `approval.json` and `agent.json`. The source commit is pinned in `schemas/entity-json-schemas/SOURCE.json`.
+- `loxtep lint` validates every entity type the SDK ships a schema for: `exports`, `quality-rules`, `containers`, `projections`, `approvals`, `agents`, and `workflows/<id>/_graph.json` (against `workflow-graph.json`). A JSON file at a path lint doesn't recognise is now reported as an error (`Unrecognised file …`) instead of being skipped silently, and it counts in `files_checked`.
+- `InstanceCreateInput.connection_details.observe_api` no longer has `namespace`. POST /instances refuses it (LoxtepInc/loxtep#2956); the platform assigns the namespace.
+
+### Added
+
+- `EntityType.CONTAINER`, `PROJECTION`, `APPROVAL`, `AGENT` and `WORKFLOW_GRAPH`, plus `classifyPackagePath()` / `RECOGNISED_PACKAGE_PATHS` from the lint module.
+- `pnpm run check:entity-schemas`, run in CI and before publish. It fails when any vendored schema differs from the pinned loxtep commit's git blob, or a file is missing or extra. `--source /path/to/loxtep` also verifies the pin against that checkout. `sync:entity-schemas` now copies from the checkout's HEAD commit, refuses uncommitted source changes, and removes schemas the source no longer has.
+
+### Docs
+
+- README: an SDK `Trigger` is the platform connection entity, not the workflow `trigger` property.
+
 ## [0.9.29] - 2026-10-15
 
 ### Fixed

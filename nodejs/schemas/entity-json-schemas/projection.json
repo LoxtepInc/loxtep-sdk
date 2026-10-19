@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/projection.json",
+  "title": "Projection Entity",
+  "description": "JSON Schema for Projection entity in customer workspace. Projections are thin workflow nodes that delegate field mapping to TransformationEngine.transformBatch, connecting source Data_Product output ports to Entity_Store input ports.",
+  "type": "object",
+  "required": [
+    "projection_id",
+    "organization_id",
+    "workflow_id",
+    "entity_definition_id",
+    "projection_spec_id",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "projection_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the projection workflow node"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this projection"
+    },
+    "workflow_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Workflow this projection node belongs to"
+    },
+    "entity_definition_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Target Entity_Definition this projection materializes"
+    },
+    "projection_spec_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Projection_Spec that defines the field mappings"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name of the projection node (written by ProjectionWorkflowNode.activate)"
+    },
+    "source_data_product_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "minItems": 1,
+      "description": "Source Data_Product IDs whose output ports feed this projection"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "inactive", "draft"],
+      "description": "Current status of the projection node"
+    },
+    "upstream_entity_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Upstream node in the workflow graph (typically a Data_Product output port)"
+    },
+    "upstream_entity_type": {
+      "type": ["string", "null"],
+      "description": "Entity type of the upstream node"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional metadata for the projection node"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when projection node was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when projection node was last updated"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when projection node was deleted (soft delete)"
+    }
+  },
+  "additionalProperties": false
+}

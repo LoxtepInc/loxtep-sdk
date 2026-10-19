@@ -355,3 +355,78 @@ describe('schema and contract bindings', () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe('routing every shipped schema + unrecognised files (LoxtepInc/loxtep#3002)', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'loxtep-lint-routing-'));
+    writeJson(dir, `workflows/${WF}/workflow.json`, baseWorkflow());
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('reports an unrecognised JSON file instead of skipping it', () => {
+    writeJson(dir, `workflows/${WF}/notes/scratch.json`, { hello: 'world' });
+    const result = lintLocalPackage({ projectDir: dir });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        path: `workflows/${WF}/notes/scratch.json`,
+        severity: 'error',
+        message: expect.stringContaining('Unrecognised file'),
+      })
+    );
+    expect(result.files_checked).toBe(2);
+  });
+
+  it.each([
+    ['exports', EntityType.EXPORT],
+    ['quality-rules', EntityType.QUALITY_RULE],
+    ['containers', EntityType.CONTAINER],
+    ['projections', EntityType.PROJECTION],
+    ['approvals', EntityType.APPROVAL],
+    ['agents', EntityType.AGENT],
+  ])('validates workflows/<id>/%s/*.json against its shipped schema', segment => {
+    writeJson(dir, `workflows/${WF}/${segment}/x.json`, { not_a_field: true });
+    const result = lintLocalPackage({ projectDir: dir });
+    const forFile = result.issues.filter(i => i.path.startsWith(`workflows/${WF}/${segment}/x.json`));
+    expect(forFile.length).toBeGreaterThan(0);
+    expect(forFile.some(i => i.message.includes('Unrecognised file'))).toBe(false);
+  });
+
+  it('validates workflows/<id>/_graph.json against workflow-graph.json', () => {
+    writeJson(dir, `workflows/${WF}/_graph.json`, { not_a_graph: true });
+    const result = lintLocalPackage({ projectDir: dir });
+    const forFile = result.issues.filter(i => i.path.startsWith(`workflows/${WF}/_graph.json`));
+    expect(forFile.length).toBeGreaterThan(0);
+    expect(forFile.some(i => i.message.includes('Unrecognised file'))).toBe(false);
+  });
+
+  it('accepts a valid approval node', () => {
+    writeJson(dir, `workflows/${WF}/approvals/a.json`, {
+      approval_node_id: 'apv-1',
+      workflow_id: WF,
+      name: 'Sign-off',
+      approval_channel: '#approvals',
+      timeout_hours: 24,
+      updated_at: NOW,
+    });
+    const result = lintLocalPackage({ projectDir: dir });
+    expect(result.issues.filter(i => i.path.startsWith(`workflows/${WF}/approvals/`))).toEqual([]);
+  });
+
+  it('accepts a workflow round-tripped with status archived (stale schema rejected it)', () => {
+    writeJson(dir, `workflows/${WF}/workflow.json`, {
+      ...baseWorkflow(),
+      status: 'archived',
+      archived_at: NOW,
+    });
+    const result = lintLocalPackage({ projectDir: dir });
+    expect(result.issues.filter(i => i.path.startsWith(`workflows/${WF}/workflow.json`))).toEqual(
+      []
+    );
+  });
+});
