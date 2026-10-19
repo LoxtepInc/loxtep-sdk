@@ -1,19 +1,18 @@
 # Entity JSON schemas (vendored)
 
-These JSON Schema draft-07 files are a copy of the Loxtep platform schemas used
-for customer workspace entity validation.
+These JSON Schema draft-07 files are byte-identical copies of the Loxtep platform's
+single entity-schema source, used by `loxtep lint` and `validateEntity()`.
 
-**Source (canonical):** Loxtep platform customer-workspace entity JSON schemas
-(private platform monorepo). Sync from a local checkout when those schemas
-change.
+**Source:** `LoxtepInc/loxtep` `platform-backend/_core/src/workspace/entity-json-schemas/`
+**Pinned commit:** `3dbf25ff227874d1a475c7a82939893fcc4c222b` (git blob ids per file in `SOURCE.json`)
 
-**Sync command** (from `nodejs/`):
+**Sync** (from `nodejs/`, with a loxtep checkout at the commit to pin):
 
 ```bash
-node scripts/sync-entity-schemas.mjs /path/to/loxtep
+pnpm run sync:entity-schemas /path/to/loxtep
+pnpm run check:entity-schemas
 ```
 
-When platform schemas change, re-run the sync script and note the date/source
-commit in the SDK CHANGELOG.
-
-**Last synced:** 2026-07-24 (from local Loxtep platform checkout)
+`check:entity-schemas` runs in CI and before publish. It fails if any vendored file
+differs from the pinned commit's blob, or if a file is missing or extra. Do not edit
+these files by hand; re-sync instead and note the commit in CHANGELOG.md.

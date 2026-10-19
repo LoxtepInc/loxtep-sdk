@@ -69,14 +69,19 @@
             "type": "string",
             "description": "Unique identifier for the segment"
           },
-          "name": { "type": "string", "description": "Display name" },
+          "name": {
+            "type": "string",
+            "description": "Display name"
+          },
           "description": {
             "type": ["string", "null"],
             "description": "Optional description"
           },
           "node_ids": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Entity IDs of nodes in this segment"
           },
           "color": {
@@ -103,6 +108,37 @@
           "type": ["string", "null"],
           "format": "uuid",
           "description": "Connector ID for connector-driven triggers"
+        },
+        "query_trigger": {
+          "type": ["object", "null"],
+          "description": "D14 (docs/system-spec/11-delivery-layer-design.md): a saved query against a data product, run on a schedule or on demand, targeting a data-products node (materialize) or an outbound connections node (deliver) chosen separately at build time. Not a subsystem \u2014 a trigger type, like event/schedule/connector above.",
+          "properties": {
+            "data_product_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "An existing data product \u2014 never a raw table."
+            },
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The saved SQL query run against data_product_id."
+            },
+            "schedule": {
+              "type": ["string", "null"],
+              "description": "Cron or interval; omit for on-demand (run_trigger / MCP-invoked)."
+            },
+            "primary_key": {
+              "type": "array",
+              "description": "Source columns concatenated into lx__id before queue write (business identity).",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "required": ["data_product_id", "query", "primary_key"],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -119,6 +155,20 @@
           "type": ["integer", "null"],
           "minimum": 1,
           "description": "Number of events to process per batch"
+        },
+        "activation": {
+          "type": ["string", "null"],
+          "enum": ["schedule", "event", "request", null],
+          "description": "Explicit activation designation for a delivery flow's head (D7, docs/system-spec/11-delivery-layer-design.md). 'request' marks a consumer-initiated delivery flow: no schedule, no event subscription \u2014 the flow is activated by an inbound request against a protocol-adapter registration (route/listener + policy binding) rather than a queue-consumer bot. Distinguishes a deliberately request-activated flow from one whose trigger was simply never configured."
+        },
+        "data_product_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Data product this delivery flow serves. Required in practice when activation is 'request' (protocol-adapter registration) or when a schedule is set (scheduled consumption). Optional at schema level so existing schedule-free event/queue flows remain valid."
+        },
+        "connector_type": {
+          "type": "string",
+          "description": "Protocol/connector type for a request-activated delivery flow (e.g. sql-query). Codegen falls back to 'unknown' when omitted."
         }
       },
       "additionalProperties": false
@@ -148,7 +198,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["active", "paused", "error", "pending", "inactive"],
+      "enum": ["active", "paused", "error", "pending", "inactive", "archived"],
       "description": "Workflow status"
     },
     "metrics": {
@@ -187,6 +237,11 @@
       "type": ["string", "null"],
       "format": "date-time",
       "description": "ISO 8601 timestamp when workflow was deleted (soft delete)"
+    },
+    "archived_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when workflow was archived (catalog preserved, runtime bots retired)"
     }
   },
   "additionalProperties": false

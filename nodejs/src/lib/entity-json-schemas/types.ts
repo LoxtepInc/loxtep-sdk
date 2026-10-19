@@ -14,6 +14,15 @@ export const EntityType = {
   CONTRACT: 'contracts',
   QUALITY_RULE: 'quality-rules',
   EXPORT: 'exports',
+  CONTAINER: 'containers',
+  PROJECTION: 'projections',
+  APPROVAL: 'approvals',
+  AGENT: 'agents',
+  /**
+   * Materialized `workflows/<id>/_graph.json`. A derived artifact, not a platform
+   * EntityType; lint validates it against workflow-graph.json.
+   */
+  WORKFLOW_GRAPH: 'workflow-graph',
 } as const;
 
 export type EntityType = (typeof EntityType)[keyof typeof EntityType];
@@ -31,4 +40,9 @@ export const ENTITY_SCHEMA_FILES: Record<EntityType, string> = {
   [EntityType.CONTRACT]: 'contract.json',
   [EntityType.QUALITY_RULE]: 'quality-rule.json',
   [EntityType.EXPORT]: 'export.json',
+  [EntityType.CONTAINER]: 'container.json',
+  [EntityType.PROJECTION]: 'projection.json',
+  [EntityType.APPROVAL]: 'approval.json',
+  [EntityType.AGENT]: 'agent.json',
+  [EntityType.WORKFLOW_GRAPH]: 'workflow-graph.json',
 };

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://loxtep.io/schemas/entity/data-product.json",
   "title": "Data Product Entity",
-  "description": "JSON Schema for Data Product entity in customer workspace (Studio / S3 graph). Flow-graph fields (workflow_id, upstream_entity_id, etc.) describe placement in the workflow canvas. The canonical interoperable catalog and API representation is ODPS v4.1 (Open Data Products Standard): include `odps_document` aligned with https://opendataproducts.org/v4.1/schema/odps.json — see `odps-product.json` in this package for the ODPS document shape.",
+  "description": "JSON Schema for Data Product entity in customer workspace (Studio / S3 graph). Flow-graph fields (workflow_id, upstream_entity_id, etc.) describe placement in the workflow canvas. The canonical interoperable catalog and API representation is ODPS v4.1 (Open Data Products Standard): include `odps_document` aligned with https://opendataproducts.org/v4.1/schema/odps.json — see `odps-product.json` and .kiro/specs/odps-data-product-standard in the Loxtep repo.",
   "type": "object",
   "required": [
     "data_product_id",
@@ -23,6 +23,16 @@
       "type": "string",
       "format": "uuid",
       "description": "Organization that owns this data product"
+    },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this data product"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["source", "consumer"],
+      "description": "Data product role in the flow (source or consumer)"
     },
     "workflow_id": {
       "type": "string",
@@ -151,6 +161,13 @@
       "type": ["string", "null"],
       "format": "date-time",
       "description": "ISO 8601 timestamp when data product was deleted (soft delete)"
+    },
+    "schema": {
+      "description": "Product schema stored on the data product (object or JSON string). Read by medallion, metrics, and semantic bootstrap as dp.schema.",
+      "oneOf": [
+        { "type": "object", "additionalProperties": true },
+        { "type": "string", "minLength": 1 }
+      ]
     },
     "odps_document": {
       "description": "Canonical ODPS v4.1 document (`{ product: ... }`). Preferred for platform catalog, governance, and ecosystem interoperability. Validated in the dataproducts API; Loxtep-specific fields under product.custom.loxtep.",

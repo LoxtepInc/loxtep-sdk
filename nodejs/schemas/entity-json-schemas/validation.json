@@ -40,11 +40,17 @@
     "upstream_entity_id": {
       "type": ["string", "null"],
       "format": "uuid",
-      "description": "Reference to the upstream entity this validation applies to (connection, transformation, or data product)"
+      "description": "Reference to the upstream entity this validation applies to (connection, transformation, validation, or data product)"
     },
     "upstream_entity_type": {
       "type": ["string", "null"],
-      "enum": ["connections", "transformations", "data-products", null],
+      "enum": [
+        "connections",
+        "transformations",
+        "validations",
+        "data-products",
+        null
+      ],
       "description": "Entity type of the upstream entity"
     },
     "name": {

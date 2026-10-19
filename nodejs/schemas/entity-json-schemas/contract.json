@@ -25,6 +25,16 @@
       "format": "uuid",
       "description": "Organization that owns this contract"
     },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this contract"
+    },
+    "workflow_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Workflow this contract belongs to when saved in a workflow bundle"
+    },
     "data_product_id": {
       "type": "string",
       "format": "uuid",

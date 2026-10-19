@@ -26,6 +26,16 @@
       "format": "uuid",
       "description": "Organization that owns this quality rule"
     },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this quality rule"
+    },
+    "workflow_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Workflow this quality rule belongs to when saved in a workflow bundle"
+    },
     "data_product_id": {
       "type": ["string", "null"],
       "format": "uuid",

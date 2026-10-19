@@ -82,7 +82,8 @@ export interface InstanceCreateInput {
       rstreams_secret_arn?: string;
       rstreams_auth_arn?: string;
       external_id?: string;
-      namespace?: string;
+      // No `namespace`: POST /instances refuses connection_details.observe_api.namespace
+      // (LoxtepInc/loxtep#2956); the platform assigns it.
     };
     connector_vpc?: ConnectorVpc;
   };

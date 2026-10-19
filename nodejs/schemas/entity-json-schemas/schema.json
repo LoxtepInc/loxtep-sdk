@@ -27,6 +27,16 @@
       "format": "uuid",
       "description": "Organization that owns this schema"
     },
+    "project_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Project that contains this schema"
+    },
+    "workflow_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Workflow this schema belongs to when saved in a workflow bundle"
+    },
     "data_product_id": {
       "type": "string",
       "format": "uuid",
