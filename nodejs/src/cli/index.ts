@@ -68,6 +68,7 @@ import {
   runTriggersGet,
   runTriggersCreate,
   runTriggersTest,
+  runTriggersResetBackfill,
 } from './commands/triggers-cmd.js';
 import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
 import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
@@ -833,9 +834,15 @@ export async function runCli(argv: string[]): Promise<void> {
           project_id: getArg('--project-id'),
           workflow_id: getArg('--workflow-id'),
         });
+      } else if (sub === 'reset-backfill' && args[2]) {
+        await runTriggersResetBackfill(args[2], {
+          project_id: getArg('--project-id'),
+          instance_id: getArg('--instance-id'),
+          rebaseline_config_hash: args.includes('--rebaseline-config-hash'),
+        });
       } else {
         console.error(
-          'Usage: loxtep triggers list [--project-id <id>] [--workflow-id <id>] | get <id> [--project-id <id>] [--workflow-id <id>] | create --project-id <id> --workflow-id <id> --name … | test <id>'
+          'Usage: loxtep triggers list [--project-id <id>] [--workflow-id <id>] | get <id> [--project-id <id>] [--workflow-id <id>] | create --project-id <id> --workflow-id <id> --name … | test <id> | reset-backfill <connection_id> [--rebaseline-config-hash] [--project-id <id>] [--instance-id <id>]'
         );
         process.exitCode = 1;
       }

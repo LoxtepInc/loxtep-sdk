@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-10-20
+
+### Added
+
+- `client.build.triggers.reset_backfill` posts to a connection's reset-backfill path (sync and async).
+
 ## [0.7.4] — 2026-10-12
 
 ### Added

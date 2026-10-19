@@ -233,6 +233,26 @@ describe('createTriggersApi list/create/update/delete/test', () => {
     expect(result.details?.has_probe_url).toBe(true);
   });
 
+  it('reset_backfill posts the connection reset path', async () => {
+    const posts: Array<{ path: string; body: unknown }> = [];
+    const http = {
+      post: async (path: string, body: unknown) => {
+        posts.push({ path, body });
+        return { success: true, data: { namespace: 'backfill' } };
+      },
+    } as unknown as LoxtepHttpClient;
+    const api = createTriggersApi(http);
+    const result = await api.reset_backfill('0b86684f-1111-4222-8333-444444444444', {
+      project_id: 'proj-1',
+      rebaseline_config_hash: true,
+    });
+    expect(posts[0].path).toBe(
+      '/workflows/projects/proj-1/connections/0b86684f-1111-4222-8333-444444444444/reset-backfill'
+    );
+    expect(posts[0].body).toEqual({ rebaseline_config_hash: true });
+    expect(result).toEqual({ namespace: 'backfill' });
+  });
+
   it('test reports no probe URL when configuration lacks one', async () => {
     const http = {
       get: async () => ({

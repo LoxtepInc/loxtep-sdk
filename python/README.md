@@ -157,7 +157,7 @@ Grouped by journey stage; kind labels: **Resource** (full CRUD), **Reference**
 
 | Surface | Kind | Methods |
 | --- | --- | --- |
-| **triggers** | Resource | `get`, `list`, `create`, `update`, `delete`, `test` |
+| **triggers** | Resource | `get`, `list`, `create`, `update`, `delete`, `test`, `reset_backfill` |
 | **connectors** | Resource | `list`, `get`, `create`, `update`, `delete`, `test`, `get_oauth_url` |
 | **workflows** | Resource | `list`, `get`, `create`, `get_graph`, `deploy` |
 | **data_products.get_writer** | Runtime | the write path for events (resolves name→id) |
@@ -220,6 +220,7 @@ Ingest-side source bindings (external systems that feed a workflow).
 | `update(id, *, name, data, configuration, metadata)` | Update a trigger |
 | `delete(id)` | Delete a trigger |
 | `test(id)` | Test trigger connectivity |
+| `reset_backfill(connection_id, *, project_id, rebaseline_config_hash, instance_id)` | Clear one paused MongoDB backfill checkpoint |
 
 ### `client.targets`
 

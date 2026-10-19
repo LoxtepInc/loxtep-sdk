@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.33] - 2026-10-20
+
+### Added
+
+- `client.build.triggers.reset_backfill` posts to a connection's reset-backfill path. CLI: `loxtep triggers reset-backfill <connection_id>` (`--rebaseline-config-hash`, `--instance-id`).
+
 ## [0.9.32] - 2026-10-19
 
 ### Fixed

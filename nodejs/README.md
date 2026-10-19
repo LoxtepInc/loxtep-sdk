@@ -226,7 +226,7 @@ Every method is `snake_case`. APIs live on **namespaced areas** of
 
 - **`.workflows`** — `list`, `get`, `create`, `get_graph`, `deploy`; low-level
   `.get_writer(workflow_id, { bot_id, … })` escape hatch
-- **`.triggers`** — `get`, `list`, `create`, `update`, `delete`, `test`
+- **`.triggers`** — `get`, `list`, `create`, `update`, `delete`, `test`, `reset_backfill`
   - **Naming note:** an SDK `Trigger` (`dist/client/trigger-types.d.ts`) is the platform **connection** entity (`connection_id`, `workflows/<id>/connections/*.json`), validated by `schemas/entity-json-schemas/connection.json`. It is not the workflow's `trigger` property (event / schedule / connector / `query_trigger`), which is part of `workflow.json`. There is no separate trigger entity schema.
 - **`.data_products`** — CRUD, `stream`, `replay`, `get_queue_info`,
   `invalidate_cache`, … (for writes/reads by name, prefer top-level
@@ -397,6 +397,7 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `triggers get <id>`                                  | Get trigger by id                                                 |
 | `triggers create --name <n> --type <t> --key <k>`    | Create trigger                                                    |
 | `triggers test <id>`                                 | Test trigger                                                      |
+| `triggers reset-backfill <connection_id>`            | Clear one paused MongoDB backfill checkpoint                      |
 | `observe status`                                     | Show observability status (bots)                                   |
 | `queue info <data-product-id>`                       | Queue info by data product id                                      |
 | `queue info --queue <name>`                          | Queue info by queue name                                           |
