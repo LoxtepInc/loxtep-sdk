@@ -8,6 +8,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   isDataProductTriggerConnection,
+  isSdkInputConnection,
   lintLocalPackage,
   primaryEntityId,
 } from './workspace-lint.js';
@@ -119,6 +120,20 @@ describe('isDataProductTriggerConnection', () => {
 
   it('rejects other connector types', () => {
     expect(isDataProductTriggerConnection({ type: 'webhook' })).toBe(false);
+  });
+});
+
+describe('isSdkInputConnection', () => {
+  it('accepts type sdk', () => {
+    expect(isSdkInputConnection({ type: 'sdk' })).toBe(true);
+  });
+
+  it('accepts connector_type sdk when type is absent', () => {
+    expect(isSdkInputConnection({ connector_type: 'sdk' })).toBe(true);
+  });
+
+  it('uses type when both type and connector_type are set', () => {
+    expect(isSdkInputConnection({ type: 'webhook', connector_type: 'sdk' })).toBe(false);
   });
 });
 
@@ -278,6 +293,97 @@ describe('lintLocalPackage trigger + upstream regressions', () => {
     const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });
     expect(result.ok).toBe(false);
     expect(result.issues.some(i => i.message.includes('missing connector_id'))).toBe(true);
+  });
+
+  it('passes for type sdk without connector_id', () => {
+    writeJson(dir, `workflows/${WF}/workflow.json`, {
+      ...baseWorkflow(),
+      workflow_type: 'ingestion',
+      name: 'SDK input flow',
+    });
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, {
+      connection_id: CONN,
+      organization_id: ORG,
+      project_id: PROJECT,
+      workflow_id: WF,
+      key: 'synthetic-input',
+      name: 'Synthetic Agent Execution fixtures',
+      type: 'sdk',
+      status: 'inactive',
+      configuration: {
+        sdk_type: 'nodejs',
+        event_type: 'test.agent-execution.validation.v1',
+      },
+      created_at: NOW,
+      updated_at: NOW,
+    });
+    writeJson(dir, `workflows/${WF}/data-products/${DP}.json`, {
+      ...dataProduct(CONN, 'connections'),
+      governance: {
+        classification: 'internal',
+        tags: ['synthetic-test'],
+      },
+    });
+
+    const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('passes for type sdk when connector_id is null', () => {
+    writeJson(dir, `workflows/${WF}/workflow.json`, baseWorkflow());
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, {
+      connection_id: CONN,
+      organization_id: ORG,
+      project_id: PROJECT,
+      workflow_id: WF,
+      connector_id: null,
+      key: 'sdk-input',
+      name: 'SDK Input',
+      type: 'sdk',
+      status: 'active',
+      created_at: NOW,
+      updated_at: NOW,
+    });
+    writeJson(dir, `workflows/${WF}/data-products/${DP}.json`, dataProduct(CONN, 'connections'));
+
+    const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });
+    expect(result.issues.filter(i => i.message.includes('connector_id'))).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('checks a connector_id on a type sdk connection against local connectors/', () => {
+    writeJson(dir, `workflows/${WF}/workflow.json`, baseWorkflow());
+    writeJson(dir, `connectors/${CONNECTOR}.json`, {
+      connector_id: CONNECTOR,
+      organization_id: ORG,
+      connector_type: 'sdk',
+      name: 'SDK connector',
+      description: 'Local SDK connector',
+      category: 'custom',
+      auth_type: 'custom',
+      version: '1.0.0',
+      created_at: NOW,
+      updated_at: NOW,
+    });
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, {
+      connection_id: CONN,
+      organization_id: ORG,
+      project_id: PROJECT,
+      workflow_id: WF,
+      connector_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      key: 'sdk-input',
+      name: 'SDK Input',
+      type: 'sdk',
+      status: 'active',
+      created_at: NOW,
+      updated_at: NOW,
+    });
+    writeJson(dir, `workflows/${WF}/data-products/${DP}.json`, dataProduct(CONN, 'connections'));
+
+    const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some(i => i.message.includes('not found under connectors/'))).toBe(true);
   });
 });
 

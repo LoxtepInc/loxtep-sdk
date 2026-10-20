@@ -46,6 +46,12 @@ export const DATA_PRODUCT_TRIGGER_TYPE = 'data-product-trigger' as const;
 /** Rejected legacy spelling — lint fails with a rename message. */
 export const DATA_PRODUCT_TRIGGER_TYPE_LEGACY = 'data_product_trigger' as const;
 
+/**
+ * SDK writer input. Native save_workflow_bundle accepts this connection with
+ * no org connector. Do not invent a connector_id for it.
+ */
+export const SDK_INPUT_CONNECTION_TYPE = 'sdk' as const;
+
 /** Entity-type-specific primary ID fields (mirrors platform ENTITY_ID_KEYS). */
 const ENTITY_PRIMARY_ID_KEYS: Partial<
   Record<(typeof EntityType)[keyof typeof EntityType], string>
@@ -261,6 +267,16 @@ export function isLegacyDataProductTriggerSpelling(data: Record<string, unknown>
   return candidates.some(
     raw => typeof raw === 'string' && raw.trim() === DATA_PRODUCT_TRIGGER_TYPE_LEGACY
   );
+}
+
+/**
+ * True when a connection is an SDK input (canonical `type` or `connector_type` "sdk").
+ * Checks `type` then `connector_type`, matching isDataProductTriggerConnection.
+ * An SDK input is not bound to an org connector.
+ */
+export function isSdkInputConnection(data: Record<string, unknown>): boolean {
+  const raw = data.type ?? data.connector_type;
+  return typeof raw === 'string' && raw.trim() === SDK_INPUT_CONNECTION_TYPE;
 }
 
 function pathInWorkflow(relPath: string, workflowId: string): boolean {
@@ -488,6 +504,8 @@ export function lintLocalPackage(options: LintOptions): LintResult {
         continue;
       }
       // DP→DP triggers are not bound to an external connector.
+      // SDK inputs are valid with no org connector. A connector_id that is
+      // present is still checked against local connectors/.
       if (isDataProductTriggerConnection(entity.data)) {
         continue;
       }
@@ -506,7 +524,7 @@ export function lintLocalPackage(options: LintOptions): LintResult {
             message: `connector_id "${connectorId}" not found under connectors/`,
           });
         }
-      } else {
+      } else if (!isSdkInputConnection(entity.data)) {
         issues.push({
           path: entity.path,
           severity: 'error',

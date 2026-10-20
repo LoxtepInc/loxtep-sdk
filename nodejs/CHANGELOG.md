@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.34] - 2026-10-20
+
+### Fixed
+
+- `loxtep lint` accepts a connector-free `type: sdk` input (or `connector_type: sdk` when `type` is absent). Native `save_workflow_bundle` already accepts that connection. Other connection types still require `connector_id`.
+
 ## [0.9.33] - 2026-10-20
 
 ### Added
