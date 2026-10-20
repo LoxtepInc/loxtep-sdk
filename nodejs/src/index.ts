@@ -31,8 +31,10 @@ export {
   hasLocalEntityPackage,
   isDataProductTriggerConnection,
   isLegacyDataProductTriggerSpelling,
+  isSdkInputConnection,
   primaryEntityId,
   DATA_PRODUCT_TRIGGER_TYPE,
   DATA_PRODUCT_TRIGGER_TYPE_LEGACY,
+  SDK_INPUT_CONNECTION_TYPE,
 } from './lib/workspace-lint.js';
 export type { LintIssue, LintResult } from './lib/workspace-lint.js';
