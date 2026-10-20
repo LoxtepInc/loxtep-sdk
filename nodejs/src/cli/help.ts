@@ -70,8 +70,10 @@ Build & deploy
                      Dry-run SELECT sample for enrichment query_trigger
   workflows run-query-trigger --workflow-id <uuid> [--project-id] [--sink-data-product-id]
                      On-demand invoke of deployed query_trigger producer
-  triggers list | get <id> | create … | test <id>
-                     Ingest trigger bindings (project entities; --project-id required)
+  triggers list | get <id> | create … | test <id> | reset-backfill <connection_id>
+                     Ingest trigger bindings (project entities; --project-id required).
+                     reset-backfill clears one paused MongoDB backfill checkpoint
+                     [--rebaseline-config-hash] [--instance-id]. CDC and lookup stay.
   data-products list | get <id> | create … | readiness <id> | promote <id> --target …
                      Data product CRUD and medallion promotion
   data-products iceberg rebuild <id> --backfill-from <z/eid|checkpoint|start_of_queue>

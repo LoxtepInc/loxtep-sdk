@@ -88,6 +88,10 @@ def test_nested_apis_and_snake_case_methods():
     assert not hasattr(client.build.data_products, "create_data_product")
     assert hasattr(client.query.discovery, "run")
     assert hasattr(client.build.triggers, "test")
+    assert hasattr(client.build.triggers, "reset_backfill")
+    from loxtep.triggers import AsyncTriggersApi
+
+    assert hasattr(AsyncTriggersApi, "reset_backfill")
     for m in ("get_writer", "get_reader", "get_lexicon", "readiness", "promote", "invalidate_cache"):
         assert hasattr(client.build.data_products, m), m
     assert hasattr(client.define.schemas, "list")

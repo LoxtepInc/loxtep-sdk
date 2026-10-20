@@ -119,7 +119,7 @@ def _build_create_body(
 
 
 class TriggersApi:
-    """Sync triggers surface (get, list, create, update, delete, test)."""
+    """Sync triggers surface (get, list, create, update, delete, test, reset_backfill)."""
 
     def __init__(self, http: LoxtepHttpClient, project_id: Optional[str] = None) -> None:
         self._http = http
@@ -241,9 +241,29 @@ class TriggersApi:
             "tested_at": _now(),
         }
 
+    def reset_backfill(
+        self,
+        connection_id: str,
+        *,
+        project_id: Optional[str] = None,
+        rebaseline_config_hash: bool = False,
+        instance_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        pid = _require_project_id(project_id or self._project_id, "reset_backfill")
+        body: dict[str, Any] = {}
+        if rebaseline_config_hash:
+            body["rebaseline_config_hash"] = True
+        if instance_id:
+            body["instance_id"] = instance_id
+        res = self._http.post(
+            f"/workflows/projects/{pid}/connections/{connection_id}/reset-backfill",
+            body,
+        )
+        return res.get("data", res) if isinstance(res, dict) else res
+
 
 class AsyncTriggersApi:
-    """Async triggers surface (get, list, create, update, delete, test)."""
+    """Async triggers surface (get, list, create, update, delete, test, reset_backfill)."""
 
     def __init__(self, http: AsyncLoxtepHttpClient, project_id: Optional[str] = None) -> None:
         self._http = http
@@ -370,3 +390,23 @@ class AsyncTriggersApi:
             "details": {"connection_id": id, "has_probe_url": bool(probe)},
             "tested_at": _now(),
         }
+
+    async def reset_backfill(
+        self,
+        connection_id: str,
+        *,
+        project_id: Optional[str] = None,
+        rebaseline_config_hash: bool = False,
+        instance_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        pid = _require_project_id(project_id or self._project_id, "reset_backfill")
+        body: dict[str, Any] = {}
+        if rebaseline_config_hash:
+            body["rebaseline_config_hash"] = True
+        if instance_id:
+            body["instance_id"] = instance_id
+        res = await self._http.post(
+            f"/workflows/projects/{pid}/connections/{connection_id}/reset-backfill",
+            body,
+        )
+        return res.get("data", res) if isinstance(res, dict) else res

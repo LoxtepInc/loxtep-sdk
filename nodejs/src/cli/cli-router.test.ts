@@ -214,6 +214,7 @@ jest.mock('./commands/triggers-cmd.js', () => ({
   runTriggersGet: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   runTriggersCreate: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
   runTriggersTest: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
+  runTriggersResetBackfill: jest.fn(async () => ({ exitCode: 0, stdout: [], stderr: [] })),
 }));
 
 jest.mock('./commands/whoami.js', () => ({
@@ -280,6 +281,7 @@ import {
   runTriggersGet,
   runTriggersCreate,
   runTriggersTest,
+  runTriggersResetBackfill,
 } from './commands/triggers-cmd.js';
 import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
 import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
@@ -481,6 +483,17 @@ describe('runCli router', () => {
     expect(runTriggersCreate).toHaveBeenCalled();
     await runCli(['triggers', 'test', 't-1', '--project-id', 'p-1', '--workflow-id', 'wf-1']);
     expect(runTriggersTest).toHaveBeenCalled();
+    await runCli([
+      'triggers',
+      'reset-backfill',
+      'c-1',
+      '--project-id',
+      'p-1',
+      '--instance-id',
+      'i-1',
+      '--rebaseline-config-hash',
+    ]);
+    expect(runTriggersResetBackfill).toHaveBeenCalled();
     await runCli(['domains', 'list']);
     expect(runDomainsList).toHaveBeenCalled();
     await runCli(['domains', 'get', 'd-1']);

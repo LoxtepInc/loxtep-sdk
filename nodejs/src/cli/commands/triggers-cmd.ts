@@ -1,5 +1,6 @@
 /**
  * CLI: loxtep triggers list | triggers get <id> | triggers create ... | triggers test <id>
+ *       | triggers reset-backfill <connection_id>
  */
 
 import { toTriggerListSummary } from '../../client/list-summaries.js';
@@ -103,6 +104,28 @@ export async function runTriggersTest(
   const result = await client.build.triggers.test(triggerId, {
     project_id: projectId,
     workflow_id: options.workflow_id,
+  });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+export async function runTriggersResetBackfill(
+  connectionId: string,
+  options: TriggersCmdOptions & {
+    rebaseline_config_hash?: boolean;
+    instance_id?: string;
+  } = {}
+): Promise<void> {
+  const { client, config } = await requireCliClient(options);
+  const projectId = options.project_id ?? config.project_id;
+  if (!projectId) {
+    console.error('Missing project_id. Pass --project-id <uuid>.');
+    process.exitCode = 1;
+    return;
+  }
+  const result = await client.build.triggers.reset_backfill(connectionId, {
+    project_id: projectId,
+    rebaseline_config_hash: options.rebaseline_config_hash,
+    instance_id: options.instance_id,
   });
   console.log(JSON.stringify(result, null, 2));
 }

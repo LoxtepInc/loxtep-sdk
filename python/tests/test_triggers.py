@@ -129,6 +129,25 @@ def test_triggers_create_puts_connection_body():
     client.close()
 
 
+def test_triggers_reset_backfill_posts_connection_path():
+    client = LoxtepClient(api_url="https://api.example.com")
+    with patch.object(client._http, "post") as mock_post:
+        mock_post.return_value = {"success": True, "data": {"namespace": "backfill"}}
+        result = client.build.triggers.reset_backfill(
+            "conn_1",
+            project_id="proj_1",
+            rebaseline_config_hash=True,
+            instance_id="inst_1",
+        )
+
+    assert result == {"namespace": "backfill"}
+    mock_post.assert_called_once_with(
+        "/workflows/projects/proj_1/connections/conn_1/reset-backfill",
+        {"rebaseline_config_hash": True, "instance_id": "inst_1"},
+    )
+    client.close()
+
+
 def test_triggers_delete_calls_http_delete():
     client = LoxtepClient(api_url="https://api.example.com")
     with patch.object(client._http, "delete") as mock_delete:

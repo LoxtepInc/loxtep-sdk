@@ -120,7 +120,7 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
   triggers: {
     kind: 'integration',
     tests: ['cli-integration.test.ts', 'cli-integration-mutations.test.ts'],
-    notes: 'list/get/create/test',
+    notes: 'list/get/create/test/reset-backfill',
   },
   domains: { kind: 'integration', tests: ['cli-integration.test.ts'] },
   standards: { kind: 'integration', tests: ['cli-integration.test.ts'] },

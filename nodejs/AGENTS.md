@@ -119,7 +119,7 @@ loxtep workflows deploy --project-id <id> [--instance-id <id>]
 loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]
 loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]
 
-loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id>
+loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id> | reset-backfill <connection_id>
 loxtep connectors list [--type sdk]
 loxtep connectors test <connector_id>
 loxtep connectors list-entities <connector_id>

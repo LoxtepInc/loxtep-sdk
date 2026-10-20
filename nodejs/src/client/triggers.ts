@@ -111,6 +111,10 @@ export type TriggersApi = {
   ) => Promise<Trigger>;
   delete: (id: string, opts?: { project_id?: string; workflow_id?: string }) => Promise<void>;
   test: (id: string, opts?: { project_id?: string; workflow_id?: string }) => Promise<TriggerTestResult>;
+  reset_backfill: (
+    connectionId: string,
+    opts?: { project_id?: string; rebaseline_config_hash?: boolean; instance_id?: string }
+  ) => Promise<unknown>;
 };
 
 /**
@@ -266,6 +270,21 @@ export function createTriggersApi(http: LoxtepHttpClient, deps: TriggersApiDeps 
         details: { connection_id: id, has_probe_url: Boolean(probe) },
         tested_at: new Date().toISOString(),
       };
+    },
+
+    async reset_backfill(
+      connectionId: string,
+      opts?: { project_id?: string; rebaseline_config_hash?: boolean; instance_id?: string }
+    ): Promise<unknown> {
+      const projectId = requireProjectId(opts?.project_id ?? deps.project_id, 'reset_backfill');
+      const body: { rebaseline_config_hash?: boolean; instance_id?: string } = {};
+      if (opts?.rebaseline_config_hash) body.rebaseline_config_hash = true;
+      if (opts?.instance_id) body.instance_id = opts.instance_id;
+      const res = await http.post<{ success?: boolean; data?: unknown }>(
+        `/workflows/projects/${encodeURIComponent(projectId)}/connections/${encodeURIComponent(connectionId)}/reset-backfill`,
+        body
+      );
+      return res.data ?? res;
     },
   };
   return api;
