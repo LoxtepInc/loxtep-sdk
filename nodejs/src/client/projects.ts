@@ -22,19 +22,24 @@ const PROJECTS_BASE = '/workflows/projects';
  * still contains the `{project_id}` placeholder for the caller to fill in.
  */
 const GITHUB_PULL_STREAM = 'workflows/projects/_project_id_/github/pull';
+const GITHUB_PUSH_STREAM = 'workflows/projects/_project_id_/github/push';
 
-async function resolveGithubPullUrl(
+async function resolveGithubStreamUrl(
   http: LoxtepHttpClient,
-  project_id: string
+  stream: string,
+  project_id: string,
+  action: 'pull' | 'push'
 ): Promise<string> {
-  const gatewayPath = `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/pull`;
+  const gatewayPath = `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/${action}`;
   try {
     const lookup = await http.get<{ data?: { stream_url?: string }; stream_url?: string }>(
-      `/app/stream-url?stream=${encodeURIComponent(GITHUB_PULL_STREAM)}`
+      `/app/stream-url?stream=${encodeURIComponent(stream)}`
     );
     const template = lookup?.data?.stream_url ?? lookup?.stream_url;
     if (!template || !template.includes('{project_id}')) return gatewayPath;
-    return template.replaceAll('{project_id}', encodeURIComponent(project_id));
+    return template
+      .replaceAll('{project_id}', encodeURIComponent(project_id))
+      .replace(/([^:]\/)\/+/g, '$1');
   } catch {
     return gatewayPath;
   }
@@ -219,7 +224,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
       body?: { commit_sha?: string }
     ): Promise<GitHubPullResult> {
       const res = await http.post<{ success: true; data?: GitHubPullResult } | GitHubPullResult>(
-        await resolveGithubPullUrl(http, project_id),
+        await resolveGithubStreamUrl(http, GITHUB_PULL_STREAM, project_id, 'pull'),
         body ?? {}
       );
       if (res && typeof res === 'object' && 'data' in res && res.data) {
@@ -233,7 +238,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
       body?: { commit_message?: string; branch?: string }
     ): Promise<GitHubPushResult> {
       const res = await http.post<{ success: true; data?: GitHubPushResult } | GitHubPushResult>(
-        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/push`,
+        await resolveGithubStreamUrl(http, GITHUB_PUSH_STREAM, project_id, 'push'),
         body ?? {}
       );
       if (res && typeof res === 'object' && 'data' in res && res.data) {
