@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.35] - 2026-10-20
+
+### Fixed
+
+- `loxtep projects pull` resolves the workflows GitHub pull Lambda function URL and posts there, so a sync that runs longer than API Gateway's 29 second limit no longer fails with `Endpoint request timed out`. Falls back to the API Gateway path when the stream URL is not published yet.
+
 ## [0.9.34] - 2026-10-20
 
 ### Fixed
