@@ -33,6 +33,26 @@ describe('entity-json-schemas validateEntity', () => {
     expect(result.valid).toBe(true);
   });
 
+  it('accepts declared output and error queue display names', () => {
+    const result = validateEntity(EntityType.TRANSFORMATION, {
+      transformation_id: '550e8400-e29b-41d4-a716-446655440000',
+      organization_id: ORG,
+      project_id: PROJECT,
+      workflow_id: WF,
+      name: 'Filter accounts',
+      transform_type: 'filter',
+      operation_config: { condition: 'true' },
+      output_queue_display_name: 'canonical.accounts.filtered.v1',
+      error_queue_display_name: 'canonical.accounts.filtered.v1.err',
+      created_at: '2026-01-24T08:00:00Z',
+      updated_at: '2026-01-24T08:00:00Z',
+    });
+    expect(result.valid).toBe(true);
+    if (!result.valid) {
+      throw new Error(JSON.stringify(result.errors));
+    }
+  });
+
   it('rejects missing required fields', () => {
     const result = validateEntity(EntityType.WORKFLOW, { name: 'x' });
     expect(result.valid).toBe(false);

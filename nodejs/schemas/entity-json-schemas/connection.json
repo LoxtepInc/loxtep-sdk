@@ -392,6 +392,18 @@
         null
       ],
       "description": "Entity type of the upstream entity."
+    },
+    "output_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this connection's output queue (ingested). Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
+    },
+    "error_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this connection's error queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
     }
   },
   "additionalProperties": false

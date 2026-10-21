@@ -86,6 +86,18 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO 8601 timestamp when the node was last updated"
+    },
+    "output_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this approval node's approved queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
+    },
+    "error_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this approval node's rejected queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
     }
   },
   "additionalProperties": true
