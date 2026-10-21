@@ -162,6 +162,12 @@
       "format": "date-time",
       "description": "ISO 8601 timestamp when data product was deleted (soft delete)"
     },
+    "output_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for the upstream writer's output queue when that writer does not declare its own. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. The writer's output_queue_display_name wins when both are set."
+    },
     "schema": {
       "description": "Product schema stored on the data product (object or JSON string). Read by medallion, metrics, and semantic bootstrap as dp.schema.",
       "oneOf": [

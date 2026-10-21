@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Entity schemas accept `output_queue_display_name` and `error_queue_display_name` on connections, transformations, validations, quality rules, agents, and approvals. Data products accept `output_queue_display_name` for the upstream writer's output queue. `loxtep lint` and project push keep these fields. Schemas are pinned to `LoxtepInc/loxtep` `f6be71ea3ee9b1ca0a898a520152cc68c9c48a41`.
+
 ## [0.9.36] - 2026-10-21
 
 ### Fixed

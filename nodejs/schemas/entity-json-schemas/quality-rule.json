@@ -89,6 +89,19 @@
       "maxLength": 500,
       "description": "Custom error message when rule fails"
     },
+    "batch_size": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 10000,
+      "description": "Runtime tuning: events per handler call (rstreams offload batch). Does not cap events read per run; that is bounded by the Lambda timeout and memory thresholds. Unset: 300. Out-of-range values fail deploy."
+    },
+    "runtime_memory_mb": {
+      "description": "Runtime tuning: shared runtimes Lambda memory tier (connectors-{mb}). Unset: 256. Any other value fails deploy.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "integer", "enum": [256, 512, 1024, 2048] }
+      ]
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": true,
@@ -119,6 +132,18 @@
       "type": ["string", "null"],
       "format": "date-time",
       "description": "ISO 8601 timestamp when quality rule was deleted (soft delete)"
+    },
+    "output_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this quality rule's output queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
+    },
+    "error_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this quality rule's error queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
     }
   },
   "additionalProperties": false

@@ -120,6 +120,11 @@
           "index_field": "time",
           "index_as": "obs_date",
           "carry_fields": ["latitude", "longitude", "elevation", "timezone"]
+        },
+        {
+          "field": "items",
+          "include_original": true,
+          "on_empty": "drop"
         }
       ]
     },
@@ -137,6 +142,19 @@
       "type": ["integer", "null"],
       "minimum": 0,
       "description": "Default execution order when used in workflows (lower = earlier)"
+    },
+    "batch_size": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 10000,
+      "description": "Runtime tuning: events per handler call (rstreams offload batch). Does not cap events read per run; that is bounded by the Lambda timeout and memory thresholds. Unset: 300. Out-of-range values fail deploy."
+    },
+    "runtime_memory_mb": {
+      "description": "Runtime tuning: shared runtimes Lambda memory tier (transformers-{mb}). Unset: derived from transform_type (256/512/1024). Any other value fails deploy.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "integer", "enum": [256, 512, 1024, 2048] }
+      ]
     },
     "metadata": {
       "type": "object",
@@ -168,6 +186,18 @@
       "type": ["string", "null"],
       "format": "date-time",
       "description": "ISO 8601 timestamp when transformation was deleted (soft delete)"
+    },
+    "output_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this transformation's output queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
+    },
+    "error_queue_display_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Observe label for this transformation's error queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
     }
   },
   "additionalProperties": false
