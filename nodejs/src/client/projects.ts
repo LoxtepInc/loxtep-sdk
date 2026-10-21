@@ -16,6 +16,30 @@ import type { ApplyTemplateInput, ApplyTemplateResult } from './templates-types.
 
 const PROJECTS_BASE = '/workflows/projects';
 
+/**
+ * SSM key for the GitHub pull Function URL. CDK replaces `{` and `}` in the
+ * route template, so `{project_id}` is stored as `_project_id_`. The URL value
+ * still contains the `{project_id}` placeholder for the caller to fill in.
+ */
+const GITHUB_PULL_STREAM = 'workflows/projects/_project_id_/github/pull';
+
+async function resolveGithubPullUrl(
+  http: LoxtepHttpClient,
+  project_id: string
+): Promise<string> {
+  const gatewayPath = `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/pull`;
+  try {
+    const lookup = await http.get<{ data?: { stream_url?: string }; stream_url?: string }>(
+      `/app/stream-url?stream=${encodeURIComponent(GITHUB_PULL_STREAM)}`
+    );
+    const template = lookup?.data?.stream_url ?? lookup?.stream_url;
+    if (!template || !template.includes('{project_id}')) return gatewayPath;
+    return template.replaceAll('{project_id}', encodeURIComponent(project_id));
+  } catch {
+    return gatewayPath;
+  }
+}
+
 function buildQueryString(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -195,7 +219,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
       body?: { commit_sha?: string }
     ): Promise<GitHubPullResult> {
       const res = await http.post<{ success: true; data?: GitHubPullResult } | GitHubPullResult>(
-        `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/github/pull`,
+        await resolveGithubPullUrl(http, project_id),
         body ?? {}
       );
       if (res && typeof res === 'object' && 'data' in res && res.data) {
