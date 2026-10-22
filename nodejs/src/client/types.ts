@@ -56,6 +56,11 @@ export interface LoxtepClientOptions {
   fetch_fn?: typeof fetch;
   /** Optional AWS credentials (for tests; avoids credential provider chain). */
   credentials?: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
+  /**
+   * Audit UX surface sent as `x-loxtep-client` (studio|mcp|cli|sdk|api|agent|system).
+   * Defaults to `sdk` in the HTTP client; CLI sets `cli`.
+   */
+  client_surface?: string;
 }
 
 /**

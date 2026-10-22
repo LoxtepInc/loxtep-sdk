@@ -96,7 +96,11 @@ export class LoxtepHttpClient {
     this.region = options.region ?? DEFAULT_REGION;
     this.fetch_fn = options.fetch_fn ?? fetch;
     this.refresh_auth = options.refresh_auth;
-    this.defaultHeaders = { ...(options.default_headers ?? {}) };
+    // Audit UX surface (backend resolveClientSurface). Callers may override via default_headers.
+    this.defaultHeaders = {
+      'x-loxtep-client': 'sdk',
+      ...(options.default_headers ?? {}),
+    };
     if (options.credentials) {
       this.credentials = options.credentials;
     }

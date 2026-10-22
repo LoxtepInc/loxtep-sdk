@@ -192,9 +192,14 @@ export class LoxtepClient {
       fetch_fn: options.fetch_fn,
       credentials: options.credentials,
       refresh_auth: options.refresh_auth,
-      default_headers: options.instance_id
-        ? { 'x-loxtep-instance-id': options.instance_id }
-        : undefined,
+      default_headers: {
+        ...(options.client_surface
+          ? { 'x-loxtep-client': options.client_surface }
+          : {}),
+        ...(options.instance_id
+          ? { 'x-loxtep-instance-id': options.instance_id }
+          : {}),
+      },
     });
     this._resolver = new DataProductResolver(this._http, options.instance_id);
     const busPartial = options.streams ?? options.rstreams;
