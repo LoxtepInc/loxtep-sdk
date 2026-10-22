@@ -52,7 +52,7 @@ Build & deploy
                      Trigger + source DP local package (alias: ingest provision)
   transform create --from <dp> [--name cleaned-…] [--dry-run]
                      Enrichment workflow stub (upstream DP → consumer DP)
-  delivery create --from <dp> --connector-id <id> [--name …] [--dry-run]
+  delivery create --from <dp> --connector-id <id> [--table schema.table] [--name …] [--dry-run]
                      Delivery workflow (DP → target connection); workflow_type: delivery
   lint [--workflow <id>]
                      Validate local entity JSON (schemas, relationships, unique names)
