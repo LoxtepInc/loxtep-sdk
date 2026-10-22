@@ -286,6 +286,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
     organization_id: config.organization_id,
     project_id: config.project_id,
     instance_id: config.instance_id,
+    client_surface: 'cli',
     ...(config.streams
       ? {
           streams: config.streams,
