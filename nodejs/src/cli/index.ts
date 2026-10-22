@@ -721,7 +721,7 @@ export async function runCli(argv: string[]): Promise<void> {
         const connectorId = getArg('--connector-id');
         if (!from || !connectorId) {
           console.error(
-            'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--name …] [--dry-run]'
+            'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …] [--dry-run]'
           );
           process.exitCode = 1;
         } else {
@@ -731,12 +731,15 @@ export async function runCli(argv: string[]): Promise<void> {
             name: getArg('--name'),
             project_id: getArg('--project-id'),
             domain_id: getArg('--domain-id'),
+            table: getArg('--table'),
+            schema: getArg('--schema'),
+            primary_key: getArg('--primary-key'),
             dry_run: args.includes('--dry-run'),
           });
         }
       } else {
         console.error(
-          'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--name …] [--dry-run]'
+          'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …] [--dry-run]'
         );
         process.exitCode = 1;
       }

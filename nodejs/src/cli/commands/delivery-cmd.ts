@@ -1,5 +1,6 @@
 /**
- * CLI: loxtep delivery create — delivery workflow (DP → target connection + connector).
+ * CLI: loxtep delivery create — delivery workflow from the connector-delivery
+ * project template: data product → transform → outbound connection.
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -18,7 +19,9 @@ export interface DeliveryCmdOptions {
   cwd?: string;
 }
 
-const DELIVERY_TEMPLATE_ID = '00000000-0000-4000-8000-0000000000a3';
+/** Stable template id for connector-delivery (loxtep-project-template). */
+export const DELIVERY_TEMPLATE_ID = '00000000-0000-4000-8000-0000000000a3';
+export const DELIVERY_TEMPLATE_SLUG = 'connector-delivery';
 
 function writePackageFiles(
   projectDir: string,
@@ -35,8 +38,12 @@ function writePackageFiles(
 }
 
 /**
- * Scaffold a local delivery workflow: upstream DP → target connection (connector_id).
+ * Scaffold a local delivery workflow from the connector-delivery template:
+ * upstream DP trigger → transform → outbound target connection (connector_id).
  * workflow_type is always `delivery` (never consumption).
+ *
+ * Write policy (table, batch sizes, conflict_update) lives on the target
+ * connection. Auth/transport live on the org connector.
  */
 export async function runDeliveryCreate(
   params: {
@@ -45,6 +52,10 @@ export async function runDeliveryCreate(
     name?: string;
     project_id?: string;
     domain_id?: string;
+    /** Destination table (e.g. accounts.accounts). Stored on the outbound connection. */
+    table?: string;
+    schema?: string;
+    primary_key?: string;
     dry_run?: boolean;
   },
   options: DeliveryCmdOptions = {}
@@ -61,7 +72,7 @@ export async function runDeliveryCreate(
   }
   if (!params.from?.trim()) {
     console.error(
-      'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--name …]'
+      'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …]'
     );
     process.exitCode = 1;
     return;
@@ -102,8 +113,13 @@ export async function runDeliveryCreate(
   const workflowName = params.name ?? `${params.from}-delivery`;
   const workflowId = randomUUID();
   const triggerConnectionId = randomUUID();
+  const transformId = randomUUID();
   const targetConnectionId = randomUUID();
   const now = new Date().toISOString();
+
+  const table = params.table?.trim() || '';
+  const schema = params.schema?.trim() || 'public';
+  const primaryKey = params.primary_key?.trim() || '_id';
 
   const files: Record<string, Record<string, unknown>> = {};
   if (includeConnectorFile) {
@@ -115,15 +131,24 @@ export async function runDeliveryCreate(
     organization_id: organizationId,
     project_id: projectId,
     name: workflowName,
+    description: `Delivery workflow: ${params.from} → ${connectionType} target`,
     template_id: DELIVERY_TEMPLATE_ID,
     workflow_type: 'delivery',
     domain_id: domainId,
     status: 'active',
-    configuration: {},
-    metadata: { stage: 'delivery', upstream_data_product: params.from },
+    configuration: {
+      activation: 'event',
+    },
+    metadata: {
+      stage: 'delivery',
+      template_slug: DELIVERY_TEMPLATE_SLUG,
+      upstream_data_product: params.from,
+      transform_id: transformId,
+    },
     created_at: now,
     updated_at: now,
   };
+
   files[`workflows/${workflowId}/connections/${triggerConnectionId}.json`] = {
     connection_id: triggerConnectionId,
     organization_id: organizationId,
@@ -132,13 +157,54 @@ export async function runDeliveryCreate(
     key: 'data-product-source',
     name: `From ${params.from}`,
     type: 'data-product-trigger',
+    connector_type: 'data-product-trigger',
     status: 'active',
     configuration: {
       source_data_product_name: params.from,
     },
+    metadata: {
+      template_slug: DELIVERY_TEMPLATE_SLUG,
+      role: 'source',
+    },
     created_at: now,
     updated_at: now,
   };
+
+  files[`workflows/${workflowId}/transformations/${transformId}.json`] = {
+    transformation_id: transformId,
+    organization_id: organizationId,
+    project_id: projectId,
+    workflow_id: workflowId,
+    name: 'Map to destination columns',
+    transform_type: 'select_fields',
+    operation_config: {
+      fields: [],
+    },
+    upstream_entity_id: triggerConnectionId,
+    upstream_entity_type: 'connections',
+    metadata: {
+      template_slug: DELIVERY_TEMPLATE_SLUG,
+      notes:
+        'Author field→column mapping here. Outbound bot expects a flat destination-shaped row.',
+    },
+    created_at: now,
+    updated_at: now,
+  };
+
+  const targetConfiguration: Record<string, unknown> = {
+    direction: 'outbound',
+    role: 'target',
+    write_mode: 'upsert',
+    primary_key: [primaryKey],
+    batch_size: 100,
+    insert_batch_size: 1000,
+    conflict_update: { default: 'excluded' },
+  };
+  if (table) {
+    targetConfiguration.table = table;
+    targetConfiguration.schema = schema;
+  }
+
   files[`workflows/${workflowId}/connections/${targetConnectionId}.json`] = {
     connection_id: targetConnectionId,
     organization_id: organizationId,
@@ -148,14 +214,18 @@ export async function runDeliveryCreate(
     key: 'delivery-target',
     name: 'Delivery Target',
     type: connectionType,
+    connector_type: connectionType,
     status: 'active',
     connector_mode: 'outbound',
-    configuration: {
-      direction: 'outbound',
+    configuration: targetConfiguration,
+    upstream_entity_id: transformId,
+    upstream_entity_type: 'transformations',
+    metadata: {
+      template_slug: DELIVERY_TEMPLATE_SLUG,
       role: 'target',
+      notes:
+        'Auth/transport come from the org connector. Write policy (table, batch sizes, conflict_update) lives on this connection. List tables via `loxtep connectors list-entities <connector_id>`.',
     },
-    upstream_entity_id: triggerConnectionId,
-    upstream_entity_type: 'connections',
     created_at: now,
     updated_at: now,
   };
@@ -167,7 +237,9 @@ export async function runDeliveryCreate(
           dry_run: true,
           workflow_id: workflowId,
           workflow_type: 'delivery',
+          template_slug: DELIVERY_TEMPLATE_SLUG,
           connector_id: params.connector_id,
+          transform_id: transformId,
           target_connection_id: targetConnectionId,
           files: Object.keys(files),
         },
@@ -193,7 +265,9 @@ export async function runDeliveryCreate(
       {
         workflow_id: workflowId,
         workflow_type: 'delivery',
+        template_slug: DELIVERY_TEMPLATE_SLUG,
         connector_id: params.connector_id,
+        transform_id: transformId,
         target_connection_id: targetConnectionId,
         files: written,
       },
@@ -202,7 +276,8 @@ export async function runDeliveryCreate(
     )
   );
   console.error(`
-Delivery package ready (workflow_type: delivery).
-Next: \`loxtep lint\` → \`loxtep push\` → \`loxtep deploy\`.
+Delivery package ready (workflow_type: delivery, template: ${DELIVERY_TEMPLATE_SLUG}).
+Graph: data-product-trigger → transform → outbound connection.
+Next: author transform mapping + set connection.configuration.table (list via \`loxtep connectors list-entities\`), then \`loxtep lint\` → \`loxtep push\` → \`loxtep deploy\`.
 `);
 }

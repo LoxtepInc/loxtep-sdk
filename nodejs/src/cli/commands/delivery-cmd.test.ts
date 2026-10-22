@@ -104,16 +104,48 @@ describe('runDeliveryCreate', () => {
           connector_id: MOCK_IDS.connector_sdk_id,
           domain_id: MOCK_IDS.domain_id,
           name: 'orders-delivery',
+          table: 'public.orders_out',
+          primary_key: 'order_id',
           dry_run: false,
         },
         harness.cliOptions
       );
       expectCliSuccess(out, 'delivery', MOCK_IDS.connector_sdk_id);
       expect(out.stderr).toContain('Delivery package ready');
+      expect(out.stderr).toContain('transform → outbound');
       expect(
         existsSync(join(harness.projectDir, 'connectors', `${MOCK_IDS.connector_sdk_id}.json`))
       ).toBe(true);
       expect(existsSync(join(harness.projectDir, 'workflows'))).toBe(true);
+
+      const { readdirSync, readFileSync } = await import('node:fs');
+      const workflowDirs = readdirSync(join(harness.projectDir, 'workflows'));
+      expect(workflowDirs.length).toBeGreaterThan(0);
+      const wfDir = join(harness.projectDir, 'workflows', workflowDirs[0]!);
+      const workflow = JSON.parse(readFileSync(join(wfDir, 'workflow.json'), 'utf8'));
+      expect(workflow.workflow_type).toBe('delivery');
+      expect(workflow.metadata.template_slug).toBe('connector-delivery');
+      expect(workflow.configuration.activation).toBe('event');
+      expect(typeof workflow.metadata.transform_id).toBe('string');
+
+      const transformId = workflow.metadata.transform_id as string;
+      const transform = JSON.parse(
+        readFileSync(join(wfDir, 'transformations', `${transformId}.json`), 'utf8')
+      );
+      expect(transform.upstream_entity_type).toBe('connections');
+
+      const connDir = join(wfDir, 'connections');
+      const connFiles = readdirSync(connDir);
+      expect(connFiles.length).toBe(2);
+      const target = connFiles
+        .map(f => JSON.parse(readFileSync(join(connDir, f), 'utf8')))
+        .find((c: { connector_mode?: string }) => c.connector_mode === 'outbound');
+      expect(target).toBeDefined();
+      expect(target.configuration.table).toBe('public.orders_out');
+      expect(target.configuration.insert_batch_size).toBe(1000);
+      expect(target.configuration.batch_size).toBe(100);
+      expect(target.configuration.primary_key).toEqual(['order_id']);
+      expect(target.upstream_entity_type).toBe('transformations');
       out.restore();
     } finally {
       await harness.destroy();
