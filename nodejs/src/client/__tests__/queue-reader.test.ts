@@ -97,7 +97,16 @@ function mockDataProduct(id: string, queueName?: string) {
     description: 'Test',
     status: 'active',
     owner: { user_id: 'user-1' },
-    storage: queueName ? { rstreams_queue: queueName } : {},
+    storage: {},
+    deployment_bindings: queueName
+      ? {
+          instance_id: 'inst-1',
+          deployment_id: 'dep-1',
+          bot_id: 'bot-1',
+          queue_name: queueName,
+          microservice_id: 'dataproducts',
+        }
+      : undefined,
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z',
   };
@@ -282,7 +291,7 @@ describe('data_products.stream() — error cases (Task 9.4)', () => {
       StreamingError
     );
     await expect(collectAll(api.stream('dp-1', { bot_id: 'bot-1' }))).rejects.toThrow(
-      /no stream queue/i
+      /deployment_bindings\.queue_name/i
     );
   });
 
@@ -358,7 +367,9 @@ describe('data_products.replay() — error and success cases (Task 9.4)', () => 
     });
 
     await expect(collectAll(api.replay('dp-1'))).rejects.toThrow(StreamingError);
-    await expect(collectAll(api.replay('dp-1'))).rejects.toThrow(/no stream queue/i);
+    await expect(collectAll(api.replay('dp-1'))).rejects.toThrow(
+      /deployment_bindings\.queue_name/i
+    );
   });
 
   it('replay() with valid options yields events via HTTP API', async () => {

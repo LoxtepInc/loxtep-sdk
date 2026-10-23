@@ -90,6 +90,13 @@ function buildQueryString(params: Record<string, string | number | boolean | und
   return qs ? `?${qs}` : '';
 }
 
+function queueNameFromDeploymentBindings(asset: DataProduct): string | undefined {
+  const raw = asset.deployment_bindings?.queue_name;
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export interface DataProductsApiDeps {
   get_queue_metadata: (queue_name: string) => Promise<QueueMetadata>;
   get_reader_checkpoint: (queue_name: string, bot_id: string) => Promise<ReaderCheckpoint>;
@@ -340,9 +347,11 @@ export function createDataProductsApi(
         throw err;
       }
       const asset = await this.get(id);
-      const queueName = (asset.storage as { rstreams_queue?: string } | undefined)?.rstreams_queue;
+      const queueName = queueNameFromDeploymentBindings(asset);
       if (!queueName) {
-        const err = new Error(`Data product ${id} has no stream queue in storage`);
+        const err = new Error(
+          `Data product ${id} has no deployment_bindings.queue_name; deploy the workflow first`
+        );
         (err as { code?: string }).code = 'no_queue';
         throw err;
       }
@@ -513,7 +522,7 @@ export function createDataProductsApi(
         );
       }
       const asset = await this.get(id);
-      const queue_name = (asset.storage as { rstreams_queue?: string } | undefined)?.rstreams_queue;
+      const queue_name = queueNameFromDeploymentBindings(asset);
       if (!queue_name) {
         return {
           queue_name: '',
@@ -533,9 +542,11 @@ export function createDataProductsApi(
         );
       }
       const asset = await this.get(id);
-      const queue_name = (asset.storage as { rstreams_queue?: string } | undefined)?.rstreams_queue;
+      const queue_name = queueNameFromDeploymentBindings(asset);
       if (!queue_name) {
-        throw new Error(`Data product ${id} has no stream queue in storage (not configured)`);
+        throw new Error(
+          `Data product ${id} has no deployment_bindings.queue_name; deploy the workflow first`
+        );
       }
       return deps.get_reader_checkpoint(queue_name, bot_id);
     },
@@ -578,14 +589,14 @@ export function createDataProductsApi(
         }
         throw err;
       }
-      const queue_name = (asset.storage as { rstreams_queue?: string } | undefined)?.rstreams_queue;
+      const queue_name = queueNameFromDeploymentBindings(asset);
       if (!queue_name) {
         throw new StreamingError(
-          `Data product ${id} has no stream queue in storage (not configured)`,
+          `Data product ${id} has no deployment_bindings.queue_name (not deployed)`,
           {
             details: {
               data_product_id: id,
-              hint: 'Verify the data product has a configured stream queue in its storage settings.',
+              hint: "Deploy the workflow ('deploy_workflow' / 'deploy_project') or run runtime-queue-reconciliation so deployment_bindings.queue_name is populated.",
             },
           }
         );
@@ -686,14 +697,14 @@ export function createDataProductsApi(
         }
         throw err;
       }
-      const queue_name = (asset.storage as { rstreams_queue?: string } | undefined)?.rstreams_queue;
+      const queue_name = queueNameFromDeploymentBindings(asset);
       if (!queue_name) {
         throw new StreamingError(
-          `Data product ${id} has no stream queue in storage (not configured)`,
+          `Data product ${id} has no deployment_bindings.queue_name (not deployed)`,
           {
             details: {
               data_product_id: id,
-              hint: 'Verify the data product has a configured stream queue in its storage settings.',
+              hint: "Deploy the workflow ('deploy_workflow' / 'deploy_project') or run runtime-queue-reconciliation so deployment_bindings.queue_name is populated.",
             },
           }
         );

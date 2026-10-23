@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-23
+
+### Changed
+
+- **Breaking:** Stream queue resolution no longer reads `storage.rstreams_queue` (removed from the platform customer API). The SDK requires `deployment_bindings.queue_name` (plus `bot_id` / `instance_id` for runtime writes) after deploy or runtime-queue-reconciliation. Removed the `rstreams_queue` create-input field.
+
 ## [0.9.38] - 2026-10-23
 
 ### Added

@@ -14,7 +14,14 @@ const DP: DataProduct = {
   status: 'active',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
-  storage: { rstreams_queue: 'q-orders' },
+  storage: {},
+  deployment_bindings: {
+    instance_id: 'inst-1',
+    deployment_id: 'dep-1',
+    bot_id: 'bot-1',
+    queue_name: 'q-orders',
+    microservice_id: 'dataproducts',
+  },
   metadata: {
     business_glossary: { order: { definition: 'A purchase' } },
     field_glossary_map: { order_id: 'order' },
@@ -290,7 +297,7 @@ describe('createDataProductsApi HTTP methods', () => {
     const http = mockHttp({
       get: () => ({
         success: true,
-        data: { ...DP, storage: {} },
+        data: { ...DP, deployment_bindings: undefined },
       }),
     });
     const api = createDataProductsApi(http, { get_queue_metadata, get_reader_checkpoint: jest.fn() });
@@ -299,7 +306,7 @@ describe('createDataProductsApi HTTP methods', () => {
     expect(get_queue_metadata).not.toHaveBeenCalled();
   });
 
-  it('get_queue_info delegates to queues when rstreams_queue set', async () => {
+  it('get_queue_info delegates to queues when deployment_bindings.queue_name set', async () => {
     const get_queue_metadata = jest.fn(async () => ({
       queue_name: 'q-orders',
       checkpoints: [],
@@ -327,13 +334,15 @@ describe('createDataProductsApi HTTP methods', () => {
     await expect(apiNoDeps.get_reader_checkpoint('dp-1', 'bot')).rejects.toThrow(/requires queues API/);
 
     const httpNoQ = mockHttp({
-      get: () => ({ success: true, data: { ...DP, storage: {} } }),
+      get: () => ({ success: true, data: { ...DP, deployment_bindings: undefined } }),
     });
     const apiNoQ = createDataProductsApi(httpNoQ, {
       get_queue_metadata: jest.fn(),
       get_reader_checkpoint,
     });
-    await expect(apiNoQ.get_reader_checkpoint('dp-1', 'bot')).rejects.toThrow(/no stream queue/);
+    await expect(apiNoQ.get_reader_checkpoint('dp-1', 'bot')).rejects.toThrow(
+      /deployment_bindings\.queue_name/
+    );
 
     const http = mockHttp({ get: () => ({ success: true, data: DP }) });
     const api = createDataProductsApi(http, {

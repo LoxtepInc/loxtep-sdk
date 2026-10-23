@@ -352,7 +352,6 @@ export function createDefaultPlatformRoutes(): RouteHandler {
             organization_id: MOCK_IDS.organization_id,
             project_id: MOCK_IDS.project_id,
             status: 'active',
-            storage: { rstreams_queue: MOCK_IDS.queue_name },
             deployment_bindings: {
               instance_id: MOCK_IDS.instance_id,
               deployment_id: 'deploy-test-001',

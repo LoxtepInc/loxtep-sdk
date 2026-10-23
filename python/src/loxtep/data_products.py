@@ -30,6 +30,18 @@ def _unwrap(res: Any) -> Any:
     return res.get("data", res) if isinstance(res, dict) else res
 
 
+def _deployment_queue_name(asset: dict[str, Any]) -> Optional[str]:
+    bindings = asset.get("deployment_bindings")
+    if not isinstance(bindings, dict):
+        return None
+    q = bindings.get("queue_name")
+    if isinstance(q, str):
+        trimmed = q.strip()
+        if trimmed:
+            return trimmed
+    return None
+
+
 def _semantic_base(data_product_id: str) -> str:
     encoded = quote(str(data_product_id), safe="")
     return f"/dataproducts/dataproducts/{encoded}/semantic-inference"
@@ -149,11 +161,8 @@ class DataProductsApi:
 
     def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = self.get(dp_id)
-        storage = asset.get("storage") if isinstance(asset, dict) else None
-        if isinstance(storage, dict):
-            q = storage.get("rstreams_queue")
-            if isinstance(q, str) and q:
-                return q
+        if isinstance(asset, dict):
+            return _deployment_queue_name(asset)
         return None
 
     def get(self, id: str, *, include_schema: bool = False, include_quality: bool = False) -> dict[str, Any]:
@@ -328,7 +337,7 @@ class DataProductsApi:
             if not queue:
                 raise ValueError(
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
-                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                    "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
             return LoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
         return DataProductWriter(dp_id, self._http)
@@ -356,7 +365,7 @@ class DataProductsApi:
             if not queue:
                 raise ValueError(
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
-                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                    "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
             return iter(
                 LoxtepStreamReader(
@@ -429,11 +438,8 @@ class AsyncDataProductsApi:
 
     async def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = await self.get(dp_id)
-        storage = asset.get("storage") if isinstance(asset, dict) else None
-        if isinstance(storage, dict):
-            q = storage.get("rstreams_queue")
-            if isinstance(q, str) and q:
-                return q
+        if isinstance(asset, dict):
+            return _deployment_queue_name(asset)
         return None
 
     async def get(self, id: str, *, include_schema: bool = False, include_quality: bool = False) -> dict[str, Any]:
@@ -553,8 +559,7 @@ class AsyncDataProductsApi:
     async def get_queue_info(self, id: str) -> dict[str, Any]:
         if self._get_queue_metadata and callable(self._get_queue_metadata):
             asset = await self.get(id)
-            storage = asset.get("storage") if isinstance(asset.get("storage"), dict) else {}
-            queue_name = storage.get("rstreams_queue", "") if isinstance(storage, dict) else ""
+            queue_name = _deployment_queue_name(asset) if isinstance(asset, dict) else None
             if not queue_name:
                 return {}
             out = self._get_queue_metadata(queue_name)
@@ -565,8 +570,7 @@ class AsyncDataProductsApi:
     async def get_reader_checkpoint(self, id: str, bot_id: str) -> dict[str, Any]:
         if self._get_reader_checkpoint and callable(self._get_reader_checkpoint):
             asset = await self.get(id)
-            storage = asset.get("storage") if isinstance(asset.get("storage"), dict) else {}
-            queue_name = storage.get("rstreams_queue", "") if isinstance(storage, dict) else ""
+            queue_name = _deployment_queue_name(asset) if isinstance(asset, dict) else None
             if not queue_name:
                 return {}
             out = self._get_reader_checkpoint(queue_name, bot_id)
@@ -610,7 +614,7 @@ class AsyncDataProductsApi:
             if not queue:
                 raise ValueError(
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
-                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                    "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
             return AsyncLoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
         return AsyncDataProductWriter(dp_id, self._http)
@@ -635,7 +639,7 @@ class AsyncDataProductsApi:
             if not queue:
                 raise ValueError(
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
-                    "or ensure the data product is deployed (storage.rstreams_queue)."
+                    "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
             return AsyncLoxtepStreamReader(
                 cfg, bot_id or f"sdk-reader-{id_or_name}", queue, start=start, batch_size=batch_size
