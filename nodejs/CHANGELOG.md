@@ -12,7 +12,7 @@ and this project adheres to
 
 ### Added
 
-- Connection schema includes top-level `delivery_config` for outbound write policy (`table`, `write_mode`, upsert `primary_key`, batch sizes, `conflict_update`). `loxtep delivery create` scaffolds connector-delivery workflows with write policy under `delivery_config` (not `configuration`).
+- Connection schema includes top-level `delivery_config` for outbound write policy (`table`, `write_mode`, upsert `primary_key`, batch sizes, `conflict_update`). `loxtep delivery create` scaffolds connector-delivery workflows with write policy under `delivery_config` (not `configuration`). Entity schemas are pinned to `LoxtepInc/loxtep` `4d8f526e7dcc27751d298d87fd32798739274af1`.
 - HTTP client sends `x-loxtep-client` (`sdk` by default; CLI uses `cli`) for audit `context.source`.
 
 ## [0.9.37] - 2026-10-21
