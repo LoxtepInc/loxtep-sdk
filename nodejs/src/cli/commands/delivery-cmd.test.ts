@@ -141,10 +141,10 @@ describe('runDeliveryCreate', () => {
         .map(f => JSON.parse(readFileSync(join(connDir, f), 'utf8')))
         .find((c: { connector_mode?: string }) => c.connector_mode === 'outbound');
       expect(target).toBeDefined();
-      expect(target.configuration.table).toBe('public.orders_out');
-      expect(target.configuration.insert_batch_size).toBe(1000);
-      expect(target.configuration.batch_size).toBe(100);
-      expect(target.configuration.primary_key).toEqual(['order_id']);
+      expect(target.delivery_config.table).toBe('public.orders_out');
+      expect(target.delivery_config.insert_batch_size).toBe(1000);
+      expect(target.delivery_config.batch_size).toBe(100);
+      expect(target.delivery_config.primary_key).toEqual(['order_id']);
       expect(target.upstream_entity_type).toBe('transformations');
       out.restore();
     } finally {
