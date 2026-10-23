@@ -135,7 +135,13 @@
       "type": "object",
       "additionalProperties": true,
       "default": {},
-      "description": "Connection configuration (non-sensitive settings)"
+      "description": "Connection configuration (non-sensitive settings: auth/transport, trigger ids, data_path). Outbound write policy (table, write_mode, upsert primary_key, batch sizes, conflict_update, etc.) belongs on delivery_config — not here. configuration.data_path and ingestion_config.data_path are the same record path; when both are set they must match. parent_poll.data_path is only the parent catalog.",
+      "properties": {
+        "data_path": {
+          "type": "string",
+          "description": "Dot path into the HTTP JSON body for this connection's records. `$` means the whole object is one record. Same field as ingestion_config.data_path; the two must not disagree. Whitespace-only is unset. Not a substitute for parent_poll.data_path."
+        }
+      }
     },
     "metadata": {
       "type": "object",
@@ -201,7 +207,7 @@
           }
         },
         "runtime_memory_mb": {
-          "description": "Shared runtimes tier for trigger registration (256–2048). Defaults to 256 when unset. LeoCron `lambdaName`: `w-{org4}-{inst4}-bot-connectors-{mb}-rtime`; bot id: `w-{org4}-{inst4}-{workflow4}-bot-connectors-{mb}-{container_id}`. Instance `connection_details.runtimes_stack_identifier` may override the org/instance middle segment (CDK `microserviceIdentifier` = `w-{that middle}`).",
+          "description": "Off-VPC shared runtimes tier for trigger registration (256, 512, 1024, 2048). Unset runtime_memory_mb does not by itself route to connectors-private: when a shared runtimes Lambda cannot be named, unset stays on the legacy connection-handler. A customer-VPC connection that is already routing to connectors-private accepts an explicit runtime_memory_mb of 512 only (any other explicit tier fails the deploy); unset memory on that path stays 512. LeoCron `lambdaName`: `w-{org4}-{inst4}-bot-connectors-{mb}-rtime`; bot id: `w-{org4}-{inst4}-{workflow4}-bot-connectors-{mb}-{container_id}`. Instance `connection_details.runtimes_stack_identifier` may override the org/instance middle segment (CDK `microserviceIdentifier` = `w-{that middle}`).",
           "oneOf": [
             { "type": "null" },
             { "type": "integer", "enum": [256, 512, 1024, 2048] }
@@ -234,6 +240,10 @@
         "url": {
           "type": ["string", "null"],
           "description": "Request URL or URL template. For entity_loop include {key} (e.g. https://api.example.com/V2/products?styleID={styleID}). The rest-api runtime refuses to fire if the required key would be missing (unfiltered child collection URLs)."
+        },
+        "data_path": {
+          "type": ["string", "null"],
+          "description": "Dot path into the HTTP JSON body. Same field as configuration.data_path; when both are set they must match. Capture and ingest read either copy. Whitespace-only is unset. parent_poll.data_path is only the parent catalog response, not a substitute for this field."
         },
         "pagination": {
           "type": ["object", "null"],
@@ -292,7 +302,10 @@
                 "url": { "type": "string" },
                 "base_url": { "type": "string" },
                 "pagination": { "type": "object" },
-                "data_path": { "type": "string" },
+                "data_path": {
+                  "type": "string",
+                  "description": "Dot path into the parent catalog HTTP body when entity_loop.source is parent_poll. Used only to list parent keys. It does not replace configuration.data_path or ingestion_config.data_path on the child connection."
+                },
                 "query_params": { "type": "object" }
               },
               "additionalProperties": true
@@ -301,6 +314,76 @@
           "required": ["key", "source"],
           "additionalProperties": true
         }
+      },
+      "additionalProperties": true
+    },
+    "delivery_config": {
+      "type": ["object", "null"],
+      "description": "Outbound write policy for delivery-tail connections (mirror of ingestion_config for the source side). Auth/transport stay on configuration and the org connector; table, write_mode, upsert primary_key, batch sizes, and conflict rules live here. Distinct from data-product projection delivery_config (entities MS).",
+      "properties": {
+        "write_mode": {
+          "type": ["string", "null"],
+          "enum": ["append", "upsert", "replace", null],
+          "description": "How rows are written to the destination (append, upsert, or replace)."
+        },
+        "primary_key": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Destination upsert / conflict match columns. Not the same field as ingestion_config.primary_key (source business identity).",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "table": {
+          "type": ["string", "null"],
+          "description": "Destination table (optionally schema-qualified, e.g. accounts.accounts)."
+        },
+        "schema": {
+          "type": ["string", "null"],
+          "description": "Destination schema when not embedded in table."
+        },
+        "destination_table": {
+          "type": ["string", "null"],
+          "description": "Alias for table used by some connector packages."
+        },
+        "dest_database": { "type": ["string", "null"] },
+        "dest_schema": { "type": ["string", "null"] },
+        "dest_table": { "type": ["string", "null"] },
+        "dest_catalog": { "type": ["string", "null"] },
+        "exclude_columns": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Columns stripped before INSERT/UPSERT."
+        },
+        "batch_size": {
+          "type": ["integer", "null"],
+          "description": "Delivery consumer / Leo stream-read batch size. Distinct from ingestion_config.batch_size (poll batch) and from insert_batch_size (SQL multi-row chunk)."
+        },
+        "insert_batch_size": {
+          "type": ["integer", "null"],
+          "description": "Rows per multi-value INSERT statement."
+        },
+        "conflict_update": {
+          "type": ["object", "null"],
+          "description": "Upsert conflict behavior (e.g. default: excluded).",
+          "additionalProperties": true
+        },
+        "truncate_before_write": {
+          "type": ["boolean", "null"],
+          "description": "When write_mode is replace, truncate destination before write. Queue-driven postgres delivery refuses this combination."
+        },
+        "update_columns": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "column_mapping": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        },
+        "auto_create_table": { "type": ["boolean", "null"] },
+        "statement_timeout": { "type": ["integer", "null"] },
+        "stale_guard_column": { "type": ["string", "null"] }
       },
       "additionalProperties": true
     },

@@ -191,9 +191,7 @@ export async function runDeliveryCreate(
     updated_at: now,
   };
 
-  const targetConfiguration: Record<string, unknown> = {
-    direction: 'outbound',
-    role: 'target',
+  const deliveryConfig: Record<string, unknown> = {
     write_mode: 'upsert',
     primary_key: [primaryKey],
     batch_size: 100,
@@ -201,8 +199,8 @@ export async function runDeliveryCreate(
     conflict_update: { default: 'excluded' },
   };
   if (table) {
-    targetConfiguration.table = table;
-    targetConfiguration.schema = schema;
+    deliveryConfig.table = table;
+    deliveryConfig.schema = schema;
   }
 
   files[`workflows/${workflowId}/connections/${targetConnectionId}.json`] = {
@@ -217,14 +215,15 @@ export async function runDeliveryCreate(
     connector_type: connectionType,
     status: 'active',
     connector_mode: 'outbound',
-    configuration: targetConfiguration,
+    configuration: {},
+    delivery_config: deliveryConfig,
     upstream_entity_id: transformId,
     upstream_entity_type: 'transformations',
     metadata: {
       template_slug: DELIVERY_TEMPLATE_SLUG,
       role: 'target',
       notes:
-        'Auth/transport come from the org connector. Write policy (table, batch sizes, conflict_update) lives on this connection. List tables via `loxtep connectors list-entities <connector_id>`.',
+        'Auth/transport come from the org connector. Write policy (table, batch sizes, conflict_update) lives on delivery_config. List tables via `loxtep connectors list-entities <connector_id>`.',
     },
     created_at: now,
     updated_at: now,
@@ -278,6 +277,6 @@ export async function runDeliveryCreate(
   console.error(`
 Delivery package ready (workflow_type: delivery, template: ${DELIVERY_TEMPLATE_SLUG}).
 Graph: data-product-trigger → transform → outbound connection.
-Next: author transform mapping + set connection.configuration.table (list via \`loxtep connectors list-entities\`), then \`loxtep lint\` → \`loxtep push\` → \`loxtep deploy\`.
+Next: author transform mapping + set connection.delivery_config.table (list via \`loxtep connectors list-entities\`), then \`loxtep lint\` → \`loxtep push\` → \`loxtep deploy\`.
 `);
 }
