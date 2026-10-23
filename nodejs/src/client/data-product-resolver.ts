@@ -196,29 +196,14 @@ export class DataProductResolver {
   }
 
   /**
-   * Extract and validate runtime bindings from a data product record.
-   * Falls back to deriving bindings from storage.rstreams_queue when
-   * deployment_bindings is not yet populated (pre-existing deployments).
+   * Extract and validate runtime bindings from a data product record
+   * (`deployment_bindings.queue_name`, `bot_id`, `instance_id`).
    * Throws StreamingError if the data product has not been deployed.
    */
   private extractRuntimeBindings(dp: DataProduct): ResolvedDataProduct {
     const bindings = dp.deployment_bindings;
-    if (bindings?.queue_name && bindings?.bot_id && bindings?.instance_id) {
-      return {
-        data_product_id: dp.data_product_id,
-        name: dp.name,
-        queue_name: bindings.queue_name,
-        bot_id: bindings.bot_id,
-        instance_id: bindings.instance_id,
-        workflow_id: (dp as DataProduct & { workflow_id?: string }).workflow_id ?? '',
-        deployment_id: bindings.deployment_id,
-      };
-    }
-
-    // Fallback: derive from storage.rstreams_queue for data products deployed before
-    // deployment_bindings was introduced.
-    const storage = dp.storage as Record<string, unknown> | undefined;
-    const queueName = storage?.rstreams_queue as string | undefined;
+    const queueName =
+      typeof bindings?.queue_name === 'string' ? bindings.queue_name.trim() : '';
 
     if (!queueName) {
       throw new StreamingError(
@@ -227,37 +212,12 @@ export class DataProductResolver {
           details: {
             data_product_id: dp.data_product_id,
             name: dp.name,
-            hint: "Use 'deploy_workflow' or 'deploy_project' to deploy the workflow containing this data product.",
+            hint: "Deploy the workflow ('deploy_workflow' / 'deploy_project') or run runtime-queue-reconciliation so deployment_bindings.queue_name is populated.",
           },
         }
       );
     }
 
-    // Derive instance_id from partial bindings or metadata
-    const metadata = dp.metadata as Record<string, unknown> | undefined;
-    const instanceId =
-      bindings?.instance_id ||
-      (metadata?.instance_id as string | undefined) ||
-      this.clientInstanceId;
-
-    if (!instanceId) {
-      throw new StreamingError(
-        `Data product '${dp.name}' (${dp.data_product_id}) has a queue binding but no instance_id. ` +
-          `Set instance_id in LoxtepClient options or redeploy the workflow.`,
-        {
-          details: {
-            data_product_id: dp.data_product_id,
-            name: dp.name,
-            queue_name: queueName,
-            hint: "Set instance_id in LoxtepClient options, or redeploy the workflow to populate deployment_bindings.",
-          },
-        }
-      );
-    }
-
-    // Require bot_id from bindings — a synthetic bot_id won't match the instance
-    // namespace filter in the stats Lambda, making writes invisible in Observe.
-    // If bot_id is missing, the workflow needs to be redeployed.
     const botId = bindings?.bot_id;
     if (!botId) {
       throw new StreamingError(
@@ -268,8 +228,23 @@ export class DataProductResolver {
             data_product_id: dp.data_product_id,
             name: dp.name,
             queue_name: queueName,
-            instance_id: instanceId,
             hint: "Use 'deploy_workflow' or 'deploy_project' to redeploy. The deployment will populate the correct bot_id for SDK writes.",
+          },
+        }
+      );
+    }
+
+    const instanceId = bindings?.instance_id;
+    if (!instanceId) {
+      throw new StreamingError(
+        `Data product '${dp.name}' (${dp.data_product_id}) is missing deployment_bindings.instance_id. ` +
+          `Redeploy the workflow to populate deployment_bindings.`,
+        {
+          details: {
+            data_product_id: dp.data_product_id,
+            name: dp.name,
+            queue_name: queueName,
+            hint: "Set instance_id in LoxtepClient options, or redeploy the workflow to populate deployment_bindings.",
           },
         }
       );
@@ -282,7 +257,7 @@ export class DataProductResolver {
       bot_id: botId,
       instance_id: instanceId,
       workflow_id: (dp as DataProduct & { workflow_id?: string }).workflow_id ?? '',
-      deployment_id: bindings?.deployment_id ?? '',
+      deployment_id: bindings.deployment_id,
     };
   }
 

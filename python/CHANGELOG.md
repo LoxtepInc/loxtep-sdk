@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-23
+
+### Changed
+
+- **Breaking:** The platform API no longer exposes `storage.rstreams_queue`. The SDK resolves stream queue names from `deployment_bindings.queue_name` after deploy (or runtime-queue-reconciliation).
+
 ## [0.8.1] — 2026-10-20
 
 ### Added

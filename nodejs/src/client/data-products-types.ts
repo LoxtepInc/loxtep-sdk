@@ -162,8 +162,6 @@ export interface DataProductCreateInput {
   owner_team?: string;
   classification?: string;
   tags?: string[];
-  /** @remarks Platform API field for the bound queue name. */
-  rstreams_queue?: string;
   s3_location?: string;
   retention_period_days?: number;
   odps_document?: { product: Record<string, unknown> };
