@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-25
+
 ### Removed
 
 - **Breaking:** HTTP observe-proxy queue publish (`createHttpQueueWriter` /
