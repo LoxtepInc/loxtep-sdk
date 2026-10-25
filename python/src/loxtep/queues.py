@@ -48,7 +48,11 @@ class QueuesApi:
         )
 
     def open_writer(self, bot_id: str, queue_name: str) -> "QueueWriterHandle":
-        return QueueWriterHandle(bot_id=bot_id, queue_name=queue_name, http=self._http)
+        raise ValueError(
+            "queues.open_writer requires stream bus credentials (streams= / LEO_*). "
+            "HTTP queue publish is not supported. Use data_products.get_writer with "
+            "stream config, or configure the rstreams bus in the owning AWS account."
+        )
 
 
 class QueueReaderHandle:
@@ -137,7 +141,11 @@ class AsyncQueuesApi:
         )
 
     def open_writer(self, bot_id: str, queue_name: str) -> "AsyncQueueWriterHandle":
-        return AsyncQueueWriterHandle(bot_id=bot_id, queue_name=queue_name, http=self._http)
+        raise ValueError(
+            "queues.open_writer requires stream bus credentials (streams= / LEO_*). "
+            "HTTP queue publish is not supported. Use data_products.get_writer with "
+            "stream config, or configure the rstreams bus in the owning AWS account."
+        )
 
 
 class AsyncQueueReaderHandle:

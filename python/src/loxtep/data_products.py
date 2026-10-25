@@ -321,12 +321,10 @@ class DataProductsApi:
     def get_writer(
         self, id_or_name: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
     ) -> Any:
-        """Return a writer bound to the data product (resolves name→id).
+        """Return a stream writer bound to the data product (resolves name→id).
 
-        When the client is configured with stream-bus config (`streams=` or
-        LEO_* env), returns a `LoxtepStreamWriter` that produces to Kinesis (the
-        performant path, matching the Node.js SDK). Otherwise returns an
-        HTTP-based writer.
+        Requires stream-bus config (`streams=` or LEO_*). HTTP queue publish is
+        not supported — configure credentials in the AWS account that owns the bus.
         """
         dp_id = self._resolve_id(id_or_name)
         cfg = self._stream_config
@@ -340,7 +338,11 @@ class DataProductsApi:
                     "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
             return LoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
-        return DataProductWriter(dp_id, self._http)
+        raise ValueError(
+            f"Stream bus configuration missing for data product '{id_or_name}'. "
+            "Configure streams= / LEO_* in the AWS account that owns the bus. "
+            "HTTP queue publish is not supported."
+        )
 
     def get_reader(
         self,
@@ -603,8 +605,7 @@ class AsyncDataProductsApi:
     async def get_writer(
         self, id_or_name: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
     ) -> Any:
-        """Async writer. Uses the native Kinesis bus when stream config is
-        present, else the HTTP data path."""
+        """Async stream writer. Requires stream-bus config; HTTP publish is not supported."""
         dp_id = await self._resolve_id(id_or_name)
         cfg = self._stream_config
         if cfg is not None and getattr(cfg, "is_writable", False):
@@ -617,7 +618,11 @@ class AsyncDataProductsApi:
                     "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
             return AsyncLoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
-        return AsyncDataProductWriter(dp_id, self._http)
+        raise ValueError(
+            f"Stream bus configuration missing for data product '{id_or_name}'. "
+            "Configure streams= / LEO_* in the AWS account that owns the bus. "
+            "HTTP queue publish is not supported."
+        )
 
     async def get_reader(
         self,

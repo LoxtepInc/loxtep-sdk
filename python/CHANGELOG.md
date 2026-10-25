@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** HTTP fallbacks for `data_products.get_writer` and
+  `queues.open_writer`. Writers require stream-bus config (`streams=` / LEO_*).
+  HTTP queue publish is not supported.
+
 ## [0.9.0] — 2026-10-23
 
 ### Changed

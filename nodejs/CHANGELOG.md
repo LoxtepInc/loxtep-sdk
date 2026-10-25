@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** HTTP observe-proxy queue publish (`createHttpQueueWriter` /
+  `POST /observe/queues/{queue}/events`) for self-hosted writers. Event publish
+  is streams-only — configure LEO_* / `streams` in the AWS account that owns the
+  bus. Missing stream config fails closed with a clear error.
+
 ## [0.10.0] - 2026-10-23
 
 ### Changed
