@@ -56,12 +56,6 @@ jest.mock('../../rstreams/configuration', () => ({
   resolveStreamsConfiguration: (...args: unknown[]) => resolveStreamsConfigurationMock(...args as [unknown]),
 }));
 
-const createHttpQueueWriterMock = jest.fn();
-
-jest.mock('../../rstreams/http-queue-writer', () => ({
-  createHttpQueueWriter: (...args: unknown[]) => createHttpQueueWriterMock(...args),
-}));
-
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
@@ -129,10 +123,6 @@ beforeEach(() => {
   createRStreamsSdkMock.mockReturnValue(FAKE_RSDK);
   // Default: putPayloadsToQueue succeeds
   putPayloadsToQueueMock.mockResolvedValue(undefined);
-  createHttpQueueWriterMock.mockImplementation(() => ({
-    write: jest.fn(),
-    close: jest.fn(async () => undefined),
-  }));
   // Default: createQueueWriter buffers events and flushes on close
   createQueueWriterMock.mockImplementation((rsdk, botId, queueName) => {
     const buffer: unknown[] = [];
@@ -214,7 +204,7 @@ describe('data_products.get_writer — resolution and FlowWriter', () => {
     expect(putPayloadsToQueueMock).not.toHaveBeenCalled();
   });
 
-  it('routes self-hosted instances through the observe HTTP proxy (not BusWriter Kinesis)', async () => {
+  it('uses stream writer for self-hosted instances (no HTTP observe proxy)', async () => {
     const resolver = mockResolver();
     const http = mockHttp();
     (http.get as jest.Mock).mockResolvedValue({
@@ -229,17 +219,12 @@ describe('data_products.get_writer — resolution and FlowWriter', () => {
 
     const writer = await api.get_writer('shopify_gql_customer');
 
-    expect(createHttpQueueWriterMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        http,
-        bot_id: 'wkflow-nodes-connector-abc',
-        queue_name: '9c5a188a-queue-conn-out',
-        instance_id: RESOLVED_DATA_PRODUCT.dataProduct.instance_id,
-        data_product_id: RESOLVED_DATA_PRODUCT.dataProduct.data_product_id,
-      })
+    expect(createQueueWriterMock).toHaveBeenCalledWith(
+      FAKE_RSDK,
+      'wkflow-nodes-connector-abc',
+      '9c5a188a-queue-conn-out',
+      expect.any(Function)
     );
-    expect(createQueueWriterMock).not.toHaveBeenCalled();
-    expect(createRStreamsSdkMock).not.toHaveBeenCalled();
     expect(typeof writer.write).toBe('function');
   });
 });

@@ -36,45 +36,12 @@ import {
   createQueueWriter,
   type ReadQueueBatchResult,
 } from '../rstreams/event-bridge.js';
-import { createHttpQueueWriter } from '../rstreams/http-queue-writer.js';
 import { NotFoundError } from '../errors/resource.js';
 import { AuthorizationError } from '../errors/auth.js';
 import { StreamingError } from '../errors/streaming.js';
 import { DataProductResolver } from './data-product-resolver.js';
 import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
-import { resolveInstanceType } from './instance-list-summary.js';
-import type { Instance } from './instances-types.js';
-
-/** True when BusWriter STS (central account) cannot reach the instance Kinesis bus. */
-function isSelfHostedWriteTarget(instanceType: string): boolean {
-  const t = instanceType.trim().toLowerCase();
-  return t === 'self-hosted' || t === 'selfhosted' || t === 'customer';
-}
-
-async function resolveInstanceWriteTransport(
-  http: LoxtepHttpClient,
-  instanceId: string
-): Promise<'kinesis' | 'http_proxy'> {
-  try {
-    const res = await http.get<{ success?: boolean; data: Instance }>(
-      `/organizations/instances/${encodeURIComponent(instanceId)}`
-    );
-    const instance = res?.data;
-    if (!instance) return 'kinesis';
-    const fromMeta = resolveInstanceType(instance);
-    const fromConnType =
-      typeof instance.connection_details?.type === 'string'
-        ? String(instance.connection_details.type)
-        : undefined;
-    if (isSelfHostedWriteTarget(fromMeta) || (fromConnType && isSelfHostedWriteTarget(fromConnType))) {
-      return 'http_proxy';
-    }
-  } catch {
-    // Fall through — prefer Kinesis when instance type cannot be resolved.
-  }
-  return 'kinesis';
-}
 
 function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams();
@@ -757,21 +724,9 @@ export function createDataProductsApi(
           { details: { data_product_id: dataProduct.data_product_id, queue_name: queueName } }
         );
 
-      // Self-hosted buses live in the customer AWS account. Login BusWriter STS is
-      // central-account only — route writes through the observe HTTP proxy instead.
-      const transport = await resolveInstanceWriteTransport(http, dataProduct.instance_id);
-      if (transport === 'http_proxy') {
-        return createHttpQueueWriter({
-          http,
-          bot_id: botId,
-          queue_name: queueName,
-          instance_id: dataProduct.instance_id,
-          data_product_id: dataProduct.data_product_id,
-          batch_size: options?.batch_size,
-          closedError,
-        });
-      }
-
+      // Event publish is streams-only (Kinesis via stream config / BusWriter STS).
+      // There is no HTTP observe-proxy write path — configure LEO_* / instance
+      // stream environment in the account that owns the bus (including self-hosted).
       const streamResources = resolveStreamsConfiguration(streamConfig);
       if (!streamResources) {
         throw new StreamingError(
@@ -780,7 +735,8 @@ export function createDataProductsApi(
             details: {
               data_product_id: dataProduct.data_product_id,
               instance_id: dataProduct.instance_id,
-              hint: 'Verify the instance has a fully provisioned stream bus.',
+              hint:
+                'Configure instance stream bus credentials (LEO_* / streams config) in the AWS account that owns the bus. HTTP queue publish is not supported.',
             },
           }
         );

@@ -126,18 +126,17 @@ def test_nested_apis_and_snake_case_methods():
     client.close()
 
 
-def test_data_products_get_writer_resolves_name_and_writes():
+def test_data_products_get_writer_requires_stream_config():
+    import pytest
+
     client = LoxtepClient(api_url="https://api.example.com")
-    with patch.object(client._http, "get") as mock_get, patch.object(client._http, "post") as mock_post:
+    with patch.object(client._http, "get") as mock_get:
         mock_get.return_value = {
             "success": True,
             "data": {"items": [{"data_product_id": "dp_1", "name": "orders"}]},
         }
-        writer = client.get_writer("orders")
-        writer.write({"id": "e1", "name": "Alice"})
-        writer.close()
-    assert "search=orders" in mock_get.call_args[0][0]
-    mock_post.assert_called_once_with("/dataproducts/dp_1/events", {"id": "e1", "name": "Alice"})
+        with pytest.raises(ValueError, match="HTTP queue publish is not supported"):
+            client.get_writer("orders")
     client.close()
 
 

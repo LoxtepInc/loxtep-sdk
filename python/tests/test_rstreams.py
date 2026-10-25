@@ -8,7 +8,6 @@ import asyncio
 import pytest
 
 from loxtep import LoxtepClient
-from loxtep.data_products import DataProductWriter
 from loxtep.rstreams import (
     AsyncLoxtepStreamReader,
     AsyncLoxtepStreamWriter,
@@ -258,13 +257,15 @@ def test_reader_requires_readable_config():
 
 # --- client wiring: bus when configured, HTTP otherwise ---
 
-def test_get_writer_uses_http_when_no_stream_config():
+def test_get_writer_requires_stream_config():
+    import pytest
+
     client = LoxtepClient(api_url="https://api.example.com")
     from unittest.mock import patch
 
     with patch.object(client._data_products, "_resolve_id", return_value="dp_1"):
-        writer = client.get_writer("orders")
-    assert isinstance(writer, DataProductWriter)
+        with pytest.raises(ValueError, match="HTTP queue publish is not supported"):
+            client.get_writer("orders")
     client.close()
 
 
