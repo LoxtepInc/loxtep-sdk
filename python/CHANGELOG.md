@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-27
+
 ### Removed
 
 - **Breaking:** HTTP fallbacks for `data_products.get_writer` and
