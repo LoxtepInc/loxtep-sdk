@@ -48,8 +48,8 @@ import {
 /*  Doc links (R11.7)                                                  */
 /* ------------------------------------------------------------------ */
 
-const GETTING_STARTED_URL = 'https://docs.loxtep.io/getting-started';
-const QUICK_REFERENCE_URL = 'https://docs.loxtep.io/quick-reference';
+const GETTING_STARTED_URL = 'https://app.loxtep.io/docs/getting-started.md';
+const QUICK_REFERENCE_URL = 'https://app.loxtep.io/docs/quick-reference.md';
 
 /* ------------------------------------------------------------------ */
 /*  Repo flag → github_action pure mapping (R17.4, R17.5, R17.6)      */

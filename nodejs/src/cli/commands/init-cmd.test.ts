@@ -184,8 +184,8 @@ describe('runInitCommand', () => {
 
     expect(result.exitCode).toBe(0);
     const allOutput = result.stdout.join('\n');
-    expect(allOutput).toContain('https://docs.loxtep.io/getting-started');
-    expect(allOutput).toContain('https://docs.loxtep.io/quick-reference');
+    expect(allOutput).toContain('https://app.loxtep.io/docs/getting-started.md');
+    expect(allOutput).toContain('https://app.loxtep.io/docs/quick-reference.md');
   });
 
   it('scaffolds template with AGENTS.md and skill YAML (R16.1, R16.2)', async () => {
