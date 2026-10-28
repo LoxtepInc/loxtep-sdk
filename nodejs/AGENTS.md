@@ -211,8 +211,10 @@ for await (const event of reader) {
 
 ## MCP tool surface (hosted at `mcp.loxtep.io`)
 
-The hosted MCP server exposes **10 MCP tools** aligned to Connect → Organize → Use.
-Each call sets `operation` to the flat action name plus that action's arguments.
+The hosted MCP server exposes **11 tools**: ten job facades aligned to
+Connect → Products ↔ Meaning → Use, plus the MCP Apps-only
+`loxtep_package_review` review card. Inbox and Observe are cross-cutting. Each
+job-facade call sets `operation` to the flat action name plus that action's arguments.
 **Greenfield cutover:** deprecated names such as `loxtep_connectors`, `loxtep_workflows`,
 or `loxtep_data_products` are **not** registered.
 

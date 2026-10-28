@@ -2,7 +2,7 @@
  * `loxtep attach [--instance <id>]`
  *
  * Links the project to an existing Instance using the same connection mechanism
- * the Platform_UI uses (client.projects + client.instances / update_project).
+ * the Platform_UI uses (client.workspace.projects + client.workspace.instances / update_project).
  *
  * On success: writes resolved `instance_id` + `api_url` from instances.get into
  * `.loxtep/project.json` (workspace attach_state becomes attached). Stream bus

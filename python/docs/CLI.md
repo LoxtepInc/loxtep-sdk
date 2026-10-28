@@ -109,7 +109,7 @@ client = LoxtepClient(
     organization_id=config.get("organization_id"),
     project_id=config.get("project_id"),
 )
-result = client.data_products.query(data_product_id, sql)
+result = client.query.query(data_product_id, sql)
 client.close()
 ```
 
@@ -130,7 +130,7 @@ client = LoxtepClient(
     organization_id=config.get("organization_id"),
     project_id=config.get("project_id"),
 )
-for event in client.data_products.stream(data_product_id):
+for event in client.build.data_products.stream(data_product_id):
     process(event)
 client.close()
 ```
@@ -139,7 +139,7 @@ client.close()
 
 The Node.js CLI does not currently expose a `replay` subcommand. Use the
 **Python CLI** (`loxtep replay <id>`) or **Python SDK**
-(`client.data_products.replay(id)`).
+(`client.build.data_products.replay(id)`).
 
 ---
 

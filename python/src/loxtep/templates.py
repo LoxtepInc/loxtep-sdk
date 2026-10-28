@@ -2,7 +2,7 @@
 Templates API: list, get.
 Canonical API: GET /dataproducts/templates, GET /dataproducts/templates/:template_id (dataproducts).
 Path must match API Gateway (frontend uses /dataproducts/templates).
-Apply template: use client.projects.apply_template(project_id, ...).
+Apply template: use client.workspace.projects.apply_template(project_id, ...).
 """
 
 from typing import Any, Optional

@@ -4,12 +4,17 @@ This is a **guide for agents**, not an exhaustive OpenAPI listing. MCP stays on
 **HTTP**; the SDK adds **typed REST** and the **stream data plane** for live
 I/O.
 
-The SDK exposes **10 namespaces** that mirror hosted MCP tools, plus HTTP
+Hosted MCP exposes **11 tools**: ten job facades plus the MCP Apps-only
+`loxtep_package_review` review card. The SDK exposes **10 namespaces** that
+mirror the job facades, plus HTTP
 namespaces `client.governance` (policies and access requests) and
 `client.entities` (projection inference). Old flat namespaces
 (`data_products`, `workflows`, `connectors`, …) are **removed** — no
-deprecation aliases. `emit_semantic_gap_candidate` stays MCP-only: it enqueues
-inside the AI lambda and has no HTTP route.
+deprecation aliases. The package-review card is not an SDK namespace.
+
+Current MCP-only operations also include delivery grant list/get/save/update,
+organization ontology inference start/get/cancel/list/review, and
+`emit_semantic_gap_candidate`; do not invent SDK methods for them.
 
 | MCP facade | SDK namespace | Nested APIs / notes |
 | --- | --- | --- |
