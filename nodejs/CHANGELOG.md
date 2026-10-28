@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-28
+
+### Fixed
+
+- `loxtep init` now points users to the hosted getting-started and quick-reference docs routes.
+
 ## [0.11.0] - 2026-10-25
 
 ### Removed
