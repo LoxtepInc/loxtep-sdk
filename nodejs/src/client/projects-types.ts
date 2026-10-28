@@ -32,7 +32,7 @@ export interface Project {
 }
 
 /**
- * Repository binding projection returned by `client.projects.repository(projectId)`.
+ * Repository binding projection returned by `client.workspace.projects.repository(projectId)`.
  * Read-only accessor (synchronous read, R18.6 carve-out).
  * Returns the five binding fields plus last-synced state from the project record.
  */

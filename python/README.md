@@ -1,21 +1,22 @@
 # Loxtep Python SDK
 
-Python client for the Loxtep API, organized around one journey: **ingest →
-define → deliver**. Reach for the namespace that matches the stage you're in:
+Python client for the Loxtep API, organized around the customer journey:
+**Connect → Products ↔ Meaning → Use**. Reach for the job-aligned namespace that
+owns the work:
 
-- **Ingest** — `triggers`, `connectors`, `workflows`, `data_products.get_writer`
-- **Define** — `data_products`, `schemas`, `shapes`, `quality`, `catalog`,
-  `discovery`, `thesaurus`, `proposals`, `bundles`, `domains`, `standards`,
-  `data_contracts`
-- **Deliver** — `data_products` (get_reader/stream/replay/query), `targets`
-- **Advanced / platform** — `projects`, `templates`, `instances`, `observe`,
-  `queues`, `metrics`*, `process_intelligence`
+- **Connect** — `client.connect.connectors`, `client.connect.templates`
+- **Products** — `client.build.workflows`, `.triggers`, `.data_products`,
+  `.targets`; top-level `client.get_writer` / `client.get_reader` for event I/O
+- **Meaning** — `client.define.*`, `client.meaning.*`, `client.review.*`
+- **Use** — `client.query.*`, `client.context.*`
+- **Observe / Organization** — `client.observe`, `client.workspace.*`,
+  `client.governance`, `client.entities`, `client.metrics`*
 
 <sub>* `metrics` is a no-op reporter — matching the Node.js SDK, where it is
 also a no-op stub.</sub>
 
-The namespace names, casing, method names, and journey grouping match the
-Node.js SDK — see **Parity with the Node.js SDK** at the bottom.
+The namespace names, casing, and method names match the Node.js SDK — see
+**Parity with the Node.js SDK** at the bottom.
 
 > **Stream bus:** `loxtep.rstreams` is a native Leo data-plane client (Kinesis
 > **write** + DynamoDB/S3 **read**). Enable it with `pip install loxtep[streams]`
@@ -91,10 +92,10 @@ client = LoxtepClient(
 )
 
 # --- Ingest: connect a source and write events ---
-triggers = client.triggers.list()
+triggers = client.build.triggers.list()
 # With stream config (streams= / LEO_* env + pip install loxtep[streams]) this
 # writer produces to the Kinesis bus; otherwise it uses the HTTP data path.
-writer = client.data_products.get_writer("my-data-product")  # resolves name→id
+writer = client.get_writer("my-data-product")  # resolves name→id
 writer.write({"id": "e1", "name": "Alice"})
 writer.close()
 
@@ -104,22 +105,22 @@ graph = client.build.workflows.get_graph("workflow-id", "project-id")
 # Enrichment query_trigger (D14): preview_query_trigger / run_query_trigger
 
 # --- Define: data products, schema, quality, discovery ---
-asset = client.data_products.get("data-product-id")
-items, pagination = client.data_products.list(page=1, page_size=20)
-results = client.data_products.query("data-product-id", "SELECT * FROM t LIMIT 10")
-client.quality.list()
-client.catalog.search("query")
+asset = client.build.data_products.get("data-product-id")
+items, pagination = client.build.data_products.list(page=1, page_size=20)
+results = client.query.query("data-product-id", "SELECT * FROM t LIMIT 10")
+client.define.quality.list()
+client.query.catalog.search("query")
 # Discovery (access-filtered when user context present)
-client.discovery.search("events", include_evidence=True)
-client.schemas.get("data-product-id")
+client.query.discovery.search("events", include_evidence=True)
+client.define.schemas.get("data-product-id")
 
 # --- Deliver: consume events and route data out ---
-for event in client.data_products.stream("data-product-id"):
+for event in client.build.data_products.stream("data-product-id"):
     print(event)
 
 # Targets — how a data product delivers data to external systems
-client.targets.list("data-product-id")
-client.targets.create(
+client.build.targets.list("data-product-id")
+client.build.targets.create(
     "data-product-id",
     target_type="webhook",
     endpoint_url="https://example.com/hook",
@@ -140,9 +141,9 @@ async def main():
         api_url="https://api.loxtep.com",
         auth={"type": "jwt", "token": "YOUR_JWT"},
     ) as client:
-        asset = await client.data_products.get("data-product-id")
-        workflows = await client.workflows.list(project_id="project-id")
-        async for event in client.data_products.stream("data-product-id"):
+        asset = await client.build.data_products.get("data-product-id")
+        workflows = await client.build.workflows.list(project_id="project-id")
+        async for event in client.build.data_products.stream("data-product-id"):
             print(event)
 
 asyncio.run(main())
@@ -150,55 +151,54 @@ asyncio.run(main())
 
 ## API surface
 
-Grouped by journey stage; kind labels: **Resource** (full CRUD), **Reference**
+Grouped by customer area; kind labels: **Resource** (full CRUD), **Reference**
 (read-only), **Runtime** (live stream I/O).
 
-### Ingest
+### Connect and Products
 
 | Surface | Kind | Methods |
 | --- | --- | --- |
-| **triggers** | Resource | `get`, `list`, `create`, `update`, `delete`, `test`, `reset_backfill` |
-| **connectors** | Resource | `list`, `get`, `create`, `update`, `delete`, `test`, `get_oauth_url` |
-| **workflows** | Resource | `list`, `get`, `create`, `get_graph`, `deploy` |
-| **data_products.get_writer** | Runtime | the write path for events (resolves name→id) |
+| **build.triggers** | Resource | `get`, `list`, `create`, `update`, `delete`, `test`, `reset_backfill` |
+| **connect.connectors** | Resource | `list`, `get`, `create`, `update`, `delete`, `test`, `get_oauth_url` |
+| **build.workflows** | Resource | `list`, `get`, `create`, `get_graph`, `deploy` |
+| **get_writer** | Runtime | top-level write path for events (resolves name→id) |
 
-### Define
-
-| Surface | Kind | Methods |
-| --- | --- | --- |
-| **data_products** | Resource + Runtime | `get`, `get_lexicon`, `list`, `create`, `readiness`, `promote`, `get_usage_map`, `invalidate_cache`, `search`, `query`, `list_tables`, `get_queue_info`, `get_reader_checkpoint`, `stream`, `replay` |
-| **schemas** | Reference | `get`, `list`, `tag_pii_fields` |
-| **quality** | Resource | `list`, `get`, `create` |
-| **catalog** | Reference | `search` |
-| **discovery** | Reference | `search`, `get_evidence`, `get_lineage_impact`, `get_governance_flags`, `run` |
-| **thesaurus** | Resource | `list_terms`, `get_term`, `create_term`, `update_term`, `delete_term`, `sync_vocabulary`, `create_enterprise_override`, `resolve_canonical_key`, `append_synonym` |
-| **shapes** | Resource | `create`, `list`, `get`, `apply`, `align` (domain canonical schemas) |
-| **proposals** | Resource | `list`, `accept`, `reject`, `accept_batch`, `reject_batch` |
-| **bundles** | Resource | `import_` (Node: `.import`) |
-| **domains** | Reference | `list`, `get` |
-| **standards** | Reference | `list`, `get` |
-| **data_contracts** | Resource | `list`, `get`, `create`, `update`, `delete` |
-
-### Deliver
+### Products and Meaning
 
 | Surface | Kind | Methods |
 | --- | --- | --- |
-| **targets** | Resource | `list`, `get`, `create`, `update`, `delete` |
+| **build.data_products** | Resource + Runtime | `get`, `get_lexicon`, `list`, `create`, `readiness`, `promote`, `get_usage_map`, `invalidate_cache`, `search`, `query`, `list_tables`, `get_queue_info`, `get_reader_checkpoint`, `stream`, `replay` |
+| **define.schemas** | Reference | `get`, `list`, `tag_pii_fields` |
+| **define.quality** | Resource | `list`, `get`, `create` |
+| **query.catalog** | Reference | `search` |
+| **query.discovery** | Reference | `search`, `get_evidence`, `get_lineage_impact`, `get_governance_flags`, `run` |
+| **meaning.thesaurus** | Resource | `list_terms`, `get_term`, `create_term`, `update_term`, `delete_term`, `sync_vocabulary`, `create_enterprise_override`, `resolve_canonical_key`, `append_synonym` |
+| **define.shapes** | Resource | `create`, `list`, `get`, `apply`, `align` (domain canonical schemas) |
+| **meaning.proposals** | Resource | `list`, `accept`, `reject`, `accept_batch`, `reject_batch` |
+| **meaning.bundles** | Resource | `import_` (Node: `.import`) |
+| **define.domains** | Reference | `list`, `get` |
+| **define.standards** | Reference | `list`, `get` |
+| **define.data_contracts** | Resource | `list`, `get`, `create`, `update`, `delete` |
+
+### Use
+
+| Surface | Kind | Methods |
+| --- | --- | --- |
+| **build.targets** | Resource | `list`, `get`, `create`, `update`, `delete` |
 
 ### Advanced / platform
 
 | Surface | Kind | Methods |
 | --- | --- | --- |
-| **projects** | Resource | `list`, `get`, `create`, `update`, `delete`, `apply_template`, `repository` |
-| **templates** | Reference | `list`, `get` |
-| **instances** | Reference | `list`, `get`, `get_stream_config` |
-| **procedures** | Reference | `list` |
-| **queues** | — | `get_queue_metadata`, `get_reader_checkpoint`, `open_reader`, `open_writer` |
-| **observe** | — | `status` |
+| **workspace.projects** | Resource | `list`, `get`, `create`, `update`, `delete`, `apply_template`, `repository` |
+| **connect.templates** | Reference | `list`, `get` |
+| **workspace.instances** | Reference | `list`, `get`, `get_stream_config` |
+| **context.procedures** | Reference | `list` |
+| **observe** | — | `status`, `get_queue_metadata`, `get_reader_checkpoint`, `open_reader`, `open_writer` |
 | **metrics** | — | `log`, `get_reporter` — no-ops (matches Node.js) |
-| **process_intelligence** | — (experimental) | `get_entity_context`, `decision_traces_list` |
+| **context.process_intelligence** | — (experimental) | `get_entity_context`, `decision_traces_list` |
 
-### `client.workflows`
+### `client.build.workflows`
 
 | Method | Description |
 | --- | --- |
@@ -208,7 +208,7 @@ Grouped by journey stage; kind labels: **Resource** (full CRUD), **Reference**
 | `get_graph(workflow_id, project_id)` | Get the workflow graph definition |
 | `deploy(project_id, instance_id, *, version_id, force_redeploy)` | Deploy a project to an instance |
 
-### `client.triggers`
+### `client.build.triggers`
 
 Ingest-side source bindings (external systems that feed a workflow).
 
@@ -222,7 +222,7 @@ Ingest-side source bindings (external systems that feed a workflow).
 | `test(id)` | Test trigger connectivity |
 | `reset_backfill(connection_id, *, project_id, rebaseline_config_hash, instance_id)` | Clear one paused MongoDB backfill checkpoint |
 
-### `client.targets`
+### `client.build.targets`
 
 Delivery sink bindings — how a data product delivers data to external systems
 (webhooks, API endpoints, exports, database syncs, BI connections, event streams).
@@ -243,7 +243,7 @@ Delivery sink bindings — how a data product delivers data to external systems
 **`target_type` values:** `webhook`, `api_endpoint`, `export`, `database_sync`,
 `bi_connect`, `event_stream`.
 
-### `client.connectors`
+### `client.connect.connectors`
 
 | Method | Description |
 | --- | --- |
@@ -255,7 +255,7 @@ Delivery sink bindings — how a data product delivers data to external systems
 | `test(connector_id)` | Test connector connectivity |
 | `get_oauth_url(connector_id, *, callback_url, toolkit)` | Get the OAuth authorization URL |
 
-### `client.projects`
+### `client.workspace.projects`
 
 | Method | Description |
 | --- | --- |
@@ -266,14 +266,14 @@ Delivery sink bindings — how a data product delivers data to external systems
 | `delete(project_id)` | Delete a project |
 | `apply_template(project_id, *, template_type, template_slug, preview, placeholder_overrides)` | Apply a template |
 
-### `client.templates`
+### `client.connect.templates`
 
 | Method | Description |
 | --- | --- |
 | `list(*, category, search, page, page_size)` | List available templates |
 | `get(template_id)` | Get a template by ID |
 
-### `client.data_products`
+### `client.build.data_products`
 
 | Method | Description |
 | --- | --- |
@@ -344,7 +344,7 @@ Org / domain canonical schemas (distinct from `client.define.schemas` data-produ
 | `bundles.export_(query?)` | Export a semantic bundle |
 | `packages.save` / `.plan` / `.approve` / `.deploy` / `.verify` / `.status` / `.import_external` | Semantic package lifecycle |
 
-### `client.instances`
+### `client.workspace.instances`
 
 | Method | Description |
 | --- | --- |
@@ -354,7 +354,7 @@ Org / domain canonical schemas (distinct from `client.define.schemas` data-produ
 
 Python has no `loxtep instances stream-config` verb — use this method, or the Node CLI (`npx loxtep instances stream-config`).
 
-### `client.procedures`
+### `client.context.procedures`
 
 | Method | Description |
 | --- | --- |
@@ -371,13 +371,13 @@ Python has no `loxtep instances stream-config` verb — use this method, or the 
 `metrics.log` / `metrics.get_reporter` are no-ops — matching the Node.js SDK,
 where the metrics surface is also a no-op stub (it POSTs nowhere).
 
-### `client.process_intelligence` (experimental)
+### `client.context.process_intelligence` (experimental)
 
 Returns unified context from connected systems for a given entity. Experimental
 and excluded from the core surface (parity with the Node.js SDK).
 
 ```python
-context = client.process_intelligence.get_entity_context("org-id", "order", "4821")
+context = client.context.process_intelligence.get_entity_context("org-id", "order", "4821")
 ```
 
 ## Type hints
