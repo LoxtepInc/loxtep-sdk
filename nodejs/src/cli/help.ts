@@ -9,6 +9,10 @@ Turns organizational knowledge, expertise, and norms into machine-usable context
 Usage: loxtep <command> [subcommand] [options]
        loxtep --version | loxtep -V
 
+Get started
+  start [--client claude|codex|opencode|cursor] [--no-launch]
+                     Install Loxtep integration and launch your agent (Node 22.20+)
+
 Authentication
   login              Log in (browser by default; --console for email/password/TOTP)
                      Saves to ./.loxtep/credentials.json by default (--global for ~/.loxtep)

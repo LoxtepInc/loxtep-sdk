@@ -20,6 +20,7 @@ import {
   runConfigExportFromConnector,
 } from './commands/config-cmd.js';
 import { runInitCommand } from './commands/init-cmd.js';
+import { runStart } from './commands/start-cmd.js';
 import { runSetup } from './commands/setup-cmd.js';
 import { runBusLogin } from './commands/bus-cmd.js';
 import { createCliClient, requireCliClient } from './create-cli-client.js';
@@ -226,6 +227,19 @@ export async function runCli(argv: string[]): Promise<void> {
 
   async function runCommand(): Promise<void> {
   switch (command) {
+    case 'start': {
+      if (args.includes('--help') || args.includes('-h')) {
+        console.log('Usage: loxtep start [--client claude|codex|opencode|cursor] [--no-launch]\nInstall the client integration and launch your agent. Requires Node 22.20+.');
+        break;
+      }
+      for (let i = 1; i < args.length; i++) {
+        if (args[i] === '--no-launch') continue;
+        if (args[i] === '--client' && args[i + 1] && !args[i + 1].startsWith('-')) { i++; continue; }
+        throw new Error(`Unknown or incomplete start option: ${args[i]}. See loxtep start --help.`);
+      }
+      runStart({ client: getArg('--client'), noLaunch: args.includes('--no-launch') });
+      break;
+    }
     case 'login': {
       const emailIdx = args.indexOf('--email');
       const passwordIdx = args.indexOf('--password');
