@@ -23,6 +23,25 @@ write events with `get_writer`.
 > or the **Web UI** at [app.loxtep.io](https://app.loxtep.io).
 > Overview: [Loxtep Quickstart](https://app.loxtep.io/docs/quickstart/quickstart).
 
+## Start with your coding agent
+
+With Node.js 22.20 or newer, run:
+
+```bash
+npx --package @loxtep/sdk loxtep start
+```
+
+The starter detects Claude Code, Codex, OpenCode, or Cursor Agent, installs the
+integration, and launches the agent with the canonical setup prompt. If several
+clients are installed, choose one with `--client claude|codex|opencode|cursor`.
+Use `--no-launch` to configure and print the prompt for a manual restart.
+Normal Loxtep signup and hosted OAuth are required. This path does not require
+SDK login, a project attachment, or copied credentials. Existing client settings
+are preserved; conflicting Loxtep entries must be reviewed instead of overwritten.
+The agent then discovers authorized context or offers a synthetic policy example
+in an empty org, and verifies an answer with scoped retrieval and citations.
+
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
