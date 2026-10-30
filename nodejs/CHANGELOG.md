@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-30
+
+### Added
+
+- `loxtep start` command — interactive guided onboarding that walks a new user through authentication and platform setup.
+
 ## [0.11.1] - 2026-10-28
 
 ### Fixed
