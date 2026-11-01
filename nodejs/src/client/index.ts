@@ -1,8 +1,15 @@
-export { LoxtepClient } from './loxtep-client.js';
-export type { LoxtepClientOptions, AuthOptions, MetricsOptions } from './types.js';
-export type { LoxtepStreamRuntime, ConfigurationResources } from '../rstreams/leo-runtime.js';
-export type { MetricsSurface, FromWorkspaceOptions } from './loxtep-client.js';
-export type { RateLimitInfo } from '../http/client.js';
+export { LoxtepClient } from "./loxtep-client.js";
+export type {
+  LoxtepClientOptions,
+  AuthOptions,
+  MetricsOptions,
+} from "./types.js";
+export type {
+  LoxtepStreamRuntime,
+  ConfigurationResources,
+} from "../rstreams/leo-runtime.js";
+export type { MetricsSurface, FromWorkspaceOptions } from "./loxtep-client.js";
+export type { RateLimitInfo } from "../http/client.js";
 export type {
   ApprovalRequest,
   ApprovalStatus,
@@ -10,7 +17,7 @@ export type {
   ApprovalsListFilters,
   ApprovalsResolveOptions,
   ApprovalDecisionResult,
-} from './approvals-types.js';
+} from "./approvals-types.js";
 export type {
   ArtifactRef,
   LifecycleState,
@@ -43,8 +50,8 @@ export type {
   ApproveReviewInput,
   BridgeSemanticsInput,
   IdentityClusterListResult,
-} from './cdlc-types.js';
-export type { GovernanceApi } from './governance.js';
+} from "./cdlc-types.js";
+export type { GovernanceApi } from "./governance.js";
 export type {
   AccessRequest,
   AccessRequestListFilters,
@@ -63,15 +70,15 @@ export type {
   PolicyRuleAction,
   PolicyScope,
   UpdatePolicyInput,
-} from './governance-types.js';
-export type { EntitiesApi, InferEntityProjectionInput } from './entities.js';
+} from "./governance-types.js";
+export type { EntitiesApi, InferEntityProjectionInput } from "./entities.js";
 export type {
   AcceptOntologyRelationshipInput,
   AcceptOntologyRelationshipsInput,
   DiscoverOntologyRelationshipsInput,
-} from './ontology-types.js';
-export type { SemanticInferencePromoteInput } from './data-products-types.js';
-export type { CdlcApi } from './cdlc.js';
+} from "./ontology-types.js";
+export type { SemanticInferencePromoteInput } from "./data-products-types.js";
+export type { CdlcApi } from "./cdlc.js";
 export type {
   MiningApiDeps,
   MiningSignalSource,
@@ -86,8 +93,8 @@ export type {
   ListCandidatesResult,
   ActOnCandidateInput,
   ActOnCandidateResult,
-} from './mining-types.js';
-export type { MiningApi } from './mining.js';
+} from "./mining-types.js";
+export type { MiningApi } from "./mining.js";
 export type {
   DataProduct,
   DataProductKind,
@@ -113,8 +120,8 @@ export type {
   UsageMapNode,
   UsageMapEdge,
   UsageMapResponse,
-} from './data-products-types.js';
-export { WarehouseQueryError } from './data-products-types.js';
+} from "./data-products-types.js";
+export { WarehouseQueryError } from "./data-products-types.js";
 export type {
   QueueMetadata,
   QueueCheckpoint,
@@ -125,15 +132,15 @@ export type {
   QueueReaderHandle,
   QueueWriterHandle,
   QueueEvent,
-} from './queue-types.js';
+} from "./queue-types.js";
 export type {
   Trigger,
   TriggerCreateInput,
   TriggerUpdateInput,
   TriggersListFilters,
   TriggerTestResult,
-} from './trigger-types.js';
-export { TRIGGER_TYPES, TRIGGER_STATUSES } from './trigger-types.js';
+} from "./trigger-types.js";
+export { TRIGGER_TYPES, TRIGGER_STATUSES } from "./trigger-types.js";
 export type {
   Flow,
   FlowWithNodes,
@@ -142,7 +149,9 @@ export type {
   FlowCreateInput,
   FlowWriter,
   GetWriterOptions,
-} from './flow-types.js';
+  EventWriterTransportMode,
+} from "./flow-types.js";
+export { parseEventWriterTransportMode } from "./flow-types.js";
 export type {
   WorkflowsListFilters,
   WorkflowGraph,
@@ -154,8 +163,8 @@ export type {
   SaveWorkflowBundleResult,
   DeployResponse,
   CreateWorkflowInput,
-} from './workflows-types.js';
-export { normalizeDeployResponse } from './workflows-types.js';
+} from "./workflows-types.js";
+export { normalizeDeployResponse } from "./workflows-types.js";
 export type {
   Project,
   ProjectsListFilters,
@@ -163,7 +172,7 @@ export type {
   CreateProjectInput,
   UpdateProjectInput,
   RepositoryBinding,
-} from './projects-types.js';
+} from "./projects-types.js";
 export type {
   StatusPopulationDepth,
   PopulationCost,
@@ -185,7 +194,7 @@ export type {
   ProjectListStatusEnrichment,
   ProjectWorkspaceStatusResponse,
   ProjectWorkspaceStatusFieldPath,
-} from './project-workspace-status-types.js';
+} from "./project-workspace-status-types.js";
 export {
   StatusPopulationDepthSchema,
   PopulationCostSchema,
@@ -208,7 +217,7 @@ export {
   ProjectWorkspaceStatusResponseSchema,
   PROJECT_WORKSPACE_STATUS_FIELD_COST,
   STATUS_POPULATION_DEPTH_COST_CEILING,
-} from './project-workspace-status-types.js';
+} from "./project-workspace-status-types.js";
 export type {
   TemplateSummary,
   TemplatesListFilters,
@@ -216,8 +225,11 @@ export type {
   ApplyTemplateInput,
   ApplyTemplateResult,
   ApplyTemplateCreatedEntity,
-} from './templates-types.js';
-export type { ObserveStatusResponse, ObserveStreamConfigResponse } from './observe-types.js';
+} from "./templates-types.js";
+export type {
+  ObserveStatusResponse,
+  ObserveStreamConfigResponse,
+} from "./observe-types.js";
 export type {
   Deployment,
   DeploymentStatus,
@@ -226,19 +238,19 @@ export type {
   DeploymentsListResponse,
   GetDeploymentOptions,
   OrphanReason,
-} from './deployments-types.js';
-export type { DeploymentsApi } from './deployments.js';
+} from "./deployments-types.js";
+export type { DeploymentsApi } from "./deployments.js";
 export type {
   QualityMetric,
   QualityListFilters,
   QualityListResponse,
   CreateQualityMetricInput,
-} from './quality-types.js';
+} from "./quality-types.js";
 export type {
   CatalogSearchFilters,
   CatalogSearchResultItem,
   CatalogSearchResponse,
-} from './catalog-types.js';
+} from "./catalog-types.js";
 export type {
   DiscoverySearchOptions,
   DiscoverySearchResultItem,
@@ -248,8 +260,12 @@ export type {
   GetLineageImpactResponse,
   GetGovernanceFlagsResponse,
   RunDiscoveryResponse,
-} from './discovery-types.js';
-export type { DataProductSchema, SchemaVersion, SchemaListResponse } from './schemas-types.js';
+} from "./discovery-types.js";
+export type {
+  DataProductSchema,
+  SchemaVersion,
+  SchemaListResponse,
+} from "./schemas-types.js";
 export type {
   ThesaurusTerm,
   ThesaurusListResponse,
@@ -262,8 +278,8 @@ export type {
   SyncVocabularyInput,
   SyncVocabularyResult,
   CreateEnterpriseOverrideInput,
-} from './thesaurus-types.js';
-export type { ThesaurusApi } from './thesaurus.js';
+} from "./thesaurus-types.js";
+export type { ThesaurusApi } from "./thesaurus.js";
 export type {
   DomainShapeFormat,
   DomainShapeField,
@@ -276,8 +292,8 @@ export type {
   ApplyDomainShapeInput,
   DomainShapeApplication,
   AlignDomainShapeInput,
-} from './shapes-types.js';
-export type { ShapesApi } from './shapes.js';
+} from "./shapes-types.js";
+export type { ShapesApi } from "./shapes.js";
 export type {
   SemanticProposal,
   SemanticProposalDisposition,
@@ -285,21 +301,21 @@ export type {
   ListSemanticProposalsResult,
   ResolveSemanticProposalResult,
   BatchResolveSemanticProposalsResult,
-} from './proposals-types.js';
-export type { ProposalsApi } from './proposals.js';
+} from "./proposals-types.js";
+export type { ProposalsApi } from "./proposals.js";
 export type {
   SemanticBundle,
   ImportSemanticBundleInput,
   SemanticBundleImportResult,
   ExportSemanticBundleQuery,
-} from './bundles-types.js';
-export type { BundlesApi } from './bundles.js';
-export type { PackagesApi } from './packages.js';
+} from "./bundles-types.js";
+export type { BundlesApi } from "./bundles.js";
+export type { PackagesApi } from "./packages.js";
 export type {
   SaveSemanticPackageInput,
   PackageRevisionRef,
   ImportExternalSemanticPackageInput,
-} from './packages.js';
+} from "./packages.js";
 export type {
   OntologyNodeType,
   OntologyConcept,
@@ -316,8 +332,8 @@ export type {
   OntologyCreateRelationshipByNameInput,
   OntologyLinkClassInput,
   OntologyGetRelationshipsFilters,
-} from './ontology-types.js';
-export type { OntologyApi } from './ontology.js';
+} from "./ontology-types.js";
+export type { OntologyApi } from "./ontology.js";
 export type {
   PackActivationState,
   PackActivationStatus,
@@ -326,8 +342,8 @@ export type {
   ActivateVocabularyPackInput,
   ActivateVocabularyPackResult,
   PacksApiDeps,
-} from './packs-types.js';
-export type { PacksApi } from './packs.js';
+} from "./packs-types.js";
+export type { PacksApi } from "./packs.js";
 export type {
   SemanticArtifactType,
   SearchSemanticLayerInput,
@@ -338,9 +354,9 @@ export type {
   GetSemanticCompletenessInput,
   DomainCompleteness,
   SemanticCompletenessResult,
-} from './semantic-layer-types.js';
-export type { SemanticLayerApi } from './semantic-layer.js';
-export { semanticArtifactPathSegment } from './semantic-layer.js';
+} from "./semantic-layer-types.js";
+export type { SemanticLayerApi } from "./semantic-layer.js";
+export { semanticArtifactPathSegment } from "./semantic-layer.js";
 export type {
   CausalChainDirection,
   CausalChainHop,
@@ -363,9 +379,12 @@ export type {
   GetSimilarDecisionsResponse,
   SimilarDecisionCandidate,
   SimilarDecisionsResult,
-} from './process-intelligence-types.js';
-export { CAUSAL_LINK_TYPES, DECISION_TRACE_ENTITY_TYPES } from './process-intelligence-types.js';
-export type { ProcessIntelligenceApi } from './process-intelligence.js';
+} from "./process-intelligence-types.js";
+export {
+  CAUSAL_LINK_TYPES,
+  DECISION_TRACE_ENTITY_TYPES,
+} from "./process-intelligence-types.js";
+export type { ProcessIntelligenceApi } from "./process-intelligence.js";
 export type {
   Target,
   TargetType,
@@ -373,8 +392,8 @@ export type {
   TargetsListResponse,
   TargetCreateInput,
   TargetUpdateInput,
-} from './target-types.js';
-export type { TargetsApi } from './targets.js';
+} from "./target-types.js";
+export type { TargetsApi } from "./targets.js";
 export type {
   Connector,
   ConnectorShare,
@@ -385,8 +404,12 @@ export type {
   ConnectorTestResult,
   CaptureConnectorSamplesInput,
   CaptureConnectorSamplesResult,
-} from './connectors-types.js';
-export type { Instance, InstancesListResponse, InstanceDetailResponse } from './instances-types.js';
+} from "./connectors-types.js";
+export type {
+  Instance,
+  InstancesListResponse,
+  InstanceDetailResponse,
+} from "./instances-types.js";
 export type {
   Procedure,
   ProcedureCreateInput,
@@ -406,8 +429,8 @@ export type {
   ImportProcessGraphInput,
   ImportProcessGraphOptions,
   ImportProcessGraphS3Reference,
-} from './procedures-types.js';
-export type { ProceduresApi } from './procedures.js';
+} from "./procedures-types.js";
+export type { ProceduresApi } from "./procedures.js";
 export type {
   AgentWorkspaceApiDeps,
   AgentWorkspaceGoal,
@@ -417,13 +440,13 @@ export type {
   GoalsListFilters,
   IssuesListFilters,
   WorkstreamsListFilters,
-} from './agent-workspace-types.js';
+} from "./agent-workspace-types.js";
 export type {
   AgentWorkspaceApi,
   GoalsApi,
   IssuesApi,
   WorkstreamsApi,
-} from './agent-workspace.js';
+} from "./agent-workspace.js";
 export type {
   Improvement,
   ImprovementStatus,
@@ -431,8 +454,8 @@ export type {
   ImprovementsListResponse,
   ImprovementActionInput,
   ImprovementActionResponse,
-} from './improvements-types.js';
-export type { ImprovementsApi } from './improvements.js';
+} from "./improvements-types.js";
+export type { ImprovementsApi } from "./improvements.js";
 export type {
   ActivityEntry,
   ActivityEntryKind,
@@ -440,11 +463,11 @@ export type {
   ActivityListResponse,
   ActivityOutcome,
   ActivitySource,
-} from './activity-types.js';
-export type { ActivityApi } from './activity.js';
-export type { ConnectFacade } from './connect.js';
-export type { WorkspaceFacade } from './workspace.js';
-export { createDeploymentsApi, pickLatestDeployment } from './deployments.js';
+} from "./activity-types.js";
+export type { ActivityApi } from "./activity.js";
+export type { ConnectFacade } from "./connect.js";
+export type { WorkspaceFacade } from "./workspace.js";
+export { createDeploymentsApi, pickLatestDeployment } from "./deployments.js";
 export {
   buildProjectWorkspaceStatus,
   deriveNextAction,
@@ -452,8 +475,11 @@ export {
   formatProjectWorkspaceStatusLines,
   githubStateFromProject,
   toProjectListStatusEnrichment,
-} from './project-workspace-status.js';
-export type { BuildProjectWorkspaceStatusInput, LocalProjectSnapshot } from './project-workspace-status.js';
+} from "./project-workspace-status.js";
+export type {
+  BuildProjectWorkspaceStatusInput,
+  LocalProjectSnapshot,
+} from "./project-workspace-status.js";
 export {
   buildCloudToDeployedInventory,
   buildLocalToCloudInventory,
@@ -464,21 +490,21 @@ export {
   writePushManifest,
   writePushManifestFromProjectDir,
   PUSH_MANIFEST_RELATIVE_PATH,
-} from './project-workspace-inventory.js';
+} from "./project-workspace-inventory.js";
 export type {
   DiscoveredPackageFile,
   PushManifest,
-} from './project-workspace-inventory.js';
+} from "./project-workspace-inventory.js";
 export {
   collectFlatBundle,
   listLocalSchemaPackageFiles,
   listLocalWorkflowIds,
   listLocalWorkflowModuleFiles,
-} from './workspace-package.js';
+} from "./workspace-package.js";
 
-export type { BuildFacade } from './build.js';
-export type { DefineFacade } from './define.js';
-export type { ProductDefinitionApi } from './product-definition.js';
+export type { BuildFacade } from "./build.js";
+export type { DefineFacade } from "./define.js";
+export type { ProductDefinitionApi } from "./product-definition.js";
 export type {
   DefinitionBatchAction,
   DefinitionProposalType,
@@ -488,14 +514,24 @@ export type {
   RunDefinitionBatchInput,
   SubmitSemanticBindingsInput,
   SubmitShapeProposalInput,
-} from './product-definition-types.js';
-export type { MeaningFacade } from './meaning.js';
-export type { ReviewFacade } from './review.js';
-export type { QueryFacade } from './query.js';
-export type { ObserveFacade } from './observe-facade.js';
-export type { ContextFacade } from './context.js';
-export type { CurrentUser, CurrentOrganization } from './session.js';
-export type { ProjectVersionMetadata, VersionDiff } from './versions-types.js';
-export type { DataProductWriterOptions, DataProductReaderOptions } from './data-products.js';
-export { DataProductResolver, AmbiguityError } from './data-product-resolver.js';
-export type { ResolvedDataProduct, ResolvedStreamConfig, FullResolution } from './data-product-resolver.js';
+} from "./product-definition-types.js";
+export type { MeaningFacade } from "./meaning.js";
+export type { ReviewFacade } from "./review.js";
+export type { QueryFacade } from "./query.js";
+export type { ObserveFacade } from "./observe-facade.js";
+export type { ContextFacade } from "./context.js";
+export type { CurrentUser, CurrentOrganization } from "./session.js";
+export type { ProjectVersionMetadata, VersionDiff } from "./versions-types.js";
+export type {
+  DataProductWriterOptions,
+  DataProductReaderOptions,
+} from "./data-products.js";
+export {
+  DataProductResolver,
+  AmbiguityError,
+} from "./data-product-resolver.js";
+export type {
+  ResolvedDataProduct,
+  ResolvedStreamConfig,
+  FullResolution,
+} from "./data-product-resolver.js";

@@ -175,6 +175,22 @@
         { "type": "string", "minLength": 1 }
       ]
     },
+    "published_access_methods": {
+      "type": "array",
+      "description": "Design-time permitted consumption methods (D3). Baseline event_stream (data product trigger) is always effective even when omitted; sync coalesces it into data_products.delivery.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "event_stream",
+          "sql",
+          "api_endpoint",
+          "webhook",
+          "export",
+          "bi_connect"
+        ]
+      },
+      "uniqueItems": true
+    },
     "odps_document": {
       "description": "Canonical ODPS v4.1 document (`{ product: ... }`). Preferred for platform catalog, governance, and ecosystem interoperability. Validated in the dataproducts API; Loxtep-specific fields under product.custom.loxtep.",
       "allOf": [

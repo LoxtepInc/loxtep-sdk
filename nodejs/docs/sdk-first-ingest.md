@@ -64,15 +64,17 @@ The SDK reads your workspace (`.loxtep/project.json` + credentials). No manual
 URL or token wiring.
 
 ```typescript
-import { LoxtepClient } from '@loxtep/sdk';
+import { LoxtepClient } from "@loxtep/sdk";
 
 const client = await LoxtepClient.fromWorkspace();
 
-const writer = await client.get_writer('app-events');
+const writer = await client.get_writer("app-events", {
+  transport_mode: "default", // durable/recommended; fast may cost more; volume has lag
+});
 
 writer.write({
-  user_id: 'u_1',
-  action: 'signup',
+  user_id: "u_1",
+  action: "signup",
 });
 
 await writer.close();
@@ -87,7 +89,7 @@ Use the same name you passed to `ingest provision`.
 
 ```typescript
 const client = await LoxtepClient.fromWorkspace();
-const reader = await client.get_reader('app-events');
+const reader = await client.get_reader("app-events");
 
 for await (const event of reader) {
   console.log(event);
@@ -115,12 +117,12 @@ Then `get_writer('app-events')` in your app.
 
 ## If something goes wrong
 
-| What you see | What to do |
-| ------------ | ---------- |
-| Data product not found | Run `data-products list`. Check the name matches `get_writer('…')` exactly. |
-| Not ready to accept writes | Run `ingest provision`, then `deploy` (or `ingest provision --deploy`). Make sure you ran `attach` first. |
-| Multiple products with the same name | Pass the data product id to `get_writer`, or ensure `attach` points at the right instance. |
-| No domain available | Create a domain in the Loxtep UI, or pass `--domain-id` to `ingest provision`. |
+| What you see                         | What to do                                                                                                |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Data product not found               | Run `data-products list`. Check the name matches `get_writer('…')` exactly.                               |
+| Not ready to accept writes           | Run `ingest provision`, then `deploy` (or `ingest provision --deploy`). Make sure you ran `attach` first. |
+| Multiple products with the same name | Pass the data product id to `get_writer`, or ensure `attach` points at the right instance.                |
+| No domain available                  | Create a domain in the Loxtep UI, or pass `--domain-id` to `ingest provision`.                            |
 
 ---
 
@@ -136,6 +138,6 @@ or another client, describe what you want in plain language, for example:
 The assistant provisions the same end state as `ingest provision`. After that,
 Phase 4 above is unchanged: `get_writer('app-events')` and `write()`.
 
-**Loxtep Studio (web app)** — *Beta.* You can also design and publish a data
+**Loxtep Studio (web app)** — _Beta._ You can also design and publish a data
 product in the Loxtep UI. Once it exists on your instance, the SDK code in
 Phase 4 is the same.

@@ -17,7 +17,12 @@ Requires the optional ``boto3`` dependency: ``pip install loxtep[streams]``.
 """
 
 from .config import StreamConfig, resolve_stream_config
-from .writer import AsyncLoxtepStreamWriter, LoxtepStreamWriter, build_envelope
+from .writer import (
+    AsyncLoxtepStreamWriter,
+    EventWriterTransportMode,
+    LoxtepStreamWriter,
+    build_envelope,
+)
 from .reader import AsyncLoxtepStreamReader, LoxtepStreamReader
 
 __all__ = [
@@ -25,6 +30,7 @@ __all__ = [
     "resolve_stream_config",
     "LoxtepStreamWriter",
     "AsyncLoxtepStreamWriter",
+    "EventWriterTransportMode",
     "build_envelope",
     "LoxtepStreamReader",
     "AsyncLoxtepStreamReader",

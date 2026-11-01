@@ -18,7 +18,7 @@ import gzip
 import json
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from .config import StreamConfig
 
@@ -26,6 +26,7 @@ from .config import StreamConfig
 # `twoHundredK * 3`); the Kinesis record then carries an S3-pointer instead of
 # the inline payload.
 _S3_OFFLOAD_THRESHOLD = 1024 * 200 * 3
+EventWriterTransportMode = Literal["default", "fast", "volume"]
 
 
 def _now_ms() -> int:
@@ -49,7 +50,9 @@ def build_envelope(
         "id": bot_id,
         "event": queue,
         "payload": business_object,
-        "event_source_timestamp": event_source_timestamp if event_source_timestamp is not None else now,
+        "event_source_timestamp": event_source_timestamp
+        if event_source_timestamp is not None
+        else now,
         "timestamp": now,
     }
 
@@ -59,12 +62,11 @@ class StreamBusUnavailableError(RuntimeError):
 
 
 class LoxtepStreamWriter:
-    """Buffered Kinesis writer. `write(obj)` buffers; `close()` flushes.
+    """Buffered event writer. `write(obj)` buffers; `close()` flushes.
 
-    Batching mirrors the Node SDK defaults: flush when the buffer reaches
-    `max_batch_records`, or the estimated uncompressed size exceeds
-    `max_batch_bytes`, or on `close()`. Each flush emits ONE Kinesis record: a
-    gzip of the NDJSON-concatenated envelopes, PartitionKey ``"0"``.
+    ``default`` uses durable object-backed writes and is recommended. ``fast``
+    minimizes latency but may cost more. ``volume`` optimizes for throughput and
+    introduces delivery lag.
     """
 
     def __init__(
@@ -76,13 +78,28 @@ class LoxtepStreamWriter:
         max_batch_records: int = 100,
         max_batch_bytes: int = 200 * 1024,
         max_attempts: int = 10,
+        transport_mode: EventWriterTransportMode = "default",
         kinesis_client: Any = None,
         s3_client: Any = None,
+        firehose_client: Any = None,
     ) -> None:
         if not config.is_writable:
             raise StreamBusUnavailableError(
                 "Stream config is not writable (need region + kinesis_stream). "
                 "Pass `streams` to the client or set LEO_* env vars."
+            )
+        if transport_mode not in ("default", "fast", "volume"):
+            raise ValueError(
+                "transport_mode must be default (durable, recommended), fast "
+                "(lowest latency, may cost more), or volume (high throughput, with delivery lag)"
+            )
+        if transport_mode == "default" and not config.s3_bucket:
+            raise StreamBusUnavailableError(
+                "The default transport mode requires an object storage bucket in stream config."
+            )
+        if transport_mode == "volume" and not config.firehose_stream:
+            raise StreamBusUnavailableError(
+                "The volume transport mode requires a volume delivery stream in stream config."
             )
         self._config = config
         self._bot_id = bot_id
@@ -90,12 +107,14 @@ class LoxtepStreamWriter:
         self._max_batch_records = max_batch_records
         self._max_batch_bytes = max_batch_bytes
         self._max_attempts = max_attempts
+        self._transport_mode = transport_mode
         self._buffer: list[dict[str, Any]] = []
         self._buffered_bytes = 0
         self._closed = False
         self._s3_file_count = 0
         self._client = kinesis_client if kinesis_client is not None else self._make_client()
         self._s3 = s3_client  # lazily created only if a large payload is offloaded
+        self._firehose = firehose_client
 
     def _make_client(self) -> Any:
         try:
@@ -112,9 +131,21 @@ class LoxtepStreamWriter:
         try:
             import boto3  # noqa: PLC0415
         except ImportError as exc:  # pragma: no cover - env dependent
-            raise StreamBusUnavailableError("boto3 is required for large-payload S3 offload.") from exc
+            raise StreamBusUnavailableError(
+                "boto3 is required for large-payload S3 offload."
+            ) from exc
         self._s3 = boto3.client("s3", region_name=self._config.region)
         return self._s3
+
+    def _make_firehose(self) -> Any:
+        if self._firehose is not None:
+            return self._firehose
+        try:
+            import boto3  # noqa: PLC0415
+        except ImportError as exc:  # pragma: no cover - env dependent
+            raise StreamBusUnavailableError("boto3 is required for volume writes.") from exc
+        self._firehose = boto3.client("firehose", region_name=self._config.region)
+        return self._firehose
 
     def write(self, business_object: Any, *, event_source_timestamp: Optional[int] = None) -> None:
         if self._closed:
@@ -126,12 +157,15 @@ class LoxtepStreamWriter:
             event_source_timestamp=event_source_timestamp,
         )
         line = json.dumps(env)
-        if len(line.encode("utf-8")) > _S3_OFFLOAD_THRESHOLD:
+        if self._transport_mode == "fast" and len(line.encode("utf-8")) > _S3_OFFLOAD_THRESHOLD:
             self._offload_event(env)
             return
         self._buffer.append(env)
         self._buffered_bytes += len(line) + 1
-        if len(self._buffer) >= self._max_batch_records or self._buffered_bytes >= self._max_batch_bytes:
+        if (
+            len(self._buffer) >= self._max_batch_records
+            or self._buffered_bytes >= self._max_batch_bytes
+        ):
             self._flush()
 
     def _s3_key(self) -> str:
@@ -153,22 +187,26 @@ class LoxtepStreamWriter:
             )
         # Any buffered inline events must be flushed first to preserve ordering.
         self._flush()
-        line = json.dumps(env) + "\n"
-        line_bytes = line.encode("utf-8")
+        self._offload_events([env])
+
+    def _offload_events(self, events: list[dict[str, Any]]) -> None:
+        """Upload envelopes as gzipped NDJSON and publish one object pointer."""
+        body = "".join(json.dumps(event) + "\n" for event in events)
+        line_bytes = body.encode("utf-8")
         gz = gzip.compress(line_bytes)
         key = self._s3_key()
         self._make_s3().put_object(Bucket=self._config.s3_bucket, Key=key, Body=gz)
         pointer = {
             "event": self._queue,
             "start": 0,
-            "end": 0,
+            "end": len(events) - 1,
             "s3": {"bucket": self._config.s3_bucket, "key": key},
             "offsets": [
                 {
                     "event": self._queue,
                     "start": 0,
-                    "end": 0,
-                    "records": 1,
+                    "end": len(events) - 1,
+                    "records": len(events),
                     "size": len(line_bytes),
                     "gzipSize": len(gz),
                     "offset": 0,
@@ -177,7 +215,7 @@ class LoxtepStreamWriter:
             ],
             "gzipSize": len(gz),
             "size": len(line_bytes),
-            "records": 1,
+            "records": len(events),
             "stats": {},
             "correlations": [],
         }
@@ -202,10 +240,37 @@ class LoxtepStreamWriter:
             return
         body = "".join(json.dumps(e) + "\n" for e in self._buffer)
         data = gzip.compress(body.encode("utf-8"))
-        record = {"Data": data, "PartitionKey": "0"}
-        self._put_with_retry([record])
+        if self._transport_mode == "default":
+            self._offload_events(self._buffer)
+        elif self._transport_mode == "volume":
+            self._put_firehose_with_retry([{"Data": data}])
+        else:
+            record = {"Data": data, "PartitionKey": "0"}
+            self._put_with_retry([record])
         self._buffer.clear()
         self._buffered_bytes = 0
+
+    def _put_firehose_with_retry(self, records: list[dict[str, Any]]) -> None:
+        pending = records
+        for attempt in range(self._max_attempts):
+            if attempt:
+                time.sleep(attempt * 0.1)
+            resp = self._make_firehose().put_record_batch(
+                Records=pending, DeliveryStreamName=self._config.firehose_stream
+            )
+            if not (resp.get("FailedPutCount", 0) if isinstance(resp, dict) else 0):
+                return
+            responses = resp.get("RequestResponses", []) if isinstance(resp, dict) else []
+            retry = [
+                rec
+                for rec, result in zip(pending, responses)
+                if isinstance(result, dict) and result.get("ErrorCode")
+            ]
+            pending = retry or pending
+        raise StreamBusUnavailableError(
+            f"Failed to put {len(pending)} record(s) to the volume delivery stream after "
+            f"{self._max_attempts} attempts"
+        )
 
     def _put_with_retry(self, records: list[dict[str, Any]]) -> None:
         pending = records
@@ -235,7 +300,9 @@ class AsyncLoxtepStreamWriter:
     def __init__(self, config: StreamConfig, bot_id: str, queue: str, **kwargs: Any) -> None:
         self._writer = LoxtepStreamWriter(config, bot_id, queue, **kwargs)
 
-    async def write(self, business_object: Any, *, event_source_timestamp: Optional[int] = None) -> None:
+    async def write(
+        self, business_object: Any, *, event_source_timestamp: Optional[int] = None
+    ) -> None:
         # Buffering is in-memory/cheap; the flush (network) may run here.
         await asyncio.to_thread(
             self._writer.write, business_object, event_source_timestamp=event_source_timestamp

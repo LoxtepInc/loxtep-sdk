@@ -2,11 +2,11 @@
  * Unit tests for FlowWriter via flows.get_writer() and createQueueWriter integration.
  */
 
-import { jest } from '@jest/globals';
-import { createWorkflowsApi, isTransientError } from '../workflows';
-import { StreamingError } from '../../errors/streaming';
-import type { LoxtepHttpClient } from '../../http/client';
-import type { RStreamsSdk } from '../../rstreams/leo-runtime';
+import { jest } from "@jest/globals";
+import { createWorkflowsApi, isTransientError } from "../workflows";
+import { StreamingError } from "../../errors/streaming";
+import type { LoxtepHttpClient } from "../../http/client";
+import type { RStreamsSdk } from "../../rstreams/leo-runtime";
 
 function mockHttp(): LoxtepHttpClient {
   return {
@@ -20,10 +20,18 @@ function mockHttp(): LoxtepHttpClient {
 
 function mockRsdk(): {
   rsdk: RStreamsSdk;
-  loads: Array<{ botId: string; queueName: string }>;
+  loads: Array<{
+    botId: string;
+    queueName: string;
+    options: Record<string, boolean>;
+  }>;
   written: unknown[];
 } {
-  const loads: Array<{ botId: string; queueName: string }> = [];
+  const loads: Array<{
+    botId: string;
+    queueName: string;
+    options: Record<string, boolean>;
+  }> = [];
   const written: unknown[] = [];
   const stream = {
     write(chunk: unknown): boolean {
@@ -35,72 +43,80 @@ function mockRsdk(): {
     },
   };
   const rsdk = {
-    load: (botId: string, queueName: string) => {
-      loads.push({ botId, queueName });
+    load: (
+      botId: string,
+      queueName: string,
+      options: Record<string, boolean>,
+    ) => {
+      loads.push({ botId, queueName, options });
       return stream;
     },
   } as unknown as RStreamsSdk;
   return { rsdk, loads, written };
 }
 
-describe('FlowWriter — Stream Bus integration', () => {
-  it('write() forwards envelopes to the load stream and close() ends it', async () => {
+describe("FlowWriter — Stream Bus integration", () => {
+  it("write() forwards envelopes to the load stream and close() ends it", async () => {
     const { rsdk, loads, written } = mockRsdk();
     const api = createWorkflowsApi(mockHttp(), { rsdk });
-    const writer = await api.get_writer('flow-1', {
-      bot_id: 'bot-1',
-      output_queue_name: 'test-queue',
+    const writer = await api.get_writer("flow-1", {
+      bot_id: "bot-1",
+      output_queue_name: "test-queue",
     });
 
     writer.write({ id: 1 });
     writer.write({ id: 2 });
     await writer.close();
 
-    expect(loads).toEqual([{ botId: 'bot-1', queueName: 'test-queue' }]);
+    expect(loads).toEqual([
+      { botId: "bot-1", queueName: "test-queue", options: { useS3: true } },
+    ]);
     expect(written).toEqual([{ payload: { id: 1 } }, { payload: { id: 2 } }]);
   });
 
-  it('close() with empty buffer still ends the stream', async () => {
+  it("close() with empty buffer still ends the stream", async () => {
     const { rsdk, loads } = mockRsdk();
     const api = createWorkflowsApi(mockHttp(), { rsdk });
-    const writer = await api.get_writer('flow-1', {
-      bot_id: 'bot-1',
-      output_queue_name: 'test-queue',
+    const writer = await api.get_writer("flow-1", {
+      bot_id: "bot-1",
+      output_queue_name: "test-queue",
     });
 
     await writer.close();
 
-    expect(loads).toEqual([{ botId: 'bot-1', queueName: 'test-queue' }]);
+    expect(loads).toEqual([
+      { botId: "bot-1", queueName: "test-queue", options: { useS3: true } },
+    ]);
   });
 
-  it('throws StreamingError when rsdk is not available', async () => {
+  it("throws StreamingError when rsdk is not available", async () => {
     const api = createWorkflowsApi(mockHttp(), { rsdk: undefined });
 
     await expect(
-      api.get_writer('flow-1', {
-        bot_id: 'bot-1',
-        output_queue_name: 'test-queue',
-      })
+      api.get_writer("flow-1", {
+        bot_id: "bot-1",
+        output_queue_name: "test-queue",
+      }),
     ).rejects.toThrow(/Stream bus configuration missing/);
   });
 
-  it('throws StreamingError when bot_id is missing', async () => {
+  it("throws StreamingError when bot_id is missing", async () => {
     const { rsdk } = mockRsdk();
     const api = createWorkflowsApi(mockHttp(), { rsdk });
 
     await expect(
-      api.get_writer('flow-1', {
-        output_queue_name: 'test-queue',
-      })
+      api.get_writer("flow-1", {
+        output_queue_name: "test-queue",
+      }),
     ).rejects.toThrow(/bot_id/);
   });
 
-  it('throws StreamingError when writing to a closed writer', async () => {
+  it("throws StreamingError when writing to a closed writer", async () => {
     const { rsdk } = mockRsdk();
     const api = createWorkflowsApi(mockHttp(), { rsdk });
-    const writer = await api.get_writer('flow-1', {
-      bot_id: 'bot-1',
-      output_queue_name: 'test-queue',
+    const writer = await api.get_writer("flow-1", {
+      bot_id: "bot-1",
+      output_queue_name: "test-queue",
     });
 
     await writer.close();
@@ -109,12 +125,12 @@ describe('FlowWriter — Stream Bus integration', () => {
     expect(() => writer.write({ id: 1 })).toThrow(/closed writer/);
   });
 
-  it('close() is idempotent — second call is a no-op', async () => {
+  it("close() is idempotent — second call is a no-op", async () => {
     const { rsdk, loads } = mockRsdk();
     const api = createWorkflowsApi(mockHttp(), { rsdk });
-    const writer = await api.get_writer('flow-1', {
-      bot_id: 'bot-1',
-      output_queue_name: 'test-queue',
+    const writer = await api.get_writer("flow-1", {
+      bot_id: "bot-1",
+      output_queue_name: "test-queue",
     });
 
     writer.write({ id: 1 });
@@ -124,13 +140,13 @@ describe('FlowWriter — Stream Bus integration', () => {
     expect(loads).toHaveLength(1);
   });
 
-  it('resolves rsdk lazily via get_rsdk when rsdk is not set', async () => {
+  it("resolves rsdk lazily via get_rsdk when rsdk is not set", async () => {
     const { rsdk, written } = mockRsdk();
     const getRsdk = jest.fn(async () => rsdk);
     const api = createWorkflowsApi(mockHttp(), { get_rsdk: getRsdk });
-    const writer = await api.get_writer('flow-1', {
-      bot_id: 'bot-1',
-      output_queue_name: 'test-queue',
+    const writer = await api.get_writer("flow-1", {
+      bot_id: "bot-1",
+      output_queue_name: "test-queue",
     });
 
     writer.write({ id: 1 });
@@ -141,44 +157,44 @@ describe('FlowWriter — Stream Bus integration', () => {
   });
 });
 
-describe('isTransientError', () => {
-  it('returns true for 5xx status codes', () => {
+describe("isTransientError", () => {
+  it("returns true for 5xx status codes", () => {
     expect(isTransientError({ status_code: 500 })).toBe(true);
     expect(isTransientError({ status_code: 502 })).toBe(true);
     expect(isTransientError({ status_code: 503 })).toBe(true);
     expect(isTransientError({ status_code: 504 })).toBe(true);
   });
 
-  it('returns true for 429 (throttling)', () => {
+  it("returns true for 429 (throttling)", () => {
     expect(isTransientError({ status_code: 429 })).toBe(true);
   });
 
-  it('returns false for 4xx (except 429)', () => {
+  it("returns false for 4xx (except 429)", () => {
     expect(isTransientError({ status_code: 400 })).toBe(false);
     expect(isTransientError({ status_code: 401 })).toBe(false);
     expect(isTransientError({ status_code: 403 })).toBe(false);
     expect(isTransientError({ status_code: 404 })).toBe(false);
   });
 
-  it('returns true for network error codes', () => {
-    expect(isTransientError({ code: 'ECONNRESET' })).toBe(true);
-    expect(isTransientError({ code: 'ECONNREFUSED' })).toBe(true);
-    expect(isTransientError({ code: 'ETIMEDOUT' })).toBe(true);
-    expect(isTransientError({ code: 'EPIPE' })).toBe(true);
+  it("returns true for network error codes", () => {
+    expect(isTransientError({ code: "ECONNRESET" })).toBe(true);
+    expect(isTransientError({ code: "ECONNREFUSED" })).toBe(true);
+    expect(isTransientError({ code: "ETIMEDOUT" })).toBe(true);
+    expect(isTransientError({ code: "EPIPE" })).toBe(true);
   });
 
-  it('returns false for auth error codes', () => {
-    expect(isTransientError({ code: 'AUTHENTICATION_ERROR' })).toBe(false);
-    expect(isTransientError({ code: 'AUTHORIZATION_ERROR' })).toBe(false);
+  it("returns false for auth error codes", () => {
+    expect(isTransientError({ code: "AUTHENTICATION_ERROR" })).toBe(false);
+    expect(isTransientError({ code: "AUTHORIZATION_ERROR" })).toBe(false);
   });
 
-  it('returns true for timeout-related error messages', () => {
-    expect(isTransientError(new Error('Request timeout'))).toBe(true);
-    expect(isTransientError(new Error('socket hang up'))).toBe(true);
-    expect(isTransientError(new Error('network error'))).toBe(true);
+  it("returns true for timeout-related error messages", () => {
+    expect(isTransientError(new Error("Request timeout"))).toBe(true);
+    expect(isTransientError(new Error("socket hang up"))).toBe(true);
+    expect(isTransientError(new Error("network error"))).toBe(true);
   });
 
-  it('returns false for null/undefined', () => {
+  it("returns false for null/undefined", () => {
     expect(isTransientError(null)).toBe(false);
     expect(isTransientError(undefined)).toBe(false);
   });

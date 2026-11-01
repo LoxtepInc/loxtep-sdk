@@ -52,12 +52,14 @@ Build & deploy
   connectors capture-samples <connector_id> --entity-type <name> [--limit N]
                      Fetch bounded entity samples. Limit 1–25.
   ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>]
-                     [--iceberg] [--dry-run] [--deploy]
+                     [--transport-mode default|fast|volume] [--iceberg] [--dry-run] [--deploy]
                      Trigger + source DP local package (alias: ingest provision)
-  transform create --from <dp> [--name cleaned-…] [--dry-run]
+  transform create --from <dp> [--name cleaned-…] [--transport-mode default|fast|volume] [--dry-run]
                      Enrichment workflow stub (upstream DP → consumer DP)
-  delivery create --from <dp> --connector-id <id> [--table schema.table] [--name …] [--dry-run]
+  delivery create --from <dp> --connector-id <id> [--table schema.table] [--name …]
+                     [--transport-mode default|fast|volume] [--dry-run]
                      Delivery workflow (DP → target connection); workflow_type: delivery
+                     Modes: default is durable/recommended; fast may cost more; volume has delivery lag
   lint [--workflow <id>]
                      Validate local entity JSON (schemas, relationships, unique names)
   push [--workflow-id <id>] [--dry-run] [--skip-reindex]

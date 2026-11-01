@@ -10,8 +10,8 @@
  * Live event writes use the Loxtep stream data plane, not HTTP POST.
  */
 
-import type { RStreamsSdk } from '../rstreams/leo-runtime.js';
-import type { LoxtepHttpClient } from '../http/client.js';
+import type { RStreamsSdk } from "../rstreams/leo-runtime.js";
+import type { LoxtepHttpClient } from "../http/client.js";
 import type {
   WorkflowsListFilters,
   WorkflowsListResponse,
@@ -22,25 +22,25 @@ import type {
   SaveWorkflowBundleInput,
   SaveWorkflowBundleResult,
   SaveWorkflowBundleResponse,
-} from './workflows-types.js';
-import { normalizeDeployResponse } from './workflows-types.js';
+} from "./workflows-types.js";
+import { normalizeDeployResponse } from "./workflows-types.js";
 import type {
   Flow,
   FlowWithNodes,
   FlowNode,
   FlowWriter,
   GetWriterOptions,
-} from './flow-types.js';
-import type { DefinitionValidationErrorEntry } from '../errors/types.js';
-import { DefinitionValidationError } from '../errors/validation.js';
-import { StreamingError } from '../errors/streaming.js';
-import { createQueueWriter } from '../rstreams/event-bridge.js';
-import type { WriteOptions } from './queue-types.js';
-import { resolveIngestionQueueName } from './flow-queue-resolve.js';
+} from "./flow-types.js";
+import type { DefinitionValidationErrorEntry } from "../errors/types.js";
+import { DefinitionValidationError } from "../errors/validation.js";
+import { StreamingError } from "../errors/streaming.js";
+import { createQueueWriter } from "../rstreams/event-bridge.js";
+import type { WriteOptions } from "./queue-types.js";
+import { resolveIngestionQueueName } from "./flow-queue-resolve.js";
 
-const WORKFLOWS_BASE = '/workflows/workflows';
-const PROJECTS_BASE = '/workflows/projects';
-const MCP_TOOLS_PATH = '/ai/mcp/tools/call';
+const WORKFLOWS_BASE = "/workflows/workflows";
+const PROJECTS_BASE = "/workflows/projects";
+const MCP_TOOLS_PATH = "/ai/mcp/tools/call";
 
 export type PreviewQueryTriggerInput = {
   workflow_id: string;
@@ -67,14 +67,14 @@ type McpToolCallResponse = {
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return value != null && typeof value === 'object' && !Array.isArray(value)
+  return value != null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 }
 
 function parseToolResponse(res: McpToolCallResponse): unknown {
   const first = res?.data?.content?.[0];
-  if (first?.type === 'text' && typeof first.text === 'string') {
+  if (first?.type === "text" && typeof first.text === "string") {
     try {
       return JSON.parse(first.text) as unknown;
     } catch {
@@ -87,10 +87,11 @@ function parseToolResponse(res: McpToolCallResponse): unknown {
 function unwrapToolPayload<T>(parsed: unknown): T {
   const rec = asRecord(parsed);
   if (rec && rec.success === false) {
-    const err = typeof rec.error === 'string' ? rec.error : 'Build operation failed';
+    const err =
+      typeof rec.error === "string" ? rec.error : "Build operation failed";
     throw new Error(err);
   }
-  if (rec && 'data' in rec) {
+  if (rec && "data" in rec) {
     return rec.data as T;
   }
   return parsed as T;
@@ -99,10 +100,10 @@ function unwrapToolPayload<T>(parsed: unknown): T {
 async function callBuildOp<T>(
   http: LoxtepHttpClient,
   operation: string,
-  args: Record<string, unknown> = {}
+  args: Record<string, unknown> = {},
 ): Promise<T> {
   const res = await http.post<McpToolCallResponse>(MCP_TOOLS_PATH, {
-    name: 'loxtep_build',
+    name: "loxtep_build",
     arguments: { operation, ...args },
   });
   return unwrapToolPayload<T>(parseToolResponse(res));
@@ -117,19 +118,21 @@ export interface WorkflowsApiDeps {
   project_id?: string;
 }
 
-function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
+function buildQueryString(
+  params: Record<string, string | number | boolean | undefined>,
+): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v === undefined || v === null) continue;
     search.set(k, String(v));
   }
   const qs = search.toString();
-  return qs ? `?${qs}` : '';
+  return qs ? `?${qs}` : "";
 }
 
 function validateEventAgainstDefinition(
   event: unknown,
-  definition: Record<string, unknown>
+  definition: Record<string, unknown>,
 ): DefinitionValidationErrorEntry[] {
   const errors: DefinitionValidationErrorEntry[] = [];
   const required = definition.required as string[] | undefined;
@@ -137,7 +140,7 @@ function validateEventAgainstDefinition(
     Array.isArray(required) &&
     required.length > 0 &&
     event !== null &&
-    typeof event === 'object'
+    typeof event === "object"
   ) {
     const obj = event as Record<string, unknown>;
     for (const key of required) {
@@ -159,11 +162,11 @@ export function isTransientError(err: unknown): boolean {
 
   // Check for status code on the error object (HTTP response errors)
   const statusCode =
-    typeof (err as { status_code?: unknown }).status_code === 'number'
+    typeof (err as { status_code?: unknown }).status_code === "number"
       ? (err as { status_code: number }).status_code
-      : typeof (err as { statusCode?: unknown }).statusCode === 'number'
+      : typeof (err as { statusCode?: unknown }).statusCode === "number"
         ? (err as { statusCode: number }).statusCode
-        : typeof (err as { status?: unknown }).status === 'number'
+        : typeof (err as { status?: unknown }).status === "number"
           ? (err as { status: number }).status
           : undefined;
 
@@ -178,48 +181,48 @@ export function isTransientError(err: unknown): boolean {
 
   // Check error code strings
   const code =
-    typeof (err as { code?: unknown }).code === 'string'
+    typeof (err as { code?: unknown }).code === "string"
       ? (err as { code: string }).code
       : undefined;
 
   if (code) {
     const transientCodes = new Set([
-      'ECONNRESET',
-      'ECONNREFUSED',
-      'ENOTFOUND',
-      'ETIMEDOUT',
-      'EPIPE',
-      'EAI_AGAIN',
-      'RATE_LIMIT_EXCEEDED',
-      'RATE_LIMIT_ERROR',
-      'SERVICE_UNAVAILABLE',
-      'GATEWAY_TIMEOUT',
-      'INTERNAL_SERVER_ERROR',
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ENOTFOUND",
+      "ETIMEDOUT",
+      "EPIPE",
+      "EAI_AGAIN",
+      "RATE_LIMIT_EXCEEDED",
+      "RATE_LIMIT_ERROR",
+      "SERVICE_UNAVAILABLE",
+      "GATEWAY_TIMEOUT",
+      "INTERNAL_SERVER_ERROR",
     ]);
     if (transientCodes.has(code)) return true;
 
     // Auth-related codes are non-transient
     const nonTransientCodes = new Set([
-      'AUTHENTICATION_ERROR',
-      'AUTHORIZATION_ERROR',
-      'VALIDATION_ERROR',
-      'NOT_FOUND',
+      "AUTHENTICATION_ERROR",
+      "AUTHORIZATION_ERROR",
+      "VALIDATION_ERROR",
+      "NOT_FOUND",
     ]);
     if (nonTransientCodes.has(code)) return false;
   }
 
   // Check error message for network-related keywords
   const message =
-    typeof (err as { message?: unknown }).message === 'string'
+    typeof (err as { message?: unknown }).message === "string"
       ? (err as { message: string }).message.toLowerCase()
-      : '';
+      : "";
 
   if (
-    message.includes('timeout') ||
-    message.includes('econnreset') ||
-    message.includes('econnrefused') ||
-    message.includes('network') ||
-    message.includes('socket hang up')
+    message.includes("timeout") ||
+    message.includes("econnreset") ||
+    message.includes("econnrefused") ||
+    message.includes("network") ||
+    message.includes("socket hang up")
   ) {
     return true;
   }
@@ -237,17 +240,19 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export type WorkflowsApi = {
-  list: (filters?: WorkflowsListFilters) => Promise<WorkflowsListResponse['data']>;
+  list: (
+    filters?: WorkflowsListFilters,
+  ) => Promise<WorkflowsListResponse["data"]>;
   get: (id: string) => Promise<FlowWithNodes>;
   create: (input: CreateWorkflowInput) => Promise<Flow>;
   get_graph: (
     workflow_id: string,
-    project_id: string
-  ) => Promise<GetWorkflowGraphResponse['data']>;
-  deploy: (input: DeployInput) => Promise<DeployResponse['data']>;
+    project_id: string,
+  ) => Promise<GetWorkflowGraphResponse["data"]>;
+  deploy: (input: DeployInput) => Promise<DeployResponse["data"]>;
   save_workflow_bundle: (
     project_id: string,
-    input: SaveWorkflowBundleInput
+    input: SaveWorkflowBundleInput,
   ) => Promise<SaveWorkflowBundleResult>;
   /** Dry-run SELECT sample for enrichment `trigger.query_trigger` (MCP `preview_query_trigger`). */
   preview_query_trigger: (input: PreviewQueryTriggerInput) => Promise<unknown>;
@@ -259,15 +264,20 @@ export type WorkflowsApi = {
    * output queue (or `environment_prefix` + `project_id` to resolve it).
    * Undocumented for customers — use `data_products.get_writer(name)` instead.
    */
-  get_writer: (workflow_id: string, options?: GetWriterOptions) => Promise<FlowWriter>;
+  get_writer: (
+    workflow_id: string,
+    options?: GetWriterOptions,
+  ) => Promise<FlowWriter>;
 };
 
 export function createWorkflowsApi(
   http: LoxtepHttpClient,
-  deps?: WorkflowsApiDeps
+  deps?: WorkflowsApiDeps,
 ): WorkflowsApi {
   const api: WorkflowsApi = {
-    async list(filters: WorkflowsListFilters = {}): Promise<WorkflowsListResponse['data']> {
+    async list(
+      filters: WorkflowsListFilters = {},
+    ): Promise<WorkflowsListResponse["data"]> {
       const params: Record<string, string | number | undefined> = {
         project_id: filters.project_id ?? deps?.project_id,
         page: filters.page ?? 1,
@@ -276,21 +286,25 @@ export function createWorkflowsApi(
       if (filters.status) params.status = filters.status;
       if (filters.search) params.search = filters.search;
       const qs = buildQueryString(params);
-      const res = await http.get<WorkflowsListResponse>(`${WORKFLOWS_BASE}${qs}`);
+      const res = await http.get<WorkflowsListResponse>(
+        `${WORKFLOWS_BASE}${qs}`,
+      );
       return res.data;
     },
 
     async get(id: string): Promise<FlowWithNodes> {
       const flowRes = await http.get<{ success: true; data: Flow }>(
-        `${WORKFLOWS_BASE}/${encodeURIComponent(id)}`
+        `${WORKFLOWS_BASE}/${encodeURIComponent(id)}`,
       );
       const flow = flowRes.data;
       let nodes: FlowNode[] = [];
       try {
-        const nodesRes = await http.get<{ success: true; data: { items: FlowNode[] } }>(
-          `${WORKFLOWS_BASE}/${encodeURIComponent(id)}/nodes`
-        );
-        const payload = (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
+        const nodesRes = await http.get<{
+          success: true;
+          data: { items: FlowNode[] };
+        }>(`${WORKFLOWS_BASE}/${encodeURIComponent(id)}/nodes`);
+        const payload =
+          (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
         nodes = (payload as { items?: FlowNode[] }).items ?? [];
       } catch {
         // Nodes endpoint may not exist or may 404; workflow still has node_count
@@ -299,128 +313,149 @@ export function createWorkflowsApi(
     },
 
     async create(input: CreateWorkflowInput): Promise<Flow> {
-      const res = await http.post<{ success: true; data: Flow }>(WORKFLOWS_BASE, input);
+      const res = await http.post<{ success: true; data: Flow }>(
+        WORKFLOWS_BASE,
+        input,
+      );
       return res.data;
     },
 
     async get_graph(
       workflow_id: string,
-      project_id: string
-    ): Promise<GetWorkflowGraphResponse['data']> {
+      project_id: string,
+    ): Promise<GetWorkflowGraphResponse["data"]> {
       const qs = buildQueryString({ project_id });
       const res = await http.get<GetWorkflowGraphResponse>(
-        `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/graph${qs}`
+        `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/graph${qs}`,
       );
       return res.data;
     },
 
-    async deploy(input: DeployInput): Promise<DeployResponse['data']> {
+    async deploy(input: DeployInput): Promise<DeployResponse["data"]> {
       const { project_id, instance_id, version_id, force_redeploy } = input;
       const res = await http.post<unknown>(
         `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/deploy`,
-        { instance_id, version_id, force_redeploy: force_redeploy ?? false }
+        { instance_id, version_id, force_redeploy: force_redeploy ?? false },
       );
       return normalizeDeployResponse(res);
     },
 
     async save_workflow_bundle(
       project_id: string,
-      input: SaveWorkflowBundleInput
+      input: SaveWorkflowBundleInput,
     ): Promise<SaveWorkflowBundleResult> {
       const res = await http.post<SaveWorkflowBundleResponse>(
         `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/workflow-bundle`,
         {
           files: input.files,
           dry_run: input.dry_run ?? false,
-          ...(input.project_files ? { project_files: input.project_files } : {}),
-        }
+          ...(input.project_files
+            ? { project_files: input.project_files }
+            : {}),
+        },
       );
       return res.data;
     },
 
-    async preview_query_trigger(input: PreviewQueryTriggerInput): Promise<unknown> {
-      if (!input?.workflow_id) throw new Error('workflow_id is required');
+    async preview_query_trigger(
+      input: PreviewQueryTriggerInput,
+    ): Promise<unknown> {
+      if (!input?.workflow_id) throw new Error("workflow_id is required");
       const project_id = input.project_id ?? deps?.project_id;
       if (!project_id) {
         throw new Error(
-          'preview_query_trigger requires project_id (pass it, or create the client with a project)'
+          "preview_query_trigger requires project_id (pass it, or create the client with a project)",
         );
       }
-      const args: Record<string, unknown> = { workflow_id: input.workflow_id, project_id };
+      const args: Record<string, unknown> = {
+        workflow_id: input.workflow_id,
+        project_id,
+      };
       if (input.query !== undefined) args.query = input.query;
       if (input.primary_key !== undefined) args.primary_key = input.primary_key;
       if (input.limit !== undefined) args.limit = input.limit;
-      return callBuildOp(http, 'preview_query_trigger', args);
+      return callBuildOp(http, "preview_query_trigger", args);
     },
 
     async run_query_trigger(input: RunQueryTriggerInput): Promise<unknown> {
-      if (!input?.workflow_id) throw new Error('workflow_id is required');
+      if (!input?.workflow_id) throw new Error("workflow_id is required");
       const project_id = input.project_id ?? deps?.project_id;
       if (!project_id) {
         throw new Error(
-          'run_query_trigger requires project_id (pass it, or create the client with a project)'
+          "run_query_trigger requires project_id (pass it, or create the client with a project)",
         );
       }
-      const args: Record<string, unknown> = { workflow_id: input.workflow_id, project_id };
+      const args: Record<string, unknown> = {
+        workflow_id: input.workflow_id,
+        project_id,
+      };
       if (input.query !== undefined) args.query = input.query;
       if (input.primary_key !== undefined) args.primary_key = input.primary_key;
       if (input.sink_data_product_id !== undefined) {
         args.sink_data_product_id = input.sink_data_product_id;
       }
-      return callBuildOp(http, 'run_query_trigger', args);
+      return callBuildOp(http, "run_query_trigger", args);
     },
 
-    async get_writer(workflow_id: string, options?: GetWriterOptions): Promise<FlowWriter> {
+    async get_writer(
+      workflow_id: string,
+      options?: GetWriterOptions,
+    ): Promise<FlowWriter> {
       // Resolve the stream runtime, source bot, and destination queue up front; the rstreams `load`
       // stream (created inside createQueueWriter) owns buffering, batching, backoff, and checkpointing.
       const rsdk = deps?.rsdk ?? (await deps?.get_rsdk?.());
       if (!rsdk) {
         throw new StreamingError(
-          'Stream bus configuration missing. Set LEO_* environment variables or add `streams` to ~/.loxtep/config.json. ' +
-            'Pass `streams` in LoxtepClientOptions, or ensure your instance stream environment is configured.',
+          "Stream bus configuration missing. Set LEO_* environment variables or add `streams` to ~/.loxtep/config.json. " +
+            "Pass `streams` in LoxtepClientOptions, or ensure your instance stream environment is configured.",
           {
             details: {
               workflow_id,
-              hint: 'Run `loxtep init` to configure stream bus, or set LEO_* env vars from your instance.',
+              hint: "Run `loxtep init` to configure stream bus, or set LEO_* env vars from your instance.",
             },
-          }
+            },
         );
       }
 
       const botId = options?.bot_id;
       if (!botId) {
         throw new StreamingError(
-          'workflows.get_writer requires bot_id in options (stream writer identity on the bus).',
-          { details: { workflow_id } }
+          "workflows.get_writer requires bot_id in options (stream writer identity on the bus).",
+          { details: { workflow_id } },
         );
       }
 
       let queueName = options?.output_queue_name;
       if (!queueName && options?.environment_prefix && options?.project_id) {
         const flowRes = await http.get<{ success: true; data: Flow } | Flow>(
-          `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}`
+          `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}`,
         );
         const flowData =
-          flowRes && typeof flowRes === 'object' && 'data' in flowRes
+          flowRes && typeof flowRes === "object" && "data" in flowRes
             ? (flowRes as { data: Flow }).data
             : (flowRes as Flow);
         let nodes: FlowNode[] = [];
         try {
-          const nodesRes = await http.get<{ success: true; data: { items: FlowNode[] } }>(
-            `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/nodes`
-          );
-          const payload = (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
+          const nodesRes = await http.get<{
+            success: true;
+            data: { items: FlowNode[] };
+          }>(`${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/nodes`);
+          const payload =
+            (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
           nodes = (payload as { items?: FlowNode[] }).items ?? [];
         } catch {
           /* ignore */
         }
         const flowWithNodes: FlowWithNodes = { ...flowData, nodes };
-        queueName = resolveIngestionQueueName(flowWithNodes, options.environment_prefix);
+        queueName = resolveIngestionQueueName(
+          flowWithNodes,
+          options.environment_prefix,
+        );
       }
       if (!queueName) {
         throw new StreamingError(
-          'workflows.get_writer requires output_queue_name, or environment_prefix + project_id so the SDK can resolve the ingestion queue from the workflow.',
-          { details: { workflow_id } }
+          "workflows.get_writer requires output_queue_name, or environment_prefix + project_id so the SDK can resolve the ingestion queue from the workflow.",
+          { details: { workflow_id } },
         );
       }
 
@@ -430,31 +465,39 @@ export function createWorkflowsApi(
         queueName,
         () =>
           new StreamingError(
-            'Cannot write to a closed writer. Create a new writer via workflows.get_writer().',
-            { details: { workflow_id } }
-          )
+            "Cannot write to a closed writer. Create a new writer via workflows.get_writer().",
+            { details: { workflow_id } },
+          ),
+        options?.transport_mode,
       );
 
       // Optional per-event definition validation wraps the passthrough writer.
-      const validate = options?.validate_definition === true && !!options?.definition;
+      const validate =
+        options?.validate_definition === true && !!options?.definition;
       if (!validate) return writer;
-      const onError = options?.on_validation_error ?? 'reject';
+      const onError = options?.on_validation_error ?? "reject";
       return {
         write(event: unknown, writeOptions?: WriteOptions): void {
           if (options?.definition) {
-            const errors = validateEventAgainstDefinition(event, options.definition);
+            const errors = validateEventAgainstDefinition(
+              event,
+              options.definition,
+            );
             if (errors.length > 0) {
-              if (onError === 'reject') {
+              if (onError === "reject") {
                 throw new DefinitionValidationError(
-                  'Event failed definition validation',
-                  options.definition_version ?? '',
-                  errors
+                  "Event failed definition validation",
+                  options.definition_version ?? "",
+                  errors,
                 );
               }
-              if (onError === 'warn') {
-                console.warn('[workflows writer] Definition validation failed:', errors);
+              if (onError === "warn") {
+                console.warn(
+                  "[workflows writer] Definition validation failed:",
+                  errors,
+                );
               }
-              if (onError === 'skip') return;
+              if (onError === "skip") return;
             }
           }
           writer.write(event, writeOptions);

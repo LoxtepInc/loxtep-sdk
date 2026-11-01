@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 from .models import DataProductKind, UsageMap, UsageMapEdge, UsageMapNode
+from .rstreams.writer import EventWriterTransportMode
 
 _UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
@@ -74,7 +75,9 @@ class SemanticInferenceApi:
         if not data_product_id:
             raise ValueError("id is required")
         return _unwrap(
-            self._http.post(f"{_semantic_base(data_product_id)}/promote", _promote_inference_body(body))
+            self._http.post(
+                f"{_semantic_base(data_product_id)}/promote", _promote_inference_body(body)
+            )
         )
 
 
@@ -96,7 +99,9 @@ class AsyncSemanticInferenceApi:
         if not data_product_id:
             raise ValueError("id is required")
         return _unwrap(
-            await self._http.post(f"{_semantic_base(data_product_id)}/promote", _promote_inference_body(body))
+            await self._http.post(
+                f"{_semantic_base(data_product_id)}/promote", _promote_inference_body(body)
+            )
         )
 
 
@@ -165,7 +170,9 @@ class DataProductsApi:
             return _deployment_queue_name(asset)
         return None
 
-    def get(self, id: str, *, include_schema: bool = False, include_quality: bool = False) -> dict[str, Any]:
+    def get(
+        self, id: str, *, include_schema: bool = False, include_quality: bool = False
+    ) -> dict[str, Any]:
         qs = _query_string({"include_schema": include_schema, "include_quality": include_quality})
         res = self._http.get(f"/dataproducts/{id}{qs}")
         return _unwrap(res)
@@ -186,7 +193,12 @@ class DataProductsApi:
         sort_by: str = "created_at",
         sort_order: str = "desc",
     ) -> dict[str, Any]:
-        params: dict[str, Any] = {"page": page, "page_size": page_size, "sort_by": sort_by, "sort_order": sort_order}
+        params: dict[str, Any] = {
+            "page": page,
+            "page_size": page_size,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+        }
         if domain_id is not None:
             params["domain_id"] = domain_id
         if status is not None:
@@ -207,7 +219,13 @@ class DataProductsApi:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Create a new data product. `kind` is required ('source' or 'consumer')."""
-        body: dict[str, Any] = {"name": name, "kind": kind, "description": description, "domain": domain, **kwargs}
+        body: dict[str, Any] = {
+            "name": name,
+            "kind": kind,
+            "description": description,
+            "domain": domain,
+            **kwargs,
+        }
         res = self._http.post("/dataproducts", body)
         return _unwrap(res)
 
@@ -265,8 +283,12 @@ class DataProductsApi:
             "metadata": {
                 "data_product_id": id,
                 "query_id": body.get("query_id") if isinstance(body, dict) else None,
-                "total_rows": body.get("total_count", body.get("row_count", len(rows))) if isinstance(body, dict) else len(rows),
-                "returned_rows": body.get("row_count", len(rows)) if isinstance(body, dict) else len(rows),
+                "total_rows": body.get("total_count", body.get("row_count", len(rows)))
+                if isinstance(body, dict)
+                else len(rows),
+                "returned_rows": body.get("row_count", len(rows))
+                if isinstance(body, dict)
+                else len(rows),
                 "query_time_ms": body.get("execution_time_ms") if isinstance(body, dict) else None,
             },
         }
@@ -291,7 +313,11 @@ class DataProductsApi:
 
     def get_reader_checkpoint(self, id: str, bot_id: str) -> dict[str, Any]:
         if self._get_reader_checkpoint:
-            return self._get_reader_checkpoint(id, bot_id) if callable(self._get_reader_checkpoint) else {}
+            return (
+                self._get_reader_checkpoint(id, bot_id)
+                if callable(self._get_reader_checkpoint)
+                else {}
+            )
         res = self._http.get(f"/dataproducts/{id}/queue/checkpoint?bot_id={bot_id}")
         return res.get("data", res)
 
@@ -312,14 +338,21 @@ class DataProductsApi:
             from .errors import NotFoundError
 
             raise NotFoundError(
-                f"Data product '{id_or_name}' not found", resource_type="data_product", resource_id=id_or_name
+                f"Data product '{id_or_name}' not found",
+                resource_type="data_product",
+                resource_id=id_or_name,
             )
         resolved = matches[0].get("data_product_id") or matches[0].get("id")
         self._resolve_cache[key] = resolved
         return resolved
 
     def get_writer(
-        self, id_or_name: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+        self,
+        id_or_name: str,
+        *,
+        bot_id: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        transport_mode: EventWriterTransportMode = "default",
     ) -> Any:
         """Return a stream writer bound to the data product (resolves name→id).
 
@@ -337,7 +370,12 @@ class DataProductsApi:
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
                     "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
-            return LoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
+            return LoxtepStreamWriter(
+                cfg,
+                bot_id or f"sdk-writer-{id_or_name}",
+                queue,
+                transport_mode=transport_mode,
+            )
         raise ValueError(
             f"Stream bus configuration missing for data product '{id_or_name}'. "
             "Configure streams= / LEO_* in the AWS account that owns the bus. "
@@ -444,7 +482,9 @@ class AsyncDataProductsApi:
             return _deployment_queue_name(asset)
         return None
 
-    async def get(self, id: str, *, include_schema: bool = False, include_quality: bool = False) -> dict[str, Any]:
+    async def get(
+        self, id: str, *, include_schema: bool = False, include_quality: bool = False
+    ) -> dict[str, Any]:
         qs = _query_string({"include_schema": include_schema, "include_quality": include_quality})
         res = await self._http.get(f"/dataproducts/{id}{qs}")
         return _unwrap(res)
@@ -464,7 +504,12 @@ class AsyncDataProductsApi:
         sort_by: str = "created_at",
         sort_order: str = "desc",
     ) -> dict[str, Any]:
-        params: dict[str, Any] = {"page": page, "page_size": page_size, "sort_by": sort_by, "sort_order": sort_order}
+        params: dict[str, Any] = {
+            "page": page,
+            "page_size": page_size,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+        }
         if domain_id is not None:
             params["domain_id"] = domain_id
         if status is not None:
@@ -485,7 +530,13 @@ class AsyncDataProductsApi:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Create a new data product. `kind` is required ('source' or 'consumer')."""
-        body: dict[str, Any] = {"name": name, "kind": kind, "description": description, "domain": domain, **kwargs}
+        body: dict[str, Any] = {
+            "name": name,
+            "kind": kind,
+            "description": description,
+            "domain": domain,
+            **kwargs,
+        }
         res = await self._http.post("/dataproducts", body)
         return _unwrap(res)
 
@@ -540,8 +591,12 @@ class AsyncDataProductsApi:
             "metadata": {
                 "data_product_id": id,
                 "query_id": body.get("query_id") if isinstance(body, dict) else None,
-                "total_rows": body.get("total_count", body.get("row_count", len(rows))) if isinstance(body, dict) else len(rows),
-                "returned_rows": body.get("row_count", len(rows)) if isinstance(body, dict) else len(rows),
+                "total_rows": body.get("total_count", body.get("row_count", len(rows)))
+                if isinstance(body, dict)
+                else len(rows),
+                "returned_rows": body.get("row_count", len(rows))
+                if isinstance(body, dict)
+                else len(rows),
                 "query_time_ms": body.get("execution_time_ms") if isinstance(body, dict) else None,
             },
         }
@@ -596,14 +651,21 @@ class AsyncDataProductsApi:
             from .errors import NotFoundError
 
             raise NotFoundError(
-                f"Data product '{id_or_name}' not found", resource_type="data_product", resource_id=id_or_name
+                f"Data product '{id_or_name}' not found",
+                resource_type="data_product",
+                resource_id=id_or_name,
             )
         resolved = matches[0].get("data_product_id") or matches[0].get("id")
         self._resolve_cache[key] = resolved
         return resolved
 
     async def get_writer(
-        self, id_or_name: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+        self,
+        id_or_name: str,
+        *,
+        bot_id: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        transport_mode: EventWriterTransportMode = "default",
     ) -> Any:
         """Async stream writer. Requires stream-bus config; HTTP publish is not supported."""
         dp_id = await self._resolve_id(id_or_name)
@@ -617,7 +679,12 @@ class AsyncDataProductsApi:
                     f"Cannot resolve a stream queue for '{id_or_name}'. Pass queue_name=, "
                     "or deploy the workflow so deployment_bindings.queue_name is populated."
                 )
-            return AsyncLoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{id_or_name}", queue)
+            return AsyncLoxtepStreamWriter(
+                cfg,
+                bot_id or f"sdk-writer-{id_or_name}",
+                queue,
+                transport_mode=transport_mode,
+            )
         raise ValueError(
             f"Stream bus configuration missing for data product '{id_or_name}'. "
             "Configure streams= / LEO_* in the AWS account that owns the bus. "
