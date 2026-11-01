@@ -4,7 +4,7 @@ These JSON Schema draft-07 files are byte-identical copies of the Loxtep platfor
 single entity-schema source, used by `loxtep lint` and `validateEntity()`.
 
 **Source:** `LoxtepInc/loxtep` `platform-backend/_core/src/workspace/entity-json-schemas/`
-**Pinned commit:** `6d5a9b151faba595e3d542d0859fafcfdc550714` (git blob ids per file in `SOURCE.json`)
+**Pinned commit:** `12a83af879f7fb8b04735a821cc9627f7e0b4d19` (git blob ids per file in `SOURCE.json`)
 
 **Sync** (from `nodejs/`, with a loxtep checkout at the commit to pin):
 
