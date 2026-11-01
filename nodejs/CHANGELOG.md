@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Event writers and the `ingest create`, `transform create`, and
+  `delivery create` commands accept `transport_mode`: `default` is the durable,
+  recommended mode; `fast` minimizes latency but may cost more; and `volume`
+  supports high throughput with delivery lag.
+
 ## [0.12.0] - 2026-10-30
 
 ### Added

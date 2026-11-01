@@ -8,22 +8,22 @@
  * Help is grouped by customer-facing command areas — see ./help.ts
  */
 
-import { runLogin } from './commands/login.js';
-import { runLogout } from './commands/logout.js';
-import { runWhoami } from './commands/whoami.js';
-import { runAttach } from './commands/attach-cmd.js';
+import { runLogin } from "./commands/login.js";
+import { runLogout } from "./commands/logout.js";
+import { runWhoami } from "./commands/whoami.js";
+import { runAttach } from "./commands/attach-cmd.js";
 import {
   runConfigList,
   runConfigPaths,
   runConfigSet,
   runConfigExportFromDataProduct,
   runConfigExportFromConnector,
-} from './commands/config-cmd.js';
-import { runInitCommand } from './commands/init-cmd.js';
-import { runStart } from './commands/start-cmd.js';
-import { runSetup } from './commands/setup-cmd.js';
-import { runBusLogin } from './commands/bus-cmd.js';
-import { createCliClient, requireCliClient } from './create-cli-client.js';
+} from "./commands/config-cmd.js";
+import { runInitCommand } from "./commands/init-cmd.js";
+import { runStart } from "./commands/start-cmd.js";
+import { runSetup } from "./commands/setup-cmd.js";
+import { runBusLogin } from "./commands/bus-cmd.js";
+import { createCliClient, requireCliClient } from "./create-cli-client.js";
 import {
   runDataProductsList,
   runDataProductsGet,
@@ -32,7 +32,7 @@ import {
   runDataProductsCreate,
   runDataProductsReadiness,
   runDataProductsPromote,
-} from './commands/data-products-cmd.js';
+} from "./commands/data-products-cmd.js";
 import {
   runDataPlaneIceberg,
   runDataPlaneExport,
@@ -40,9 +40,9 @@ import {
   runDefineGlossary,
   runDataContractsUpdate,
   runQualityRules,
-} from './commands/data-plane-cmd.js';
-import { runMetricsRateLimits, runMetricsLog } from './commands/metrics-cmd.js';
-import { runQueueInfo, runQueueCheckpoint } from './commands/queue-cmd.js';
+} from "./commands/data-plane-cmd.js";
+import { runMetricsRateLimits, runMetricsLog } from "./commands/metrics-cmd.js";
+import { runQueueInfo, runQueueCheckpoint } from "./commands/queue-cmd.js";
 import {
   runWorkflowsList,
   runWorkflowsGet,
@@ -50,64 +50,68 @@ import {
   runWorkflowsDeploy,
   runWorkflowsPreviewQueryTrigger,
   runWorkflowsRunQueryTrigger,
-} from './commands/workflows-cmd.js';
-import { runBundleSave } from './commands/bundle-cmd.js';
-import { runIngestCreate } from './commands/ingest-cmd.js';
-import { runTransformCreate } from './commands/transform-cmd.js';
-import { runDeliveryCreate } from './commands/delivery-cmd.js';
-import { runPush } from './commands/push-cmd.js';
-import { runLint } from './commands/lint-cmd.js';
+} from "./commands/workflows-cmd.js";
+import { runBundleSave } from "./commands/bundle-cmd.js";
+import { runIngestCreate } from "./commands/ingest-cmd.js";
+import { runTransformCreate } from "./commands/transform-cmd.js";
+import { runDeliveryCreate } from "./commands/delivery-cmd.js";
+import { runPush } from "./commands/push-cmd.js";
+import { runLint } from "./commands/lint-cmd.js";
 import {
   runConnectorsList,
   runConnectorsTest,
   runConnectorsCaptureSamples,
   runConnectorsListEntities,
-} from './commands/connectors-cmd.js';
-import { runObserveStatus } from './commands/observe-cmd.js';
+} from "./commands/connectors-cmd.js";
+import { runObserveStatus } from "./commands/observe-cmd.js";
 import {
   runTriggersList,
   runTriggersGet,
   runTriggersCreate,
   runTriggersTest,
   runTriggersResetBackfill,
-} from './commands/triggers-cmd.js';
-import { runDomainsList, runDomainsGet } from './commands/domains-cmd.js';
-import { runStandardsList, runStandardsGet } from './commands/standards-cmd.js';
-import { runDataContractsList, runDataContractsGet, runDataContractsCreate } from './commands/data-contracts-cmd.js';
-import { runGenerate } from './commands/generate-cmd.js';
-import { runTest } from './commands/test-cmd.js';
-import { runDeploy } from './commands/deploy-cmd.js';
+} from "./commands/triggers-cmd.js";
+import { runDomainsList, runDomainsGet } from "./commands/domains-cmd.js";
+import { runStandardsList, runStandardsGet } from "./commands/standards-cmd.js";
+import {
+  runDataContractsList,
+  runDataContractsGet,
+  runDataContractsCreate,
+} from "./commands/data-contracts-cmd.js";
+import { runGenerate } from "./commands/generate-cmd.js";
+import { runTest } from "./commands/test-cmd.js";
+import { runDeploy } from "./commands/deploy-cmd.js";
 import {
   runImprovementsListCommand,
   runImprovementsApplyCommand,
   runImprovementsRejectCommand,
-} from './commands/improvements-cmd.js';
+} from "./commands/improvements-cmd.js";
 import {
   runApprovalsListCommand,
   runApprovalsApproveCommand,
   runApprovalsRejectCommand,
   parseApprovalsListNumericFlags,
-} from './commands/approvals-cmd.js';
+} from "./commands/approvals-cmd.js";
 import {
   runCdlcTransitionCommand,
   runCdlcReviewQueueCommand,
-} from './commands/cdlc-cmd.js';
+} from "./commands/cdlc-cmd.js";
 import {
   runCandidatesListCommand,
   runCandidatesActCommand,
-} from './commands/candidates-cmd.js';
+} from "./commands/candidates-cmd.js";
 import {
   runPacksListCommand,
   runPacksActivateCommand,
   runPacksStatusCommand,
-} from './commands/packs-cmd.js';
+} from "./commands/packs-cmd.js";
 import {
   PROPOSALS_USAGE,
   runProposalsListCommand,
   runProposalsAcceptCommand,
   runProposalsRejectCommand,
   runProposalsInferDefinitionsCommand,
-} from './commands/proposals-cmd.js';
+} from "./commands/proposals-cmd.js";
 import {
   DEFINE_USAGE,
   runDefineStatusCommand,
@@ -122,12 +126,12 @@ import {
   runDefineSkillCommand,
   runDefineStartProcedureCommand,
   runDefineBatchCommand,
-} from './commands/define-cmd.js';
+} from "./commands/define-cmd.js";
 import {
   runDeploymentsListCommand,
   runDeploymentsGetCommand,
-} from './commands/deployments-cmd.js';
-import { runActivityListCommand } from './commands/activity-cmd.js';
+} from "./commands/deployments-cmd.js";
+import { runActivityListCommand } from "./commands/activity-cmd.js";
 import {
   runInstancesList,
   runInstancesGet,
@@ -140,7 +144,7 @@ import {
   runInstancesRegister,
   parseCreateInstanceArgs,
   parseUpdateInstanceArgs,
-} from './commands/instances-cmd.js';
+} from "./commands/instances-cmd.js";
 import {
   runBotsList,
   runBotsGet,
@@ -148,7 +152,7 @@ import {
   runBotsUpdate,
   runBotsDeregister,
   runBotsReconcile,
-} from './commands/bots-cmd.js';
+} from "./commands/bots-cmd.js";
 import {
   runProjectsList,
   runProjectsGet,
@@ -157,14 +161,14 @@ import {
   runProjectsClone,
   runProjectsGithubPullCmd,
   runProjectsGithubPushCmd,
-} from './commands/projects-cmd.js';
-import { runStatus } from './commands/status-cmd.js';
-import { runOntologyLinkClassCommand } from './commands/ontology-cmd.js';
-import { printCliHelp } from './help.js';
-import { printCliVersion } from './version.js';
-import { startUpdateCheck, waitForUpdateCheck } from './update-notifier.js';
-import { LoxtepError } from '../errors/base.js';
-import { AuthenticationError, AuthorizationError } from '../errors/auth.js';
+} from "./commands/projects-cmd.js";
+import { runStatus } from "./commands/status-cmd.js";
+import { runOntologyLinkClassCommand } from "./commands/ontology-cmd.js";
+import { printCliHelp } from "./help.js";
+import { printCliVersion } from "./version.js";
+import { startUpdateCheck, waitForUpdateCheck } from "./update-notifier.js";
+import { LoxtepError } from "../errors/base.js";
+import { AuthenticationError, AuthorizationError } from "../errors/auth.js";
 
 function printHelp(): void {
   printCliHelp();
@@ -189,7 +193,7 @@ function formatCliError(err: unknown): string {
  * Does not read `process.argv` so callers can inject argv.
  */
 export async function runCli(argv: string[]): Promise<void> {
-  if (argv.includes('--help') || argv.includes('-h')) {
+  if (argv.includes("--help") || argv.includes("-h")) {
     printHelp();
     return;
   }
@@ -210,12 +214,12 @@ export async function runCli(argv: string[]): Promise<void> {
   const updateCheck = startUpdateCheck();
 
   try {
-    if (!command || command === '--help' || command === '-h') {
+    if (!command || command === "--help" || command === "-h") {
       printHelp();
       return;
     }
 
-    if (command === '--version' || command === '-V' || command === 'version') {
+    if (command === "--version" || command === "-V" || command === "version") {
       printCliVersion();
       return;
     }
@@ -227,27 +231,45 @@ export async function runCli(argv: string[]): Promise<void> {
 
   async function runCommand(): Promise<void> {
   switch (command) {
-    case 'start': {
-      if (args.includes('--help') || args.includes('-h')) {
-        console.log('Usage: loxtep start [--client claude|codex|opencode|cursor] [--no-launch]\nInstall the client integration and launch your agent. Requires Node 22.20+.');
+      case "start": {
+        if (args.includes("--help") || args.includes("-h")) {
+          console.log(
+            "Usage: loxtep start [--client claude|codex|opencode|cursor] [--no-launch]\nInstall the client integration and launch your agent. Requires Node 22.20+.",
+          );
         break;
       }
       for (let i = 1; i < args.length; i++) {
-        if (args[i] === '--no-launch') continue;
-        if (args[i] === '--client' && args[i + 1] && !args[i + 1].startsWith('-')) { i++; continue; }
-        throw new Error(`Unknown or incomplete start option: ${args[i]}. See loxtep start --help.`);
+          if (args[i] === "--no-launch") continue;
+          if (
+            args[i] === "--client" &&
+            args[i + 1] &&
+            !args[i + 1].startsWith("-")
+          ) {
+            i++;
+            continue;
+          }
+          throw new Error(
+            `Unknown or incomplete start option: ${args[i]}. See loxtep start --help.`,
+          );
       }
-      runStart({ client: getArg('--client'), noLaunch: args.includes('--no-launch') });
+        runStart({
+          client: getArg("--client"),
+          noLaunch: args.includes("--no-launch"),
+        });
       break;
     }
-    case 'login': {
-      const emailIdx = args.indexOf('--email');
-      const passwordIdx = args.indexOf('--password');
-      const mfaIdx = args.indexOf('--mfa-code');
-      const orgIdx = args.indexOf('--organization-id');
-      const scope = args.includes('--global') ? 'global' : args.includes('--local') ? 'local' : undefined;
+      case "login": {
+        const emailIdx = args.indexOf("--email");
+        const passwordIdx = args.indexOf("--password");
+        const mfaIdx = args.indexOf("--mfa-code");
+        const orgIdx = args.indexOf("--organization-id");
+        const scope = args.includes("--global")
+          ? "global"
+          : args.includes("--local")
+            ? "local"
+            : undefined;
       await runLogin({
-        console: args.includes('--console'),
+          console: args.includes("--console"),
         email: emailIdx >= 0 ? args[emailIdx + 1] : undefined,
         password: passwordIdx >= 0 ? args[passwordIdx + 1] : undefined,
         mfa_code: mfaIdx >= 0 ? args[mfaIdx + 1] : undefined,
@@ -256,25 +278,32 @@ export async function runCli(argv: string[]): Promise<void> {
       });
       break;
     }
-    case 'logout': {
-      const scope = args.includes('--global') ? 'global' : args.includes('--local') ? 'local' : undefined;
+      case "logout": {
+        const scope = args.includes("--global")
+          ? "global"
+          : args.includes("--local")
+            ? "local"
+            : undefined;
       await runLogout({ scope });
       break;
     }
-    case 'whoami':
-      await runWhoami({ debug: args.includes('--debug') });
+      case "whoami":
+        await runWhoami({ debug: args.includes("--debug") });
       break;
-    case 'init': {
-      const templateIdx = args.indexOf('--template');
-      const templateSlug = templateIdx >= 0 ? args[templateIdx + 1] : undefined;
-      const createRepoIdx = args.indexOf('--create-repo');
-      const createRepo = createRepoIdx >= 0 ? (args[createRepoIdx + 1] || true) : undefined;
-      const fromRepoIdx = args.indexOf('--from-repo');
+      case "init": {
+        const templateIdx = args.indexOf("--template");
+        const templateSlug =
+          templateIdx >= 0 ? args[templateIdx + 1] : undefined;
+        const createRepoIdx = args.indexOf("--create-repo");
+        const createRepo =
+          createRepoIdx >= 0 ? args[createRepoIdx + 1] || true : undefined;
+        const fromRepoIdx = args.indexOf("--from-repo");
       const fromRepo = fromRepoIdx >= 0 ? args[fromRepoIdx + 1] : undefined;
-      const nameIdx = args.indexOf('--name');
+        const nameIdx = args.indexOf("--name");
       const name = nameIdx >= 0 ? args[nameIdx + 1] : undefined;
-      const projectIdIdx = args.indexOf('--project-id');
-      const projectId = projectIdIdx >= 0 ? args[projectIdIdx + 1] : undefined;
+        const projectIdIdx = args.indexOf("--project-id");
+        const projectId =
+          projectIdIdx >= 0 ? args[projectIdIdx + 1] : undefined;
 
       // Attempt to get an authenticated client (don't fail if not logged in)
       const clientResult = await createCliClient().catch(() => null);
@@ -295,292 +324,319 @@ export async function runCli(argv: string[]): Promise<void> {
       if (result.exitCode !== 0) process.exitCode = result.exitCode;
       break;
     }
-    case 'generate':
+      case "generate":
       await runGenerate();
       break;
-    case 'setup':
+      case "setup":
       await runSetup();
       break;
-    case 'test':
+      case "test":
       await runTest();
       break;
-    case 'deploy': {
-      const dryRun = args.includes('--dry-run');
+      case "deploy": {
+        const dryRun = args.includes("--dry-run");
       await runDeploy({ dry_run: dryRun });
       break;
     }
-    case 'lint': {
+      case "lint": {
       await runLint({
-        workflow_id: getArg('--workflow'),
+          workflow_id: getArg("--workflow"),
       });
       break;
     }
-    case 'attach': {
+      case "attach": {
       const authResult = await requireCliClient();
       const attachResult = await runAttach(authResult.client, {
-        instanceId: getArg('--instance'),
+          instanceId: getArg("--instance"),
       });
       if (attachResult.stdout.length > 0) {
-        attachResult.stdout.forEach(line => console.log(line));
+          attachResult.stdout.forEach((line) => console.log(line));
       }
       if (attachResult.stderr.length > 0) {
-        attachResult.stderr.forEach(line => console.error(line));
+          attachResult.stderr.forEach((line) => console.error(line));
       }
       if (attachResult.exitCode !== 0) {
         process.exitCode = attachResult.exitCode;
       }
       break;
     }
-    case 'link': {
+      case "link": {
       // Alias for projects link — cloud project ↔ directory bind.
       const linkRef = args[1];
-      if (!linkRef || linkRef.startsWith('--')) {
-        console.error('Usage: loxtep link <project_id|name> [--path <dir>]');
+        if (!linkRef || linkRef.startsWith("--")) {
+          console.error("Usage: loxtep link <project_id|name> [--path <dir>]");
         process.exitCode = 1;
         break;
       }
       await runProjectsLink(linkRef, {
-        path: getArg('--path'),
-        debug: args.includes('--debug'),
+          path: getArg("--path"),
+          debug: args.includes("--debug"),
       });
       break;
     }
-    case 'projects':
-      if (sub === 'list') {
+      case "projects":
+        if (sub === "list") {
         await runProjectsList({
-          debug: args.includes('--debug'),
-          source: getArg('--source'),
+            debug: args.includes("--debug"),
+            source: getArg("--source"),
         });
-      } else if (sub === 'get' && args[2]) {
-        await runProjectsGet(args[2], { debug: args.includes('--debug') });
-      } else if (sub === 'link' && args[2] && !args[2].startsWith('--')) {
+        } else if (sub === "get" && args[2]) {
+          await runProjectsGet(args[2], { debug: args.includes("--debug") });
+        } else if (sub === "link" && args[2] && !args[2].startsWith("--")) {
         await runProjectsLink(args[2], {
-          path: getArg('--path'),
-          debug: args.includes('--debug'),
+            path: getArg("--path"),
+            debug: args.includes("--debug"),
         });
-      } else if (sub === 'changes') {
+        } else if (sub === "changes") {
         await runProjectsChanges({
-          debug: args.includes('--debug'),
-          json: args.includes('--json'),
+            debug: args.includes("--debug"),
+            json: args.includes("--json"),
         });
-      } else if (sub === 'clone' && args[2] && !args[2].startsWith('--')) {
+        } else if (sub === "clone" && args[2] && !args[2].startsWith("--")) {
         const cloneDir =
-          args[3] && !args[3].startsWith('--') ? args[3] : undefined;
+            args[3] && !args[3].startsWith("--") ? args[3] : undefined;
         await runProjectsClone(args[2], cloneDir, {
-          debug: args.includes('--debug'),
+            debug: args.includes("--debug"),
         });
-      } else if (sub === 'pull') {
+        } else if (sub === "pull") {
         await runProjectsGithubPullCmd({
-          debug: args.includes('--debug'),
-          projectId: getArg('--project-id'),
-          commitSha: getArg('--commit-sha'),
+            debug: args.includes("--debug"),
+            projectId: getArg("--project-id"),
+            commitSha: getArg("--commit-sha"),
         });
-      } else if (sub === 'push') {
+        } else if (sub === "push") {
         await runProjectsGithubPushCmd({
-          debug: args.includes('--debug'),
-          projectId: getArg('--project-id'),
-          commitMessage: getArg('--message') ?? getArg('--commit-message'),
-          branch: getArg('--branch'),
+            debug: args.includes("--debug"),
+            projectId: getArg("--project-id"),
+            commitMessage: getArg("--message") ?? getArg("--commit-message"),
+            branch: getArg("--branch"),
         });
       } else {
         console.error(
-          'Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects changes [--json] | projects clone <id|name> [dir] | projects pull | projects push'
+            "Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects changes [--json] | projects clone <id|name> [dir] | projects pull | projects push",
         );
         process.exitCode = 1;
       }
       break;
-    case 'status': {
+      case "status": {
       // Cwd-first project workspace status — not `observe status` (bots/queues).
       await runStatus({
-        json: args.includes('--json'),
-        unpublished: args.includes('--unpublished'),
+          json: args.includes("--json"),
+          unpublished: args.includes("--unpublished"),
       });
       break;
     }
-    case 'bus':
-      if (sub === 'login') {
+      case "bus":
+        if (sub === "login") {
         await runBusLogin();
       } else {
-        console.error('Usage: loxtep bus login');
+          console.error("Usage: loxtep bus login");
         process.exitCode = 1;
       }
       break;
-    case 'config':
-      if (sub === 'list') {
+      case "config":
+        if (sub === "list") {
         await runConfigList();
-      } else if (sub === 'paths') {
+        } else if (sub === "paths") {
         await runConfigPaths();
-      } else if (sub === 'set' && args[2] != null) {
-        await runConfigSet(args[2], args[3] ?? '');
-      } else if (sub === 'export') {
-        const fromDpIdx = args.indexOf('--from-data-product');
+        } else if (sub === "set" && args[2] != null) {
+          await runConfigSet(args[2], args[3] ?? "");
+        } else if (sub === "export") {
+          const fromDpIdx = args.indexOf("--from-data-product");
         const dpId = fromDpIdx >= 0 ? args[fromDpIdx + 1] : undefined;
-        const fromConnIdx = args.indexOf('--from-connector');
+          const fromConnIdx = args.indexOf("--from-connector");
         const connId = fromConnIdx >= 0 ? args[fromConnIdx + 1] : undefined;
-        const fmtArg = getArg('--format');
+          const fmtArg = getArg("--format");
         const format =
-          fmtArg === 'json' ? 'json' : fmtArg === 'env' ? 'env' : ('sh' as 'sh' | 'json' | 'env');
+            fmtArg === "json"
+              ? "json"
+              : fmtArg === "env"
+                ? "env"
+                : ("sh" as "sh" | "json" | "env");
         if (connId) {
           await runConfigExportFromConnector(connId, { format });
         } else if (dpId) {
           await runConfigExportFromDataProduct(dpId, { format });
         } else {
           console.error(
-            'Usage: loxtep config export --from-connector <id> [--format sh|json|env]\n       loxtep config export --from-data-product <id> [--format sh|json|env]'
+              "Usage: loxtep config export --from-connector <id> [--format sh|json|env]\n       loxtep config export --from-data-product <id> [--format sh|json|env]",
           );
           process.exitCode = 1;
         }
       } else {
         console.error(
-          'Usage: loxtep config list | loxtep config paths | loxtep config set <key> <value> | loxtep config export --from-connector <id> | loxtep config export --from-data-product <id>'
+            "Usage: loxtep config list | loxtep config paths | loxtep config set <key> <value> | loxtep config export --from-connector <id> | loxtep config export --from-data-product <id>",
         );
         process.exitCode = 1;
       }
       break;
-    case 'data-products':
-      if (sub === 'list') {
-        await runDataProductsList({ debug: args.includes('--debug') });
-      } else if (sub === 'get' && args[2]) {
+      case "data-products":
+        if (sub === "list") {
+          await runDataProductsList({ debug: args.includes("--debug") });
+        } else if (sub === "get" && args[2]) {
         await runDataProductsGet(args[2]);
-      } else if (sub === 'query' && args[2]) {
-        const fileIdx = args.indexOf('--file');
+        } else if (sub === "query" && args[2]) {
+          const fileIdx = args.indexOf("--file");
         const sql =
           fileIdx >= 0
             ? undefined
             : args
                 .slice(3)
-                .join(' ')
-                .replace(/^["']|["']$/g, '');
+                  .join(" ")
+                  .replace(/^["']|["']$/g, "");
         if (fileIdx >= 0) {
-          const fs = await import('fs/promises');
+            const fs = await import("fs/promises");
           const path = args[fileIdx + 1];
           if (!path) {
-            console.error('Usage: loxtep data-products query <id> --file <path>');
+              console.error(
+                "Usage: loxtep data-products query <id> --file <path>",
+              );
             process.exitCode = 1;
           } else {
-            const sqlFromFile = (await fs.readFile(path, 'utf-8')).trim();
+              const sqlFromFile = (await fs.readFile(path, "utf-8")).trim();
             await runDataProductsQuery(args[2], sqlFromFile, {
-              receipt: args.includes('--receipt') || args.includes('--json'),
+                receipt: args.includes("--receipt") || args.includes("--json"),
             });
           }
         } else if (sql) {
           await runDataProductsQuery(args[2], sql, {
-            receipt: args.includes('--receipt') || args.includes('--json'),
+              receipt: args.includes("--receipt") || args.includes("--json"),
           });
         } else {
           console.error(
-            'Usage: loxtep data-products query <id> "SQL" | loxtep data-products query <id> --file <path>'
+              'Usage: loxtep data-products query <id> "SQL" | loxtep data-products query <id> --file <path>',
           );
           process.exitCode = 1;
         }
-      } else if (sub === 'tables' && args[2]) {
+        } else if (sub === "tables" && args[2]) {
         await runDataProductsTables(args[2]);
-      } else if (sub === 'create') {
-        const name = getArg('--name');
-        const domainId = getArg('--domain-id');
-        const kind = getArg('--kind') as 'source' | 'consumer' | undefined;
-        const description = getArg('--description');
-        if (!name || !domainId || !kind || !['source', 'consumer'].includes(kind)) {
+        } else if (sub === "create") {
+          const name = getArg("--name");
+          const domainId = getArg("--domain-id");
+          const kind = getArg("--kind") as "source" | "consumer" | undefined;
+          const description = getArg("--description");
+          if (
+            !name ||
+            !domainId ||
+            !kind ||
+            !["source", "consumer"].includes(kind)
+          ) {
           console.error(
-            'Usage: loxtep data-products create --name <name> --domain-id <uuid> --kind <source|consumer> [--description <text>]'
+              "Usage: loxtep data-products create --name <name> --domain-id <uuid> --kind <source|consumer> [--description <text>]",
           );
           process.exitCode = 1;
         } else {
-          await runDataProductsCreate({ name, domain_id: domainId, kind, description });
+            await runDataProductsCreate({
+              name,
+              domain_id: domainId,
+              kind,
+              description,
+            });
         }
-      } else if (sub === 'readiness' && args[2]) {
+        } else if (sub === "readiness" && args[2]) {
         await runDataProductsReadiness(args[2]);
-      } else if (sub === 'promote' && args[2]) {
-        const target = getArg('--target') as 'silver' | 'gold' | undefined;
-        if (!target || !['silver', 'gold'].includes(target)) {
-          console.error('Usage: loxtep data-products promote <id> --target <silver|gold>');
+        } else if (sub === "promote" && args[2]) {
+          const target = getArg("--target") as "silver" | "gold" | undefined;
+          if (!target || !["silver", "gold"].includes(target)) {
+            console.error(
+              "Usage: loxtep data-products promote <id> --target <silver|gold>",
+            );
           process.exitCode = 1;
         } else {
           await runDataProductsPromote(args[2], target);
         }
-      } else if (sub === 'iceberg') {
+        } else if (sub === "iceberg") {
         await runDataPlaneIceberg(args.slice(2));
-      } else if (sub === 'export' && args[2]) {
+        } else if (sub === "export" && args[2]) {
         await runDataPlaneExport(args.slice(2));
-      } else if (sub === 'primary-entity' && args[2]) {
-        await runPrimaryEntity(args[2], { json: args.includes('--json') });
+        } else if (sub === "primary-entity" && args[2]) {
+          await runPrimaryEntity(args[2], { json: args.includes("--json") });
       } else {
         console.error(
-          'Usage: loxtep data-products list | get <id> | create --name ... --domain-id ... | query <id> "SQL" [--receipt] | tables <id> | iceberg ... | export <id> --start <eid> | primary-entity <id>'
+            'Usage: loxtep data-products list | get <id> | create --name ... --domain-id ... | query <id> "SQL" [--receipt] | tables <id> | iceberg ... | export <id> --start <eid> | primary-entity <id>',
         );
         process.exitCode = 1;
       }
       break;
-    case 'metrics':
-      if (sub === 'rate-limits') {
+      case "metrics":
+        if (sub === "rate-limits") {
         await runMetricsRateLimits();
-      } else if (sub === 'log') {
-        const id = getArg('--id');
-        const valueStr = getArg('--value');
+        } else if (sub === "log") {
+          const id = getArg("--id");
+          const valueStr = getArg("--value");
         const value = valueStr != null ? Number(valueStr) : NaN;
         if (!id || Number.isNaN(value)) {
-          console.error('Usage: loxtep metrics log --id <id> --value <number> [--tags k=v,...]');
+            console.error(
+              "Usage: loxtep metrics log --id <id> --value <number> [--tags k=v,...]",
+            );
           process.exitCode = 1;
         } else {
           await runMetricsLog({ id, value });
         }
       } else {
         console.error(
-          'Usage: loxtep metrics rate-limits | loxtep metrics log --id <id> --value <n>'
+            "Usage: loxtep metrics rate-limits | loxtep metrics log --id <id> --value <n>",
         );
         process.exitCode = 1;
       }
       break;
-    case 'queue':
-      if (sub === 'info') {
-        const queueIdx = args.indexOf('--queue');
+      case "queue":
+        if (sub === "info") {
+          const queueIdx = args.indexOf("--queue");
         const idOrName = queueIdx >= 0 ? args[queueIdx + 1] : args[2];
         if (!idOrName) {
           console.error(
-            'Usage: loxtep queue info <data-product-id> | loxtep queue info --queue <queue-name>'
+              "Usage: loxtep queue info <data-product-id> | loxtep queue info --queue <queue-name>",
           );
           process.exitCode = 1;
         } else {
-          await runQueueInfo(idOrName, { queueName: queueIdx >= 0, instanceId: getArg('--instance') });
+            await runQueueInfo(idOrName, {
+              queueName: queueIdx >= 0,
+              instanceId: getArg("--instance"),
+            });
         }
-      } else if (sub === 'checkpoint' && args[2]) {
-        const botIdx = args.indexOf('--bot');
+        } else if (sub === "checkpoint" && args[2]) {
+          const botIdx = args.indexOf("--bot");
         const botId = botIdx >= 0 ? args[botIdx + 1] : undefined;
         if (!botId) {
-          console.error('Usage: loxtep queue checkpoint <data-product-id> --bot <bot-id>');
+            console.error(
+              "Usage: loxtep queue checkpoint <data-product-id> --bot <bot-id>",
+            );
           process.exitCode = 1;
         } else {
-          await runQueueCheckpoint(args[2], botId, { instanceId: getArg('--instance') });
+            await runQueueCheckpoint(args[2], botId, {
+              instanceId: getArg("--instance"),
+            });
         }
       } else {
         console.error(
-          'Usage: loxtep queue info <id> | loxtep queue checkpoint <id> --bot <bot-id>'
+            "Usage: loxtep queue info <id> | loxtep queue checkpoint <id> --bot <bot-id>",
         );
         process.exitCode = 1;
       }
       break;
-    case 'workflows':
-      if (sub === 'list') {
+      case "workflows":
+        if (sub === "list") {
         await runWorkflowsList({
-          project_id: getArg('--project-id'),
-          debug: args.includes('--debug'),
+            project_id: getArg("--project-id"),
+            debug: args.includes("--debug"),
         });
-      } else if (sub === 'get' && args[2]) {
+        } else if (sub === "get" && args[2]) {
         await runWorkflowsGet(args[2]);
-      } else if (sub === 'create') {
-        const name = getArg('--name');
-        const projectId = getArg('--project-id');
-        const templateId = getArg('--template-id');
-        const description = getArg('--description');
-        const workflowType = getArg('--workflow-type') as
-          | 'ingestion'
-          | 'enrichment'
-          | 'delivery'
+        } else if (sub === "create") {
+          const name = getArg("--name");
+          const projectId = getArg("--project-id");
+          const templateId = getArg("--template-id");
+          const description = getArg("--description");
+          const workflowType = getArg("--workflow-type") as
+            | "ingestion"
+            | "enrichment"
+            | "delivery"
           | undefined;
-        const domainId = getArg('--domain-id');
+          const domainId = getArg("--domain-id");
         if (!name || !projectId) {
           console.error(
-            'Usage: loxtep workflows create --name <name> --project-id <id> [--workflow-type ingestion|enrichment|delivery] [--domain-id <id>] [--template-id <id>] [--description <text>]'
+              "Usage: loxtep workflows create --name <name> --project-id <id> [--workflow-type ingestion|enrichment|delivery] [--domain-id <id>] [--template-id <id>] [--description <text>]",
           );
           process.exitCode = 1;
         } else {
@@ -593,14 +649,14 @@ export async function runCli(argv: string[]): Promise<void> {
             domain_id: domainId,
           });
         }
-      } else if (sub === 'deploy') {
-        const projectId = getArg('--project-id');
-        const instanceId = getArg('--instance-id');
-        const versionId = getArg('--version-id');
-        const force = args.includes('--force');
+        } else if (sub === "deploy") {
+          const projectId = getArg("--project-id");
+          const instanceId = getArg("--instance-id");
+          const versionId = getArg("--version-id");
+          const force = args.includes("--force");
         if (!projectId) {
           console.error(
-            'Usage: loxtep workflows deploy --project-id <id> [--instance-id <id>] [--version-id <id>] [--force]'
+              "Usage: loxtep workflows deploy --project-id <id> [--instance-id <id>] [--version-id <id>] [--force]",
           );
           process.exitCode = 1;
         } else {
@@ -611,52 +667,56 @@ export async function runCli(argv: string[]): Promise<void> {
             force_redeploy: force,
           });
         }
-      } else if (sub === 'preview-query-trigger') {
-        const workflowId = getArg('--workflow-id');
-        const query = getArg('--query');
-        const limitRaw = getArg('--limit');
-        const primaryKeyRaw = getArg('--primary-key');
+        } else if (sub === "preview-query-trigger") {
+          const workflowId = getArg("--workflow-id");
+          const query = getArg("--query");
+          const limitRaw = getArg("--limit");
+          const primaryKeyRaw = getArg("--primary-key");
         const primary_key = primaryKeyRaw
           ? primaryKeyRaw
-              .split(',')
+                .split(",")
               .map((s) => s.trim())
               .filter(Boolean)
           : undefined;
-        const limit = limitRaw != null && limitRaw !== '' ? Number(limitRaw) : undefined;
-        if (!workflowId || (limitRaw != null && limitRaw !== '' && Number.isNaN(limit))) {
+          const limit =
+            limitRaw != null && limitRaw !== "" ? Number(limitRaw) : undefined;
+          if (
+            !workflowId ||
+            (limitRaw != null && limitRaw !== "" && Number.isNaN(limit))
+          ) {
           console.error(
-            'Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--query <sql>] [--limit N] [--primary-key a,b]'
+              "Usage: loxtep workflows preview-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--query <sql>] [--limit N] [--primary-key a,b]",
           );
           process.exitCode = 1;
         } else {
           await runWorkflowsPreviewQueryTrigger({
             workflow_id: workflowId,
-            project_id: getArg('--project-id'),
+              project_id: getArg("--project-id"),
             query,
             primary_key,
             limit,
           });
         }
-      } else if (sub === 'run-query-trigger') {
-        const workflowId = getArg('--workflow-id');
-        const query = getArg('--query');
-        const primaryKeyRaw = getArg('--primary-key');
+        } else if (sub === "run-query-trigger") {
+          const workflowId = getArg("--workflow-id");
+          const query = getArg("--query");
+          const primaryKeyRaw = getArg("--primary-key");
         const primary_key = primaryKeyRaw
           ? primaryKeyRaw
-              .split(',')
+                .split(",")
               .map((s) => s.trim())
               .filter(Boolean)
           : undefined;
-        const sinkDataProductId = getArg('--sink-data-product-id');
+          const sinkDataProductId = getArg("--sink-data-product-id");
         if (!workflowId) {
           console.error(
-            'Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--sink-data-product-id <uuid>]'
+              "Usage: loxtep workflows run-query-trigger --workflow-id <uuid> [--project-id <uuid>] [--sink-data-product-id <uuid>]",
           );
           process.exitCode = 1;
         } else {
           await runWorkflowsRunQueryTrigger({
             workflow_id: workflowId,
-            project_id: getArg('--project-id'),
+              project_id: getArg("--project-id"),
             query,
             primary_key,
             sink_data_product_id: sinkDataProductId,
@@ -664,176 +724,189 @@ export async function runCli(argv: string[]): Promise<void> {
         }
       } else {
         console.error(
-          'Usage: loxtep workflows list [--project-id <id>] | get <id> | create --name <name> --project-id <id> | deploy --project-id <id> --instance-id <id> | preview-query-trigger --workflow-id <uuid> | run-query-trigger --workflow-id <uuid>'
+            "Usage: loxtep workflows list [--project-id <id>] | get <id> | create --name <name> --project-id <id> | deploy --project-id <id> --instance-id <id> | preview-query-trigger --workflow-id <uuid> | run-query-trigger --workflow-id <uuid>",
         );
         process.exitCode = 1;
       }
       break;
-    case 'bundle':
-      if (sub === 'save') {
+      case "bundle":
+        if (sub === "save") {
         await runBundleSave({
-          file: getArg('--file'),
-          project_id: getArg('--project-id'),
-          dry_run: args.includes('--dry-run'),
+            file: getArg("--file"),
+            project_id: getArg("--project-id"),
+            dry_run: args.includes("--dry-run"),
         });
       } else {
-        console.error('Usage: loxtep bundle save [--file .loxtep/sdk-ingest-bundle.json] [--project-id <id>] [--dry-run]');
+          console.error(
+            "Usage: loxtep bundle save [--file .loxtep/sdk-ingest-bundle.json] [--project-id <id>] [--dry-run]",
+          );
         process.exitCode = 1;
       }
       break;
-    case 'ingest':
-      if (sub === 'create' || sub === 'provision') {
-        if (sub === 'provision') {
-          console.error('Note: `loxtep ingest provision` is deprecated; use `loxtep ingest create`.');
+      case "ingest":
+        if (sub === "create" || sub === "provision") {
+          if (sub === "provision") {
+            console.error(
+              "Note: `loxtep ingest provision` is deprecated; use `loxtep ingest create`.",
+            );
         }
         await runIngestCreate({
-          name: getArg('--name'),
-          domain_id: getArg('--domain-id'),
-          workflow_name: getArg('--workflow-name'),
-          project_id: getArg('--project-id'),
-          instance_id: getArg('--instance-id'),
-          connector_id: getArg('--connector-id'),
-          dry_run: args.includes('--dry-run'),
-          deploy: args.includes('--deploy'),
-          no_deploy: args.includes('--no-deploy'),
-          iceberg: args.includes('--iceberg'),
+            name: getArg("--name"),
+            domain_id: getArg("--domain-id"),
+            workflow_name: getArg("--workflow-name"),
+            project_id: getArg("--project-id"),
+            instance_id: getArg("--instance-id"),
+            connector_id: getArg("--connector-id"),
+            dry_run: args.includes("--dry-run"),
+            deploy: args.includes("--deploy"),
+            no_deploy: args.includes("--no-deploy"),
+            iceberg: args.includes("--iceberg"),
+            transport_mode: getArg("--transport-mode"),
         });
       } else {
         console.error(
-          'Usage: loxtep ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>] [--iceberg] [--dry-run] [--deploy]'
+            "Usage: loxtep ingest create [--name app-events] [--domain-id <id>] [--connector-id <id>] [--transport-mode default|fast|volume] [--iceberg] [--dry-run] [--deploy]",
         );
         process.exitCode = 1;
       }
       break;
-    case 'transform':
-      if (sub === 'create') {
-        const from = getArg('--from');
+      case "transform":
+        if (sub === "create") {
+          const from = getArg("--from");
         if (!from) {
           console.error(
-            'Usage: loxtep transform create --from <upstream-dp> [--name cleaned-…] [--domain-id <id>] [--dry-run]'
+              "Usage: loxtep transform create --from <upstream-dp> [--name cleaned-…] [--domain-id <id>] [--transport-mode default|fast|volume] [--dry-run]",
           );
           process.exitCode = 1;
         } else {
           await runTransformCreate({
             from,
-            name: getArg('--name'),
-            project_id: getArg('--project-id'),
-            domain_id: getArg('--domain-id'),
-            dry_run: args.includes('--dry-run'),
+              name: getArg("--name"),
+              project_id: getArg("--project-id"),
+              domain_id: getArg("--domain-id"),
+              dry_run: args.includes("--dry-run"),
+              transport_mode: getArg("--transport-mode"),
           });
         }
       } else {
         console.error(
-          'Usage: loxtep transform create --from <upstream-dp> [--name cleaned-…] [--dry-run]'
+            "Usage: loxtep transform create --from <upstream-dp> [--name cleaned-…] [--transport-mode default|fast|volume] [--dry-run]",
         );
         process.exitCode = 1;
       }
       break;
-    case 'delivery':
-      if (sub === 'create') {
-        const from = getArg('--from');
-        const connectorId = getArg('--connector-id');
+      case "delivery":
+        if (sub === "create") {
+          const from = getArg("--from");
+          const connectorId = getArg("--connector-id");
         if (!from || !connectorId) {
           console.error(
-            'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …] [--dry-run]'
+              "Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …] [--transport-mode default|fast|volume] [--dry-run]",
           );
           process.exitCode = 1;
         } else {
           await runDeliveryCreate({
             from,
             connector_id: connectorId,
-            name: getArg('--name'),
-            project_id: getArg('--project-id'),
-            domain_id: getArg('--domain-id'),
-            table: getArg('--table'),
-            schema: getArg('--schema'),
-            primary_key: getArg('--primary-key'),
-            dry_run: args.includes('--dry-run'),
+              name: getArg("--name"),
+              project_id: getArg("--project-id"),
+              domain_id: getArg("--domain-id"),
+              table: getArg("--table"),
+              schema: getArg("--schema"),
+              primary_key: getArg("--primary-key"),
+              dry_run: args.includes("--dry-run"),
+              transport_mode: getArg("--transport-mode"),
           });
         }
       } else {
         console.error(
-          'Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …] [--dry-run]'
+            "Usage: loxtep delivery create --from <dp-name> --connector-id <id> [--table schema.table] [--name …] [--transport-mode default|fast|volume] [--dry-run]",
         );
         process.exitCode = 1;
       }
       break;
-    case 'push':
+      case "push":
       await runPush({
-        project_id: getArg('--project-id'),
-        workflow_id: getArg('--workflow-id'),
-        dry_run: args.includes('--dry-run'),
-        skip_reindex: args.includes('--skip-reindex'),
+          project_id: getArg("--project-id"),
+          workflow_id: getArg("--workflow-id"),
+          dry_run: args.includes("--dry-run"),
+          skip_reindex: args.includes("--skip-reindex"),
       });
       break;
-    case 'connectors':
-      if (sub === 'list') {
-        await runConnectorsList({ type: getArg('--type') }, { debug: args.includes('--debug') });
-      } else if (sub === 'test' && args[2]) {
-        await runConnectorsTest(args[2], { debug: args.includes('--debug') });
+      case "connectors":
+        if (sub === "list") {
+          await runConnectorsList(
+            { type: getArg("--type") },
+            { debug: args.includes("--debug") },
+          );
+        } else if (sub === "test" && args[2]) {
+          await runConnectorsTest(args[2], { debug: args.includes("--debug") });
       } else if (
-        (sub === 'list-entities' || sub === 'list_entities') &&
+          (sub === "list-entities" || sub === "list_entities") &&
         args[2]
       ) {
-        await runConnectorsListEntities(args[2], { debug: args.includes('--debug') });
+          await runConnectorsListEntities(args[2], {
+            debug: args.includes("--debug"),
+          });
       } else if (
-        (sub === 'capture-samples' || sub === 'capture_samples') &&
+          (sub === "capture-samples" || sub === "capture_samples") &&
         args[2]
       ) {
-        const limitRaw = getArg('--limit');
-        const limit = limitRaw != null && limitRaw !== '' ? Number(limitRaw) : undefined;
+          const limitRaw = getArg("--limit");
+          const limit =
+            limitRaw != null && limitRaw !== "" ? Number(limitRaw) : undefined;
         await runConnectorsCaptureSamples(
           {
             connector_id: args[2],
-            entity_type: getArg('--entity-type') ?? getArg('--entity'),
+              entity_type: getArg("--entity-type") ?? getArg("--entity"),
             limit: Number.isFinite(limit) ? limit : undefined,
           },
-          { debug: args.includes('--debug') }
+            { debug: args.includes("--debug") },
         );
       } else {
         console.error(
           [
-            'Usage:',
-            '  loxtep connectors list [--type sdk]',
-            '  loxtep connectors test <connector_id>',
-            '  loxtep connectors list-entities <connector_id>',
-            '  loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]',
-          ].join('\n')
+              "Usage:",
+              "  loxtep connectors list [--type sdk]",
+              "  loxtep connectors test <connector_id>",
+              "  loxtep connectors list-entities <connector_id>",
+              "  loxtep connectors capture-samples <connector_id> --entity-type <name> [--limit N]",
+            ].join("\n"),
         );
         process.exitCode = 1;
       }
       break;
-    case 'observe':
-      if (sub === 'status') {
+      case "observe":
+        if (sub === "status") {
         await runObserveStatus();
       } else {
-        console.error('Usage: loxtep observe status');
+          console.error("Usage: loxtep observe status");
         process.exitCode = 1;
       }
       break;
-    case 'triggers':
-      if (sub === 'list') {
+      case "triggers":
+        if (sub === "list") {
         await runTriggersList({
-          debug: args.includes('--debug'),
-          project_id: getArg('--project-id'),
-          workflow_id: getArg('--workflow-id'),
+            debug: args.includes("--debug"),
+            project_id: getArg("--project-id"),
+            workflow_id: getArg("--workflow-id"),
         });
-      } else if (sub === 'get' && args[2]) {
+        } else if (sub === "get" && args[2]) {
         await runTriggersGet(args[2], {
-          project_id: getArg('--project-id'),
-          workflow_id: getArg('--workflow-id'),
+            project_id: getArg("--project-id"),
+            workflow_id: getArg("--workflow-id"),
         });
-      } else if (sub === 'create') {
-        const name = getArg('--name');
-        const type = getArg('--type');
-        const key = getArg('--key');
-        const data = getArg('--data');
-        const projectId = getArg('--project-id');
-        const workflowId = getArg('--workflow-id');
+        } else if (sub === "create") {
+          const name = getArg("--name");
+          const type = getArg("--type");
+          const key = getArg("--key");
+          const data = getArg("--data");
+          const projectId = getArg("--project-id");
+          const workflowId = getArg("--workflow-id");
         if (!name || !type || !key || !projectId || !workflowId) {
           console.error(
-            'Usage: loxtep triggers create --project-id <id> --workflow-id <id> --name <name> --type <database|api|webhook|file> --key <key> [--data <json>]\n' +
-              'Prefer: loxtep ingest create'
+              "Usage: loxtep triggers create --project-id <id> --workflow-id <id> --name <name> --type <database|api|webhook|file> --key <key> [--data <json>]\n" +
+                "Prefer: loxtep ingest create",
           );
           process.exitCode = 1;
         } else {
@@ -841,99 +914,107 @@ export async function runCli(argv: string[]): Promise<void> {
             name,
             type,
             key,
-            data: data ?? '{}',
+              data: data ?? "{}",
             project_id: projectId,
             workflow_id: workflowId,
           });
         }
-      } else if (sub === 'test' && args[2]) {
+        } else if (sub === "test" && args[2]) {
         await runTriggersTest(args[2], {
-          project_id: getArg('--project-id'),
-          workflow_id: getArg('--workflow-id'),
+            project_id: getArg("--project-id"),
+            workflow_id: getArg("--workflow-id"),
         });
-      } else if (sub === 'reset-backfill' && args[2]) {
+        } else if (sub === "reset-backfill" && args[2]) {
         await runTriggersResetBackfill(args[2], {
-          project_id: getArg('--project-id'),
-          instance_id: getArg('--instance-id'),
-          rebaseline_config_hash: args.includes('--rebaseline-config-hash'),
+            project_id: getArg("--project-id"),
+            instance_id: getArg("--instance-id"),
+            rebaseline_config_hash: args.includes("--rebaseline-config-hash"),
         });
       } else {
         console.error(
-          'Usage: loxtep triggers list [--project-id <id>] [--workflow-id <id>] | get <id> [--project-id <id>] [--workflow-id <id>] | create --project-id <id> --workflow-id <id> --name … | test <id> | reset-backfill <connection_id> [--rebaseline-config-hash] [--project-id <id>] [--instance-id <id>]'
+            "Usage: loxtep triggers list [--project-id <id>] [--workflow-id <id>] | get <id> [--project-id <id>] [--workflow-id <id>] | create --project-id <id> --workflow-id <id> --name … | test <id> | reset-backfill <connection_id> [--rebaseline-config-hash] [--project-id <id>] [--instance-id <id>]",
         );
         process.exitCode = 1;
       }
       break;
-    case 'domains':
-      if (sub === 'list') {
-        await runDomainsList({ debug: args.includes('--debug') });
-      } else if (sub === 'get' && args[2]) {
+      case "domains":
+        if (sub === "list") {
+          await runDomainsList({ debug: args.includes("--debug") });
+        } else if (sub === "get" && args[2]) {
         await runDomainsGet(args[2]);
       } else {
-        console.error('Usage: loxtep domains list | loxtep domains get <id>');
+          console.error("Usage: loxtep domains list | loxtep domains get <id>");
         process.exitCode = 1;
       }
       break;
-    case 'standards':
-      if (sub === 'list') {
-        await runStandardsList({ debug: args.includes('--debug') });
-      } else if (sub === 'get' && args[2]) {
+      case "standards":
+        if (sub === "list") {
+          await runStandardsList({ debug: args.includes("--debug") });
+        } else if (sub === "get" && args[2]) {
         await runStandardsGet(args[2]);
       } else {
-        console.error('Usage: loxtep standards list | loxtep standards get <id>');
+          console.error(
+            "Usage: loxtep standards list | loxtep standards get <id>",
+          );
         process.exitCode = 1;
       }
       break;
-    case 'data-contracts':
-      if (sub === 'list') {
-        await runDataContractsList({ debug: args.includes('--debug') });
-      } else if (sub === 'get' && args[2]) {
+      case "data-contracts":
+        if (sub === "list") {
+          await runDataContractsList({ debug: args.includes("--debug") });
+        } else if (sub === "get" && args[2]) {
         await runDataContractsGet(args[2]);
-      } else if (sub === 'create') {
-        const dpId = getArg('--data-product-id');
-        const name = getArg('--name');
+        } else if (sub === "create") {
+          const dpId = getArg("--data-product-id");
+          const name = getArg("--name");
         if (!dpId || !name) {
           console.error(
-            'Usage: loxtep data-contracts create --data-product-id <id> --name <name> [--description <text>]'
+              "Usage: loxtep data-contracts create --data-product-id <id> --name <name> [--description <text>]",
           );
           process.exitCode = 1;
         } else {
-          const schemaVersionId = getArg('--schema-version-id');
+            const schemaVersionId = getArg("--schema-version-id");
           await runDataContractsCreate({
             data_product_id: dpId,
             name,
-            description: getArg('--description'),
-            ...(schemaVersionId ? { schema_version_id: schemaVersionId } : {}),
+              description: getArg("--description"),
+              ...(schemaVersionId
+                ? { schema_version_id: schemaVersionId }
+                : {}),
           });
         }
-      } else if (sub === 'update' && args[2]) {
+        } else if (sub === "update" && args[2]) {
         await runDataContractsUpdate(args.slice(2));
       } else {
         console.error(
-          'Usage: loxtep data-contracts list | get <id> | create --data-product-id <id> --name <name>'
+            "Usage: loxtep data-contracts list | get <id> | create --data-product-id <id> --name <name>",
         );
         console.error(
-          'Bind an existing contract with PUT /dataproducts/datacontracts/{id} (schema_ref or schema_version_id).'
+            "Bind an existing contract with PUT /dataproducts/datacontracts/{id} (schema_ref or schema_version_id).",
         );
         process.exitCode = 1;
       }
       break;
-    case 'promises':
-      console.warn('Warning: "promises" is deprecated; use "data-contracts" (same behavior).');
-      if (sub === 'list') {
-        await runDataContractsList({ debug: args.includes('--debug') });
-      } else if (sub === 'get' && args[2]) {
+      case "promises":
+        console.warn(
+          'Warning: "promises" is deprecated; use "data-contracts" (same behavior).',
+        );
+        if (sub === "list") {
+          await runDataContractsList({ debug: args.includes("--debug") });
+        } else if (sub === "get" && args[2]) {
         await runDataContractsGet(args[2]);
       } else {
-        console.error('Usage: loxtep data-contracts list | loxtep data-contracts get <id>');
+          console.error(
+            "Usage: loxtep data-contracts list | loxtep data-contracts get <id>",
+          );
         process.exitCode = 1;
       }
       break;
-    case 'improvements': {
+      case "improvements": {
       const authResult = await requireCliClient();
-      if (sub === 'list') {
-        const statusFilter = getArg('--status');
-        const workflowFilter = getArg('--workflow');
+        if (sub === "list") {
+          const statusFilter = getArg("--status");
+          const workflowFilter = getArg("--workflow");
         const result = await runImprovementsListCommand(authResult.client, {
           status: statusFilter,
           workflow_name: workflowFilter,
@@ -941,34 +1022,40 @@ export async function runCli(argv: string[]): Promise<void> {
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'apply' && args[2]) {
-        const result = await runImprovementsApplyCommand(authResult.client, args[2]);
+        } else if (sub === "apply" && args[2]) {
+          const result = await runImprovementsApplyCommand(
+            authResult.client,
+            args[2],
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'reject' && args[2]) {
-        const result = await runImprovementsRejectCommand(authResult.client, args[2]);
+        } else if (sub === "reject" && args[2]) {
+          const result = await runImprovementsRejectCommand(
+            authResult.client,
+            args[2],
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep improvements list [--status proposed|applied|rejected] [--workflow <name>]\n' +
-          '       loxtep improvements apply <id>\n' +
-          '       loxtep improvements reject <id>'
+            "Usage: loxtep improvements list [--status proposed|applied|rejected] [--workflow <name>]\n" +
+              "       loxtep improvements apply <id>\n" +
+              "       loxtep improvements reject <id>",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'approvals': {
+      case "approvals": {
       const authResult = await requireCliClient();
-      const orgId = getArg('--organization-id');
-      if (sub === 'list') {
-        const statusFilter = getArg('--status');
+        const orgId = getArg("--organization-id");
+        if (sub === "list") {
+          const statusFilter = getArg("--status");
         const pageFlags = parseApprovalsListNumericFlags({
-          page: getArg('--page'),
-          page_size: getArg('--page-size'),
+            page: getArg("--page"),
+            page_size: getArg("--page-size"),
         });
         if (!pageFlags.ok) {
           console.error(pageFlags.error);
@@ -984,175 +1071,208 @@ export async function runCli(argv: string[]): Promise<void> {
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'approve' && args[2]) {
-        const result = await runApprovalsApproveCommand(authResult.client, args[2], {
+        } else if (sub === "approve" && args[2]) {
+          const result = await runApprovalsApproveCommand(
+            authResult.client,
+            args[2],
+            {
           organization_id: orgId,
-          response: getArg('--response'),
-          form_response_json: getArg('--form-response'),
-        });
+              response: getArg("--response"),
+              form_response_json: getArg("--form-response"),
+            },
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'reject' && args[2]) {
-        const result = await runApprovalsRejectCommand(authResult.client, args[2], {
+        } else if (sub === "reject" && args[2]) {
+          const result = await runApprovalsRejectCommand(
+            authResult.client,
+            args[2],
+            {
           organization_id: orgId,
-          response: getArg('--response'),
-          form_response_json: getArg('--form-response'),
-        });
+              response: getArg("--response"),
+              form_response_json: getArg("--form-response"),
+            },
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep approvals list [--status pending|approved|rejected|expired] [--page N] [--page-size N] [--organization-id <id>]\n' +
-            '       loxtep approvals approve <approval_request_id> [--response <val>] [--form-response <json>] [--organization-id <id>]\n' +
-            '       loxtep approvals reject <approval_request_id> [--response <val>] [--form-response <json>] [--organization-id <id>]'
+            "Usage: loxtep approvals list [--status pending|approved|rejected|expired] [--page N] [--page-size N] [--organization-id <id>]\n" +
+              "       loxtep approvals approve <approval_request_id> [--response <val>] [--form-response <json>] [--organization-id <id>]\n" +
+              "       loxtep approvals reject <approval_request_id> [--response <val>] [--form-response <json>] [--organization-id <id>]",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'ontology': {
+      case "ontology": {
       const authResult = await requireCliClient();
-      if (sub === 'link-class') {
-        const result = await runOntologyLinkClassCommand(authResult.client, args);
+        if (sub === "link-class") {
+          const result = await runOntologyLinkClassCommand(
+            authResult.client,
+            args,
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep ontology link-class --source-uri <uri> --predicate-uri <uri> --target-uri <uri> [--description <text>] [--organization-id <id>]'
+            "Usage: loxtep ontology link-class --source-uri <uri> --predicate-uri <uri> --target-uri <uri> [--description <text>] [--organization-id <id>]",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'packs': {
+      case "packs": {
       const authResult = await requireCliClient();
-      const orgId = getArg('--organization-id');
-      if (sub === 'list') {
+        const orgId = getArg("--organization-id");
+        if (sub === "list") {
         const result = await runPacksListCommand(authResult.client);
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'activate' && args[2]) {
-        const result = await runPacksActivateCommand(authResult.client, args[2], {
+        } else if (sub === "activate" && args[2]) {
+          const result = await runPacksActivateCommand(
+            authResult.client,
+            args[2],
+            {
           organization_id: orgId,
-        });
+            },
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'status') {
+        } else if (sub === "status") {
         const result = await runPacksStatusCommand(authResult.client);
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep packs list\n' +
-            '       loxtep packs activate <pack_id> [--organization-id <id>]\n' +
-            '       loxtep packs status'
+            "Usage: loxtep packs list\n" +
+              "       loxtep packs activate <pack_id> [--organization-id <id>]\n" +
+              "       loxtep packs status",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'proposals': {
+      case "proposals": {
       const authResult = await requireCliClient();
-      const printResult = (result: { exitCode: number; stdout: string[]; stderr: string[] }) => {
+        const printResult = (result: {
+          exitCode: number;
+          stdout: string[];
+          stderr: string[];
+        }) => {
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       };
-      if (sub === 'list') {
-        const page = getArg('--page');
-        const pageSize = getArg('--page-size');
+        if (sub === "list") {
+          const page = getArg("--page");
+          const pageSize = getArg("--page-size");
         printResult(
           await runProposalsListCommand(authResult.client, {
-            disposition: getArg('--disposition') ?? 'pending',
-            proposal_type: getArg('--proposal-type'),
-            data_product_id: getArg('--data-product-id'),
+              disposition: getArg("--disposition") ?? "pending",
+              proposal_type: getArg("--proposal-type"),
+              data_product_id: getArg("--data-product-id"),
             page: page ? Number(page) : undefined,
             page_size: pageSize ? Number(pageSize) : undefined,
-          })
+            }),
         );
-      } else if (sub === 'accept' && args[2]) {
+        } else if (sub === "accept" && args[2]) {
         printResult(
           await runProposalsAcceptCommand(authResult.client, args[2], {
-            definition: getArg('--definition'),
-            resolution_note: getArg('--resolution-note'),
-          })
+              definition: getArg("--definition"),
+              resolution_note: getArg("--resolution-note"),
+            }),
         );
-      } else if (sub === 'reject' && args[2]) {
+        } else if (sub === "reject" && args[2]) {
         printResult(
           await runProposalsRejectCommand(authResult.client, args[2], {
-            resolution_note: getArg('--resolution-note'),
-          })
+              resolution_note: getArg("--resolution-note"),
+            }),
+          );
+        } else if (sub === "infer-definitions") {
+          const ids = args.slice(2).filter((a) => a && !a.startsWith("--"));
+          printResult(
+            await runProposalsInferDefinitionsCommand(authResult.client, ids),
         );
-      } else if (sub === 'infer-definitions') {
-        const ids = args.slice(2).filter(a => a && !a.startsWith('--'));
-        printResult(await runProposalsInferDefinitionsCommand(authResult.client, ids));
       } else {
         console.error(PROPOSALS_USAGE);
         process.exitCode = 1;
       }
       break;
     }
-    case 'define': {
+      case "define": {
       const authResult = await requireCliClient();
-      const printResult = (result: { exitCode: number; stdout: string[]; stderr: string[] }) => {
+        const printResult = (result: {
+          exitCode: number;
+          stdout: string[];
+          stderr: string[];
+        }) => {
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       };
-      if (sub === 'status' && args[2]) {
+        if (sub === "status" && args[2]) {
         printResult(await runDefineStatusCommand(authResult.client, args[2]));
-      } else if (sub === 'evidence' && args[2]) {
-        printResult(await runDefineEvidenceCommand(authResult.client, args[2]));
-      } else if (sub === 'list') {
+        } else if (sub === "evidence" && args[2]) {
+          printResult(
+            await runDefineEvidenceCommand(authResult.client, args[2]),
+          );
+        } else if (sub === "list") {
         printResult(
           await runDefineListCommand(authResult.client, {
-            data_product_id: getArg('--data-product-id'),
-            disposition: getArg('--disposition'),
-            proposal_type: getArg('--proposal-type'),
-          })
+              data_product_id: getArg("--data-product-id"),
+              disposition: getArg("--disposition"),
+              proposal_type: getArg("--proposal-type"),
+            }),
         );
-      } else if (sub === 'get' && args[2]) {
+        } else if (sub === "get" && args[2]) {
         printResult(await runDefineGetCommand(authResult.client, args[2]));
-      } else if (sub === 'submit-shape' && args[2]) {
+        } else if (sub === "submit-shape" && args[2]) {
         printResult(
           await runDefineSubmitShapeCommand(authResult.client, args[2], {
-            definition_json: getArg('--definition'),
-            rationale: getArg('--rationale'),
-            base_revision: getArg('--base-revision'),
-            evidence_refs: getArg('--evidence-refs'),
-          })
+              definition_json: getArg("--definition"),
+              rationale: getArg("--rationale"),
+              base_revision: getArg("--base-revision"),
+              evidence_refs: getArg("--evidence-refs"),
+            }),
         );
-      } else if (sub === 'submit-semantic' && args[2]) {
+        } else if (sub === "submit-semantic" && args[2]) {
         printResult(
           await runDefineSubmitSemanticCommand(authResult.client, args[2], {
-            definition_json: getArg('--definition'),
-            rationale: getArg('--rationale'),
-          })
+              definition_json: getArg("--definition"),
+              rationale: getArg("--rationale"),
+            }),
+          );
+        } else if (sub === "approve" && args[2]) {
+          printResult(
+            await runDefineApproveCommand(authResult.client, args[2]),
         );
-      } else if (sub === 'approve' && args[2]) {
-        printResult(await runDefineApproveCommand(authResult.client, args[2]));
-      } else if (sub === 'apply' && args[2]) {
+        } else if (sub === "apply" && args[2]) {
         printResult(await runDefineApplyCommand(authResult.client, args[2]));
-      } else if (sub === 'withdraw' && args[2]) {
-        printResult(await runDefineWithdrawCommand(authResult.client, args[2]));
-      } else if (sub === 'skill') {
+        } else if (sub === "withdraw" && args[2]) {
+          printResult(
+            await runDefineWithdrawCommand(authResult.client, args[2]),
+          );
+        } else if (sub === "skill") {
         printResult(await runDefineSkillCommand(authResult.client));
-      } else if (sub === 'start-procedure' && args[2]) {
-        printResult(await runDefineStartProcedureCommand(authResult.client, args[2]));
-      } else if (sub === 'batch') {
+        } else if (sub === "start-procedure" && args[2]) {
+          printResult(
+            await runDefineStartProcedureCommand(authResult.client, args[2]),
+          );
+        } else if (sub === "batch") {
         printResult(
           await runDefineBatchCommand(authResult.client, {
-            data_product_ids: getArg('--data-product-ids'),
-            action: getArg('--action'),
-          })
+              data_product_ids: getArg("--data-product-ids"),
+              action: getArg("--action"),
+            }),
         );
-      } else if (sub === 'glossary' || sub === 'apply-glossary') {
+        } else if (sub === "glossary" || sub === "apply-glossary") {
         await runDefineGlossary(args.slice(1));
       } else {
         console.error(DEFINE_USAGE);
@@ -1160,115 +1280,131 @@ export async function runCli(argv: string[]): Promise<void> {
       }
       break;
     }
-    case 'cdlc': {
+      case "cdlc": {
       const authResult = await requireCliClient();
-      const orgId = getArg('--organization-id');
-      if (sub === 'transition' && args[2]) {
-        const result = await runCdlcTransitionCommand(authResult.client, args[2], {
-          from: getArg('--from'),
-          to: getArg('--to'),
+        const orgId = getArg("--organization-id");
+        if (sub === "transition" && args[2]) {
+          const result = await runCdlcTransitionCommand(
+            authResult.client,
+            args[2],
+            {
+              from: getArg("--from"),
+              to: getArg("--to"),
           organization_id: orgId,
-          actor: getArg('--actor'),
-          owner: getArg('--owner'),
-        });
+              actor: getArg("--actor"),
+              owner: getArg("--owner"),
+            },
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'review-queue') {
+        } else if (sub === "review-queue") {
         const result = await runCdlcReviewQueueCommand(authResult.client, {
           organization_id: orgId,
-          domain_id: getArg('--domain-id'),
+            domain_id: getArg("--domain-id"),
         });
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep cdlc transition <artifact_ref> --from <state> --to <state> [--actor <id>] [--owner <id>] [--organization-id <id>]\n' +
-            '       loxtep cdlc review-queue [--domain-id <id>] [--organization-id <id>]\n' +
-            'States: draft | in_review | approved | deployed | retired'
+            "Usage: loxtep cdlc transition <artifact_ref> --from <state> --to <state> [--actor <id>] [--owner <id>] [--organization-id <id>]\n" +
+              "       loxtep cdlc review-queue [--domain-id <id>] [--organization-id <id>]\n" +
+              "States: draft | in_review | approved | deployed | retired",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'candidates': {
+      case "candidates": {
       const authResult = await requireCliClient();
-      const orgId = getArg('--organization-id');
-      if (sub === 'list') {
+        const orgId = getArg("--organization-id");
+        if (sub === "list") {
         const result = await runCandidatesListCommand(authResult.client, {
-          candidate_type: getArg('--type'),
-          status: getArg('--status'),
-          mining_run_id: getArg('--mining-run-id'),
+            candidate_type: getArg("--type"),
+            status: getArg("--status"),
+            mining_run_id: getArg("--mining-run-id"),
           organization_id: orgId,
         });
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'act' && args[2]) {
-        const result = await runCandidatesActCommand(authResult.client, args[2], {
-          action: getArg('--action'),
+        } else if (sub === "act" && args[2]) {
+          const result = await runCandidatesActCommand(
+            authResult.client,
+            args[2],
+            {
+              action: getArg("--action"),
           organization_id: orgId,
-          rationale: getArg('--rationale'),
-          actor: getArg('--actor'),
-        });
+              rationale: getArg("--rationale"),
+              actor: getArg("--actor"),
+            },
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep candidates list [--type <type>] [--status candidate|approved|rejected] [--mining-run-id <id>] [--organization-id <id>]\n' +
-            '       loxtep candidates act <candidate_id> --action approve|reject [--rationale <text>] [--actor <id>] [--organization-id <id>]\n' +
-            'Types: semantic_conflict | procedure | promotion | entity_fact\n' +
-            'approve routes the candidate into CDLC in_review; reject discards it.'
+            "Usage: loxtep candidates list [--type <type>] [--status candidate|approved|rejected] [--mining-run-id <id>] [--organization-id <id>]\n" +
+              "       loxtep candidates act <candidate_id> --action approve|reject [--rationale <text>] [--actor <id>] [--organization-id <id>]\n" +
+              "Types: semantic_conflict | procedure | promotion | entity_fact\n" +
+              "approve routes the candidate into CDLC in_review; reject discards it.",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'deployments': {
+      case "deployments": {
       const authResult = await requireCliClient();
-      if (sub === 'list') {
-        const pageStr = getArg('--page');
-        const pageSizeStr = getArg('--page-size');
+        if (sub === "list") {
+          const pageStr = getArg("--page");
+          const pageSizeStr = getArg("--page-size");
         const page = pageStr != null ? parseInt(pageStr, 10) : undefined;
-        const page_size = pageSizeStr != null ? parseInt(pageSizeStr, 10) : undefined;
+          const page_size =
+            pageSizeStr != null ? parseInt(pageSizeStr, 10) : undefined;
         const result = await runDeploymentsListCommand(authResult.client, {
-          project_id: getArg('--project-id'),
-          instance_id: getArg('--instance-id'),
-          workflow_id: getArg('--workflow-id'),
-          status: getArg('--status'),
+            project_id: getArg("--project-id"),
+            instance_id: getArg("--instance-id"),
+            workflow_id: getArg("--workflow-id"),
+            status: getArg("--status"),
           page: page != null && !Number.isNaN(page) ? page : undefined,
-          page_size: page_size != null && !Number.isNaN(page_size) ? page_size : undefined,
+            page_size:
+              page_size != null && !Number.isNaN(page_size)
+                ? page_size
+                : undefined,
         });
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
-      } else if (sub === 'get' && args[2]) {
-        const result = await runDeploymentsGetCommand(authResult.client, args[2], {
-          include_versions: args.includes('--include-versions'),
-        });
+        } else if (sub === "get" && args[2]) {
+          const result = await runDeploymentsGetCommand(
+            authResult.client,
+            args[2],
+            {
+              include_versions: args.includes("--include-versions"),
+            },
+          );
         for (const line of result.stdout) console.log(line);
         for (const line of result.stderr) console.error(line);
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep deployments list [--project-id <id>] [--instance-id <id>] [--workflow-id <id>] [--status pending|in_progress|deployed|failed|rolled_back|archived]\n' +
-            '       loxtep deployments get <deployment_id> [--include-versions]'
+            "Usage: loxtep deployments list [--project-id <id>] [--instance-id <id>] [--workflow-id <id>] [--status pending|in_progress|deployed|failed|rolled_back|archived]\n" +
+              "       loxtep deployments get <deployment_id> [--include-versions]",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'activity': {
+      case "activity": {
       const authResult = await requireCliClient();
-      if (sub === 'list') {
-        const sourceFilter = getArg('--source');
-        const actorFilter = getArg('--actor');
-        const resourceTypeFilter = getArg('--resource-type');
-        const fromFilter = getArg('--from');
-        const toFilter = getArg('--to');
-        const limitStr = getArg('--limit');
+        if (sub === "list") {
+          const sourceFilter = getArg("--source");
+          const actorFilter = getArg("--actor");
+          const resourceTypeFilter = getArg("--resource-type");
+          const fromFilter = getArg("--from");
+          const toFilter = getArg("--to");
+          const limitStr = getArg("--limit");
         const limit = limitStr != null ? parseInt(limitStr, 10) : undefined;
         const result = await runActivityListCommand(authResult.client, {
           source: sourceFilter,
@@ -1283,21 +1419,22 @@ export async function runCli(argv: string[]): Promise<void> {
         if (result.exitCode !== 0) process.exitCode = result.exitCode;
       } else {
         console.error(
-          'Usage: loxtep activity list [--source cli|sdk|mcp|ui] [--actor <id>] [--resource-type <type>] [--from <date>] [--to <date>] [--limit <n>]'
+            "Usage: loxtep activity list [--source cli|sdk|mcp|ui] [--actor <id>] [--resource-type <type>] [--from <date>] [--to <date>] [--limit <n>]",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'instances': {
-      if (sub === 'list') {
-        await runInstancesList({ debug: args.includes('--debug') });
-      } else if (sub === 'get' && args[2]) {
+      case "instances": {
+        if (sub === "list") {
+          await runInstancesList({ debug: args.includes("--debug") });
+        } else if (sub === "get" && args[2]) {
         await runInstancesGet(args[2]);
-      } else if (sub === 'stream-config') {
-        const maybeId = args[2] && !args[2].startsWith('-') ? args[2] : undefined;
+        } else if (sub === "stream-config") {
+          const maybeId =
+            args[2] && !args[2].startsWith("-") ? args[2] : undefined;
         await runInstancesStreamConfig(maybeId);
-      } else if (sub === 'create') {
+        } else if (sub === "create") {
         try {
           const input = parseCreateInstanceArgs(args.slice(2));
           await runInstancesCreate(input);
@@ -1305,124 +1442,136 @@ export async function runCli(argv: string[]): Promise<void> {
           console.error((err as Error).message);
           process.exitCode = 1;
         }
-      } else if (sub === 'update') {
+        } else if (sub === "update") {
         try {
-          const { instanceId, input } = parseUpdateInstanceArgs(args.slice(2));
+            const { instanceId, input } = parseUpdateInstanceArgs(
+              args.slice(2),
+            );
           await runInstancesUpdate(instanceId, input);
         } catch (err) {
           console.error((err as Error).message);
           process.exitCode = 1;
         }
-      } else if (sub === 'redeploy-runtimes' && args[2] && !args[2].startsWith('-')) {
+        } else if (
+          sub === "redeploy-runtimes" &&
+          args[2] &&
+          !args[2].startsWith("-")
+        ) {
         await runInstancesRedeployRuntimes(args[2]);
-      } else if (sub === 'deployment-urls') {
+        } else if (sub === "deployment-urls") {
         await runInstancesDeploymentUrls();
-      } else if (sub === 'register') {
-        const roleArn = getArg('--cross-account-role-arn');
-        const region = getArg('--region');
+        } else if (sub === "register") {
+          const roleArn = getArg("--cross-account-role-arn");
+          const region = getArg("--region");
         if (!roleArn) {
           console.error(
-            'Usage: loxtep instances register --cross-account-role-arn <arn> [--region <region>]'
+              "Usage: loxtep instances register --cross-account-role-arn <arn> [--region <region>]",
           );
           process.exitCode = 1;
         } else {
           await runInstancesRegister(roleArn, region);
         }
-      } else if (sub === 'registration') {
+        } else if (sub === "registration") {
         await runInstancesRegistration();
       } else {
         console.error(
-          'Usage: loxtep instances list | get <id> | stream-config [<id>] | create --name ... --region ... --type ... | update <id> ... | redeploy-runtimes <id> | deployment-urls | register --cross-account-role-arn <arn> | registration'
+            "Usage: loxtep instances list | get <id> | stream-config [<id>] | create --name ... --region ... --type ... | update <id> ... | redeploy-runtimes <id> | deployment-urls | register --cross-account-role-arn <arn> | registration",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'bots': {
-      const instanceFlag = getArg('--instance');
-      if (sub === 'list') {
+      case "bots": {
+        const instanceFlag = getArg("--instance");
+        if (sub === "list") {
         await runBotsList(instanceFlag);
-      } else if (sub === 'get') {
-        const botId = getArg('--bot-id') || (args[2] && !args[2].startsWith('-') ? args[2] : undefined);
+        } else if (sub === "get") {
+          const botId =
+            getArg("--bot-id") ||
+            (args[2] && !args[2].startsWith("-") ? args[2] : undefined);
         if (!botId) {
-          console.error('Usage: loxtep bots get --instance <id> --bot-id <bot_id>');
+            console.error(
+              "Usage: loxtep bots get --instance <id> --bot-id <bot_id>",
+            );
           process.exitCode = 1;
         } else {
           await runBotsGet(instanceFlag, botId);
         }
-      } else if (sub === 'register') {
-        const name = getArg('--name');
-        const lambdaName = getArg('--lambda-name');
+        } else if (sub === "register") {
+          const name = getArg("--name");
+          const lambdaName = getArg("--lambda-name");
         if (!name || !lambdaName) {
           console.error(
-            'Usage: loxtep bots register --instance <id> --name <n> --lambda-name <fn> [--slug …] [--schedule …] [--paused|--unpaused]'
+              "Usage: loxtep bots register --instance <id> --name <n> --lambda-name <fn> [--slug …] [--schedule …] [--paused|--unpaused]",
           );
           process.exitCode = 1;
         } else {
-          const paused = args.includes('--unpaused')
+            const paused = args.includes("--unpaused")
             ? false
-            : args.includes('--paused')
+              : args.includes("--paused")
               ? true
               : undefined;
-          const batchRaw = getArg('--batch-size');
+            const batchRaw = getArg("--batch-size");
           await runBotsRegister(instanceFlag, {
             name,
             lambda_name: lambdaName,
-            slug: getArg('--slug'),
-            description: getArg('--description'),
-            source_queue: getArg('--source-queue'),
-            destination_queue: getArg('--destination-queue'),
-            error_queue: getArg('--error-queue'),
-            schedule: getArg('--schedule'),
+              slug: getArg("--slug"),
+              description: getArg("--description"),
+              source_queue: getArg("--source-queue"),
+              destination_queue: getArg("--destination-queue"),
+              error_queue: getArg("--error-queue"),
+              schedule: getArg("--schedule"),
             batch_size: batchRaw ? Number(batchRaw) : undefined,
             paused,
           });
         }
-      } else if (sub === 'update') {
-        const botId = getArg('--bot-id');
+        } else if (sub === "update") {
+          const botId = getArg("--bot-id");
         if (!botId) {
           console.error(
-            'Usage: loxtep bots update --instance <id> --bot-id <bot_id> [--name …] [--lambda-name …] …'
+              "Usage: loxtep bots update --instance <id> --bot-id <bot_id> [--name …] [--lambda-name …] …",
           );
           process.exitCode = 1;
         } else {
-          const paused = args.includes('--unpaused')
+            const paused = args.includes("--unpaused")
             ? false
-            : args.includes('--paused')
+              : args.includes("--paused")
               ? true
               : undefined;
-          const batchRaw = getArg('--batch-size');
+            const batchRaw = getArg("--batch-size");
           await runBotsUpdate(instanceFlag, botId, {
-            name: getArg('--name'),
-            lambda_name: getArg('--lambda-name'),
-            description: getArg('--description'),
-            source_queue: getArg('--source-queue'),
-            destination_queue: getArg('--destination-queue'),
-            error_queue: getArg('--error-queue'),
-            schedule: getArg('--schedule'),
+              name: getArg("--name"),
+              lambda_name: getArg("--lambda-name"),
+              description: getArg("--description"),
+              source_queue: getArg("--source-queue"),
+              destination_queue: getArg("--destination-queue"),
+              error_queue: getArg("--error-queue"),
+              schedule: getArg("--schedule"),
             batch_size: batchRaw ? Number(batchRaw) : undefined,
             paused,
           });
         }
-      } else if (sub === 'deregister') {
-        const botId = getArg('--bot-id');
+        } else if (sub === "deregister") {
+          const botId = getArg("--bot-id");
         if (!botId) {
-          console.error('Usage: loxtep bots deregister --instance <id> --bot-id <bot_id>');
+            console.error(
+              "Usage: loxtep bots deregister --instance <id> --bot-id <bot_id>",
+            );
           process.exitCode = 1;
         } else {
           await runBotsDeregister(instanceFlag, botId);
         }
-      } else if (sub === 'reconcile') {
+        } else if (sub === "reconcile") {
         await runBotsReconcile(instanceFlag);
       } else {
         console.error(
-          'Usage: loxtep bots register|list|get|update|deregister|reconcile --instance <id> …'
+            "Usage: loxtep bots register|list|get|update|deregister|reconcile --instance <id> …",
         );
         process.exitCode = 1;
       }
       break;
     }
-    case 'quality-rules':
+      case "quality-rules":
       await runQualityRules(args.slice(1));
       break;
     default:
@@ -1435,7 +1584,7 @@ export async function runCli(argv: string[]): Promise<void> {
 
 // Auto-run only when executed as the CLI bin (skip under Jest imports).
 if (process.env.JEST_WORKER_ID === undefined) {
-  runCli(process.argv.slice(2)).catch(err => {
+  runCli(process.argv.slice(2)).catch((err) => {
     console.error(formatCliError(err));
     process.exit(1);
   });

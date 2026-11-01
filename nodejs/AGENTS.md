@@ -52,10 +52,10 @@ The generated artifact is the contract: your agent builds against **ground truth
 **Every** Loxtep operation — CLI, SDK, and MCP — requires authentication. There
 are no unauthenticated endpoints.
 
-| Surface | How auth is provided |
-| --- | --- |
-| **CLI** | `loxtep login` stores credentials in `./.loxtep/credentials.json` (cwd; `--global` for `~/.loxtep/`). |
-| **SDK** | `LOXTEP_AUTH_TOKEN` env var, or project-local then global `credentials.json`. |
+| Surface | How auth is provided                                                                                                                      |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **CLI** | `loxtep login` stores credentials in `./.loxtep/credentials.json` (cwd; `--global` for `~/.loxtep/`).                                     |
+| **SDK** | `LOXTEP_AUTH_TOKEN` env var, or project-local then global `credentials.json`.                                                             |
 | **MCP** | OAuth 2.1 + PKCE against `https://mcp.loxtep.io/ai/mcp/stream`. The browser flow runs on first connect; tokens refresh in the background. |
 
 SDK auth precedence: `LOXTEP_AUTH_TOKEN` → `~/.loxtep/credentials.json`. When a
@@ -73,25 +73,25 @@ internal to the SDK and are not shown in CLI help.
 
 ### Lifecycle commands
 
-| Command | What it does | Auth |
-| --- | --- | --- |
-| `loxtep login [--console]` | Authenticate. Browser by default; `--console` for email/password/TOTP. | n/a |
-| `loxtep logout` | Remove stored credentials. | required |
-| `loxtep whoami` | Print the current user and organization. | required |
-| `loxtep init [--template <slug>]` | Scaffold a workspace; with `--template`, materialize the full template incl. `AGENTS.md` + a default skill. Prints Getting Started + Quick Reference links. | optional |
-| `loxtep attach [--instance <id>]` | Link the workspace to an Instance; writes `instance_id` + `api_url` into `.loxtep/project.json`. | required |
-| `loxtep generate` | Compile workspace context → `.loxtep/generated/index.ts`; validate skills; print per-type counts. | required + attached |
-| `loxtep test <module> --event <file>` | Run one data workflow module locally against the attached Instance; print the action trace. | required + attached |
-| `loxtep deploy` | Compile modules into the flow/workflow graph; deploy to the attached Instance. | required + attached |
-| `loxtep deployments list \| get <id>` | Poll async deploy status (`client.observe.list_deployments` / `get_deployment`). | required |
-| `loxtep approvals list \| approve <id> \| reject <id>` | HITL approval inbox (`client.review.approvals`). | required |
-| `loxtep cdlc transition <ref> --from <state> --to <state>` | CDLC lifecycle transition (`client.review.cdlc.transition_lifecycle`). | required |
-| `loxtep cdlc review-queue [--domain-id <id>]` | Steward review queue list (`client.review.cdlc.list_review_queue`). | required |
-| `loxtep candidates list \| act <id> --action approve\|reject` | Context-mining candidates (`client.review.mining`). | required |
-| `loxtep packs list \| activate <pack_id> \| status` | Vocabulary packs (`client.meaning.packs`). | required |
-| `loxtep proposals list \| accept \| reject \| infer-definitions` | Semantic proposal review (`client.meaning.proposals`). | required |
-| `loxtep activity list [filters]` | List unified activity + audit entries. | required |
-| `loxtep improvements list \| apply <id> \| reject <id>` | Review and adopt AI-Eval-derived workflow improvements. | required |
+| Command                                                          | What it does                                                                                                                                                | Auth                |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `loxtep login [--console]`                                       | Authenticate. Browser by default; `--console` for email/password/TOTP.                                                                                      | n/a                 |
+| `loxtep logout`                                                  | Remove stored credentials.                                                                                                                                  | required            |
+| `loxtep whoami`                                                  | Print the current user and organization.                                                                                                                    | required            |
+| `loxtep init [--template <slug>]`                                | Scaffold a workspace; with `--template`, materialize the full template incl. `AGENTS.md` + a default skill. Prints Getting Started + Quick Reference links. | optional            |
+| `loxtep attach [--instance <id>]`                                | Link the workspace to an Instance; writes `instance_id` + `api_url` into `.loxtep/project.json`.                                                            | required            |
+| `loxtep generate`                                                | Compile workspace context → `.loxtep/generated/index.ts`; validate skills; print per-type counts.                                                           | required + attached |
+| `loxtep test <module> --event <file>`                            | Run one data workflow module locally against the attached Instance; print the action trace.                                                                 | required + attached |
+| `loxtep deploy`                                                  | Compile modules into the flow/workflow graph; deploy to the attached Instance.                                                                              | required + attached |
+| `loxtep deployments list \| get <id>`                            | Poll async deploy status (`client.observe.list_deployments` / `get_deployment`).                                                                            | required            |
+| `loxtep approvals list \| approve <id> \| reject <id>`           | HITL approval inbox (`client.review.approvals`).                                                                                                            | required            |
+| `loxtep cdlc transition <ref> --from <state> --to <state>`       | CDLC lifecycle transition (`client.review.cdlc.transition_lifecycle`).                                                                                      | required            |
+| `loxtep cdlc review-queue [--domain-id <id>]`                    | Steward review queue list (`client.review.cdlc.list_review_queue`).                                                                                         | required            |
+| `loxtep candidates list \| act <id> --action approve\|reject`    | Context-mining candidates (`client.review.mining`).                                                                                                         | required            |
+| `loxtep packs list \| activate <pack_id> \| status`              | Vocabulary packs (`client.meaning.packs`).                                                                                                                  | required            |
+| `loxtep proposals list \| accept \| reject \| infer-definitions` | Semantic proposal review (`client.meaning.proposals`).                                                                                                      | required            |
+| `loxtep activity list [filters]`                                 | List unified activity + audit entries.                                                                                                                      | required            |
+| `loxtep improvements list \| apply <id> \| reject <id>`          | Review and adopt AI-Eval-derived workflow improvements.                                                                                                     | required            |
 
 ### Ordering & exit-code contract
 
@@ -139,12 +139,18 @@ loxtep config list | paths | set <k> <v> | export --from-connector <id> [--forma
 loxtep metrics rate-limits | log --id <id> --value <n>
 ```
 
+For `ingest create`, `transform create`, and `delivery create`, pass
+`--transport-mode default|fast|volume` to persist the event-writer mode in the
+generated workflow entities. Omitting the flag uses `default`.
+
 **Connector probes (do not invent CLI verbs):**
+
 - Connectivity: `loxtep connectors test <id>` (MCP: `loxtep_connect` → `test_connector`)
 - Discovery: `loxtep connectors list-entities <id>` (MCP: `list_connector_entities`)
 - Samples: `loxtep connectors capture-samples <id> --entity-type <name> [--limit N]` (MCP: `capture_samples`)
 - There is **no** `loxtep connector test` (singular) and **no** `--entity` on `connectors test`
 - `loxtep test <module>` runs a **workflow module** locally — not a connector
+
 ---
 
 ## SDK reference (`@loxtep/sdk`)
@@ -152,7 +158,7 @@ loxtep metrics rate-limits | log --id <id> --value <n>
 ### Client initialization
 
 ```typescript
-import { LoxtepClient } from '@loxtep/sdk';
+import { LoxtepClient } from "@loxtep/sdk";
 
 // Explicit config
 const client = new LoxtepClient({
@@ -161,7 +167,7 @@ const client = new LoxtepClient({
   project_id: process.env.LOXTEP_PROJECT_ID,
   instance_id: process.env.LOXTEP_INSTANCE_ID,
   region: process.env.LOXTEP_REGION,
-  auth: { type: 'jwt', token: process.env.LOXTEP_AUTH_TOKEN! },
+  auth: { type: "jwt", token: process.env.LOXTEP_AUTH_TOKEN! },
 });
 
 // Or auto-configure from the workspace (.loxtep/project.json + ~/.loxtep/credentials.json)
@@ -175,20 +181,20 @@ const fromWs = LoxtepClient.fromWorkspace();
 [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
 `emit_semantic_gap_candidate` stays MCP-only (no HTTP).
 
-| Facade | Nested APIs | Purpose |
-| --- | --- | --- |
-| `client.session` | — | Current user/org, logout |
-| `client.connect` | `.connectors`, `.templates` | Connect external systems, templates |
-| `client.workspace` | `.projects`, `.instances` | Projects, runtime instances |
-| `client.build` | `.workflows`, `.triggers`, `.data_products`, `.targets` | Authoring, deploy, CRUD, stream/replay |
-| `client.define` | `.schemas`, `.shapes`, `.quality`, `.standards`, `.data_contracts`, `.domains` | Data-product schemas + domain shapes + quality + governance |
-| `client.meaning` | `.thesaurus`, `.ontology`, `.packs`, `.semantic`, `.proposals`, `.bundles` | Vocabulary + ontology + packs + semantic search + proposal review + bundle import |
-| `client.review` | `.approvals`, `.improvements`, `.cdlc`, `.mining` | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation, artifact list, submit-for-review, review-queue list/approve, identity clusters, bridge-semantics, context mining (run/list/act) |
-| `client.governance` | `.policies`, `.access_requests` | Policy CRUD and access-request create/list/decide. Standards stay on `define.standards`. |
-| `client.entities` | `.infer_projection` | Infer an entity projection from optional linked data products |
-| `client.query` | `.catalog`, `.discovery`, `.query()`, `.list_tables()` | Discovery and analytics SQL |
-| `client.observe` | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O |
-| `client.context` | `.procedures`, `.activity`, `.process_intelligence`, `.issues`, `.goals`, `.workstreams` | Process intel, activity feed, agent-workspace reads |
+| Facade              | Nested APIs                                                                                      | Purpose                                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client.session`    | —                                                                                                | Current user/org, logout                                                                                                                                                                          |
+| `client.connect`    | `.connectors`, `.templates`                                                                      | Connect external systems, templates                                                                                                                                                               |
+| `client.workspace`  | `.projects`, `.instances`                                                                        | Projects, runtime instances                                                                                                                                                                       |
+| `client.build`      | `.workflows`, `.triggers`, `.data_products`, `.targets`                                          | Authoring, deploy, CRUD, stream/replay                                                                                                                                                            |
+| `client.define`     | `.schemas`, `.shapes`, `.quality`, `.standards`, `.data_contracts`, `.domains`                   | Data-product schemas + domain shapes + quality + governance                                                                                                                                       |
+| `client.meaning`    | `.thesaurus`, `.ontology`, `.packs`, `.semantic`, `.proposals`, `.bundles`                       | Vocabulary + ontology + packs + semantic search + proposal review + bundle import                                                                                                                 |
+| `client.review`     | `.approvals`, `.improvements`, `.cdlc`, `.mining`                                                | HITL approvals, AI-eval improvements, CDLC lifecycle/propagation, artifact list, submit-for-review, review-queue list/approve, identity clusters, bridge-semantics, context mining (run/list/act) |
+| `client.governance` | `.policies`, `.access_requests`                                                                  | Policy CRUD and access-request create/list/decide. Standards stay on `define.standards`.                                                                                                          |
+| `client.entities`   | `.infer_projection`                                                                              | Infer an entity projection from optional linked data products                                                                                                                                     |
+| `client.query`      | `.catalog`, `.discovery`, `.query()`, `.list_tables()`                                           | Discovery and analytics SQL                                                                                                                                                                       |
+| `client.observe`    | `.status()`, `.stream_config()`, `.list_deployments()`, `.get_deployment()`, `.open_reader()`, … | Observe + deployment status + low-level queue I/O                                                                                                                                                 |
+| `client.context`    | `.procedures`, `.activity`, `.process_intelligence`, `.issues`, `.goals`, `.workstreams`         | Process intel, activity feed, agent-workspace reads                                                                                                                                               |
 
 Top-level **`get_writer(name)`** / **`get_reader(name)`** resolve deployment
 metadata for live stream I/O (preferred over calling nested APIs directly).
@@ -197,15 +203,20 @@ metadata for live stream I/O (preferred over calling nested APIs directly).
 
 ```typescript
 // Resolve queue, bot_id, and stream config automatically from deployment metadata
-const writer = await client.get_writer('orders_raw');
-writer.write({ sku: 'ABC', qty: 2 });
+const writer = await client.get_writer("orders_raw");
+writer.write({ sku: "ABC", qty: 2 });
 await writer.close();
 
-const reader = await client.get_reader('orders_raw');
+const reader = await client.get_reader("orders_raw");
 for await (const event of reader) {
   console.log(event);
 }
 ```
+
+Event writers accept `transport_mode: 'default' | 'fast' | 'volume'`.
+`default` is durable, balanced, and recommended; `fast` has the lowest latency
+but may cost more; `volume` is optimized for sustained throughput and has
+delivery lag. See [event writer transport modes](docs/event-writer-transport-modes.md).
 
 ---
 
@@ -218,18 +229,18 @@ job-facade call sets `operation` to the flat action name plus that action's argu
 **Greenfield cutover:** deprecated names such as `loxtep_connectors`, `loxtep_workflows`,
 or `loxtep_data_products` are **not** registered.
 
-| MCP facade | SDK namespace |
-| --- | --- |
-| `loxtep_session` | `client.session` |
-| `loxtep_connect` | `client.connect` |
+| MCP facade         | SDK namespace      |
+| ------------------ | ------------------ |
+| `loxtep_session`   | `client.session`   |
+| `loxtep_connect`   | `client.connect`   |
 | `loxtep_workspace` | `client.workspace` |
-| `loxtep_build` | `client.build` |
-| `loxtep_define` | `client.define` |
-| `loxtep_meaning` | `client.meaning` |
-| `loxtep_review` | `client.review` |
-| `loxtep_query` | `client.query` |
-| `loxtep_observe` | `client.observe` |
-| `loxtep_context` | `client.context` |
+| `loxtep_build`     | `client.build`     |
+| `loxtep_define`    | `client.define`    |
+| `loxtep_meaning`   | `client.meaning`   |
+| `loxtep_review`    | `client.review`    |
+| `loxtep_query`     | `client.query`     |
+| `loxtep_observe`   | `client.observe`   |
+| `loxtep_context`   | `client.context`   |
 
 Full operation tables: [`sdk-mcp-mapping.md`](docs/sdk-mcp-mapping.md) and
 [loxtep-plugins-skills AGENTS.md](https://github.com/LoxtepInc/loxtep-plugins-skills/blob/main/AGENTS.md).
@@ -246,7 +257,11 @@ Add the server to any MCP client:
 Example (call tool **`loxtep_connect`**, not `loxtep_connectors`):
 
 ```json
-{ "operation": "create_connector", "connector_type": "shopify", "metadata": { "api_key": "…" } }
+{
+  "operation": "create_connector",
+  "connector_type": "shopify",
+  "metadata": { "api_key": "…" }
+}
 ```
 
 ---
@@ -255,11 +270,11 @@ Example (call tool **`loxtep_connect`**, not `loxtep_connectors`):
 
 `loxtep deploy` resolves the attached Instance type and targets accordingly:
 
-| Instance type | Data plane runs in | Control plane (always Loxtep) |
-| --- | --- | --- |
+| Instance type      | Data plane runs in                                  | Control plane (always Loxtep)                                        |
+| ------------------ | --------------------------------------------------- | -------------------------------------------------------------------- |
 | `shared` / sandbox | Loxtep-operated infrastructure (free, multi-tenant) | auth, orchestration, triggers, scheduling, activity history, slim UI |
-| `managed` | Loxtep-operated dedicated infrastructure (paid) | same as above |
-| `self-hosted` | Your AWS account (cross-account role + BusInstall) | same as above |
+| `managed`          | Loxtep-operated dedicated infrastructure (paid)     | same as above                                                        |
+| `self-hosted`      | Your AWS account (cross-account role + BusInstall)  | same as above                                                        |
 
 `loxtep attach` links a project to any of these Instance types using the same
 connection mechanism as the web UI.
@@ -283,11 +298,11 @@ attribution and eval scoring. It is optional and ignored for tool logic.
 
 ## Further reading
 
-| Doc | What it covers |
-| --- | --- |
-| `docs/getting-started.md` | Zero-to-first-event walkthrough |
-| `docs/quick-reference.md` | CLI + SDK cheat sheet |
-| `docs/sdk-mcp-mapping.md` | How MCP tools map to SDK methods |
-| `docs/event-replay-cookbook.md` | Replaying historical events |
+| Doc                                    | What it covers                              |
+| -------------------------------------- | ------------------------------------------- |
+| `docs/getting-started.md`              | Zero-to-first-event walkthrough             |
+| `docs/quick-reference.md`              | CLI + SDK cheat sheet                       |
+| `docs/sdk-mcp-mapping.md`              | How MCP tools map to SDK methods            |
+| `docs/event-replay-cookbook.md`        | Replaying historical events                 |
 | Docs site `llms.txt` / `llms-full.txt` | Machine-readable doc index + full reference |
-| Docs site `/docs/api` + OpenAPI | HTTP API reference |
+| Docs site `/docs/api` + OpenAPI        | HTTP API reference                          |

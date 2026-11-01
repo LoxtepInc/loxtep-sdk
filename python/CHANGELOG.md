@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Sync and async event writers accept `transport_mode`: `default` is the
+  durable, recommended mode; `fast` minimizes latency but may cost more; and
+  `volume` supports high throughput with delivery lag.
+
 ## [0.10.0] — 2026-10-27
 
 ### Removed

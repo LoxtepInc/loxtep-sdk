@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/entity/grant.json",
+  "title": "Delivery Grant Entity",
+  "description": "JSON Schema for a Git-backed delivery grant declaration. Materializes into data_product_subscribers (product + consumer + access_method + destination connection). Deploy embeds the active grant into outbound runtime writers (D6).",
+  "type": "object",
+  "required": [
+    "grant_id",
+    "organization_id",
+    "data_product_id",
+    "party_subject_type",
+    "access_method",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "grant_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Stable declaration id; becomes data_product_subscriber_id at materialize time"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Organization that owns this grant"
+    },
+    "project_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Project that contains this grant declaration"
+    },
+    "workflow_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Optional delivery workflow this grant is authored with"
+    },
+    "data_product_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Published data product the grant authorizes delivery for"
+    },
+    "subscriber_kind": {
+      "type": "string",
+      "const": "consumer",
+      "default": "consumer",
+      "description": "Grant subscriber kind (always consumer for delivery grants)"
+    },
+    "party_subject_type": {
+      "type": "string",
+      "enum": ["user", "organization", "domain", "external"],
+      "description": "Consumer principal type"
+    },
+    "user_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Required when party_subject_type is user"
+    },
+    "domain_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Required when party_subject_type is domain"
+    },
+    "party_organization_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Required when party_subject_type is organization"
+    },
+    "external_party_label": {
+      "type": ["string", "null"],
+      "maxLength": 255,
+      "description": "Required when party_subject_type is external"
+    },
+    "access_method": {
+      "type": "string",
+      "enum": [
+        "sql",
+        "api_endpoint",
+        "event_stream",
+        "webhook",
+        "export",
+        "bi_connect"
+      ],
+      "description": "Access dialect / delivery method this grant authorizes"
+    },
+    "connection_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Destination Target connection id (S3-authoritative). Deploy looks up the grant by data_product_id + connection_id."
+    },
+    "credential_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Optional already-issued api_credentials row bound to this grant"
+    },
+    "destination_config": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Per-consumer destination settings"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "paused", "revoked"],
+      "default": "active",
+      "description": "Runtime grant status. revoked soft-deletes the subscriber row on materialize."
+    },
+    "linked_contract_party_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Optional link to a data_contract_parties row"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Additional declaration metadata"
+    },
+    "created_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User who created the declaration"
+    },
+    "updated_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "User who last updated the declaration"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 last update timestamp"
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Soft-delete timestamp on the declaration (optional)"
+    }
+  },
+  "additionalProperties": false
+}

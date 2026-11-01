@@ -2,12 +2,16 @@
  * CLI: loxtep transform create — enrichment workflow stub (upstream DP → consumer DP).
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { findProjectDir } from '../project-context.js';
-import { requireCliClient } from '../create-cli-client.js';
-import { formatLintResult, runLintCheck } from './lint-cmd.js';
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { findProjectDir } from "../project-context.js";
+import { requireCliClient } from "../create-cli-client.js";
+import { formatLintResult, runLintCheck } from "./lint-cmd.js";
+import {
+  parseEventWriterTransportMode,
+  type EventWriterTransportMode,
+} from "../../client/flow-types.js";
 
 export interface TransformCmdOptions {
   configFilePath?: string;
@@ -17,11 +21,11 @@ export interface TransformCmdOptions {
   cwd?: string;
 }
 
-const ENRICHMENT_TEMPLATE_ID = '00000000-0000-4000-8000-0000000000a2';
+const ENRICHMENT_TEMPLATE_ID = "00000000-0000-4000-8000-0000000000a2";
 
 function writePackageFiles(
   projectDir: string,
-  files: Record<string, Record<string, unknown>>
+  files: Record<string, Record<string, unknown>>,
 ): string[] {
   const written: string[] = [];
   for (const [relPath, entity] of Object.entries(files)) {
@@ -44,21 +48,34 @@ export async function runTransformCreate(
     project_id?: string;
     domain_id?: string;
     dry_run?: boolean;
+    transport_mode?: string;
   },
-  options: TransformCmdOptions = {}
+  options: TransformCmdOptions = {},
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   const projectDir = findProjectDir(cwd) ?? cwd;
   const { client, config } = await requireCliClient(options);
+  let transportMode: EventWriterTransportMode;
+  try {
+    transportMode = parseEventWriterTransportMode(params.transport_mode);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+    return;
+  }
 
   const projectId = params.project_id ?? config.project_id;
   if (!projectId) {
-    console.error('Missing project_id. Run `loxtep init` and attach a project first.');
+    console.error(
+      "Missing project_id. Run `loxtep init` and attach a project first.",
+    );
     process.exitCode = 1;
     return;
   }
   if (!params.from?.trim()) {
-    console.error('Usage: loxtep transform create --from <upstream-dp-name> [--name cleaned-…]');
+    console.error(
+      "Usage: loxtep transform create --from <upstream-dp-name> [--name cleaned-…]",
+    );
     process.exitCode = 1;
     return;
   }
@@ -66,7 +83,7 @@ export async function runTransformCreate(
   const user = await client.session.get_current_user();
   const organizationId = user.organization_id ?? client.organization_id;
   if (!organizationId) {
-    console.error('Missing organization_id in session.');
+    console.error("Missing organization_id in session.");
     process.exitCode = 1;
     return;
   }
@@ -77,7 +94,9 @@ export async function runTransformCreate(
     domainId = domains.items?.[0]?.domain_id;
   }
   if (!domainId) {
-    console.error('Missing domain_id. Pass --domain-id or create a domain first.');
+    console.error(
+      "Missing domain_id. Pass --domain-id or create a domain first.",
+    );
     process.exitCode = 1;
     return;
   }
@@ -95,11 +114,11 @@ export async function runTransformCreate(
       project_id: projectId,
       name: `Transform ${consumerName}`,
       template_id: ENRICHMENT_TEMPLATE_ID,
-      workflow_type: 'enrichment',
+      workflow_type: "enrichment",
       domain_id: domainId,
-      status: 'active',
+      status: "active",
       configuration: {},
-      metadata: { stage: 'transform', upstream_data_product: params.from },
+      metadata: { stage: "transform", upstream_data_product: params.from },
       created_at: now,
       updated_at: now,
     },
@@ -108,13 +127,14 @@ export async function runTransformCreate(
       organization_id: organizationId,
       project_id: projectId,
       workflow_id: workflowId,
-      key: 'data-product-trigger',
+      key: "data-product-trigger",
       name: `From ${params.from}`,
-      type: 'data-product-trigger',
-      status: 'active',
+      type: "data-product-trigger",
+      status: "active",
       configuration: {
         source_data_product_name: params.from,
       },
+      runtime_settings: { event_writer: { transport_mode: transportMode } },
       created_at: now,
       updated_at: now,
     },
@@ -123,18 +143,18 @@ export async function runTransformCreate(
       organization_id: organizationId,
       workflow_id: workflowId,
       upstream_entity_id: connectionId,
-      upstream_entity_type: 'connections',
+      upstream_entity_type: "connections",
       domain_id: domainId,
       name: consumerName,
-      status: 'draft',
+      status: "draft",
       governance: {
-        classification: 'internal',
+        classification: "internal",
         pii_fields: [],
         compliance_requirements: [],
         tags: [],
       },
       metadata: {
-        kind: 'consumer',
+        kind: "consumer",
         project_id: projectId,
         upstream_data_product: params.from,
       },
@@ -151,12 +171,13 @@ export async function runTransformCreate(
           workflow_id: workflowId,
           data_product_id: dataProductId,
           data_product_name: consumerName,
-          workflow_type: 'enrichment',
+          workflow_type: "enrichment",
+          transport_mode: transportMode,
           files: Object.keys(files),
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     return;
   }
@@ -177,12 +198,13 @@ export async function runTransformCreate(
         workflow_id: workflowId,
         data_product_id: dataProductId,
         data_product_name: consumerName,
-        workflow_type: 'enrichment',
+        workflow_type: "enrichment",
+        transport_mode: transportMode,
         files: written,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
   console.error(`
 Transform package ready for "${consumerName}".

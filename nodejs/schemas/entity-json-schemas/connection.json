@@ -317,6 +317,41 @@
       },
       "additionalProperties": true
     },
+    "runtime_settings": {
+      "type": ["object", "null"],
+      "description": "Native runtime tuning. Event writes use the default durable mode unless explicitly changed.",
+      "properties": {
+        "event_writer": {
+          "type": ["object", "null"],
+          "description": "Event writer behavior for normal outputs, errors, quarantine records, and acknowledgements produced by this connection.",
+          "properties": {
+            "transport_mode": {
+              "type": "string",
+              "enum": ["default", "fast", "volume"],
+              "default": "default",
+              "description": "Event write transport: default is durable and balanced (recommended); fast has the lowest latency but may cost more; volume is optimized for high throughput and introduces delivery lag."
+            },
+            "chunk_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Durable-mode file target size in bytes. Advanced tuning; leave unset for the platform default."
+            },
+            "flush_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Durable-mode flush interval in milliseconds. Advanced tuning; leave unset for the platform default."
+            },
+            "sections_per_file": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Durable-mode sections per file. Advanced tuning; leave unset for the platform default."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
     "delivery_config": {
       "type": ["object", "null"],
       "description": "Outbound write policy for delivery-tail connections (mirror of ingestion_config for the source side). Auth/transport stay on configuration and the org connector; table, write_mode, upsert primary_key, batch sizes, and conflict rules live here. Distinct from data-product projection delivery_config (entities MS).",

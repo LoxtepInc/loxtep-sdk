@@ -2,8 +2,8 @@
  * Queues API: observe metadata/checkpoints over REST; read/write live events via the Loxtep stream data plane.
  */
 
-import type { RStreamsSdk } from '../rstreams/leo-runtime.js';
-import type { LoxtepHttpClient } from '../http/client.js';
+import type { RStreamsSdk } from "../rstreams/leo-runtime.js";
+import type { LoxtepHttpClient } from "../http/client.js";
 import type {
   QueueMetadata,
   ReaderCheckpoint,
@@ -12,13 +12,14 @@ import type {
   QueueReaderHandle,
   QueueWriterHandle,
   QueueEvent,
-} from './queue-types.js';
+} from "./queue-types.js";
 import {
   createQueueWriter,
   readQueueBatch,
   type ReadQueueBatchResult,
-} from '../rstreams/event-bridge.js';
-import { StreamingError } from '../errors/streaming.js';
+} from "../rstreams/event-bridge.js";
+import { StreamingError } from "../errors/streaming.js";
+import type { EventWriterTransportMode } from "./flow-types.js";
 
 export interface QueuesApiDeps {
   rsdk?: RStreamsSdk;
@@ -50,7 +51,7 @@ export class QueueReader implements QueueReaderHandle {
     rsdk: RStreamsSdk,
     bot_id: string,
     queue_name: string,
-    options?: QueueReaderOpenOptions & { batch_size?: number }
+    options?: QueueReaderOpenOptions & { batch_size?: number },
   ) {
     this.rsdk = rsdk;
     this.bot_id = bot_id;
@@ -80,7 +81,7 @@ export class QueueReader implements QueueReaderHandle {
         this.bot_id,
         this.queue_name,
         batchSize,
-        readCursor ?? null
+        readCursor ?? null,
       );
 
       const events = batch.events;
@@ -118,20 +119,27 @@ export class QueueReader implements QueueReaderHandle {
  */
 export function createQueuesApi(
   http: LoxtepHttpClient,
-  deps?: QueuesApiDeps
+  deps?: QueuesApiDeps,
 ): {
   get_queue_metadata: (queue_name: string) => Promise<QueueMetadata>;
-  get_reader_checkpoint: (queue_name: string, bot_id: string) => Promise<ReaderCheckpoint>;
+  get_reader_checkpoint: (
+    queue_name: string,
+    bot_id: string,
+  ) => Promise<ReaderCheckpoint>;
   open_reader: (params: {
     bot_id: string;
     queue_name: string;
     options?: QueueReaderOpenOptions;
   }) => Promise<QueueReaderHandle>;
-  open_writer: (params: { bot_id: string; queue_name: string }) => Promise<QueueWriterHandle>;
+  open_writer: (params: {
+    bot_id: string;
+    queue_name: string;
+    transport_mode?: EventWriterTransportMode;
+  }) => Promise<QueueWriterHandle>;
 } {
   return {
     async get_queue_metadata(queue_name: string): Promise<QueueMetadata> {
-      const res = await http.get<ObserveQueuesListResponse>('/observe/queues');
+      const res = await http.get<ObserveQueuesListResponse>("/observe/queues");
       const payload = (res as ObserveQueuesListResponse).data ?? res;
       const list =
         (payload as { queues?: QueueMetadata[] }).queues ??
@@ -140,54 +148,66 @@ export function createQueuesApi(
       const queues = Array.isArray(list) ? list : [];
       const match = queues.find(
         (q: QueueMetadata) =>
-          (q.queue_name ?? (q as Record<string, unknown>).name ?? '') === queue_name
+          (q.queue_name ?? (q as Record<string, unknown>).name ?? "") ===
+          queue_name,
       );
       if (match) return match;
-      const instanceId = http.getDefaultHeader?.('x-loxtep-instance-id');
+      const instanceId = http.getDefaultHeader?.("x-loxtep-instance-id");
       return {
         queue_name,
-        visibility: queues.length === 0 ? 'empty_on_selected_instance' : 'not_visible',
+        visibility:
+          queues.length === 0 ? "empty_on_selected_instance" : "not_visible",
         instance_id: instanceId,
       };
     },
 
-    async get_reader_checkpoint(queue_name: string, bot_id: string): Promise<ReaderCheckpoint> {
+    async get_reader_checkpoint(
+      queue_name: string,
+      bot_id: string,
+    ): Promise<ReaderCheckpoint> {
       // No dedicated /observe/queues/checkpoint route — derive from queue metadata.
       const meta = await this.get_queue_metadata(queue_name);
-      if (meta.visibility === 'not_visible' || meta.visibility === 'empty_on_selected_instance') {
+      if (
+        meta.visibility === "not_visible" ||
+        meta.visibility === "empty_on_selected_instance"
+      ) {
         const err = new Error(
-          meta.visibility === 'empty_on_selected_instance'
-            ? `Queue list is empty on the selected instance${meta.instance_id ? ` ${meta.instance_id}` : ''}`
-            : `Queue ${queue_name} is not visible on the selected instance${meta.instance_id ? ` ${meta.instance_id}` : ''}`
+          meta.visibility === "empty_on_selected_instance"
+            ? `Queue list is empty on the selected instance${meta.instance_id ? ` ${meta.instance_id}` : ""}`
+            : `Queue ${queue_name} is not visible on the selected instance${meta.instance_id ? ` ${meta.instance_id}` : ""}`,
         );
         (err as { code?: string }).code = String(meta.visibility);
         throw err;
       }
       const fromCheckpoints = (meta.checkpoints ?? []).find(
-        c => (c.bot_id ?? '') === bot_id || (c as { reader_id?: string }).reader_id === bot_id
+        (c) =>
+          (c.bot_id ?? "") === bot_id ||
+          (c as { reader_id?: string }).reader_id === bot_id,
       );
       if (fromCheckpoints) {
         return {
           bot_id,
           queue_name,
-          checkpoint: String(fromCheckpoints.checkpoint ?? ''),
+          checkpoint: String(fromCheckpoints.checkpoint ?? ""),
           updated_at: fromCheckpoints.updated_at,
           ...fromCheckpoints,
         };
       }
-      const fromReaders = (meta.readers ?? []).find(r => (r.bot_id ?? '') === bot_id);
+      const fromReaders = (meta.readers ?? []).find(
+        (r) => (r.bot_id ?? "") === bot_id,
+      );
       if (fromReaders) {
         return {
           bot_id,
           queue_name,
-          checkpoint: String(fromReaders.checkpoint ?? ''),
+          checkpoint: String(fromReaders.checkpoint ?? ""),
           ...fromReaders,
         };
       }
       return {
         bot_id,
         queue_name,
-        checkpoint: '',
+        checkpoint: "",
       };
     },
 
@@ -200,26 +220,30 @@ export function createQueuesApi(
       const rsdk = deps?.rsdk ?? (await deps?.get_rsdk?.());
       if (!rsdk) {
         throw new StreamingError(
-          'Stream bus configuration missing. Set LEO_* environment variables or add `streams` to ~/.loxtep/config.json. ' +
-          'Pass `streams` in LoxtepClientOptions, or ensure your instance stream environment is configured.',
+          "Stream bus configuration missing. Set LEO_* environment variables or add `streams` to ~/.loxtep/config.json. " +
+            "Pass `streams` in LoxtepClientOptions, or ensure your instance stream environment is configured.",
           {
             details: {
               bot_id,
               queue_name,
-              hint: 'Run `loxtep init` to configure stream bus, or set LEO_* env vars from your instance.',
+              hint: "Run `loxtep init` to configure stream bus, or set LEO_* env vars from your instance.",
             },
-          }
+            },
         );
       }
       return new QueueReader(rsdk, bot_id, queue_name, options);
     },
 
-    async open_writer(params: { bot_id: string; queue_name: string }): Promise<QueueWriterHandle> {
-      const { bot_id, queue_name } = params;
+    async open_writer(params: {
+      bot_id: string;
+      queue_name: string;
+      transport_mode?: EventWriterTransportMode;
+    }): Promise<QueueWriterHandle> {
+      const { bot_id, queue_name, transport_mode } = params;
       const rsdk = deps?.rsdk ?? (await deps?.get_rsdk?.());
       if (!rsdk) {
         throw new Error(
-          'queues.open_writer requires a configured Loxtep stream bus on LoxtepClient (pass `streams` and instance env, or explicit bus config).'
+          "queues.open_writer requires a configured Loxtep stream bus on LoxtepClient (pass `streams` and instance env, or explicit bus config).",
         );
       }
       // The rstreams `load` stream (inside createQueueWriter) owns buffering/batching/backoff.
@@ -227,7 +251,11 @@ export function createQueuesApi(
         rsdk,
         bot_id,
         queue_name,
-        () => new StreamingError('Cannot write to a closed queue writer.', { details: { queue_name } })
+        () =>
+          new StreamingError("Cannot write to a closed queue writer.", {
+            details: { queue_name },
+          }),
+        transport_mode,
       );
     },
   };

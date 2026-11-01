@@ -2,9 +2,13 @@
  * Map stream read wrappers to the SDK queue event shape; write payloads via putEvent / putEvents.
  */
 
-import type { RStreamsSdk, ReadEvent } from 'leo-sdk';
-import type { QueueEvent, WriteOptions } from '../client/queue-types.js';
-import type { FlowWriter } from '../client/flow-types.js';
+import type { RStreamsSdk, ReadEvent } from "leo-sdk";
+import type { QueueEvent, WriteOptions } from "../client/queue-types.js";
+import {
+  parseEventWriterTransportMode,
+  type EventWriterTransportMode,
+  type FlowWriter,
+} from "../client/flow-types.js";
 
 function readEventToQueueEvent<T>(wrapper: ReadEvent<T>): QueueEvent {
   const w = wrapper as ReadEvent<T> & {
@@ -15,16 +19,16 @@ function readEventToQueueEvent<T>(wrapper: ReadEvent<T>): QueueEvent {
     payload?: unknown;
   };
   const event_id =
-    (typeof w.id === 'string' && w.id) ||
-    (typeof w.eid === 'string' && w.eid) ||
-    (typeof (w as { event_id?: string }).event_id === 'string' &&
+    (typeof w.id === "string" && w.id) ||
+    (typeof w.eid === "string" && w.eid) ||
+    (typeof (w as { event_id?: string }).event_id === "string" &&
       (w as unknown as { event_id: string }).event_id) ||
-    '';
+    "";
   return {
     event_id,
-    event_type: typeof w.event === 'string' ? w.event : undefined,
+    event_type: typeof w.event === "string" ? w.event : undefined,
     payload: (w.payload ?? w) as Record<string, unknown>,
-    correlation_id: w.correlation_id as QueueEvent['correlation_id'],
+    correlation_id: w.correlation_id as QueueEvent["correlation_id"],
   };
 }
 
@@ -34,11 +38,14 @@ function readEventToQueueEvent<T>(wrapper: ReadEvent<T>): QueueEvent {
  * SOURCE-BOT identity, and letting a caller's record id land there registers a bogus bot per record
  * in LeoCron. The business object is always the `payload`.
  */
-export function toLeoEnvelope(businessObject: unknown, options?: WriteOptions): Record<string, unknown> {
+export function toLeoEnvelope(
+  businessObject: unknown,
+  options?: WriteOptions,
+): Record<string, unknown> {
   const env: Record<string, unknown> = { payload: businessObject };
   const ts = options?.event_source_timestamp;
   if (ts != null) {
-    const ms = typeof ts === 'number' ? ts : Date.parse(String(ts));
+    const ms = typeof ts === "number" ? ts : Date.parse(String(ts));
     if (!Number.isNaN(ms)) env.event_source_timestamp = ms;
   }
   return env;
@@ -48,9 +55,9 @@ export function toLeoEnvelope(businessObject: unknown, options?: WriteOptions): 
 interface LeoLoadStream {
   write(chunk: unknown): boolean;
   end(cb: (err?: unknown) => void): void;
-  on?(event: 'error', listener: (err: Error) => void): void;
-  once?(event: 'error', listener: (err: Error) => void): void;
-  removeListener?(event: 'error', listener: (err: Error) => void): void;
+  on?(event: "error", listener: (err: Error) => void): void;
+  once?(event: "error", listener: (err: Error) => void): void;
+  removeListener?(event: "error", listener: (err: Error) => void): void;
 }
 
 function asError(err: unknown): Error {
@@ -70,19 +77,33 @@ export function createQueueWriter(
   rsdk: RStreamsSdk,
   botId: string,
   queueName: string,
-  closedError: () => Error
+  closedError: () => Error,
+  transportMode: EventWriterTransportMode = "default",
 ): FlowWriter {
+  const resolvedTransportMode = parseEventWriterTransportMode(transportMode);
+  const transportOptions: { useS3: boolean; firehose?: boolean } =
+    resolvedTransportMode === "fast"
+      ? { useS3: false }
+      : resolvedTransportMode === "volume"
+        ? { useS3: false, firehose: true }
+        : { useS3: true };
   const stream = (
-    rsdk as unknown as { load: (b: string, q: string) => LeoLoadStream }
-  ).load(botId, queueName);
+    rsdk as unknown as {
+      load: (
+        b: string,
+        q: string,
+        options: { useS3: boolean; firehose?: boolean },
+      ) => LeoLoadStream;
+    }
+  ).load(botId, queueName, transportOptions);
   let closed = false;
   let streamError: Error | null = null;
 
   const onStreamError = (err: Error): void => {
     streamError = asError(err);
   };
-  if (typeof stream.on === 'function') {
-    stream.on('error', onStreamError);
+  if (typeof stream.on === "function") {
+    stream.on("error", onStreamError);
   }
 
   return {
@@ -115,10 +136,10 @@ export function createQueueWriter(
             settled = true;
             resolve();
           };
-          if (typeof stream.once === 'function') {
-            stream.once('error', fail);
+          if (typeof stream.once === "function") {
+            stream.once("error", fail);
           }
-          stream.end(err => {
+          stream.end((err) => {
             if (err) {
               fail(err);
               return;
@@ -128,8 +149,8 @@ export function createQueueWriter(
           });
         });
       } finally {
-        if (typeof stream.removeListener === 'function') {
-          stream.removeListener('error', onStreamError);
+        if (typeof stream.removeListener === "function") {
+          stream.removeListener("error", onStreamError);
         }
       }
     },
@@ -140,28 +161,37 @@ export function createQueueWriter(
  * Read up to `limit` events from `inQueue` acting as bot `id`, then return (mapped events, last start for next page).
  * Uses one offloadEvents invocation per batch (stream checkpoints advance between calls).
  */
-export type ReadQueueBatchResult = { events: QueueEvent[]; next_start: string | undefined };
+export type ReadQueueBatchResult = {
+  events: QueueEvent[];
+  next_start: string | undefined;
+};
 
 export async function readQueueBatch<T = unknown>(
   rsdk: RStreamsSdk,
   id: string,
   inQueue: string,
   limit: number,
-  start?: string | null
+  start?: string | null,
 ): Promise<ReadQueueBatchResult> {
   const collected: QueueEvent[] = [];
   // Stream runtime transform/callback typings vary by version; keep runtime-correct shape.
   await (
-    rsdk as unknown as { offloadEvents: (o: Record<string, unknown>) => Promise<void> }
+    rsdk as unknown as {
+      offloadEvents: (o: Record<string, unknown>) => Promise<void>;
+    }
   ).offloadEvents({
     id,
     inQueue,
     limit,
     loops: 3,
     start: start ?? undefined,
-    transform(_payload: T, wrapper: ReadEvent<T>, callback?: (err?: unknown) => void) {
+    transform(
+      _payload: T,
+      wrapper: ReadEvent<T>,
+      callback?: (err?: unknown) => void,
+    ) {
       collected.push(readEventToQueueEvent(wrapper));
-      if (typeof callback === 'function') callback();
+      if (typeof callback === "function") callback();
     },
   });
   const last = collected[collected.length - 1];

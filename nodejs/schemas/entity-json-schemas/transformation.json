@@ -149,6 +149,25 @@
       "maximum": 10000,
       "description": "Runtime tuning: events per handler call (rstreams offload batch). Does not cap events read per run; that is bounded by the Lambda timeout and memory thresholds. Unset: 300. Out-of-range values fail deploy."
     },
+    "runtime_settings": {
+      "type": ["object", "null"],
+      "description": "Native runtime tuning. Event writes use the default durable mode unless explicitly changed.",
+      "properties": {
+        "event_writer": {
+          "type": ["object", "null"],
+          "properties": {
+            "transport_mode": {
+              "type": "string",
+              "enum": ["default", "fast", "volume"],
+              "default": "default",
+              "description": "Event write transport for transformation outputs and errors: default is durable and balanced (recommended); fast has the lowest latency but may cost more; volume is optimized for high throughput and introduces delivery lag."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "runtime_memory_mb": {
       "description": "Runtime tuning: shared runtimes Lambda memory tier (transformers-{mb}). Unset: derived from transform_type (256/512/1024). Any other value fails deploy.",
       "oneOf": [

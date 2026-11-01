@@ -3,12 +3,13 @@
  * (connector + workflow + connection + source data product).
  */
 
-import { randomUUID } from 'node:crypto';
-import type { Connector } from '../client/connectors-types.js';
-import { EntityType, validateEntity } from './entity-json-schemas/index.js';
+import { randomUUID } from "node:crypto";
+import type { Connector } from "../client/connectors-types.js";
+import { EntityType, validateEntity } from "./entity-json-schemas/index.js";
+import type { EventWriterTransportMode } from "../client/flow-types.js";
 
 /** Placeholder starter template id for SDK-provisioned ingestion flows. */
-export const SDK_INGEST_TEMPLATE_ID = '00000000-0000-4000-8000-0000000000a1';
+export const SDK_INGEST_TEMPLATE_ID = "00000000-0000-4000-8000-0000000000a1";
 
 export interface SdkIngestPackageParams {
   organization_id: string;
@@ -26,6 +27,8 @@ export interface SdkIngestPackageParams {
   include_connector_file?: boolean;
   /** When true, set storage.iceberg_enabled on the source data product. */
   iceberg_enabled?: boolean;
+  /** Event writes: default is durable; fast may cost more; volume adds delivery lag. */
+  transport_mode?: EventWriterTransportMode;
 }
 
 export interface LocalConnectorStub {
@@ -54,14 +57,14 @@ export interface SdkIngestPackageResult {
  */
 export function toLocalConnectorEntity(
   connector: Connector | LocalConnectorStub,
-  now = new Date().toISOString()
+  now = new Date().toISOString(),
 ): Record<string, unknown> {
   const meta = connector.metadata ?? {};
   const name =
-    (typeof meta.name === 'string' && meta.name.trim()) ||
+    (typeof meta.name === "string" && meta.name.trim()) ||
     `${connector.connector_type} connector`;
   const description =
-    (typeof meta.description === 'string' && meta.description.trim()) ||
+    (typeof meta.description === "string" && meta.description.trim()) ||
     `Local stub for ${connector.connector_type} connector`;
 
   return {
@@ -70,11 +73,11 @@ export function toLocalConnectorEntity(
     connector_type: connector.connector_type,
     name,
     description,
-    category: 'custom',
+    category: "custom",
     // Entity schema enum has no "jwt"; use custom and keep API auth in metadata.
-    auth_type: 'custom',
-    version: '1.0.0',
-    metadata: { ...meta, sdk_auth_type: 'jwt' },
+    auth_type: "custom",
+    version: "1.0.0",
+    metadata: { ...meta, sdk_auth_type: "jwt" },
     created_at: connector.created_at ?? now,
     updated_at: connector.updated_at ?? now,
   };
@@ -85,20 +88,20 @@ export function toLocalConnectorEntity(
  * Paths match the customer workspace layout (not the flat save_workflow_bundle map).
  */
 export function buildSdkIngestLocalPackage(
-  params: SdkIngestPackageParams
+  params: SdkIngestPackageParams,
 ): SdkIngestPackageResult {
   const workflowId = params.workflow_id ?? randomUUID();
   const connectionId = params.connection_id ?? randomUUID();
   const dataProductId = params.data_product_id ?? randomUUID();
   const now = new Date().toISOString();
-  const workflowName = params.workflow_name ?? 'SDK App Events Ingest';
+  const workflowName = params.workflow_name ?? "SDK App Events Ingest";
 
   const files: Record<string, Record<string, unknown>> = {};
 
   if (params.include_connector_file !== false && params.connector) {
     files[`connectors/${params.connector_id}.json`] = toLocalConnectorEntity(
       params.connector,
-      now
+      now,
     );
   }
 
@@ -108,11 +111,11 @@ export function buildSdkIngestLocalPackage(
     project_id: params.project_id,
     name: workflowName,
     template_id: SDK_INGEST_TEMPLATE_ID,
-    workflow_type: 'ingestion',
+    workflow_type: "ingestion",
     domain_id: params.domain_id,
-    status: 'active',
+    status: "active",
     configuration: {},
-    metadata: { ingestion_method: 'sdk' },
+    metadata: { ingestion_method: "sdk" },
     created_at: now,
     updated_at: now,
   };
@@ -123,13 +126,16 @@ export function buildSdkIngestLocalPackage(
     project_id: params.project_id,
     workflow_id: workflowId,
     connector_id: params.connector_id,
-    key: 'sdk-input',
-    name: 'SDK Input',
-    type: 'sdk',
-    status: 'active',
+    key: "sdk-input",
+    name: "SDK Input",
+    type: "sdk",
+    status: "active",
     configuration: {
-      sdk_type: 'nodejs',
+      sdk_type: "nodejs",
       event_type: params.data_product_name,
+    },
+    runtime_settings: {
+      event_writer: { transport_mode: params.transport_mode ?? "default" },
     },
     created_at: now,
     updated_at: now,
@@ -140,18 +146,18 @@ export function buildSdkIngestLocalPackage(
     organization_id: params.organization_id,
     workflow_id: workflowId,
     upstream_entity_id: connectionId,
-    upstream_entity_type: 'connections',
+    upstream_entity_type: "connections",
     domain_id: params.domain_id,
     name: params.data_product_name,
-    status: 'draft',
+    status: "draft",
     governance: {
-      classification: 'internal',
+      classification: "internal",
       pii_fields: [],
       compliance_requirements: [],
       tags: [],
     },
     metadata: {
-      kind: 'source',
+      kind: "source",
       project_id: params.project_id,
     },
     created_at: now,
@@ -163,7 +169,8 @@ export function buildSdkIngestLocalPackage(
   if (params.user_id) {
     dataProduct.owner = { user_id: params.user_id };
   }
-  files[`workflows/${workflowId}/data-products/${dataProductId}.json`] = dataProduct;
+  files[`workflows/${workflowId}/data-products/${dataProductId}.json`] =
+    dataProduct;
 
   return {
     workflow_id: workflowId,
@@ -189,6 +196,7 @@ export function buildSdkIngestBundle(params: {
   workflow_id?: string;
   connection_id?: string;
   data_product_id?: string;
+  transport_mode?: EventWriterTransportMode;
 }): {
   workflow_id: string;
   connection_id: string;
@@ -196,14 +204,19 @@ export function buildSdkIngestBundle(params: {
   data_product_name: string;
   files: Record<string, Record<string, unknown>>;
 } {
-  const local = buildSdkIngestLocalPackage({ ...params, include_connector_file: false });
+  const local = buildSdkIngestLocalPackage({
+    ...params,
+    include_connector_file: false,
+  });
   const wf = local.workflow_id;
   const files: Record<string, Record<string, unknown>> = {
-    'workflow.json': local.files[`workflows/${wf}/workflow.json`],
+    "workflow.json": local.files[`workflows/${wf}/workflow.json`],
     [`connections/${local.connection_id}.json`]:
       local.files[`workflows/${wf}/connections/${local.connection_id}.json`],
     [`data-products/${local.data_product_id}.json`]:
-      local.files[`workflows/${wf}/data-products/${local.data_product_id}.json`],
+      local.files[
+        `workflows/${wf}/data-products/${local.data_product_id}.json`
+      ],
   };
   return {
     workflow_id: local.workflow_id,
@@ -219,19 +232,26 @@ export type SdkIngestBundleResult = ReturnType<typeof buildSdkIngestBundle>;
 
 /** Validate every entity in a local package map; returns field-level errors. */
 export function validateSdkIngestPackageFiles(
-  files: Record<string, Record<string, unknown>>
+  files: Record<string, Record<string, unknown>>,
 ): Array<{ path: string; entity_type: string; message: string }> {
-  const errors: Array<{ path: string; entity_type: string; message: string }> = [];
+  const errors: Array<{ path: string; entity_type: string; message: string }> =
+    [];
 
   for (const [path, entity] of Object.entries(files)) {
     let entityType: (typeof EntityType)[keyof typeof EntityType] | null = null;
-    if (path.startsWith('connectors/') && path.endsWith('.json')) {
+    if (path.startsWith("connectors/") && path.endsWith(".json")) {
       entityType = EntityType.CONNECTOR;
-    } else if (path.endsWith('/workflow.json') || path === 'workflow.json') {
+    } else if (path.endsWith("/workflow.json") || path === "workflow.json") {
       entityType = EntityType.WORKFLOW;
-    } else if (path.includes('/connections/') || path.startsWith('connections/')) {
+    } else if (
+      path.includes("/connections/") ||
+      path.startsWith("connections/")
+    ) {
       entityType = EntityType.CONNECTION;
-    } else if (path.includes('/data-products/') || path.startsWith('data-products/')) {
+    } else if (
+      path.includes("/data-products/") ||
+      path.startsWith("data-products/")
+    ) {
       entityType = EntityType.DATA_PRODUCT;
     }
 

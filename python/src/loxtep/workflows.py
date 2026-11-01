@@ -17,6 +17,7 @@ from typing import Any, Literal, Optional
 from urllib.parse import quote
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
+from .rstreams.writer import EventWriterTransportMode
 
 WORKFLOWS_BASE = "/workflows/workflows"
 PROJECTS_BASE = "/workflows/projects"
@@ -213,7 +214,12 @@ class WorkflowsApi:
         return self._call_build("run_query_trigger", args)
 
     def get_writer(
-        self, workflow_id: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+        self,
+        workflow_id: str,
+        *,
+        bot_id: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        transport_mode: EventWriterTransportMode = "default",
     ) -> Any:
         """Low-level stream-writer escape hatch. Internal — prefer
         ``data_products.get_writer``.
@@ -225,7 +231,12 @@ class WorkflowsApi:
         if cfg is not None and getattr(cfg, "is_writable", False) and queue_name:
             from .rstreams import LoxtepStreamWriter
 
-            return LoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
+            return LoxtepStreamWriter(
+                cfg,
+                bot_id or f"sdk-writer-{workflow_id}",
+                queue_name,
+                transport_mode=transport_mode,
+            )
         return WorkflowWriter(workflow_id=workflow_id, http=self._http)
 
 
@@ -399,7 +410,12 @@ class AsyncWorkflowsApi:
         return await self._call_build("run_query_trigger", args)
 
     def get_writer(
-        self, workflow_id: str, *, bot_id: Optional[str] = None, queue_name: Optional[str] = None
+        self,
+        workflow_id: str,
+        *,
+        bot_id: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        transport_mode: EventWriterTransportMode = "default",
     ) -> Any:
         """Low-level stream-writer escape hatch. Internal — prefer
         ``data_products.get_writer``. Uses the Kinesis bus when configured."""
@@ -407,7 +423,12 @@ class AsyncWorkflowsApi:
         if cfg is not None and getattr(cfg, "is_writable", False) and queue_name:
             from .rstreams import AsyncLoxtepStreamWriter
 
-            return AsyncLoxtepStreamWriter(cfg, bot_id or f"sdk-writer-{workflow_id}", queue_name)
+            return AsyncLoxtepStreamWriter(
+                cfg,
+                bot_id or f"sdk-writer-{workflow_id}",
+                queue_name,
+                transport_mode=transport_mode,
+            )
         return AsyncWorkflowWriter(workflow_id=workflow_id, http=self._http)
 
 

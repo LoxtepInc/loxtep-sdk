@@ -4,16 +4,20 @@
  * Default: local files only (no save_workflow_bundle / deploy). Use --deploy to push+deploy.
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import type { Connector } from '../../client/connectors-types.js';
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import type { Connector } from "../../client/connectors-types.js";
 import {
   buildSdkIngestLocalPackage,
   validateSdkIngestPackageFiles,
-} from '../../lib/sdk-ingest-bundle.js';
-import { findProjectDir } from '../project-context.js';
-import { requireCliClient } from '../create-cli-client.js';
-import { formatLintResult, runLintCheck } from './lint-cmd.js';
+} from "../../lib/sdk-ingest-bundle.js";
+import { findProjectDir } from "../project-context.js";
+import { requireCliClient } from "../create-cli-client.js";
+import { formatLintResult, runLintCheck } from "./lint-cmd.js";
+import {
+  parseEventWriterTransportMode,
+  type EventWriterTransportMode,
+} from "../../client/flow-types.js";
 
 export interface IngestCmdOptions {
   configFilePath?: string;
@@ -25,7 +29,7 @@ export interface IngestCmdOptions {
 
 function writePackageFiles(
   projectDir: string,
-  files: Record<string, Record<string, unknown>>
+  files: Record<string, Record<string, unknown>>,
 ): string[] {
   const written: string[] = [];
   for (const [relPath, entity] of Object.entries(files)) {
@@ -52,25 +56,37 @@ export async function runIngestCreate(
     no_deploy?: boolean;
     /** Enable Iceberg storage flag on the source data product. */
     iceberg?: boolean;
+    transport_mode?: string;
   },
-  options: IngestCmdOptions = {}
+  options: IngestCmdOptions = {},
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   const projectDir = findProjectDir(cwd) ?? cwd;
 
   const { client, config } = await requireCliClient(options);
-  const dataProductName = params.name ?? 'app-events';
+  const dataProductName = params.name ?? "app-events";
+  let transportMode: EventWriterTransportMode;
+  try {
+    transportMode = parseEventWriterTransportMode(params.transport_mode);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+    return;
+  }
   const projectId = params.project_id ?? config.project_id;
-  const instanceId = (params.instance_id && params.instance_id.trim()) || config.instance_id;
+  const instanceId =
+    (params.instance_id && params.instance_id.trim()) || config.instance_id;
 
   if (!projectId) {
-    console.error('Missing project_id. Run `loxtep init` and attach a project first.');
+    console.error(
+      "Missing project_id. Run `loxtep init` and attach a project first.",
+    );
     process.exitCode = 1;
     return;
   }
   if (!instanceId) {
     console.error(
-      'Missing instance_id. Run `loxtep attach --instance <id>` or pass --instance-id.'
+      "Missing instance_id. Run `loxtep attach --instance <id>` or pass --instance-id.",
     );
     process.exitCode = 1;
     return;
@@ -79,7 +95,7 @@ export async function runIngestCreate(
   const user = await client.session.get_current_user();
   const organizationId = user.organization_id ?? client.organization_id;
   if (!organizationId) {
-    console.error('Missing organization_id in session.');
+    console.error("Missing organization_id in session.");
     process.exitCode = 1;
     return;
   }
@@ -90,7 +106,7 @@ export async function runIngestCreate(
     const items = domains.items ?? [];
     if (items.length === 0) {
       console.error(
-        'No domains found. Create one in the Web UI (Governance → Domains) or pass --domain-id.'
+        "No domains found. Create one in the Web UI (Governance → Domains) or pass --domain-id.",
       );
       process.exitCode = 1;
       return;
@@ -107,21 +123,23 @@ export async function runIngestCreate(
     connector = await client.connect.connectors.get(params.connector_id);
     connectorReused = true;
   } else {
-    console.error('Looking up existing SDK connectors…');
+    console.error("Looking up existing SDK connectors…");
     const listed = await client.connect.connectors.list({
-      connector_type: 'sdk',
+      connector_type: "sdk",
       page_size: 50,
     });
-    const existing = (listed.items ?? []).find(c => c.connector_type === 'sdk');
+    const existing = (listed.items ?? []).find(
+      (c) => c.connector_type === "sdk",
+    );
     if (existing) {
       connector = existing;
       connectorReused = true;
       console.error(`Reusing SDK connector: ${connector.connector_id}`);
     } else {
-      console.error('Creating SDK connector…');
+      console.error("Creating SDK connector…");
       const connectorMetadata: Record<string, unknown> = {
         name: `${dataProductName} SDK`,
-        created_by: 'loxtep-ingest-create',
+        created_by: "loxtep-ingest-create",
         project_id: projectId,
         instance_id: instanceId,
       };
@@ -129,13 +147,17 @@ export async function runIngestCreate(
         connectorMetadata.region = config.region;
       }
       connector = await client.connect.connectors.create({
-        connector_type: 'sdk',
+        connector_type: "sdk",
         metadata: connectorMetadata,
       });
     }
   }
 
-  const localConnectorPath = join(projectDir, 'connectors', `${connector.connector_id}.json`);
+  const localConnectorPath = join(
+    projectDir,
+    "connectors",
+    `${connector.connector_id}.json`,
+  );
   const includeConnectorFile = !existsSync(localConnectorPath);
 
   const pkg = buildSdkIngestLocalPackage({
@@ -149,11 +171,12 @@ export async function runIngestCreate(
     connector,
     include_connector_file: includeConnectorFile,
     iceberg_enabled: params.iceberg === true,
+    transport_mode: transportMode,
   });
 
   const schemaErrors = validateSdkIngestPackageFiles(pkg.files);
   if (schemaErrors.length > 0) {
-    console.error('Generated package failed schema validation:');
+    console.error("Generated package failed schema validation:");
     for (const err of schemaErrors) {
       console.error(`  ${err.path}: ${err.message}`);
     }
@@ -172,14 +195,15 @@ export async function runIngestCreate(
           data_product_id: pkg.data_product_id,
           data_product_name: pkg.data_product_name,
           iceberg_enabled: params.iceberg === true,
+          transport_mode: transportMode,
           files: Object.keys(pkg.files),
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     console.error(
-      'Dry run OK — no files written. Re-run without --dry-run to write the local package.'
+      "Dry run OK — no files written. Re-run without --dry-run to write the local package.",
     );
     return;
   }
@@ -207,29 +231,33 @@ export async function runIngestCreate(
 
   if (shouldDeploy) {
     const flatFiles: Record<string, Record<string, unknown>> = {
-      'workflow.json': pkg.files[`workflows/${pkg.workflow_id}/workflow.json`],
+      "workflow.json": pkg.files[`workflows/${pkg.workflow_id}/workflow.json`],
       [`connections/${pkg.connection_id}.json`]:
-        pkg.files[`workflows/${pkg.workflow_id}/connections/${pkg.connection_id}.json`],
+        pkg.files[
+          `workflows/${pkg.workflow_id}/connections/${pkg.connection_id}.json`
+        ],
       [`data-products/${pkg.data_product_id}.json`]:
-        pkg.files[`workflows/${pkg.workflow_id}/data-products/${pkg.data_product_id}.json`],
+        pkg.files[
+          `workflows/${pkg.workflow_id}/data-products/${pkg.data_product_id}.json`
+        ],
     };
 
-    console.error('Saving workflow bundle…');
+    console.error("Saving workflow bundle…");
     saveResult = await client.build.workflows.save_workflow_bundle(projectId, {
       files: flatFiles,
       dry_run: false,
     });
 
-    console.error('Reindexing project workspace…');
+    console.error("Reindexing project workspace…");
     try {
       reindexResult = await client.workspace.projects.reindex(projectId);
     } catch (err) {
       console.error(
-        `Warning: reindex failed (${err instanceof Error ? err.message : String(err)}).`
+        `Warning: reindex failed (${err instanceof Error ? err.message : String(err)}).`,
       );
     }
 
-    console.error('Deploying project to instance…');
+    console.error("Deploying project to instance…");
     deployResult = await client.build.workflows.deploy({
       project_id: projectId,
       instance_id: instanceId,
@@ -245,14 +273,15 @@ export async function runIngestCreate(
         data_product_id: pkg.data_product_id,
         data_product_name: pkg.data_product_name,
         iceberg_enabled: params.iceberg === true,
+        transport_mode: transportMode,
         files: written,
         save: saveResult,
         reindex: reindexResult,
         deploy: deployResult,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 
   if (!shouldDeploy) {

@@ -31,7 +31,10 @@ class FakeKinesis:
         self.calls.append({"Records": list(Records), "StreamName": StreamName})
         if self._fail_times > 0:
             self._fail_times -= 1
-            return {"FailedRecordCount": len(Records), "Records": [{"ErrorCode": "X"} for _ in Records]}
+            return {
+                "FailedRecordCount": len(Records),
+                "Records": [{"ErrorCode": "X"} for _ in Records],
+            }
         return {"FailedRecordCount": 0, "Records": [{"SequenceNumber": "1"} for _ in Records]}
 
 
@@ -47,9 +50,16 @@ def _decode_records(call) -> list[dict]:
 
 # --- config ---
 
+
 def test_resolve_stream_config_from_partial_pascalcase():
     cfg = resolve_stream_config(
-        {"Region": "us-east-1", "LeoKinesisStream": "MyBus-Kinesis", "LeoStream": "S", "LeoEvent": "E", "LeoCron": "C"}
+        {
+            "Region": "us-east-1",
+            "LeoKinesisStream": "MyBus-Kinesis",
+            "LeoStream": "S",
+            "LeoEvent": "E",
+            "LeoCron": "C",
+        }
     )
     assert cfg.region == "us-east-1"
     assert cfg.kinesis_stream == "MyBus-Kinesis"
@@ -68,10 +78,14 @@ def test_resolve_stream_config_snake_case_and_env(monkeypatch):
 
 def test_not_writable_without_kinesis():
     assert resolve_stream_config({"Region": "us-east-1"}).is_writable is False
-    assert resolve_stream_config(None).is_writable in (False, True)  # depends on env, must not raise
+    assert resolve_stream_config(None).is_writable in (
+        False,
+        True,
+    )  # depends on env, must not raise
 
 
 # --- envelope ---
+
 
 def test_build_envelope_shape():
     env = build_envelope({"x": 1}, bot_id="bot", queue="q", event_source_timestamp=123)
@@ -84,10 +98,11 @@ def test_build_envelope_shape():
 
 # --- writer ---
 
+
 def test_writer_gzips_ndjson_and_puts_on_close():
     cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-Kinesis")
     fake = FakeKinesis()
-    w = LoxtepStreamWriter(cfg, "bot", "orders", kinesis_client=fake)
+    w = LoxtepStreamWriter(cfg, "bot", "orders", transport_mode="fast", kinesis_client=fake)
     w.write({"id": 1})
     w.write({"id": 2})
     assert fake.calls == []  # buffered, not yet flushed
@@ -103,7 +118,9 @@ def test_writer_gzips_ndjson_and_puts_on_close():
 def test_writer_flushes_on_batch_size():
     cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-Kinesis")
     fake = FakeKinesis()
-    w = LoxtepStreamWriter(cfg, "bot", "q", max_batch_records=2, kinesis_client=fake)
+    w = LoxtepStreamWriter(
+        cfg, "bot", "q", max_batch_records=2, transport_mode="fast", kinesis_client=fake
+    )
     w.write({"n": 1})
     w.write({"n": 2})  # hits max_batch_records → flush
     assert len(fake.calls) == 1
@@ -112,10 +129,63 @@ def test_writer_flushes_on_batch_size():
     assert len(fake.calls) == 2
 
 
+def test_writer_defaults_to_durable_object_backed_mode():
+    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-Kinesis", s3_bucket="bus-bucket")
+    kinesis = FakeKinesis()
+
+    class FakeS3:
+        def __init__(self):
+            self.puts = []
+
+        def put_object(self, *, Bucket, Key, Body):
+            self.puts.append({"Bucket": Bucket, "Key": Key, "Body": Body})
+
+    s3 = FakeS3()
+    writer = LoxtepStreamWriter(cfg, "bot", "orders", kinesis_client=kinesis, s3_client=s3)
+    writer.write({"id": 1})
+    writer.close()
+
+    assert len(s3.puts) == 1
+    pointer = _decode_records(kinesis.calls[0])[0]
+    assert pointer["s3"] == {"bucket": "bus-bucket", "key": s3.puts[0]["Key"]}
+    assert pointer["records"] == 1
+
+
+def test_writer_volume_mode_uses_delivery_stream():
+    cfg = StreamConfig(
+        region="us-east-1", kinesis_stream="Bus-Kinesis", firehose_stream="Bus-Volume"
+    )
+
+    class FakeFirehose:
+        def __init__(self):
+            self.calls = []
+
+        def put_record_batch(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"FailedPutCount": 0, "RequestResponses": [{}]}
+
+    firehose = FakeFirehose()
+    writer = LoxtepStreamWriter(
+        cfg, "bot", "orders", transport_mode="volume", firehose_client=firehose
+    )
+    writer.write({"id": 1})
+    writer.close()
+
+    assert firehose.calls[0]["DeliveryStreamName"] == "Bus-Volume"
+    payload = json.loads(gzip.decompress(firehose.calls[0]["Records"][0]["Data"]).decode().strip())
+    assert payload["payload"] == {"id": 1}
+
+
+def test_writer_rejects_unknown_transport_mode():
+    cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-Kinesis")
+    with pytest.raises(ValueError, match="may cost more"):
+        LoxtepStreamWriter(cfg, "bot", "q", transport_mode="other")  # type: ignore[arg-type]
+
+
 def test_writer_retries_failed_records():
     cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-Kinesis")
     fake = FakeKinesis(fail_times=2)
-    w = LoxtepStreamWriter(cfg, "bot", "q", kinesis_client=fake)
+    w = LoxtepStreamWriter(cfg, "bot", "q", transport_mode="fast", kinesis_client=fake)
     w.write({"n": 1})
     w.close()
     assert len(fake.calls) == 3  # 2 failures + 1 success
@@ -127,10 +197,13 @@ def test_writer_requires_writable_config():
     from loxtep.rstreams.writer import StreamBusUnavailableError
 
     with pytest.raises(StreamBusUnavailableError):
-        LoxtepStreamWriter(StreamConfig(region="us-east-1"), "bot", "q", kinesis_client=FakeKinesis())
+        LoxtepStreamWriter(
+            StreamConfig(region="us-east-1"), "bot", "q", kinesis_client=FakeKinesis()
+        )
 
 
 # --- reader ---
+
 
 def _gz(events: list[dict]) -> bytes:
     return gzip.compress(("".join(json.dumps(e) + "\n" for e in events)).encode("utf-8"))
@@ -181,16 +254,24 @@ def test_reader_inline_gzip_reconstructs_eids_and_maps():
         "event": "orders-q",
         "start": "z/2026/07/13/18/22/1752430000000-0000000",
         "end": "z/2026/07/13/18/22/1752430000000-0000001",
-        "gzip": _gz([
+        "gzip": _gz(
+            [
             {"event": "orders-q", "payload": {"n": 1}, "correlation_id": "c1"},
             {"event": "orders-q", "payload": {"n": 2}},
-        ]),
+            ]
+        ),
     }
-    ddb = FakeDDB({
-        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "z/9"}}),
+    ddb = FakeDDB(
+        {
+            "Bus-LeoEvent": FakeTable(
+                "Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "z/9"}}
+            ),
         "Bus-LeoCron": FakeTable("Bus-LeoCron", get_item_result={}),
-        "Bus-LeoStream": FakeTable("Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]),
-    })
+            "Bus-LeoStream": FakeTable(
+                "Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]
+            ),
+        }
+    )
     reader = LoxtepStreamReader(cfg, "bot", "orders-q", start="z/2026/07/13", dynamodb_resource=ddb)
     events = list(reader)
     assert [e["payload"] for e in events] == [{"n": 1}, {"n": 2}]
@@ -205,11 +286,19 @@ def test_reader_inline_gzip_reconstructs_eids_and_maps():
 
 def test_reader_reads_s3_backed_item():
     cfg = _readable_cfg()
-    item = {"event": "q", "start": "p-0000005", "end": "p-0000005", "s3": {"bucket": "bus-s3", "key": "bus/q/x.gz"}}
+    item = {
+        "event": "q",
+        "start": "p-0000005",
+        "end": "p-0000005",
+        "s3": {"bucket": "bus-s3", "key": "bus/q/x.gz"},
+    }
 
     class Body:
-        def __init__(self, b): self._b = b
-        def read(self): return self._b
+        def __init__(self, b):
+            self._b = b
+
+        def read(self):
+            return self._b
 
     class FakeS3:
         def __init__(self, blob):
@@ -221,11 +310,17 @@ def test_reader_reads_s3_backed_item():
             return {"Body": Body(self._blob)}
 
     s3 = FakeS3(_gz([{"event": "q", "payload": {"z": 9}}]))
-    ddb = FakeDDB({
-        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+    ddb = FakeDDB(
+        {
+            "Bus-LeoEvent": FakeTable(
+                "Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}
+            ),
         "Bus-LeoCron": FakeTable("Bus-LeoCron", get_item_result={}),
-        "Bus-LeoStream": FakeTable("Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]),
-    })
+            "Bus-LeoStream": FakeTable(
+                "Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]
+            ),
+        }
+    )
     reader = LoxtepStreamReader(cfg, "bot", "q", start="a", dynamodb_resource=ddb, s3_client=s3)
     events = list(reader)
     assert events[0]["payload"] == {"z": 9}
@@ -235,13 +330,19 @@ def test_reader_reads_s3_backed_item():
 
 def test_reader_uses_checkpoint_from_cron_when_no_start():
     cfg = _readable_cfg()
-    cron = {"Item": {"checkpoints": {"read": {"queue:orders-q": {"checkpoint": "z/checkpoint-eid"}}}}}
+    cron = {
+        "Item": {"checkpoints": {"read": {"queue:orders-q": {"checkpoint": "z/checkpoint-eid"}}}}
+    }
     stream_tbl = FakeTable("Bus-LeoStream", query_pages=[{"Items": []}])
-    ddb = FakeDDB({
-        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+    ddb = FakeDDB(
+        {
+            "Bus-LeoEvent": FakeTable(
+                "Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}
+            ),
         "Bus-LeoCron": FakeTable("Bus-LeoCron", get_item_result=cron),
         "Bus-LeoStream": stream_tbl,
-    })
+        }
+    )
     list(LoxtepStreamReader(cfg, "bot", "orders-q", dynamodb_resource=ddb))
     assert stream_tbl.queries[0]["ExpressionAttributeValues"][":start"] == "z/checkpoint-eid "
 
@@ -252,10 +353,16 @@ def test_reader_requires_readable_config():
     from loxtep.rstreams.writer import StreamBusUnavailableError
 
     with pytest.raises(StreamBusUnavailableError):
-        LoxtepStreamReader(StreamConfig(region="us-east-1", kinesis_stream="k"), "b", "q", dynamodb_resource=FakeDDB({}))
+        LoxtepStreamReader(
+            StreamConfig(region="us-east-1", kinesis_stream="k"),
+            "b",
+            "q",
+            dynamodb_resource=FakeDDB({}),
+        )
 
 
 # --- client wiring: bus when configured, HTTP otherwise ---
+
 
 def test_get_writer_requires_stream_config():
     import pytest
@@ -277,10 +384,11 @@ def test_get_writer_uses_bus_when_stream_config_present():
     from unittest.mock import patch
 
     fake = FakeKinesis()
-    with patch.object(client._data_products, "_resolve_id", return_value="dp_1"), patch.object(
-        LoxtepStreamWriter, "_make_client", return_value=fake
+    with (
+        patch.object(client._data_products, "_resolve_id", return_value="dp_1"),
+        patch.object(LoxtepStreamWriter, "_make_client", return_value=fake),
     ):
-        writer = client.get_writer("orders", queue_name="orders-q")
+        writer = client.get_writer("orders", queue_name="orders-q", transport_mode="fast")
     assert isinstance(writer, LoxtepStreamWriter)
     writer.write({"hello": "world"})
     writer.close()
@@ -289,6 +397,7 @@ def test_get_writer_uses_bus_when_stream_config_present():
 
 
 # --- checkpoint persistence ---
+
 
 def test_reader_auto_checkpoint_persists_to_cron():
     cfg = _readable_cfg()
@@ -299,13 +408,24 @@ def test_reader_auto_checkpoint_persists_to_cron():
         "gzip": _gz([{"event": "orders-q", "payload": {"n": 1}}]),
     }
     cron = FakeTable("Bus-LeoCron", get_item_result={})
-    ddb = FakeDDB({
-        "Bus-LeoEvent": FakeTable("Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
+    ddb = FakeDDB(
+        {
+            "Bus-LeoEvent": FakeTable(
+                "Bus-LeoEvent", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}
+            ),
         "Bus-LeoCron": cron,
-        "Bus-LeoStream": FakeTable("Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]),
-    })
+            "Bus-LeoStream": FakeTable(
+                "Bus-LeoStream", query_pages=[{"Items": [item]}, {"Items": []}]
+            ),
+        }
+    )
     reader = LoxtepStreamReader(
-        cfg, "sdk-reader-orders_reader", "orders-q", start="a", auto_checkpoint=True, dynamodb_resource=ddb
+        cfg,
+        "sdk-reader-orders_reader",
+        "orders-q",
+        start="a",
+        auto_checkpoint=True,
+        dynamodb_resource=ddb,
     )
     list(reader)
     assert cron.updates, "expected a checkpoint write to LeoCron"
@@ -318,8 +438,13 @@ def test_reader_auto_checkpoint_persists_to_cron():
 
 def test_manual_checkpoint():
     cfg = _readable_cfg()
-    cron = FakeTable("Bus-LeoCron", get_item_result={"Item": {"checkpoints": {"read": {"queue:other": {"checkpoint": "x"}}}}})
-    ddb = FakeDDB({"Bus-LeoCron": cron, "Bus-LeoEvent": FakeTable("e"), "Bus-LeoStream": FakeTable("s")})
+    cron = FakeTable(
+        "Bus-LeoCron",
+        get_item_result={"Item": {"checkpoints": {"read": {"queue:other": {"checkpoint": "x"}}}}},
+    )
+    ddb = FakeDDB(
+        {"Bus-LeoCron": cron, "Bus-LeoEvent": FakeTable("e"), "Bus-LeoStream": FakeTable("s")}
+    )
     reader = LoxtepStreamReader(cfg, "bot", "orders-q", dynamodb_resource=ddb)
     reader.checkpoint("z/my-eid")
     cp = cron.updates[-1]["ExpressionAttributeValues"][":cp"]
@@ -329,9 +454,10 @@ def test_manual_checkpoint():
 
 # --- oversized event: S3 offload ---
 
+
 def test_writer_rejects_oversized_single_event_without_s3():
     cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K")  # no s3_bucket
-    w = LoxtepStreamWriter(cfg, "bot", "q", kinesis_client=FakeKinesis())
+    w = LoxtepStreamWriter(cfg, "bot", "q", transport_mode="fast", kinesis_client=FakeKinesis())
     with pytest.raises(StreamBusUnavailableError):
         w.write({"blob": "x" * (700 * 1024)})
 
@@ -341,8 +467,11 @@ def test_writer_offloads_oversized_event_to_s3_and_emits_pointer():
     kinesis = FakeKinesis()
 
     class FakeS3:
-        def __init__(self): self.puts = []
-        def put_object(self, *, Bucket, Key, Body): self.puts.append({"Bucket": Bucket, "Key": Key, "Body": Body})
+        def __init__(self):
+            self.puts = []
+
+        def put_object(self, *, Bucket, Key, Body):
+            self.puts.append({"Bucket": Bucket, "Key": Key, "Body": Body})
 
     s3 = FakeS3()
     w = LoxtepStreamWriter(cfg, "bot", "orders-q", kinesis_client=kinesis, s3_client=s3)
@@ -368,12 +497,13 @@ def test_writer_offloads_oversized_event_to_s3_and_emits_pointer():
 
 # --- async facades ---
 
+
 def test_async_writer_produces_via_thread():
     cfg = StreamConfig(region="us-east-1", kinesis_stream="Bus-K")
     fake = FakeKinesis()
 
     async def run():
-        w = AsyncLoxtepStreamWriter(cfg, "bot", "q", kinesis_client=fake)
+        w = AsyncLoxtepStreamWriter(cfg, "bot", "q", transport_mode="fast", kinesis_client=fake)
         await w.write({"a": 1})
         await w.close()
 
@@ -384,12 +514,19 @@ def test_async_writer_produces_via_thread():
 
 def test_async_reader_iterates_via_thread():
     cfg = _readable_cfg()
-    item = {"event": "q", "start": "p-0000000", "end": "p-0000000", "gzip": _gz([{"event": "q", "payload": {"v": 7}}])}
-    ddb = FakeDDB({
+    item = {
+        "event": "q",
+        "start": "p-0000000",
+        "end": "p-0000000",
+        "gzip": _gz([{"event": "q", "payload": {"v": 7}}]),
+    }
+    ddb = FakeDDB(
+        {
         "Bus-LeoEvent": FakeTable("e", get_item_result={"Item": {"v": 2, "max_eid": "zzz"}}),
         "Bus-LeoCron": FakeTable("c", get_item_result={}),
         "Bus-LeoStream": FakeTable("s", query_pages=[{"Items": [item]}, {"Items": []}]),
-    })
+        }
+    )
 
     async def run():
         out = []

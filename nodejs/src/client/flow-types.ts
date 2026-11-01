@@ -3,7 +3,7 @@
  * Backend: workflows microservice /workflows/workflows, /workflows/workflows/:id/nodes.
  */
 
-import type { WriteOptions } from './queue-types.js';
+import type { WriteOptions } from "./queue-types.js";
 
 /** Pagination metadata from list APIs. */
 export interface FlowPaginationMeta {
@@ -24,7 +24,7 @@ export interface Flow {
   template_id?: string;
   configuration: Record<string, unknown>;
   deployment: Record<string, unknown>;
-  status: 'active' | 'paused' | 'error' | 'inactive';
+  status: "active" | "paused" | "error" | "inactive";
   metrics: Record<string, unknown>;
   node_count?: number;
   created_at: string;
@@ -43,7 +43,7 @@ export interface FlowNode {
   node_id: string;
   workflow_id: string;
   name: string;
-  type: 'ingestion' | 'transformation' | 'export';
+  type: "ingestion" | "transformation" | "export";
   node_subtype?: string;
   webhook_id?: string;
   configuration?: Record<string, unknown>;
@@ -56,7 +56,7 @@ export interface FlowNode {
 /** Filters for flows.list(). project_id defaults to the client's project_id. */
 export interface FlowsListFilters {
   project_id?: string;
-  status?: 'active' | 'paused' | 'error' | 'inactive';
+  status?: "active" | "paused" | "error" | "inactive";
   search?: string;
   page?: number;
   page_size?: number;
@@ -77,7 +77,7 @@ export interface FlowCreateInput {
   name: string;
   description?: string;
   /** Required by backend POST /workflows. */
-  workflow_type: 'ingestion' | 'enrichment' | 'delivery';
+  workflow_type: "ingestion" | "enrichment" | "delivery";
   /** Required by backend POST /workflows (project domain). */
   domain_id: string;
   connection_id?: string;
@@ -85,8 +85,28 @@ export interface FlowCreateInput {
   configuration?: Record<string, unknown>;
 }
 
+/**
+ * Event write transport profile.
+ * - default: durable and balanced (recommended)
+ * - fast: lowest latency, but may cost more
+ * - volume: high throughput, with delivery lag
+ */
+export type EventWriterTransportMode = "default" | "fast" | "volume";
+
+export function parseEventWriterTransportMode(
+  value: unknown,
+): EventWriterTransportMode {
+  const mode = value ?? "default";
+  if (mode === "default" || mode === "fast" || mode === "volume") return mode;
+  throw new Error(
+    "Invalid transport_mode. Expected default (durable, recommended), fast (lowest latency, may cost more), or volume (high throughput, with delivery lag).",
+  );
+}
+
 /** Options for get_writer. Optional definition (schema) validation. */
 export interface GetWriterOptions {
+  /** Event write transport profile. Default: `default` (durable and balanced). */
+  transport_mode?: EventWriterTransportMode;
   /**
    * Bot identity for stream puts (source id). **Required** when `close()` flushes to the bus
    * (configured `streams` / `RStreamsSdk`).
@@ -108,7 +128,7 @@ export interface GetWriterOptions {
   /** Definition version to validate against (e.g. when fetching from API). */
   definition_version?: string;
   /** How to handle validation errors: reject (throw), warn (log), skip (drop event). */
-  on_validation_error?: 'reject' | 'warn' | 'skip';
+  on_validation_error?: "reject" | "warn" | "skip";
   /** Optional JSON Schema (or partial) to validate events. If absent, validation is no-op unless definition is fetched elsewhere. */
   definition?: Record<string, unknown>;
   /** Maximum number of events per batch when flushing to the stream bus. Default: 100. */

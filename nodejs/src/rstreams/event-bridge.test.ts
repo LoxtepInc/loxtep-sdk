@@ -1,36 +1,45 @@
-import { toLeoEnvelope, createQueueWriter } from './event-bridge.js';
-import type { RStreamsSdk } from 'leo-sdk';
+import { toLeoEnvelope, createQueueWriter } from "./event-bridge.js";
+import type { RStreamsSdk } from "leo-sdk";
 
-describe('toLeoEnvelope', () => {
-  it('wraps the business object as payload with no envelope id', () => {
-    const env = toLeoEnvelope({ id: '1780897203018', total_price: '9.99' });
-    expect(env).toEqual({ payload: { id: '1780897203018', total_price: '9.99' } });
-    expect('id' in env).toBe(false); // no top-level envelope id (would be the source bot)
+describe("toLeoEnvelope", () => {
+  it("wraps the business object as payload with no envelope id", () => {
+    const env = toLeoEnvelope({ id: "1780897203018", total_price: "9.99" });
+    expect(env).toEqual({
+      payload: { id: "1780897203018", total_price: "9.99" },
+    });
+    expect("id" in env).toBe(false); // no top-level envelope id (would be the source bot)
     expect(env.event_source_timestamp).toBeUndefined();
   });
 
-  it('sets event_source_timestamp from a numeric (ms epoch) option', () => {
-    expect(toLeoEnvelope({ a: 1 }, { event_source_timestamp: 1780897203018 }).event_source_timestamp).toBe(
-      1780897203018
-    );
+  it("sets event_source_timestamp from a numeric (ms epoch) option", () => {
+    expect(
+      toLeoEnvelope({ a: 1 }, { event_source_timestamp: 1780897203018 })
+        .event_source_timestamp,
+    ).toBe(1780897203018);
   });
 
-  it('parses a date-string event_source_timestamp to ms epoch', () => {
+  it("parses a date-string event_source_timestamp to ms epoch", () => {
     expect(
-      toLeoEnvelope({ a: 1 }, { event_source_timestamp: '2026-06-08 04:00:21' }).event_source_timestamp
-    ).toBe(Date.parse('2026-06-08 04:00:21'));
+      toLeoEnvelope({ a: 1 }, { event_source_timestamp: "2026-06-08 04:00:21" })
+        .event_source_timestamp,
+    ).toBe(Date.parse("2026-06-08 04:00:21"));
   });
 
-  it('ignores an unparseable timestamp rather than emitting NaN', () => {
+  it("ignores an unparseable timestamp rather than emitting NaN", () => {
     expect(
-      toLeoEnvelope({ a: 1 }, { event_source_timestamp: 'not-a-date' }).event_source_timestamp
+      toLeoEnvelope({ a: 1 }, { event_source_timestamp: "not-a-date" })
+        .event_source_timestamp,
     ).toBeUndefined();
   });
 });
 
-describe('createQueueWriter', () => {
+describe("createQueueWriter", () => {
   function fakeRsdk() {
-    const loads: Array<{ botId: string; queueName: string }> = [];
+    const loads: Array<{
+      botId: string;
+      queueName: string;
+      options: Record<string, boolean>;
+    }> = [];
     const written: unknown[] = [];
     let ended = false;
     const stream = {
@@ -44,59 +53,96 @@ describe('createQueueWriter', () => {
       },
     };
     const rsdk = {
-      load: (botId: string, queueName: string) => {
-        loads.push({ botId, queueName });
+      load: (
+        botId: string,
+        queueName: string,
+        options: Record<string, boolean>,
+      ) => {
+        loads.push({ botId, queueName, options });
         return stream;
       },
     } as unknown as RStreamsSdk;
     return { rsdk, loads, written, isEnded: () => ended };
   }
 
-  it('opens one load stream with the writer bot_id and forwards envelopes (no record id leaks as source)', async () => {
+  it("opens one load stream with the writer bot_id and forwards envelopes (no record id leaks as source)", async () => {
     const { rsdk, loads, written, isEnded } = fakeRsdk();
-    const writer = createQueueWriter(rsdk, 'shopify-seed-importer', 'q-orders', () => new Error('closed'));
+    const writer = createQueueWriter(
+      rsdk,
+      "shopify-seed-importer",
+      "q-orders",
+      () => new Error("closed"),
+    );
 
-    writer.write({ id: '1780897203018', name: 'order' }); // numeric record id in the business object
-    writer.write({ id: '1780897203019', name: 'order2' }, { event_source_timestamp: 1780897203018 });
+    writer.write({ id: "1780897203018", name: "order" }); // numeric record id in the business object
+    writer.write(
+      { id: "1780897203019", name: "order2" },
+      { event_source_timestamp: 1780897203018 },
+    );
     await writer.close();
 
-    expect(loads).toEqual([{ botId: 'shopify-seed-importer', queueName: 'q-orders' }]); // one stream
+    expect(loads).toEqual([
+      {
+        botId: "shopify-seed-importer",
+        queueName: "q-orders",
+        options: { useS3: true },
+      },
+    ]); // one stream
     expect(written).toEqual([
-      { payload: { id: '1780897203018', name: 'order' } },
-      { payload: { id: '1780897203019', name: 'order2' }, event_source_timestamp: 1780897203018 },
+      { payload: { id: "1780897203018", name: "order" } },
+      {
+        payload: { id: "1780897203019", name: "order2" },
+        event_source_timestamp: 1780897203018,
+      },
     ]);
     // record id stays inside payload; never a top-level envelope `id`
-    for (const ev of written) expect('id' in (ev as Record<string, unknown>)).toBe(false);
+    for (const ev of written)
+      expect("id" in (ev as Record<string, unknown>)).toBe(false);
     expect(isEnded()).toBe(true);
   });
 
-  it('throws (via closedError) when writing after close', async () => {
+  it("throws (via closedError) when writing after close", async () => {
     const { rsdk } = fakeRsdk();
-    const writer = createQueueWriter(rsdk, 'bot', 'q', () => new Error('writer is closed'));
+    const writer = createQueueWriter(
+      rsdk,
+      "bot",
+      "q",
+      () => new Error("writer is closed"),
+    );
     await writer.close();
-    expect(() => writer.write({ a: 1 })).toThrow('writer is closed');
+    expect(() => writer.write({ a: 1 })).toThrow("writer is closed");
   });
 
-  it('rejects close() when end surfaces a flush error (no unhandled crash)', async () => {
+  it.each([
+    ["default", { useS3: true }],
+    ["fast", { useS3: false }],
+    ["volume", { useS3: false, firehose: true }],
+  ] as const)("maps %s to supported load options", (mode, expected) => {
+    const { rsdk, loads } = fakeRsdk();
+    createQueueWriter(rsdk, "bot", "q", () => new Error("closed"), mode);
+    expect(loads[0]?.options).toEqual(expected);
+  });
+
+  it("rejects close() when end surfaces a flush error (no unhandled crash)", async () => {
     const listeners: Array<(err: Error) => void> = [];
     const stream = {
       write(): boolean {
         return true;
       },
       end(cb: (err?: unknown) => void): void {
-        const err = new Error('ResourceNotFoundException: stream missing');
+        const err = new Error("ResourceNotFoundException: stream missing");
         // Emit 'error' (would be unhandled without our listener) then fail end.
         for (const l of [...listeners]) l(err);
         cb(err);
       },
       on(event: string, listener: (err: Error) => void): void {
-        if (event === 'error') listeners.push(listener);
+        if (event === "error") listeners.push(listener);
       },
       once(event: string, listener: (err: Error) => void): void {
-        if (event === 'error') listeners.push(listener);
+        if (event === "error") listeners.push(listener);
       },
       removeListener(event: string, listener: (err: Error) => void): void {
-        if (event !== 'error') return;
+        if (event !== "error") return;
         const idx = listeners.indexOf(listener);
         if (idx >= 0) listeners.splice(idx, 1);
       },
@@ -105,12 +151,17 @@ describe('createQueueWriter', () => {
       load: () => stream,
     } as unknown as RStreamsSdk;
 
-    const writer = createQueueWriter(rsdk, 'bot', 'q', () => new Error('closed'));
+    const writer = createQueueWriter(
+      rsdk,
+      "bot",
+      "q",
+      () => new Error("closed"),
+    );
     writer.write({ a: 1 });
     await expect(writer.close()).rejects.toThrow(/ResourceNotFoundException/);
   });
 
-  it('throws on write after a prior stream error event', async () => {
+  it("throws on write after a prior stream error event", async () => {
     const listeners: Array<(err: Error) => void> = [];
     const stream = {
       write(): boolean {
@@ -120,15 +171,20 @@ describe('createQueueWriter', () => {
         cb();
       },
       on(event: string, listener: (err: Error) => void): void {
-        if (event === 'error') listeners.push(listener);
+        if (event === "error") listeners.push(listener);
       },
       once(): void {},
       removeListener(): void {},
     };
     const rsdk = { load: () => stream } as unknown as RStreamsSdk;
-    const writer = createQueueWriter(rsdk, 'bot', 'q', () => new Error('closed'));
+    const writer = createQueueWriter(
+      rsdk,
+      "bot",
+      "q",
+      () => new Error("closed"),
+    );
     writer.write({ a: 1 });
-    for (const l of listeners) l(new Error('stream exploded'));
+    for (const l of listeners) l(new Error("stream exploded"));
     expect(() => writer.write({ b: 2 })).toThrow(/stream exploded/);
   });
 });
