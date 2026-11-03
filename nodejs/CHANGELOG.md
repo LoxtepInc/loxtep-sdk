@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-03
+
+### Added
+
+- `loxtep approval add` inserts an approval after a step and moves its children onto the approved path.
+- `loxtep deploy` writes a declared approval node onto the flow. The handler is not uploaded.
+
 ## [0.13.0] - 2026-11-01
 
 ### Added
