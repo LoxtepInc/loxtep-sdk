@@ -209,6 +209,22 @@ pnpm exec loxtep data-products list
 
 See **[Write to a data product](./sdk-first-ingest.md)** for the full flow and code sample.
 
+To pause a flow that is already on the instance, insert an approval after one
+of its nodes. People decide the waiting event in Inbox
+(`loxtep approvals list|approve|reject`).
+
+```bash
+pnpm exec loxtep approval add \
+  --workflow <workflow-id> \
+  --after <entity-id> \
+  --name "Order review" \
+  --channel inbox \
+  --timeout-hours 24
+```
+
+`requireApproval` on a `defineDataWorkflow` module prompts only during
+`loxtep test`. See **[Code-first CLI](./code-first-cli.md)**.
+
 ---
 
 ## Step 7: Explore the platform (optional)

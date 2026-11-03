@@ -205,7 +205,12 @@ Code-first workflow modules:
 ```bash
 pnpm exec loxtep test my-module --event ./events/sample.json
 pnpm exec loxtep deploy
+pnpm exec loxtep approval add --workflow <id> --after <entity-id> --name "Order review" --channel inbox --timeout-hours 24
+pnpm exec loxtep approvals list
 ```
+
+`requireApproval` prompts only during `loxtep test`. `approval add` inserts the
+deployed step. `approvals list|approve|reject` decides the Inbox request.
 
 Other commands:
 

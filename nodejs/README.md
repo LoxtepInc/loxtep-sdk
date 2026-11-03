@@ -375,8 +375,10 @@ await client.build.targets.delete('dp_abc123', webhook.consumption_id);
 | `lint [--workflow]`                                  | Validate local entity JSON (schemas + relationships)               |
 | `deploy [--dry-run]`                                 | Lint preflight, then compile/deploy (or lint-only with `--dry-run`)|
 | `generate`                                           | Codegen typed workspace constants to `.loxtep/generated/index.ts`  |
-| `test <module> --event <file>`                       | Run a workflow module locally with sample event(s)                  |
-| `deploy`                                             | Compile modules, validate resources, deploy to workflow engine      |
+| `test <module> --event <file>`                       | Run a workflow module locally. `requireApproval` prompts only here  |
+| `deploy`                                             | Deploy workflows. Approval `nodes` are written. The handler is not uploaded. |
+| `approval add --workflow <id> --after <id> --name <n> --channel <c> --timeout-hours <n>` | Insert an approval after a node; children move to approved |
+| `approvals list` \| `approvals approve <id>` \| `approvals reject <id>` | Decide an Inbox request. Does not create the node          |
 | `config list`                                        | Show api_url, organization_id, project_id, instance_id             |
 | `projects list` \| `projects get <id>` \| `projects link` \| `projects clone [dir]` \| `projects pull` \| `projects push` | List/get/link/clone; GH sync when bound; unbound Local→Cloud remains `loxtep push` |
 | `config paths`                                       | Show resolved URLs for auth and SDK path matrix                    |

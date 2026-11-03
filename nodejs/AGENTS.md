@@ -41,8 +41,8 @@ everything you need to build on Loxtep is here.
 5. Author **data workflows as code** that reference real resources by name with
    compile-time safety.
 6. `loxtep test` — run a workflow module locally and print its action trace.
-7. `loxtep deploy` — compile modules into Loxtep's flow/workflow graph and deploy
-   to the attached Instance.
+7. `loxtep deploy` — create or update the workflow on the attached Instance.
+   Approval `nodes` are written onto the flow. The handler is not uploaded.
 
 The generated artifact is the contract: your agent builds against **ground truth**
 (typed constants for the resources that actually exist) instead of guessing.
@@ -81,10 +81,11 @@ internal to the SDK and are not shown in CLI help.
 | `loxtep init [--template <slug>]`                                | Scaffold a workspace; with `--template`, materialize the full template incl. `AGENTS.md` + a default skill. Prints Getting Started + Quick Reference links. | optional            |
 | `loxtep attach [--instance <id>]`                                | Link the workspace to an Instance; writes `instance_id` + `api_url` into `.loxtep/project.json`.                                                            | required            |
 | `loxtep generate`                                                | Compile workspace context → `.loxtep/generated/index.ts`; validate skills; print per-type counts.                                                           | required + attached |
-| `loxtep test <module> --event <file>`                            | Run one data workflow module locally against the attached Instance; print the action trace.                                                                 | required + attached |
-| `loxtep deploy`                                                  | Compile modules into the flow/workflow graph; deploy to the attached Instance.                                                                              | required + attached |
+| `loxtep test <module> --event <file>`                            | Run one data workflow module locally against the attached Instance; print the action trace. `requireApproval` prompts only here.                            | required + attached |
+| `loxtep deploy`                                                  | Create or update workflows on the attached Instance. Approval `nodes` are written onto the flow. The handler is not uploaded.                                | required + attached |
+| `loxtep approval add --workflow <id> --after <id> --name <n> --channel <c> --timeout-hours <n>` | Insert an approval after a graph node and move its children onto the approved path. | required            |
 | `loxtep deployments list \| get <id>`                            | Poll async deploy status (`client.observe.list_deployments` / `get_deployment`).                                                                            | required            |
-| `loxtep approvals list \| approve <id> \| reject <id>`           | HITL approval inbox (`client.review.approvals`).                                                                                                            | required            |
+| `loxtep approvals list \| approve <id> \| reject <id>`           | Decide an Inbox approval request (`client.review.approvals`). This does not create the graph node.                                                           | required            |
 | `loxtep cdlc transition <ref> --from <state> --to <state>`       | CDLC lifecycle transition (`client.review.cdlc.transition_lifecycle`).                                                                                      | required            |
 | `loxtep cdlc review-queue [--domain-id <id>]`                    | Steward review queue list (`client.review.cdlc.list_review_queue`).                                                                                         | required            |
 | `loxtep candidates list \| act <id> --action approve\|reject`    | Context-mining candidates (`client.review.mining`).                                                                                                         | required            |
@@ -118,6 +119,7 @@ loxtep workflows create --name <n> --project-id <id> [--template-id <id>]
 loxtep workflows deploy --project-id <id> [--instance-id <id>]
 loxtep workflows preview-query-trigger --workflow-id <uuid> [--query <sql>] [--limit N] [--primary-key a,b]
 loxtep workflows run-query-trigger --workflow-id <uuid> [--sink-data-product-id <uuid>]
+loxtep approval add --workflow <id> --after <entity-id> --name <n> --channel <c> --timeout-hours <n>
 
 loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id> | reset-backfill <connection_id>
 loxtep connectors list [--type sdk]

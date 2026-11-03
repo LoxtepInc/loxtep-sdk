@@ -51,6 +51,11 @@ export type PreviewQueryTriggerInput = {
   limit?: number;
 };
 
+export type PatchWorkflowGraphInput = {
+  operations: Array<Record<string, unknown>>;
+  dry_run?: boolean;
+};
+
 export type RunQueryTriggerInput = {
   workflow_id: string;
   /** Project that owns the workflow. Defaults to the client's project; refused when neither is set. */
@@ -249,6 +254,11 @@ export type WorkflowsApi = {
     workflow_id: string,
     project_id: string,
   ) => Promise<GetWorkflowGraphResponse["data"]>;
+  patch_graph: (
+    workflow_id: string,
+    project_id: string,
+    input: PatchWorkflowGraphInput,
+  ) => Promise<unknown>;
   deploy: (input: DeployInput) => Promise<DeployResponse["data"]>;
   save_workflow_bundle: (
     project_id: string,
@@ -329,6 +339,22 @@ export function createWorkflowsApi(
         `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/graph${qs}`,
       );
       return res.data;
+    },
+
+    async patch_graph(
+      workflow_id: string,
+      project_id: string,
+      input: PatchWorkflowGraphInput,
+    ): Promise<unknown> {
+      const qs = buildQueryString({ project_id });
+      const res = await http.put<{ success?: boolean; data?: unknown }>(
+        `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/graph${qs}`,
+        {
+          operations: input.operations,
+          dry_run: input.dry_run ?? false,
+        },
+      );
+      return res.data ?? res;
     },
 
     async deploy(input: DeployInput): Promise<DeployResponse["data"]> {

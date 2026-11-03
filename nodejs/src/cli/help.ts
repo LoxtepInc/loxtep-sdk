@@ -122,6 +122,8 @@ Governance
   define apply-glossary <data_product_id> [--mapping-revision N]
 
 Review
+  approval add --workflow <id> --after <entity-id> --name <name> --channel <channel> --timeout-hours <n>
+                     Insert an approval node after a graph node and splice its children onto approved
   approvals list [--status …] [--page N] [--page-size N] [--organization-id <id>]
                      List HITL approval requests (default status: pending)
   approvals approve <id> | reject <id> [--response …] [--form-response <json>] [--organization-id <id>]

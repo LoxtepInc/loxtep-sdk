@@ -185,9 +185,63 @@ pnpm exec loxtep deploy
 
 - **`test`** — runs one workflow module **locally with live instance I/O** and
   prints an action trace. Guarded ops (`requireApproval`) prompt; reject/timeout
-  and handler errors exit **nonzero**.
-- **`deploy`** — compiles modules into the platform workflow graph and deploys to
-  the attached instance.
+  and handler errors exit **nonzero**. `requireApproval` is that local prompt.
+  It is not a graph node and it is not consulted after deploy. The handler
+  itself is not executed on the platform.
+- **`deploy`** — creates or updates the workflow on the attached instance.
+  When the module declares `nodes` of `kind: 'approval'`, deploy writes those
+  approval nodes with `PUT /workflows/{id}/graph`. Trigger connections and the
+  handler are not uploaded. `upstream` and `approved` are kept only when both
+  ends are platform UUIDs. Compiler ids such as `handler` and `trigger_0` are
+  omitted.
+
+## Approval nodes
+
+`requireApproval` is the local prompt above. An approval node is a step on the
+deployed flow. Events wait there until someone decides them in Inbox.
+
+Insert one after a node that is already on the flow:
+
+```bash
+pnpm exec loxtep approval add \
+  --workflow <workflow-id> \
+  --after <entity-id> \
+  --name "Order review" \
+  --channel inbox \
+  --timeout-hours 24
+```
+
+`--after` is that node's UUID. Its direct children move onto the approved path.
+A rejected path stays unset until you add that edge. The approval cannot be the
+first node. Timeout is an integer from 1 to 168 hours. Channel is a label such
+as `inbox`.
+
+The same step in a bundle is `approvals/{approval_node_id}.json` (`name`,
+`approval_channel`, `timeout_hours`, `workflow_id`, `upstream_entity_id`). The
+next node sets `upstream_entity_id` to the approval id, `upstream_entity_type`
+to `approvals`, and `upstream_label` to `approved`.
+
+Inbox decisions stay on the plural command:
+`loxtep approvals list|approve|reject`.
+
+A module may declare the node in code:
+
+```typescript
+nodes: [
+  {
+    kind: 'approval',
+    name: 'order-review',
+    approvalChannel: 'inbox',
+    timeoutHours: 24,
+    upstream: 'handler',
+    approved: 'handler',
+  },
+],
+```
+
+`loxtep deploy` writes that approval node. It does not write an edge to
+`handler`, because that id is not a platform node. Use `loxtep approval add` to
+place the approval on an existing flow.
 
 ---
 

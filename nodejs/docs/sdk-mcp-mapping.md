@@ -45,6 +45,15 @@ MCP mapping: `loxtep_review.list_pending` → `client.review.approvals.list_pend
 `loxtep_review.resolve` → `client.review.approvals.resolve(id, 'approve'\|'reject')`
 (CLI: `loxtep approvals list|approve|reject`).
 
+That inbox API decides a request. It does not create the step. Create the step
+with `loxtep approval add --workflow <id> --after <entity-id> --name <name> --channel <channel> --timeout-hours <n>`,
+or with `client.build.workflows.patch_graph(workflow_id, project_id, { operations })`
+(`add_node` `entity_type: "approvals"` and `connect_nodes_labeled` label
+`approved`). A new flow puts `approvals/{approval_node_id}.json` in
+`save_workflow_bundle`. Python keeps `review.approvals` for the inbox decision.
+The same JSON file is the Python authoring path. There is no Python
+`defineDataWorkflow`.
+
 ## Top-level stream I/O
 
 Preferred write/read path — resolves deployment metadata automatically:
