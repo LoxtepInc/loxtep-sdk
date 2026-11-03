@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-11-01
+
 ### Added
 
 - Sync and async event writers accept `transport_mode`: `default` is the
