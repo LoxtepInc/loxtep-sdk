@@ -33,6 +33,7 @@ import { requireCliClient } from '../create-cli-client.js';
 import { loadWorkspaceContext } from '../../codegen/load-workspace-context.js';
 import { normalizeContext } from '../../codegen/normalize.js';
 import { compileModule, computeRemovalSet } from '../../authoring/compiler.js';
+import { approvalGraphPatchFromCompiledOps } from '../../authoring/approval-graph-patch.js';
 import type { CompiledWorkflow, ResourceRef } from '../../authoring/compiler.js';
 import type { DataWorkflowModule } from '../../authoring/types.js';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
@@ -335,6 +336,15 @@ async function deploySingleWorkflow(
         domain_id: domainId,
       });
       workflowId = created.workflow_id;
+    }
+
+    const approvalOps = approvalGraphPatchFromCompiledOps(compiled.ops, {
+      workflowId,
+    });
+    if (approvalOps.length > 0) {
+      await client.build.workflows.patch_graph(workflowId, projectId, {
+        operations: approvalOps as Array<Record<string, unknown>>,
+      });
     }
 
     // Deploy via the workflows microservice deploy endpoint

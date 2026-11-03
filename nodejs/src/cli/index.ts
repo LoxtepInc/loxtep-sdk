@@ -92,6 +92,8 @@ import {
   runApprovalsRejectCommand,
   parseApprovalsListNumericFlags,
 } from "./commands/approvals-cmd.js";
+import { runApprovalAddCommand } from "./commands/approval-add-cmd.js";
+import { requireProject } from "./project-context.js";
 import {
   runCdlcTransitionCommand,
   runCdlcReviewQueueCommand,
@@ -1048,6 +1050,36 @@ export async function runCli(argv: string[]): Promise<void> {
       }
       break;
     }
+      case "approval": {
+        if (sub !== "add") {
+          console.error(
+            "Usage: loxtep approval add --workflow <id> --after <entity-id> --name <name> --channel <channel> --timeout-hours <n> [--project-id <id>]",
+          );
+          process.exitCode = 1;
+          break;
+        }
+        const project = requireProject(process.cwd());
+        const projectId = getArg("--project-id") ?? (project.ok ? project.project.project_id : undefined);
+        if (!projectId && !project.ok) {
+          console.error(project.failure.message);
+          process.exitCode = 1;
+          break;
+        }
+        const authResult = await requireCliClient();
+        const result = await runApprovalAddCommand(authResult.client, {
+          workflowId: getArg("--workflow"),
+          after: getArg("--after"),
+          name: getArg("--name"),
+          channel: getArg("--channel"),
+          timeoutHours: getArg("--timeout-hours"),
+          projectId,
+          organizationId: project.ok ? project.project.organization_id : undefined,
+        });
+        for (const line of result.stdout) console.log(line);
+        for (const line of result.stderr) console.error(line);
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+        break;
+      }
       case "approvals": {
       const authResult = await requireCliClient();
         const orgId = getArg("--organization-id");
