@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- `loxtep deploy` says so when the project is already deploying. Your request joins that deploy, and your latest changes deploy as soon as it finishes. The run id printed is the one already running.
+
 ## [0.13.1] - 2026-11-03
 
 ### Added
