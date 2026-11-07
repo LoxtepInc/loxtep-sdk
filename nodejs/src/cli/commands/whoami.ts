@@ -94,6 +94,26 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
             return null;
           }
 
+          // CI deploy-token sessions are not users: the token is deploy-scoped
+          // and cannot read /users/me. Report the token identity from its claims.
+          const preToken = await cli.auth.get_token();
+          if (preToken) {
+            const claims = decodeJwtClaims(preToken);
+            if (claims.token_type === 'deploy') {
+              const org =
+                (typeof claims.organization_id === 'string' && claims.organization_id) || '—';
+              const project = (typeof claims.project_id === 'string' && claims.project_id) || '—';
+              const owner = (typeof claims.user_id === 'string' && claims.user_id) || '—';
+              const actor = typeof claims.actor === 'string' ? claims.actor : undefined;
+              console.log('Auth:', 'deploy token');
+              console.log('Organization:', org);
+              console.log('Project scope:', project);
+              console.log('Token owner (user_id):', owner);
+              if (actor) console.log('Actor:', actor);
+              return null;
+            }
+          }
+
           const path = '/organizations/users/me';
           if (isDebugEnabled(options)) {
             const url = buildPlatformRequestUrl(cli.auth.api_url, path);

@@ -14,6 +14,8 @@ import { LoxtepHttpClient } from '../http/client.js';
 import { resolveCliApiUrl } from './resolve-api-url.js';
 import { waitForUpdateCheck } from './update-notifier.js';
 import { AuthenticationError, sessionExpiredError } from '../errors/auth.js';
+import { resolveDeployTokenInputs } from './deploy-token-resolve.js';
+import { exchangeDeployToken } from '../auth/deploy-token.js';
 
 export interface CreateCliClientOptions {
   configFilePath?: string;
@@ -25,6 +27,10 @@ export interface CreateCliClientOptions {
   fetch_fn?: typeof fetch;
   /** After refresh, apply STS (or other) side effects; used by {@link createCliClient} for SigV4. */
   on_after_refresh?: (result: RefreshResponse) => void;
+  /** CI deploy-token target project (from a `--project` flag); wins over LOXTEP_PROJECT_ID. */
+  deploy_project_id?: string;
+  /** CI deploy-token audit actor (from an `--actor` flag); wins over LOXTEP_ACTOR. */
+  deploy_actor?: string;
 }
 
 function jwtExpSeconds(token: string): number | undefined {
@@ -171,12 +177,87 @@ export async function createCliHttpClient(
 }
 
 /**
+ * Build a CLI auth context from a CI deploy token when LOXTEP_DEPLOY_TOKEN is set.
+ *
+ * The deploy token is exchanged for a 15-minute project-scoped access token; the
+ * minted token is cached in memory and re-exchanged (not user-refreshed) when it
+ * nears expiry. There is no credentials.json and no AWS SigV4 — CI has neither.
+ *
+ * Returns null when no deploy token is present (caller falls through to the
+ * interactive credentials path).
+ */
+async function createDeployTokenAuthContext(
+  options: CreateCliClientOptions,
+  config: Awaited<ReturnType<typeof loadConfig>>
+): Promise<CliAuthContext | null> {
+  const inputs = resolveDeployTokenInputs({
+    projectId: options.deploy_project_id,
+    actor: options.deploy_actor,
+    configProjectId: config.project_id,
+  });
+  if (!inputs) return null;
+
+  const api_url = resolveCliApiUrl(config, null, { configFilePath: options.configFilePath });
+  if (!api_url) return null;
+
+  const tm = new TokenManager();
+
+  const exchange = async (): Promise<string> => {
+    const r = await exchangeDeployToken(api_url, inputs.deploy_token, inputs.project_id, {
+      actor: inputs.actor,
+      fetchFn: options.fetch_fn,
+    });
+    const expiresAt = Math.floor(Date.now() / 1000) + r.expires_in;
+    tm.setToken(r.access_token, undefined, expiresAt);
+    // Feed STS into the SigV4 signer via the same seam login/refresh use. The
+    // data plane is IAM-gated, so without these creds every call 403s.
+    if (r.aws_credentials) {
+      options.on_after_refresh?.({
+        access_token: r.access_token,
+        refresh_token: '',
+        expires_in: r.expires_in,
+        expires_at: new Date(expiresAt * 1000).toISOString(),
+        aws_credentials: r.aws_credentials,
+      });
+    }
+    return r.access_token;
+  };
+
+  const get_token = async (): Promise<string | null> => {
+    // Exchange on first use, and re-exchange within 60s of expiry.
+    if (!tm.getToken() || tm.shouldRefresh(60)) {
+      return exchange();
+    }
+    return tm.getToken();
+  };
+
+  // A 401 from the data plane means the minted token lapsed or was revoked — try
+  // one fresh exchange; a revoked deploy token surfaces as a failed exchange.
+  const refresh_auth = async (): Promise<boolean> => {
+    try {
+      await exchange();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  return { api_url, get_token, refresh_auth };
+}
+
+/**
  * Shared CLI auth: proactive refresh near JWT expiry + {@link LoxtepHttpClient} 401 retry via refresh_auth.
  */
 export async function createCliAuthContext(
   options: CreateCliClientOptions = {}
 ): Promise<CliAuthContext | null> {
   const config = await loadConfig(options.configFilePath);
+
+  // CI deploy-token path (headless, no browser/MFA/SigV4). Takes precedence over
+  // interactive credentials when LOXTEP_DEPLOY_TOKEN is set.
+  const deployCtx = await createDeployTokenAuthContext(options, config);
+  if (deployCtx) return deployCtx;
+
   const resolved = await resolveCliAccessToken({
     credentialsPath: options.credentialsPath,
     cwd: options.cwd,

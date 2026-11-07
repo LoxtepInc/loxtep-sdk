@@ -62,6 +62,37 @@ SDK auth precedence: `LOXTEP_AUTH_TOKEN` → `~/.loxtep/credentials.json`. When 
 workspace exists, the SDK also auto-resolves `api_url`, `project_id`, and
 `instance_id` from `.loxtep/project.json`.
 
+### CI deploy tokens (headless, no browser/MFA)
+
+For CI there is no human to complete a browser login or type an MFA code. Use a
+**deploy token** instead: one long-lived, org-scoped secret an admin mints once
+(`lxdt_...`), set as an environment variable. The CLI trades it for a short-lived
+(15-minute) project-scoped session on each run — no browser, no MFA.
+
+| Env var               | Purpose                                                              |
+| --------------------- | ------------------------------------------------------------------- |
+| `LOXTEP_DEPLOY_TOKEN` | The `lxdt_...` secret. Setting it engages the deploy-token path.    |
+| `LOXTEP_PROJECT_ID`   | The project to deploy to. Required (or attach a workspace, or pass `--project`). |
+| `LOXTEP_ACTOR`        | Optional. A commit SHA / PR author / bot name, recorded in the audit trail. |
+
+Precedence: the deploy-token path takes effect whenever `LOXTEP_DEPLOY_TOKEN` is
+set, **before** the interactive credentials path. A deploy-token session is not a
+user: `loxtep whoami` reports the organization, the token owner, and the project
+scope rather than a person.
+
+```bash
+# CI
+export LOXTEP_DEPLOY_TOKEN="lxdt_…"      # from: loxtep deploy-tokens create (admin, once)
+export LOXTEP_PROJECT_ID="<project-uuid>"
+export LOXTEP_ACTOR="$GITHUB_SHA"        # optional, for audit
+loxtep deploy                            # exchanges, signs, deploys — no human
+```
+
+Under the hood the exchange (`POST /organizations/auth/deploy-token`) returns a
+project-scoped JWT **and** short-lived AWS credentials, so the SDK signs the
+IAM-gated data plane exactly as an interactive session does. A revoked deploy
+token, or one whose owner left the org, fails the next exchange.
+
 ---
 
 ## CLI reference (`loxtep`)
