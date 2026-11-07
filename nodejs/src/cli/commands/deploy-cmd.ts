@@ -73,10 +73,18 @@ export type DeployTarget =
 export interface DeployTrackingHandle {
   run_id: string;
   status: string;
+  /** Set when the project was already deploying and this request joined that run. */
+  joined_message?: string;
 }
 
-function trackingHandleFromDeployResult(
-  result: { run_id?: string; deployment_id?: string; status?: string; message?: string }
+export function trackingHandleFromDeployResult(
+  result: {
+    run_id?: string;
+    deployment_id?: string;
+    status?: string;
+    message?: string;
+    joined?: boolean;
+  }
 ): DeployTrackingHandle | undefined {
   const run_id = result.run_id ?? result.deployment_id;
   const status = result.status ?? result.message;
@@ -86,11 +94,19 @@ function trackingHandleFromDeployResult(
   return {
     run_id: run_id ?? '(none)',
     status: status ?? 'unknown',
+    ...(result.joined
+      ? {
+          joined_message:
+            result.message ??
+            'This project is already deploying. Your latest changes will deploy as soon as it finishes.',
+        }
+      : {}),
   };
 }
 
-function formatTrackingLines(trackingHandle: DeployTrackingHandle): string[] {
+export function formatTrackingLines(trackingHandle: DeployTrackingHandle): string[] {
   const lines = [
+    ...(trackingHandle.joined_message ? [trackingHandle.joined_message] : []),
     `Deployment tracking: run_id=${trackingHandle.run_id}, status=${trackingHandle.status}`,
   ];
   if (trackingHandle.run_id !== 'unknown' && trackingHandle.run_id !== '(none)') {
