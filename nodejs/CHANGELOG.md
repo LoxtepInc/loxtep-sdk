@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-07
+
+### Added
+
+- CI can authenticate with a long-lived deploy token. The CLI exchanges it for a short-lived project credential, so a pipeline can deploy without a browser or MFA.
+
 ### Changed
 
 - `loxtep deploy` says so when the project is already deploying. Your request joins that deploy, and your latest changes deploy as soon as it finishes. The run id printed is the one already running.
