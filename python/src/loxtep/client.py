@@ -46,6 +46,7 @@ from .product_definition import AsyncProductDefinitionApi, ProductDefinitionApi
 from .projects import AsyncProjectsApi, ProjectsApi
 from .proposals import AsyncProposalsApi, ProposalsApi
 from .quality import AsyncQualityApi, QualityApi
+from .quality_rules import AsyncQualityRulesApi, QualityRulesApi
 from .query import QueryFacade
 from .queues import AsyncQueuesApi, QueuesApi
 from .review import ReviewFacade
@@ -185,6 +186,7 @@ class LoxtepClient:
             schemas=SchemasApi(self._http),
             shapes=ShapesApi(self._http),
             quality=QualityApi(self._http),
+            quality_rules=QualityRulesApi(self._http),
             standards=StandardsApi(self._http),
             data_contracts=DataContractsApi(self._http),
             domains=DomainsApi(self._http),
@@ -358,6 +360,7 @@ class AsyncLoxtepClient:
             schemas=AsyncSchemasApi(self._http),
             shapes=AsyncShapesApi(self._http),
             quality=AsyncQualityApi(self._http),
+            quality_rules=AsyncQualityRulesApi(self._http),
             standards=AsyncStandardsApi(self._http),
             data_contracts=AsyncDataContractsApi(self._http),
             domains=AsyncDomainsApi(self._http),

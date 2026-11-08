@@ -5,6 +5,7 @@ import {
   executeIceberg,
   executePrimaryEntity,
   executeQualityRules,
+  executeDeliverySuggestions,
   pollIcebergJob,
   validateRebuildArgs,
   type CliIo,
@@ -39,6 +40,8 @@ function client(overrides: {
   get?: jest.Mock;
   updateContract?: jest.Mock;
   qualityGet?: jest.Mock;
+  qualitySuggestions?: { request?: jest.Mock; get?: jest.Mock; decide?: jest.Mock };
+  consumptionSuggestions?: { request?: jest.Mock; get?: jest.Mock; decide?: jest.Mock };
 }): LoxtepClient & { setInstanceId: (id: string | undefined) => void } {
   const state = {
     instance_id: overrides.instance_id === null ? undefined : overrides.instance_id ?? 'instance-a',
@@ -53,6 +56,11 @@ function client(overrides: {
       data_products: {
         get: overrides.get ?? jest.fn(async () => ({ schema: { entities: [] } })),
         export_events: overrides.export_events ?? jest.fn(),
+        consumption_suggestions: {
+          request: overrides.consumptionSuggestions?.request ?? jest.fn(),
+          get: overrides.consumptionSuggestions?.get ?? jest.fn(),
+          decide: overrides.consumptionSuggestions?.decide ?? jest.fn(),
+        },
         iceberg: {
           rebuild: overrides.rebuild ?? jest.fn(),
           health: overrides.health ?? jest.fn(async () => ({})),
@@ -71,6 +79,11 @@ function client(overrides: {
       },
       quality_rules: {
         get: overrides.qualityGet ?? jest.fn(),
+        suggestions: {
+          request: overrides.qualitySuggestions?.request ?? jest.fn(),
+          get: overrides.qualitySuggestions?.get ?? jest.fn(),
+          decide: overrides.qualitySuggestions?.decide ?? jest.fn(),
+        },
         list: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
@@ -478,5 +491,90 @@ describe('governance commands', () => {
     const code = await executeQualityRules(client({ qualityGet }), ['get', 'rule-1', '--json'], io);
     expect(code).toBe(1);
     expect(JSON.parse(errors[0]).code).toBe('not_in_list');
+  });
+});
+
+describe('suggestion commands', () => {
+  it('quality-rules suggest / suggestions / accept with overrides', async () => {
+    const request = jest.fn(async () => ({ requested: true }));
+    const get = jest.fn(async () => ({ run_id: 'run-1' }));
+    const decide = jest.fn(async () => ({ action: 'accept' }));
+    const c = client({ qualitySuggestions: { request, get, decide } });
+
+    expect(await executeQualityRules(c, ['suggest', 'dp-1', '--json'], capture().io)).toBe(0);
+    expect(request).toHaveBeenCalledWith('dp-1');
+    expect(await executeQualityRules(c, ['suggestions', 'dp-1', '--json'], capture().io)).toBe(0);
+    expect(get).toHaveBeenCalledWith('dp-1');
+
+    const dir = await import('node:fs/promises').then(fs => fs.mkdtemp('/tmp/qr-'));
+    const file = `${dir}/o.json`;
+    await import('node:fs/promises').then(fs => fs.writeFile(file, '{"threshold":99}'));
+    const code = await executeQualityRules(
+      c,
+      ['accept', 'dp-1', '--run-id', 'run-1', '--key', 'email_completeness', '--file', file, '--json'],
+      capture().io
+    );
+    expect(code).toBe(0);
+    expect(decide).toHaveBeenCalledWith('dp-1', {
+      run_id: 'run-1',
+      suggestion_key: 'email_completeness',
+      action: 'accept',
+      overrides: { threshold: 99 },
+    });
+  });
+
+  it('quality-rules dismiss needs --run-id and --key, and refuses overrides', async () => {
+    const decide = jest.fn();
+    const c = client({ qualitySuggestions: { decide } });
+    const missing = capture();
+    expect(await executeQualityRules(c, ['dismiss', 'dp-1', '--json'], missing.io)).toBe(1);
+    expect(JSON.parse(missing.errors[0]).code).toBe('usage');
+    const withFile = capture();
+    expect(
+      await executeQualityRules(
+        c,
+        ['dismiss', 'dp-1', '--run-id', 'r', '--key', 'k', '--file', 'x.json', '--json'],
+        withFile.io
+      )
+    ).toBe(1);
+    expect(decide).not.toHaveBeenCalled();
+  });
+
+  it('delivery suggest / suggestions / accept a method', async () => {
+    const request = jest.fn(async () => ({ requested: true }));
+    const get = jest.fn(async () => ({ suggestions: [] }));
+    const decide = jest.fn(async () => ({ published_access_methods: ['event_stream', 'sql'] }));
+    const c = client({ consumptionSuggestions: { request, get, decide } });
+    expect(await executeDeliverySuggestions(c, ['suggest', 'dp-1', '--json'], capture().io)).toBe(0);
+    expect(await executeDeliverySuggestions(c, ['suggestions', 'dp-1', '--json'], capture().io)).toBe(0);
+    const out = capture();
+    expect(
+      await executeDeliverySuggestions(
+        c,
+        ['accept', 'dp-1', '--run-id', 'run-1', '--method', 'sql', '--json'],
+        out.io
+      )
+    ).toBe(0);
+    expect(decide).toHaveBeenCalledWith('dp-1', {
+      run_id: 'run-1',
+      suggestion_key: 'sql',
+      action: 'accept',
+    });
+    expect(parse(out.logs)).toMatchObject({ published_access_methods: ['event_stream', 'sql'] });
+    expect(request).toHaveBeenCalledWith('dp-1');
+    expect(get).toHaveBeenCalledWith('dp-1');
+  });
+
+  it('delivery accept rejects an unknown method', async () => {
+    const decide = jest.fn();
+    const out = capture();
+    const code = await executeDeliverySuggestions(
+      client({ consumptionSuggestions: { decide } }),
+      ['accept', 'dp-1', '--run-id', 'r', '--method', 'event_stream', '--json'],
+      out.io
+    );
+    expect(code).toBe(1);
+    expect(JSON.parse(out.errors[0]).code).toBe('invalid_method');
+    expect(decide).not.toHaveBeenCalled();
   });
 });

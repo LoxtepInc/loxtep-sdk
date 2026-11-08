@@ -483,3 +483,34 @@ describe('createDataProductsApi HTTP methods', () => {
     }).rejects.toThrow(/bot_id is required/);
   });
 });
+
+describe('data_products.consumption_suggestions', () => {
+  const base = '/dataproducts/dataproducts/dp-1/delivery/suggestions';
+
+  it('requests, reads, and decides on the delivery suggestions routes', async () => {
+    const posts: Array<[string, unknown]> = [];
+    const http = mockHttp({
+      get: path => {
+        expect(path).toBe(base);
+        return { data: { run_id: 'run-1', published_access_methods: ['event_stream'] } };
+      },
+      post: (path, body) => {
+        posts.push([path, body]);
+        return { data: { requested: true } };
+      },
+    });
+    const api = createDataProductsApi(http).consumption_suggestions;
+    expect(await api.request('dp-1')).toEqual({ requested: true });
+    expect(await api.get('dp-1')).toMatchObject({ run_id: 'run-1' });
+    await api.decide('dp-1', { run_id: 'run-1', suggestion_key: 'sql', action: 'accept' });
+    expect(posts).toEqual([
+      [base, {}],
+      [`${base}/decide`, { run_id: 'run-1', suggestion_key: 'sql', action: 'accept' }],
+    ]);
+  });
+
+  it('requires a data product id', async () => {
+    const api = createDataProductsApi(mockHttp({})).consumption_suggestions;
+    await expect(api.request('')).rejects.toThrow(/id is required/);
+  });
+});

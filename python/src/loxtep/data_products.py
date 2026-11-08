@@ -105,6 +105,71 @@ class AsyncSemanticInferenceApi:
         )
 
 
+_SUGGESTABLE_ACCESS_METHODS = ("sql", "api_endpoint", "webhook", "export", "bi_connect")
+
+
+def _consumption_base(data_product_id: str) -> str:
+    if not data_product_id:
+        raise ValueError("id is required")
+    encoded = quote(str(data_product_id), safe="")
+    return f"/dataproducts/dataproducts/{encoded}/delivery/suggestions"
+
+
+def _consumption_decision(decision: Mapping[str, Any]) -> dict[str, Any]:
+    if decision.get("action") not in ("accept", "dismiss"):
+        raise ValueError("action must be accept or dismiss")
+    if decision.get("suggestion_key") not in _SUGGESTABLE_ACCESS_METHODS:
+        raise ValueError(
+            "suggestion_key must be one of " + ", ".join(_SUGGESTABLE_ACCESS_METHODS)
+        )
+    return {
+        "run_id": decision["run_id"],
+        "suggestion_key": decision["suggestion_key"],
+        "action": decision["action"],
+    }
+
+
+class ConsumptionSuggestionsApi:
+    """Suggested consumption methods (MCP: request/get/decide_consumption_method_suggestion(s))."""
+
+    def __init__(self, http: Any) -> None:
+        self._http = http
+
+    def request(self, data_product_id: str) -> Any:
+        """Ask for suggestions (async). Returns ``{requested, request_id, reason}``."""
+        return _unwrap(self._http.post(_consumption_base(data_product_id), {}))
+
+    def get(self, data_product_id: str) -> Any:
+        """Latest suggestions awaiting review, plus ``published_access_methods``."""
+        return _unwrap(self._http.get(_consumption_base(data_product_id)))
+
+    def decide(self, data_product_id: str, decision: Mapping[str, Any]) -> Any:
+        """Accept (publishes the method; no grants) or dismiss one suggestion."""
+        return _unwrap(
+            self._http.post(
+                f"{_consumption_base(data_product_id)}/decide", _consumption_decision(decision)
+            )
+        )
+
+
+class AsyncConsumptionSuggestionsApi:
+    def __init__(self, http: Any) -> None:
+        self._http = http
+
+    async def request(self, data_product_id: str) -> Any:
+        return _unwrap(await self._http.post(_consumption_base(data_product_id), {}))
+
+    async def get(self, data_product_id: str) -> Any:
+        return _unwrap(await self._http.get(_consumption_base(data_product_id)))
+
+    async def decide(self, data_product_id: str, decision: Mapping[str, Any]) -> Any:
+        return _unwrap(
+            await self._http.post(
+                f"{_consumption_base(data_product_id)}/decide", _consumption_decision(decision)
+            )
+        )
+
+
 def _derive_lexicon(asset: dict[str, Any]) -> dict[str, Any]:
     metadata = asset.get("metadata") if isinstance(asset.get("metadata"), dict) else {}
     glossary_terms = (
@@ -163,6 +228,7 @@ class DataProductsApi:
         self._stream_config = stream_config
         self._resolve_cache: dict[str, str] = {}
         self.semantic_inference = SemanticInferenceApi(http)
+        self.consumption_suggestions = ConsumptionSuggestionsApi(http)
 
     def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = self.get(dp_id)
@@ -475,6 +541,7 @@ class AsyncDataProductsApi:
         self._stream_config = stream_config
         self._resolve_cache: dict[str, str] = {}
         self.semantic_inference = AsyncSemanticInferenceApi(http)
+        self.consumption_suggestions = AsyncConsumptionSuggestionsApi(http)
 
     async def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = await self.get(dp_id)

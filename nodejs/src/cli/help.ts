@@ -56,6 +56,10 @@ Build & deploy
                      Trigger + source DP local package (alias: ingest provision)
   transform create --from <dp> [--name cleaned-…] [--transport-mode default|fast|volume] [--dry-run]
                      Enrichment workflow stub (upstream DP → consumer DP)
+  delivery suggest <dp-id> | suggestions <dp-id>
+                     Ask for / read suggested consumption methods (sql, api_endpoint, webhook, export, bi_connect)
+  delivery accept|dismiss <dp-id> --run-id <id> --method <method>
+                     Accept (publishes the method; no grants) or dismiss one suggestion
   delivery create --from <dp> --connector-id <id> [--table schema.table] [--name …]
                      [--transport-mode default|fast|volume] [--dry-run]
                      Delivery workflow (DP → target connection); workflow_type: delivery
@@ -108,6 +112,10 @@ Governance
   data-contracts list | get <id> | create … | update <id> --schema-version-id <uuid>
                      Create and update accept schema_ref or schema_version_id.
   quality-rules list|get <id>|create --file <json>|update <id> --file <json>|delete <id>
+  quality-rules suggest <dp-id> | suggestions <dp-id>
+                     Ask for / read suggested quality rules (async; nothing is created yet)
+  quality-rules accept|dismiss <dp-id> --run-id <id> --key <suggestion_key> [--file overrides.json]
+                     Accept (creates the rule, optional edits) or dismiss one suggestion
                      get scans the list. There is no GET-by-id route.
   define status <data_product_id>
                      Definition readiness / blockers (approve ≠ apply)

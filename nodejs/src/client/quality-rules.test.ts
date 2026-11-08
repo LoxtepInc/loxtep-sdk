@@ -50,3 +50,45 @@ describe('quality rules', () => {
     expect(http.put).toHaveBeenCalledWith('/dataproducts/quality-rules/rule-2', { threshold: 90 });
   });
 });
+
+describe('quality rule suggestions', () => {
+  const DP = 'dp-1';
+  const base = `/dataproducts/dataproducts/${DP}/quality/suggestions`;
+  function http() {
+    return {
+      get: jest.fn(async () => ({ data: { run_id: 'run-1', suggestions: [] } })),
+      post: jest.fn(async () => ({ data: { requested: true } })),
+      put: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as LoxtepHttpClient & { get: jest.Mock; post: jest.Mock };
+  }
+
+  it('requests, reads, and decides on the suggestions routes', async () => {
+    const h = http();
+    const api = createQualityRulesApi(h).suggestions;
+    expect(await api.request(DP)).toEqual({ requested: true });
+    expect(h.post).toHaveBeenCalledWith(base, {});
+    expect(await api.get(DP)).toEqual({ run_id: 'run-1', suggestions: [] });
+    expect(h.get).toHaveBeenCalledWith(base);
+    await api.decide(DP, {
+      run_id: 'run-1',
+      suggestion_key: 'email_completeness',
+      action: 'accept',
+      overrides: { threshold: 99 },
+    });
+    expect(h.post).toHaveBeenLastCalledWith(`${base}/decide`, {
+      run_id: 'run-1',
+      suggestion_key: 'email_completeness',
+      action: 'accept',
+      overrides: { threshold: 99 },
+    });
+  });
+
+  it('rejects overrides on dismiss and a missing product id', async () => {
+    const api = createQualityRulesApi(http()).suggestions;
+    await expect(
+      api.decide(DP, { run_id: 'r', suggestion_key: 'k', action: 'dismiss', overrides: { threshold: 1 } })
+    ).rejects.toThrow(/only allowed with action accept/);
+    await expect(api.get('')).rejects.toThrow(/data_product_id is required/);
+  });
+});

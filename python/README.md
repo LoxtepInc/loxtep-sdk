@@ -113,6 +113,11 @@ client.query.catalog.search("query")
 # Discovery (access-filtered when user context present)
 client.query.discovery.search("events", include_evidence=True)
 client.define.schemas.get("data-product-id")
+# Suggested quality rules: ask, review, then accept (optionally edited) or dismiss
+client.define.quality_rules.suggestions.request("data-product-id")
+review = client.define.quality_rules.suggestions.get("data-product-id")
+# client.define.quality_rules.suggestions.decide("data-product-id", {"run_id": review["run_id"],
+#     "suggestion_key": "email_completeness", "action": "accept", "overrides": {"threshold": 99}})
 
 # --- Deliver: consume events and route data out ---
 for event in client.build.data_products.stream("data-product-id"):
@@ -168,8 +173,11 @@ Grouped by customer area; kind labels: **Resource** (full CRUD), **Reference**
 | Surface | Kind | Methods |
 | --- | --- | --- |
 | **build.data_products** | Resource + Runtime | `get`, `get_lexicon`, `list`, `create`, `readiness`, `promote`, `get_usage_map`, `invalidate_cache`, `search`, `query`, `list_tables`, `get_queue_info`, `get_reader_checkpoint`, `stream`, `replay` |
+| **build.data_products.consumption_suggestions** | Async review | `request`, `get`, `decide` (suggested access methods; accept publishes the method) |
 | **define.schemas** | Reference | `get`, `list`, `tag_pii_fields` |
 | **define.quality** | Resource | `list`, `get`, `create` |
+| **define.quality_rules** | Resource | `list`, `get`, `create`, `update`, `delete` |
+| **define.quality_rules.suggestions** | Async review | `request`, `get`, `decide` (suggested rules; accept creates the rule, optional `overrides`) |
 | **query.catalog** | Reference | `search` |
 | **query.discovery** | Reference | `search`, `get_evidence`, `get_lineage_impact`, `get_governance_flags`, `run` |
 | **meaning.thesaurus** | Resource | `list_terms`, `get_term`, `create_term`, `update_term`, `delete_term`, `sync_vocabulary`, `create_enterprise_override`, `resolve_canonical_key`, `append_synonym` |

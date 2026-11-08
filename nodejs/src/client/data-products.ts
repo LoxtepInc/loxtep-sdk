@@ -121,6 +121,20 @@ function unwrapData<T>(res: unknown): T {
   return ((res as { data?: T }).data ?? res) as T;
 }
 
+function consumptionSuggestionsPath(id: string): string {
+  return `/dataproducts/dataproducts/${encodeURIComponent(id)}/delivery/suggestions`;
+}
+
+/** Access methods a consumption suggestion can add (`event_stream` is always on). */
+export type SuggestableAccessMethod = "sql" | "api_endpoint" | "webhook" | "export" | "bi_connect";
+
+export interface ConsumptionSuggestionDecision {
+  run_id: string;
+  /** The suggested access method. */
+  suggestion_key: SuggestableAccessMethod;
+  action: "accept" | "dismiss";
+}
+
 function semanticInferencePath(id: string): string {
   return `/dataproducts/dataproducts/${encodeURIComponent(id)}/semantic-inference`;
 }
@@ -215,6 +229,15 @@ export function createDataProductsApi(
       id: string,
       body: SemanticInferencePromoteInput,
     ) => Promise<unknown>;
+  };
+  /** Suggested consumption methods (MCP: request/get/decide_consumption_method_suggestion(s)). */
+  consumption_suggestions: {
+    /** Ask for suggestions (async). Returns `{ requested, request_id, reason }`. */
+    request: (id: string) => Promise<unknown>;
+    /** Latest suggestions awaiting review, plus `published_access_methods`. */
+    get: (id: string) => Promise<unknown>;
+    /** Accept (publishes the method; no grants) or dismiss one suggestion. */
+    decide: (id: string, decision: ConsumptionSuggestionDecision) => Promise<unknown>;
   };
 } {
   return {
@@ -1097,6 +1120,30 @@ export function createDataProductsApi(
           payload,
         );
         return unwrapData(res);
+      },
+    },
+
+    consumption_suggestions: {
+      async request(id: string): Promise<unknown> {
+        if (!id) throw new Error("id is required");
+        return unwrapData(await http.post(consumptionSuggestionsPath(id), {}));
+      },
+      async get(id: string): Promise<unknown> {
+        if (!id) throw new Error("id is required");
+        return unwrapData(await http.get(consumptionSuggestionsPath(id)));
+      },
+      async decide(
+        id: string,
+        decision: ConsumptionSuggestionDecision,
+      ): Promise<unknown> {
+        if (!id) throw new Error("id is required");
+        return unwrapData(
+          await http.post(`${consumptionSuggestionsPath(id)}/decide`, {
+            run_id: decision.run_id,
+            suggestion_key: decision.suggestion_key,
+            action: decision.action,
+          }),
+        );
       },
     },
   };
