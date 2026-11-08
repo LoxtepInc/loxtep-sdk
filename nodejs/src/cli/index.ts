@@ -40,6 +40,7 @@ import {
   runDefineGlossary,
   runDataContractsUpdate,
   runQualityRules,
+  runDeliverySuggestions,
 } from "./commands/data-plane-cmd.js";
 import { runMetricsRateLimits, runMetricsLog } from "./commands/metrics-cmd.js";
 import { runQueueInfo, runQueueCheckpoint } from "./commands/queue-cmd.js";
@@ -798,7 +799,9 @@ export async function runCli(argv: string[]): Promise<void> {
       }
       break;
       case "delivery":
-        if (sub === "create") {
+        if (sub && ["suggest", "suggestions", "accept", "dismiss"].includes(sub)) {
+          await runDeliverySuggestions(args.slice(1));
+        } else if (sub === "create") {
           const from = getArg("--from");
           const connectorId = getArg("--connector-id");
         if (!from || !connectorId) {

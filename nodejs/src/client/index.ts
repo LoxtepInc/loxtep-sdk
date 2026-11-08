@@ -78,6 +78,15 @@ export type {
   DiscoverOntologyRelationshipsInput,
 } from "./ontology-types.js";
 export type { SemanticInferencePromoteInput } from "./data-products-types.js";
+export type {
+  ConsumptionSuggestionDecision,
+  SuggestableAccessMethod,
+} from "./data-products.js";
+export type {
+  QualityRuleSuggestionDecision,
+  QualityRuleSuggestionOverrides,
+  QualityRuleSuggestionsApi,
+} from "./quality-rules.js";
 export type { CdlcApi } from "./cdlc.js";
 export type {
   MiningApiDeps,
