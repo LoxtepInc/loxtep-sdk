@@ -23,6 +23,38 @@ function unwrap<T>(res: unknown): T {
   return res as T;
 }
 
+/** Edits applied when accepting a suggested rule. */
+export interface QualityRuleSuggestionOverrides {
+  name?: string;
+  description?: string;
+  rule_type?: string;
+  condition?: string;
+  threshold?: number;
+  severity?: string;
+}
+
+export interface QualityRuleSuggestionDecision {
+  run_id: string;
+  suggestion_key: string;
+  action: 'accept' | 'dismiss';
+  /** Only with `accept`. */
+  overrides?: QualityRuleSuggestionOverrides;
+}
+
+/** Suggested quality rules (MCP: request/get/decide_quality_rule_suggestion(s)). */
+export interface QualityRuleSuggestionsApi {
+  /** Ask for suggestions (async). Returns `{ requested, request_id, reason }`. */
+  request: (data_product_id: string) => Promise<unknown>;
+  /** Latest suggestions awaiting review (`run_id`, `in_progress`, `suggestions`, …). */
+  get: (data_product_id: string) => Promise<unknown>;
+  /** Accept (creates the rule) or dismiss one suggestion. */
+  decide: (data_product_id: string, decision: QualityRuleSuggestionDecision) => Promise<unknown>;
+}
+
+function suggestionsPath(dataProductId: string): string {
+  return `/dataproducts/dataproducts/${encodeURIComponent(dataProductId)}/quality/suggestions`;
+}
+
 function buildQueryString(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -46,6 +78,7 @@ export function createQualityRulesApi(http: LoxtepHttpClient): {
   create: (input: QualityRuleInput) => Promise<unknown>;
   update: (qualityRuleId: string, input: QualityRuleInput) => Promise<unknown>;
   delete: (qualityRuleId: string) => Promise<unknown>;
+  suggestions: QualityRuleSuggestionsApi;
 } {
   return {
     async list(filters = {}) {
@@ -98,6 +131,30 @@ export function createQualityRulesApi(http: LoxtepHttpClient): {
       return unwrap(
         await http.delete(`/dataproducts/quality-rules/${encodeURIComponent(qualityRuleId)}`)
       );
+    },
+
+    suggestions: {
+      async request(dataProductId: string) {
+        if (!dataProductId) throw new Error('data_product_id is required');
+        return unwrap(await http.post(suggestionsPath(dataProductId), {}));
+      },
+      async get(dataProductId: string) {
+        if (!dataProductId) throw new Error('data_product_id is required');
+        return unwrap(await http.get(suggestionsPath(dataProductId)));
+      },
+      async decide(dataProductId: string, decision: QualityRuleSuggestionDecision) {
+        if (!dataProductId) throw new Error('data_product_id is required');
+        if (decision.overrides && decision.action !== 'accept') {
+          throw new Error('overrides are only allowed with action accept');
+        }
+        const body: Record<string, unknown> = {
+          run_id: decision.run_id,
+          suggestion_key: decision.suggestion_key,
+          action: decision.action,
+        };
+        if (decision.overrides) body.overrides = decision.overrides;
+        return unwrap(await http.post(`${suggestionsPath(dataProductId)}/decide`, body));
+      },
     },
   };
 }

@@ -8,9 +8,24 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `client.define.quality_rules.suggestions` (`request`, `get`, `decide`) asks for suggested quality rules for a data product, lists them, and accepts (with optional edits) or dismisses each one. CLI: `loxtep quality-rules suggest|suggestions|accept|dismiss`.
+- `client.build.data_products.consumption_suggestions` (`request`, `get`, `decide`) suggests which access methods to offer (SQL, API, webhook, export, BI), with a reason for each. Accepting publishes the method. CLI: `loxtep delivery suggest|suggestions|accept|dismiss`.
+
 ### Fixed
 
 - `loxtep data-products query` strips `--json`, `--receipt`, and `--file <path>` before joining the SQL arguments. A statement whose last token starts with `--` is refused instead of being sent.
+
+## [0.14.0] - 2026-11-07
+
+### Added
+
+- CI can authenticate with a long-lived deploy token. The CLI exchanges it for a short-lived project credential, so a pipeline can deploy without a browser or MFA.
+
+### Changed
+
+- `loxtep deploy` says so when the project is already deploying. Your request joins that deploy, and your latest changes deploy as soon as it finishes. The run id printed is the one already running.
 
 ## [0.13.1] - 2026-11-03
 

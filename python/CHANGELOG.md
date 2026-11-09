@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `client.define.quality_rules`: list, get, create, update, and delete product quality rules, matching the Node SDK.
+- `client.define.quality_rules.suggestions` (`request`, `get`, `decide`) asks for suggested quality rules, lists them, and accepts (with optional edits) or dismisses each one.
+- `client.build.data_products.consumption_suggestions` (`request`, `get`, `decide`) suggests which access methods to offer, with a reason for each. Accepting publishes the method.
+
 ## [0.11.0] — 2026-11-01
 
 ### Added

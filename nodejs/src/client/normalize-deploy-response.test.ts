@@ -68,4 +68,19 @@ describe('normalizeDeployResponse', () => {
       project_id: undefined,
     });
   });
+
+  it('passes joined through when the project was already deploying', () => {
+    expect(
+      normalizeDeployResponse({
+        success: true,
+        data: {
+          run_id: 'run-running',
+          deployment_id: 'run-running',
+          status: 'in_progress',
+          joined: true,
+          message: 'This project is already deploying.',
+        },
+      })
+    ).toMatchObject({ run_id: 'run-running', status: 'in_progress', joined: true });
+  });
 });

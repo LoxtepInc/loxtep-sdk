@@ -58,6 +58,8 @@ export interface DeployResponse {
     status: string;
     message?: string;
     project_id?: string;
+    /** True when the project was already deploying: this request joined that run and its changes deploy right after. */
+    joined?: boolean;
   };
 }
 
@@ -111,6 +113,7 @@ export function normalizeDeployResponse(raw: unknown): DeployResponse['data'] {
     status: typeof obj.status === 'string' ? obj.status : 'unknown',
     message: typeof obj.message === 'string' ? obj.message : undefined,
     project_id: typeof obj.project_id === 'string' ? obj.project_id : undefined,
+    ...(obj.joined === true ? { joined: true } : {}),
   };
 }
 

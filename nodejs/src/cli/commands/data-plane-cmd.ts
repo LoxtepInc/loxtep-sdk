@@ -665,6 +665,13 @@ export async function executeContractUpdate(
   }
 }
 
+const QUALITY_SUGGESTION_DECIDE_USAGE =
+  'loxtep quality-rules accept|dismiss <data-product-id> --run-id <id> --key <suggestion_key> [--file <overrides.json>]';
+
+const QUALITY_RULES_USAGE =
+  'loxtep quality-rules list|get <id>|create --file <json>|update <id> --file <json>|delete <id>' +
+  ' | suggest <data-product-id> | suggestions <data-product-id> | accept|dismiss <data-product-id> --run-id <id> --key <suggestion_key> [--file <overrides.json>]';
+
 export async function executeQualityRules(
   client: LoxtepClient,
   args: string[],
@@ -710,16 +717,102 @@ export async function executeQualityRules(
       emit(io, json, await client.define.quality_rules.delete(args[1]));
       return 0;
     }
-    return fail(
-      io,
-      json,
-      'usage',
-      'loxtep quality-rules list|get <id>|create --file <json>|update <id> --file <json>|delete <id>'
-    );
+    if (action === 'suggest' && args[1]) {
+      emit(io, json, await client.define.quality_rules.suggestions.request(args[1]));
+      return 0;
+    }
+    if (action === 'suggestions' && args[1]) {
+      emit(io, json, await client.define.quality_rules.suggestions.get(args[1]));
+      return 0;
+    }
+    if ((action === 'accept' || action === 'dismiss') && args[1]) {
+      const runId = argValue(args, '--run-id');
+      const key = argValue(args, '--key');
+      if (!runId || !key) {
+        return fail(io, json, 'usage', QUALITY_SUGGESTION_DECIDE_USAGE);
+      }
+      const file = argValue(args, '--file');
+      if (file && action === 'dismiss') {
+        return fail(io, json, 'usage', '--file (overrides) is only allowed with accept');
+      }
+      const overrides = file ? JSON.parse(await readFile(file, 'utf8')) : undefined;
+      emit(
+        io,
+        json,
+        await client.define.quality_rules.suggestions.decide(args[1], {
+          run_id: runId,
+          suggestion_key: key,
+          action,
+          ...(overrides ? { overrides } : {}),
+        })
+      );
+      return 0;
+    }
+    return fail(io, json, 'usage', QUALITY_RULES_USAGE);
   } catch (err) {
     const fields = errorFields(err);
     return fail(io, json, fields.code || 'request_failed', fields.message);
   }
+}
+
+const DELIVERY_SUGGESTIONS_USAGE =
+  'loxtep delivery suggest <data-product-id> | suggestions <data-product-id> | accept|dismiss <data-product-id> --run-id <id> --method <sql|api_endpoint|webhook|export|bi_connect>';
+
+const SUGGESTABLE_METHODS = ['sql', 'api_endpoint', 'webhook', 'export', 'bi_connect'] as const;
+
+/** `loxtep delivery suggest|suggestions|accept|dismiss` — suggested consumption methods. */
+export async function executeDeliverySuggestions(
+  client: LoxtepClient,
+  args: string[],
+  io: CliIo = defaultIo
+): Promise<number> {
+  const json = hasFlag(args, '--json');
+  const [action, dataProductId] = args;
+  const api = client.build.data_products.consumption_suggestions;
+  try {
+    if (action === 'suggest' && dataProductId) {
+      emit(io, json, await api.request(dataProductId));
+      return 0;
+    }
+    if (action === 'suggestions' && dataProductId) {
+      emit(io, json, await api.get(dataProductId));
+      return 0;
+    }
+    if ((action === 'accept' || action === 'dismiss') && dataProductId) {
+      const runId = argValue(args, '--run-id');
+      const method = argValue(args, '--method');
+      if (!runId || !method) return fail(io, json, 'usage', DELIVERY_SUGGESTIONS_USAGE);
+      if (!(SUGGESTABLE_METHODS as readonly string[]).includes(method)) {
+        return fail(
+          io,
+          json,
+          'invalid_method',
+          `--method must be one of ${SUGGESTABLE_METHODS.join(', ')}`
+        );
+      }
+      emit(
+        io,
+        json,
+        await api.decide(dataProductId, {
+          run_id: runId,
+          suggestion_key: method as (typeof SUGGESTABLE_METHODS)[number],
+          action,
+        })
+      );
+      return 0;
+    }
+    return fail(io, json, 'usage', DELIVERY_SUGGESTIONS_USAGE);
+  } catch (err) {
+    const fields = errorFields(err);
+    return fail(io, json, fields.code || 'request_failed', fields.message);
+  }
+}
+
+export async function runDeliverySuggestions(
+  args: string[],
+  options: CreateCliClientOptions = {}
+): Promise<void> {
+  await runWithClient(options, client => executeDeliverySuggestions(client, args));
 }
 
 async function runWithClient(
