@@ -439,7 +439,7 @@ describe('runCli router', () => {
     await runCli(['data-products', 'get', 'dp-1']);
     expect(runDataProductsGet).toHaveBeenCalled();
     await runCli(['data-products', 'query', 'dp-1', 'SELECT 1']);
-    expect(runDataProductsQuery).toHaveBeenCalled();
+    expect(runDataProductsQuery).toHaveBeenCalledWith('dp-1', 'SELECT 1', { receipt: false });
     await runCli(['data-products', 'tables', 'dp-1']);
     expect(runDataProductsTables).toHaveBeenCalled();
     await runCli(['data-products', 'create', '--name', 'x', '--domain-id', 'd-1', '--kind', 'source']);
@@ -522,6 +522,35 @@ describe('runCli router', () => {
     expect(runDefineGlossary).toHaveBeenCalledWith(['glossary', 'dp-1']);
     await runCli(['define', 'apply-glossary', 'dp-1']);
     expect(runDefineGlossary).toHaveBeenCalledWith(['apply-glossary', 'dp-1']);
+  });
+
+  it('data-products query strips output flags and refuses a trailing -- token', async () => {
+    const err = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await runCli(['data-products', 'query', 'dp-1', 'SELECT 1 AS x', '--json']);
+    expect(runDataProductsQuery).toHaveBeenCalledWith('dp-1', 'SELECT 1 AS x', { receipt: true });
+
+    await runCli(['data-products', 'query', 'dp-1', 'SELECT', '1', '--receipt']);
+    expect(runDataProductsQuery).toHaveBeenCalledWith('dp-1', 'SELECT 1', { receipt: true });
+
+    await runCli(['data-products', 'query', 'dp-1', 'SELECT', '--keep', '1']);
+    expect(runDataProductsQuery).toHaveBeenCalledWith('dp-1', 'SELECT --keep 1', { receipt: false });
+
+    (runDataProductsQuery as jest.Mock).mockClear();
+    await runCli(['data-products', 'query', 'dp-1', 'SELECT', '1', '--debug']);
+    expect(runDataProductsQuery).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    expect(String(err.mock.calls.at(-1)?.[0])).toContain("SQL ends with '--debug'");
+
+    const fs = await import('fs/promises');
+    const os = await import('os');
+    const path = await import('path');
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'lox-query-'));
+    const file = path.join(dir, 'q.sql');
+    await fs.writeFile(file, 'SELECT 1 AS x\n');
+    await runCli(['data-products', 'query', 'dp-1', '--file', file, '--json']);
+    expect(runDataProductsQuery).toHaveBeenCalledWith('dp-1', 'SELECT 1 AS x', { receipt: true });
+    await fs.rm(dir, { recursive: true, force: true });
+    err.mockRestore();
   });
 
   it('ops and governance', async () => {

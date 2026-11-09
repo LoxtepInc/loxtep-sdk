@@ -111,6 +111,8 @@ loxtep data-products query <product-id> "SELECT event_type FROM t LIMIT 10" --re
 loxtep data-products query <product-id> --file ./query.sql --json
 ```
 
+`--json`, `--receipt`, and `--file <path>` are CLI flags. They are removed before the SQL is joined, so they are not part of the statement. Any other `--` token is left in the SQL. If the statement's last token starts with `--`, the CLI prints an error and does not send the query.
+
 `data_products.query` still returns rows, and only when the native status is
 `completed`. Any other status, including a missing status, throws
 `WarehouseQueryError` and does not rewrite the status to completed. The error

@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- `loxtep data-products query` strips `--json`, `--receipt`, and `--file <path>` before joining the SQL arguments. A statement whose last token starts with `--` is refused instead of being sent.
+
 ## [0.13.1] - 2026-11-03
 
 ### Added
