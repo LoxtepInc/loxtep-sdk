@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-11-11
+
 ### Added
 
 - `client.define.quality_rules`: list, get, create, update, and delete product quality rules, matching the Node SDK.
