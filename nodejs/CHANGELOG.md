@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-11
+
 ### Added
 
 - `client.define.quality_rules.suggestions` (`request`, `get`, `decide`) asks for suggested quality rules for a data product, lists them, and accepts (with optional edits) or dismisses each one. CLI: `loxtep quality-rules suggest|suggestions|accept|dismiss`.
