@@ -33,6 +33,7 @@ import {
   runDataProductsReadiness,
   runDataProductsPromote,
 } from "./commands/data-products-cmd.js";
+import { parseDataProductQueryArgs } from "./commands/data-products-query-args.js";
 import {
   runDataPlaneIceberg,
   runDataPlaneExport,
@@ -479,38 +480,21 @@ export async function runCli(argv: string[]): Promise<void> {
         } else if (sub === "get" && args[2]) {
         await runDataProductsGet(args[2]);
         } else if (sub === "query" && args[2]) {
-          const fileIdx = args.indexOf("--file");
-        const sql =
-          fileIdx >= 0
-            ? undefined
-            : args
-                .slice(3)
-                  .join(" ")
-                  .replace(/^["']|["']$/g, "");
-        if (fileIdx >= 0) {
-            const fs = await import("fs/promises");
-          const path = args[fileIdx + 1];
-          if (!path) {
-              console.error(
-                "Usage: loxtep data-products query <id> --file <path>",
-              );
+          const parsed = parseDataProductQueryArgs(args.slice(3));
+          if (!parsed.ok) {
+            console.error(parsed.message);
             process.exitCode = 1;
-          } else {
-              const sqlFromFile = (await fs.readFile(path, "utf-8")).trim();
+          } else if (parsed.mode === "file") {
+            const fs = await import("fs/promises");
+            const sqlFromFile = (await fs.readFile(parsed.path, "utf-8")).trim();
             await runDataProductsQuery(args[2], sqlFromFile, {
-                receipt: args.includes("--receipt") || args.includes("--json"),
+              receipt: parsed.receipt,
+            });
+          } else {
+            await runDataProductsQuery(args[2], parsed.sql, {
+              receipt: parsed.receipt,
             });
           }
-        } else if (sql) {
-          await runDataProductsQuery(args[2], sql, {
-              receipt: args.includes("--receipt") || args.includes("--json"),
-          });
-        } else {
-          console.error(
-              'Usage: loxtep data-products query <id> "SQL" | loxtep data-products query <id> --file <path>',
-          );
-          process.exitCode = 1;
-        }
         } else if (sub === "tables" && args[2]) {
         await runDataProductsTables(args[2]);
         } else if (sub === "create") {
