@@ -31,6 +31,7 @@ const DP: DataProduct = {
 function mockHttp(handlers: {
   get?: (path: string) => unknown;
   post?: (path: string, body: unknown) => unknown;
+  put?: (path: string, body: unknown) => unknown;
 }): LoxtepHttpClient {
   return {
     get: jest.fn(async (path: string) => {
@@ -41,7 +42,10 @@ function mockHttp(handlers: {
       if (!handlers.post) throw new Error(`unexpected POST ${path}`);
       return handlers.post(path, body);
     }),
-    put: jest.fn(),
+    put: jest.fn(async (path: string, body: unknown) => {
+      if (!handlers.put) throw new Error(`unexpected PUT ${path}`);
+      return handlers.put(path, body);
+    }),
     patch: jest.fn(),
     delete: jest.fn(),
   } as unknown as LoxtepHttpClient;
@@ -260,6 +264,91 @@ describe('createDataProductsApi HTTP methods', () => {
       dry_run: true,
     });
     expect(result.job_id).toBe('job-1');
+  });
+
+  it('iceberg.set_history PUTs the stored preferences with only history_enabled changed', async () => {
+    const http = mockHttp({
+      get: path => {
+        expect(path).toBe('/dataproducts/dp-1');
+        return {
+          data: {
+            storage: { iceberg_enabled: true },
+            metadata: {
+              tags: ['x'],
+              storage_indexing_preferences: { row_embeddings: { enabled: true }, bloom_filter_columns: ['id'] },
+            },
+          },
+        };
+      },
+      put: (path, body) => {
+        expect(path).toBe('/dataproducts/dp-1');
+        expect(body).toEqual({
+          metadata: {
+            storage_indexing_preferences: {
+              row_embeddings: { enabled: true },
+              bloom_filter_columns: ['id'],
+              history_enabled: true,
+            },
+          },
+        });
+        return { data: {} };
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.set_history('dp-1', true)).resolves.toEqual({
+      data_product_id: 'dp-1',
+      history_enabled: true,
+    });
+  });
+
+  it('iceberg.set_history refuses off without confirm, and when Iceberg is off, without a PUT', async () => {
+    const http = mockHttp({
+      get: () => ({ data: { storage: { iceberg_enabled: false }, metadata: {} } }),
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.set_history('dp-1', false)).rejects.toThrow(/confirm/);
+    expect(http.get).not.toHaveBeenCalled();
+    await expect(api.iceberg.set_history('dp-1', true)).rejects.toThrow(/Iceberg is not enabled/);
+    expect(http.put).not.toHaveBeenCalled();
+  });
+
+  it('iceberg.set_history keeps the legacy camelCase key when that is what is stored', async () => {
+    const http = mockHttp({
+      get: () => ({
+        data: {
+          storage: JSON.stringify({ iceberg_enabled: true }),
+          metadata: JSON.stringify({ storageIndexingPreferences: { bloomFilterColumns: ['a'], historyEnabled: true } }),
+        },
+      }),
+      put: (_path, body) => {
+        expect(body).toEqual({
+          metadata: { storageIndexingPreferences: { bloomFilterColumns: ['a'], history_enabled: false } },
+        });
+        return {};
+      },
+    });
+    const api = createDataProductsApi(http);
+    await api.iceberg.set_history('dp-1', false, { confirm: true });
+    expect(http.put).toHaveBeenCalledTimes(1);
+  });
+
+  it('iceberg.trace builds the query and unwraps data', async () => {
+    const trace = { data_product_id: 'dp-1', eid: 'z/2026/11/13/1-1', steps: [], stops: [{ depth: 0, reason: 'no_upstream' }] };
+    const http = mockHttp({
+      get: path => {
+        expect(path).toBe('/dataproducts/dp-1/iceberg/trace?eid=z%2F2026%2F11%2F13%2F1-1&max_rows=10');
+        return { success: true, data: trace };
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.trace('dp-1', 'z/2026/11/13/1-1', { max_rows: 10 })).resolves.toEqual(trace);
+  });
+
+  it('iceberg.trace rejects a non z/ eid before any request', async () => {
+    const http = mockHttp({});
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.trace('dp-1', "z/1' OR 1=1")).rejects.toThrow(/z\//);
+    expect(http.get).not.toHaveBeenCalled();
   });
 
   it('list_tables filters to data product id', async () => {

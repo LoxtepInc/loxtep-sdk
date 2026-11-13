@@ -36,6 +36,8 @@ function client(overrides: {
   cancel?: jest.Mock;
   enable?: jest.Mock;
   put_config?: jest.Mock;
+  set_history?: jest.Mock;
+  trace?: jest.Mock;
   export_events?: jest.Mock;
   get?: jest.Mock;
   updateContract?: jest.Mock;
@@ -70,6 +72,8 @@ function client(overrides: {
           put_config: overrides.put_config ?? jest.fn(),
           files: jest.fn(),
           snapshots: jest.fn(),
+          set_history: overrides.set_history ?? jest.fn(),
+          trace: overrides.trace ?? jest.fn(),
         },
       },
     },
@@ -420,6 +424,70 @@ describe('executeIceberg', () => {
       io
     );
     expect(api.instance_id).toBe('instance-override');
+  });
+});
+
+describe('executeIceberg history and trace', () => {
+  it('history with no mode prints health.history', async () => {
+    const history = { enabled: true, status: 'ok', max_eid: 'z/9' };
+    const { io, logs } = capture();
+    const code = await executeIceberg(
+      client({ health: jest.fn(async () => ({ history })) }),
+      ['history', 'dp-1', '--json'],
+      io
+    );
+    expect(code).toBe(0);
+    expect(parse(logs)).toEqual(history);
+  });
+
+  it('history on calls set_history(true)', async () => {
+    const set_history = jest.fn(async () => ({ data_product_id: 'dp-1', history_enabled: true }));
+    const { io, logs } = capture();
+    expect(await executeIceberg(client({ set_history }), ['history', 'dp-1', 'on', '--json'], io)).toBe(0);
+    expect(set_history).toHaveBeenCalledWith('dp-1', true, { confirm: false });
+    expect(parse(logs)).toEqual({ data_product_id: 'dp-1', history_enabled: true });
+  });
+
+  it('history off needs --confirm and never calls set_history without it', async () => {
+    const set_history = jest.fn(async () => ({ data_product_id: 'dp-1', history_enabled: false }));
+    const { io, errors } = capture();
+    expect(await executeIceberg(client({ set_history }), ['history', 'dp-1', 'off', '--json'], io)).toBe(1);
+    expect(set_history).not.toHaveBeenCalled();
+    expect(JSON.parse(errors[0]).code).toBe('confirm_required');
+    expect(
+      await executeIceberg(client({ set_history }), ['history', 'dp-1', 'off', '--confirm', '--json'], io)
+    ).toBe(0);
+    expect(set_history).toHaveBeenCalledWith('dp-1', false, { confirm: true });
+  });
+
+  it('history rejects an unknown mode', async () => {
+    const set_history = jest.fn();
+    const { io, errors } = capture();
+    expect(await executeIceberg(client({ set_history }), ['history', 'dp-1', 'yes', '--json'], io)).toBe(1);
+    expect(set_history).not.toHaveBeenCalled();
+    expect(JSON.parse(errors[0]).code).toBe('usage');
+  });
+
+  it('trace passes eid and bounds', async () => {
+    const result = { data_product_id: 'dp-1', eid: 'z/1', steps: [], stops: [] };
+    const trace = jest.fn(async () => result);
+    const { io, logs } = capture();
+    expect(
+      await executeIceberg(client({ trace }), ['trace', 'dp-1', '--eid', 'z/1', '--max-hops', '3', '--json'], io)
+    ).toBe(0);
+    expect(trace).toHaveBeenCalledWith('dp-1', 'z/1', { max_hops: 3 });
+    expect(parse(logs)).toEqual(result);
+  });
+
+  it('trace requires --eid and integer bounds in range', async () => {
+    const trace = jest.fn();
+    const { io, errors } = capture();
+    expect(await executeIceberg(client({ trace }), ['trace', 'dp-1', '--json'], io)).toBe(1);
+    expect(
+      await executeIceberg(client({ trace }), ['trace', 'dp-1', '--eid', 'z/1', '--max-rows', '500', '--json'], io)
+    ).toBe(1);
+    expect(trace).not.toHaveBeenCalled();
+    expect(errors.map(line => JSON.parse(line).code)).toEqual(['eid_required', 'invalid_bound']);
   });
 });
 

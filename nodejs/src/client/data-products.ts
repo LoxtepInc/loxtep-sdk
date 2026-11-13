@@ -20,6 +20,11 @@ import type {
   DataProductExportOptions,
   DataProductExportResult,
   IcebergRebuildRequest,
+  IcebergHealthResult,
+  IcebergSetHistoryOptions,
+  IcebergSetHistoryResult,
+  IcebergTraceOptions,
+  IcebergTraceResult,
   DataProductListTablesResult,
   DataProductLexicon,
   DataProductCreateInput,
@@ -38,6 +43,7 @@ import {
 } from "../rstreams/event-bridge.js";
 import { NotFoundError } from "../errors/resource.js";
 import { AuthorizationError } from "../errors/auth.js";
+import { ValidationError } from "../errors/validation.js";
 import { StreamingError } from "../errors/streaming.js";
 import { DataProductResolver } from "./data-product-resolver.js";
 import { resolveStreamsConfiguration } from "../rstreams/configuration.js";
@@ -117,6 +123,45 @@ function unwrapRecord(res: unknown): Record<string, unknown> {
   return record;
 }
 
+/** A leo queue eid (`z/…`); same pattern as the trace route. */
+const TRACE_EID = /^z\/[0-9/-]{1,120}$/;
+
+function parseJsonRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/**
+ * The data product PUT merges `metadata` one level deep, so
+ * `storage_indexing_preferences` is replaced whole. Send the stored
+ * preferences with only `history_enabled` changed, under the key the product
+ * already uses (snake_case by default).
+ */
+export function buildHistoryPreferencePatch(
+  metadataRaw: unknown,
+  enabled: boolean,
+): Record<string, unknown> {
+  const metadata = parseJsonRecord(metadataRaw);
+  const key =
+    metadata.storage_indexing_preferences === undefined &&
+    metadata.storageIndexingPreferences !== undefined
+      ? "storageIndexingPreferences"
+      : "storage_indexing_preferences";
+  const { historyEnabled: _legacy, ...rest } = parseJsonRecord(metadata[key]);
+  return { [key]: { ...rest, history_enabled: enabled } };
+}
+
 function unwrapData<T>(res: unknown): T {
   return ((res as { data?: T }).data ?? res) as T;
 }
@@ -176,7 +221,7 @@ export function createDataProductsApi(
       id: string,
       body: IcebergRebuildRequest,
     ) => Promise<Record<string, unknown>>;
-    health: (id: string) => Promise<Record<string, unknown>>;
+    health: (id: string) => Promise<IcebergHealthResult>;
     status: (id: string) => Promise<Record<string, unknown>>;
     cancel: (id: string) => Promise<Record<string, unknown>>;
     enable: (
@@ -189,6 +234,21 @@ export function createDataProductsApi(
     ) => Promise<Record<string, unknown>>;
     files: (id: string) => Promise<Record<string, unknown>>;
     snapshots: (id: string) => Promise<Record<string, unknown>>;
+    /**
+     * Turn the append-only event history table (`<name>.history`) on or off.
+     * Iceberg must be enabled. Turning it off requires `{ confirm: true }`.
+     */
+    set_history: (
+      id: string,
+      enabled: boolean,
+      options?: IcebergSetHistoryOptions,
+    ) => Promise<IcebergSetHistoryResult>;
+    /** Walk one event (`z/…` eid) upstream over Iceberg history tables. */
+    trace: (
+      id: string,
+      eid: string,
+      options?: IcebergTraceOptions,
+    ) => Promise<IcebergTraceResult>;
   };
   list_tables: (id: string) => Promise<DataProductListTablesResult>;
   get_queue_info: (id: string) => Promise<QueueMetadata>;
@@ -526,11 +586,11 @@ export function createDataProductsApi(
         );
         return unwrapRecord(res);
       },
-      async health(id: string): Promise<Record<string, unknown>> {
+      async health(id: string): Promise<IcebergHealthResult> {
         const res = await http.get(
           `/dataproducts/${encodeURIComponent(id)}/iceberg/health`,
         );
-        return unwrapRecord(res);
+        return unwrapRecord(res) as IcebergHealthResult;
       },
       async status(id: string): Promise<Record<string, unknown>> {
         const res = await http.get(
@@ -576,6 +636,51 @@ export function createDataProductsApi(
           `/dataproducts/${encodeURIComponent(id)}/iceberg/snapshots`,
         );
         return unwrapRecord(res);
+      },
+      async set_history(
+        id: string,
+        enabled: boolean,
+        options?: IcebergSetHistoryOptions,
+      ): Promise<IcebergSetHistoryResult> {
+        if (!enabled && options?.confirm !== true) {
+          throw new ValidationError(
+            "Turning event history off stops appends; events while off are never recorded. Pass { confirm: true }.",
+            [{ field: "confirm", message: "required to turn history off" }],
+          );
+        }
+        const path = `/dataproducts/${encodeURIComponent(id)}`;
+        const product = unwrapRecord(await http.get(path));
+        const storage = parseJsonRecord(product.storage);
+        if (storage.iceberg_enabled !== true) {
+          throw new ValidationError(
+            "Iceberg is not enabled for this data product. Enable Iceberg first, then set history.",
+            [{ field: "data_product_id", message: "iceberg not enabled" }],
+          );
+        }
+        await http.put(path, {
+          metadata: buildHistoryPreferencePatch(product.metadata, enabled),
+        });
+        return { data_product_id: id, history_enabled: enabled };
+      },
+      async trace(
+        id: string,
+        eid: string,
+        options?: IcebergTraceOptions,
+      ): Promise<IcebergTraceResult> {
+        if (!TRACE_EID.test(eid)) {
+          throw new ValidationError("eid must be a z/… queue eid", [
+            { field: "eid", message: "must match z/…" },
+          ]);
+        }
+        const qs = buildQueryString({
+          eid,
+          max_hops: options?.max_hops,
+          max_rows: options?.max_rows,
+        });
+        const res = await http.get(
+          `/dataproducts/${encodeURIComponent(id)}/iceberg/trace${qs}`,
+        );
+        return unwrapRecord(res) as unknown as IcebergTraceResult;
       },
     },
 

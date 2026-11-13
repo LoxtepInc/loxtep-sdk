@@ -104,6 +104,36 @@ There is no `GET /iceberg/config`. `config` without `--put` reads
 
 `schema_mismatch` stays a materialization status. The catalog field is not removed.
 
+## Event history and traces
+
+```bash
+loxtep data-products iceberg history <product-id> [--json]
+loxtep data-products iceberg history <product-id> on
+loxtep data-products iceberg history <product-id> off --confirm
+loxtep data-products iceberg trace <product-id> --eid <z/eid> \
+  [--max-hops 1-10] [--max-rows 1-200] [--json]
+```
+
+`history` with no mode prints the `history` block of `GET .../iceberg/health`:
+`status` (`not_enabled`, `waiting_for_first_write`, `ok`, `unknown`), `max_eid`
+(compare it with `data_sync.queue_lag.checkpoint_eid`), `row_count`, and
+`gap_after_eid` when history was turned off and on again.
+
+`on` / `off` set `metadata.storage_indexing_preferences.history_enabled`. The
+command reads the product first and sends the stored preferences with only
+`history_enabled` changed, because the PUT replaces that object whole. Iceberg
+must be enabled. `off` needs `--confirm`: events while history is off are never
+recorded. Rows already written stay queryable as `"<name>.history"`.
+
+`trace` walks one event upstream over history tables (`GET .../iceberg/trace`).
+The product must keep history (409 `history_not_enabled` otherwise). The result
+has `steps` (one per hop: product, queue, events with their rows, `truncated`)
+and `stops` with a reason such as `no_upstream` (the start of the pipeline) or
+`source_history_not_enabled` (the upstream product does not keep history).
+
+SDK: `client.build.data_products.iceberg.set_history(id, enabled, { confirm })`
+and `.trace(id, eid, { max_hops, max_rows })`.
+
 ## SQL receipt
 
 ```bash

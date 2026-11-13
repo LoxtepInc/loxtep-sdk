@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `client.build.data_products.iceberg.set_history(id, enabled, { confirm })` turns a data product's event history table (`<name>.history`) on or off. It keeps the product's other storage settings, refuses when Iceberg is off, and needs `{ confirm: true }` to turn history off. CLI: `loxtep data-products iceberg history <id> [on|off] [--confirm]`; with no mode it prints the history status.
+- `client.build.data_products.iceberg.trace(id, eid, { max_hops, max_rows })` follows one event upstream through the queues and data products that produced it. CLI: `loxtep data-products iceberg trace <id> --eid <z/eid>`.
+- `iceberg.health()` now returns a typed `history` block (`status`, `max_eid`, `row_count`, `gap_after_eid`).
+
 ## [0.14.1] - 2026-11-11
 
 ### Added

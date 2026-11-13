@@ -328,7 +328,7 @@ export async function executeIceberg(
       io,
       json,
       'usage',
-      'loxtep data-products iceberg rebuild|status|cancel|enable|config|health|files|snapshots|schema <product-id>'
+      'loxtep data-products iceberg rebuild|status|cancel|enable|config|health|files|snapshots|schema|history|trace <product-id>'
     );
   }
 
@@ -538,6 +538,50 @@ export async function executeIceberg(
         },
         inspection: inspectionOf(health),
       });
+      return 0;
+    }
+    if (action === 'history') {
+      const mode = args[2];
+      if (mode === undefined || mode.startsWith('--')) {
+        const health = await client.build.data_products.iceberg.health(productId);
+        emit(io, json, health.history ?? { status: 'not_applicable' });
+        return 0;
+      }
+      if (mode !== 'on' && mode !== 'off') {
+        return fail(io, json, 'usage', 'loxtep data-products iceberg history <product-id> [on|off] [--confirm]');
+      }
+      if (mode === 'off' && !hasFlag(args, '--confirm')) {
+        return fail(
+          io,
+          json,
+          'confirm_required',
+          'Turning history off stops appends; events while off are never recorded. Rows already written stay. Re-run with --confirm.'
+        );
+      }
+      const result = await client.build.data_products.iceberg.set_history(productId, mode === 'on', {
+        confirm: mode === 'off',
+      });
+      emit(io, json, result);
+      return 0;
+    }
+
+    if (action === 'trace') {
+      const eid = argValue(args, '--eid');
+      if (!eid) return fail(io, json, 'eid_required', 'trace requires --eid <z/… queue eid>');
+      const bounds: { max_hops?: number; max_rows?: number } = {};
+      for (const [flag, key, max] of [
+        ['--max-hops', 'max_hops', 10],
+        ['--max-rows', 'max_rows', 200],
+      ] as const) {
+        const raw = argValue(args, flag);
+        if (raw === undefined) continue;
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > max) {
+          return fail(io, json, 'invalid_bound', `${flag} must be an integer from 1 to ${max}`);
+        }
+        bounds[key] = n;
+      }
+      emit(io, json, await client.build.data_products.iceberg.trace(productId, eid, bounds));
       return 0;
     }
     return fail(io, json, 'usage', `Unknown iceberg action ${action}`);

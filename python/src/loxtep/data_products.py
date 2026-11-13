@@ -1,7 +1,8 @@
 """
 Data products API. get, get_lexicon, list, create, search, query, list_tables,
 get_queue_info, get_reader_checkpoint, readiness, promote, get_usage_map,
-stream, replay, get_writer, get_reader, invalidate_cache.
+stream, replay, get_writer, get_reader, invalidate_cache. Iceberg control is
+``iceberg`` (see :mod:`loxtep.iceberg`).
 
 Writer/reader use the HTTP data path (consistent with stream/replay); the
 Node.js SDK uses the rstreams stream bus for the same surface.
@@ -14,6 +15,7 @@ from typing import Any, AsyncIterator, Iterator, Mapping, Optional
 from urllib.parse import quote
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
+from .iceberg import AsyncIcebergApi, IcebergApi
 from .models import DataProductKind, UsageMap, UsageMapEdge, UsageMapNode
 from .rstreams.writer import EventWriterTransportMode
 
@@ -229,6 +231,7 @@ class DataProductsApi:
         self._resolve_cache: dict[str, str] = {}
         self.semantic_inference = SemanticInferenceApi(http)
         self.consumption_suggestions = ConsumptionSuggestionsApi(http)
+        self.iceberg = IcebergApi(http)
 
     def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = self.get(dp_id)
@@ -542,6 +545,7 @@ class AsyncDataProductsApi:
         self._resolve_cache: dict[str, str] = {}
         self.semantic_inference = AsyncSemanticInferenceApi(http)
         self.consumption_suggestions = AsyncConsumptionSuggestionsApi(http)
+        self.iceberg = AsyncIcebergApi(http)
 
     async def _resolve_queue_name(self, dp_id: str) -> Optional[str]:
         asset = await self.get(dp_id)
