@@ -131,6 +131,28 @@ has `steps` (one per hop: product, queue, events with their rows, `truncated`)
 and `stops` with a reason such as `no_upstream` (the start of the pipeline) or
 `source_history_not_enabled` (the upstream product does not keep history).
 
+## Iceberg indexes
+
+```bash
+loxtep data-products iceberg indexes <product-id> [--json]
+loxtep data-products iceberg indexes <product-id> --analytics on --bloom customer_id,order_id
+loxtep data-products iceberg indexes <product-id> --bloom none
+loxtep data-products iceberg indexes <product-id> \
+  --embeddings-fields title,body [--embeddings-dimensions 256|512|1024] \
+  [--embeddings-mode live|batch|hybrid]
+loxtep data-products iceberg indexes <product-id> --embeddings-off
+```
+
+No flags prints the current settings. Each flag sends only its own setting:
+`--analytics` turns manifest column statistics on or off; `--bloom` sets up to 20
+scalar schema fields with bloom-filter sidecars (`none` clears); the embeddings
+flags set or turn off row embeddings for semantic search. The platform validates
+each change (unknown or non-scalar bloom columns, non-string or PII embedding
+fields, Iceberg off, organization privacy). New settings apply to files written
+after the config syncs; a rebuild applies them to existing data.
+
+SDK: `client.build.data_products.iceberg.set_indexes(id, { analytics_indexes_enabled, bloom_filter_columns, row_embeddings })`.
+
 SDK: `client.build.data_products.iceberg.set_history(id, enabled, { confirm })`
 and `.trace(id, eid, { max_hops, max_rows })`.
 

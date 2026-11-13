@@ -305,6 +305,36 @@ describe('createDataProductsApi HTTP methods', () => {
     expect(http.put).toHaveBeenCalledTimes(1);
   });
 
+  it('iceberg.set_indexes PUTs only the settings passed', async () => {
+    const http = mockHttp({
+      put: (path, body) => {
+        expect(path).toBe('/dataproducts/dp-1');
+        expect(body).toEqual({
+          metadata: {
+            storage_indexing_preferences: { analytics_indexes_enabled: true, row_embeddings: null },
+          },
+        });
+        return { data: {} };
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(
+      api.iceberg.set_indexes('dp-1', { analytics_indexes_enabled: true, row_embeddings: null }),
+    ).resolves.toEqual({ data_product_id: 'dp-1', analytics_indexes_enabled: true, row_embeddings: null });
+  });
+
+  it('iceberg.set_indexes rejects an empty change and too many bloom columns', async () => {
+    const http = mockHttp({});
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.set_indexes('dp-1', {})).rejects.toThrow(/at least one/);
+    await expect(
+      api.iceberg.set_indexes('dp-1', {
+        bloom_filter_columns: Array.from({ length: 21 }, (_, i) => `c${i}`),
+      }),
+    ).rejects.toThrow(/at most 20/);
+    expect(http.put).not.toHaveBeenCalled();
+  });
+
   it('iceberg.trace builds the query and unwraps data', async () => {
     const trace = { data_product_id: 'dp-1', eid: 'z/2026/11/13/1-1', steps: [], stops: [{ depth: 0, reason: 'no_upstream' }] };
     const http = mockHttp({

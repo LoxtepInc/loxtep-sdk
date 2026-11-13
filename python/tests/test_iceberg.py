@@ -24,6 +24,7 @@ def test_namespace_exposes_the_node_methods():
         "files",
         "snapshots",
         "set_history",
+        "set_indexes",
         "trace",
     ):
         assert callable(getattr(client.build.data_products.iceberg, name))
@@ -91,6 +92,40 @@ def test_set_history_off_needs_confirm_true():
     client.close()
 
 
+def test_set_indexes_puts_only_what_is_passed():
+    client = LoxtepClient(api_url="https://api.example.com")
+    api = client.build.data_products.iceberg
+    with patch.object(client._http, "put", return_value={}) as put:
+        assert api.set_indexes(DP, bloom_filter_columns=["id"]) == {
+            "data_product_id": DP,
+            "bloom_filter_columns": ["id"],
+        }
+        put.assert_called_with(BASE, {"metadata": {"storage_indexing_preferences": {"bloom_filter_columns": ["id"]}}})
+        api.set_indexes(DP, analytics_indexes_enabled=False, row_embeddings=None)
+        put.assert_called_with(
+            BASE,
+            {"metadata": {"storage_indexing_preferences": {"analytics_indexes_enabled": False, "row_embeddings": None}}},
+        )
+        api.set_indexes(DP, row_embeddings={"fields": ["title"], "dimensions": 512})
+        put.assert_called_with(
+            BASE,
+            {"metadata": {"storage_indexing_preferences": {"row_embeddings": {"fields": ["title"], "dimensions": 512}}}},
+        )
+    client.close()
+
+
+def test_set_indexes_rejects_empty_and_too_many_bloom_columns():
+    client = LoxtepClient(api_url="https://api.example.com")
+    api = client.build.data_products.iceberg
+    with patch.object(client._http, "put") as put:
+        with pytest.raises(ValidationError, match="at least one"):
+            api.set_indexes(DP)
+        with pytest.raises(ValidationError, match="at most 20"):
+            api.set_indexes(DP, bloom_filter_columns=[f"c{i}" for i in range(21)])
+        put.assert_not_called()
+    client.close()
+
+
 def test_trace_builds_query_and_validates():
     client = LoxtepClient(api_url="https://api.example.com")
     api = client.build.data_products.iceberg
@@ -131,4 +166,10 @@ async def test_async_set_history_and_trace():
     ) as get:
         assert await api.trace(DP, EID) == {"steps": [], "stops": []}
         assert get.await_args.args[0].startswith(f"{BASE}/iceberg/trace?eid=")
+    with patch.object(client._http, "put", new=AsyncMock(return_value={})) as put:
+        assert await api.set_indexes(DP, analytics_indexes_enabled=True) == {
+            "data_product_id": DP,
+            "analytics_indexes_enabled": True,
+        }
+        put.assert_awaited_once()
     await client.aclose()

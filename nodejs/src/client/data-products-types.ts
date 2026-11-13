@@ -266,6 +266,25 @@ export interface IcebergSetHistoryResult {
   history_enabled: boolean;
 }
 
+/** Row embeddings for semantic_search (`null` turns them off). */
+export interface IcebergRowEmbeddings {
+  /** Existing string-typed, non-PII schema fields. */
+  fields: string[];
+  dimensions?: 256 | 512 | 1024;
+  mode?: "live" | "batch" | "hybrid";
+}
+
+/** Iceberg index preferences; pass only what changes (at least one). */
+export interface IcebergIndexesInput {
+  /** Column statistics in Iceberg manifests for DuckDB file pruning. */
+  analytics_indexes_enabled?: boolean;
+  /** Up to 20 scalar schema fields with bloom-filter sidecars; `[]` clears. */
+  bloom_filter_columns?: string[];
+  row_embeddings?: IcebergRowEmbeddings | null;
+}
+
+export type IcebergSetIndexesResult = { data_product_id: string } & IcebergIndexesInput;
+
 export interface IcebergTraceOptions {
   /** Upstream hops to follow, 1–10 (default 5). */
   max_hops?: number;

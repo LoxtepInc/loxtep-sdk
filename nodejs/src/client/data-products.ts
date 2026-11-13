@@ -23,6 +23,8 @@ import type {
   IcebergHealthResult,
   IcebergSetHistoryOptions,
   IcebergSetHistoryResult,
+  IcebergIndexesInput,
+  IcebergSetIndexesResult,
   IcebergTraceOptions,
   IcebergTraceResult,
   DataProductListTablesResult,
@@ -127,6 +129,7 @@ function unwrapRecord(res: unknown): Record<string, unknown> {
 const TRACE_EID = /^z\/[0-9/-]{1,120}$/;
 const TRACE_MAX_HOPS = 10;
 const TRACE_MAX_ROWS = 200;
+const MAX_BLOOM_FILTER_COLUMNS = 20;
 
 function unwrapData<T>(res: unknown): T {
   return ((res as { data?: T }).data ?? res) as T;
@@ -209,6 +212,14 @@ export function createDataProductsApi(
       enabled: boolean,
       options?: IcebergSetHistoryOptions,
     ) => Promise<IcebergSetHistoryResult>;
+    /**
+     * Set Iceberg index preferences (column stats, bloom columns, row
+     * embeddings). Pass only what changes; the platform validates each value.
+     */
+    set_indexes: (
+      id: string,
+      input: IcebergIndexesInput,
+    ) => Promise<IcebergSetIndexesResult>;
     /** Walk one event (`z/…` eid) upstream over Iceberg history tables. */
     trace: (
       id: string,
@@ -620,6 +631,39 @@ export function createDataProductsApi(
           metadata: { storage_indexing_preferences: { history_enabled: enabled } },
         });
         return { data_product_id: id, history_enabled: enabled };
+      },
+      async set_indexes(
+        id: string,
+        input: IcebergIndexesInput,
+      ): Promise<IcebergSetIndexesResult> {
+        const patch: IcebergIndexesInput = {};
+        if (input.analytics_indexes_enabled !== undefined)
+          patch.analytics_indexes_enabled = input.analytics_indexes_enabled;
+        if (input.bloom_filter_columns !== undefined)
+          patch.bloom_filter_columns = input.bloom_filter_columns;
+        if (input.row_embeddings !== undefined)
+          patch.row_embeddings = input.row_embeddings;
+        if (Object.keys(patch).length === 0) {
+          throw new ValidationError(
+            "Pass at least one of analytics_indexes_enabled, bloom_filter_columns, row_embeddings",
+            [{ field: "input", message: "empty" }],
+          );
+        }
+        if (
+          patch.bloom_filter_columns !== undefined &&
+          patch.bloom_filter_columns.length > MAX_BLOOM_FILTER_COLUMNS
+        ) {
+          throw new ValidationError(
+            `bloom_filter_columns allows at most ${MAX_BLOOM_FILTER_COLUMNS} columns`,
+            [{ field: "bloom_filter_columns", message: `max ${MAX_BLOOM_FILTER_COLUMNS}` }],
+          );
+        }
+        // The PUT merges storage_indexing_preferences per key and validates
+        // each changed value against the product schema.
+        await http.put(`/dataproducts/${encodeURIComponent(id)}`, {
+          metadata: { storage_indexing_preferences: patch },
+        });
+        return { data_product_id: id, ...patch };
       },
       async trace(
         id: string,

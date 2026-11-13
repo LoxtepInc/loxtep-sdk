@@ -2,7 +2,8 @@
 Iceberg control for a data product (``client.build.data_products.iceberg``).
 
 Mirrors the Node SDK ``data_products.iceberg`` namespace: rebuild, health,
-status, cancel, enable, put_config, files, snapshots, set_history, trace.
+status, cancel, enable, put_config, files, snapshots, set_history, set_indexes,
+trace.
 """
 
 from __future__ import annotations
@@ -16,6 +17,10 @@ from .errors import ValidationError
 # A leo queue eid (``z/…``); same pattern as GET …/iceberg/trace.
 _TRACE_EID_RE = re.compile(r"z/[0-9/-]{1,120}")
 _TRACE_BOUNDS = {"max_hops": 10, "max_rows": 200}
+_MAX_BLOOM_FILTER_COLUMNS = 20
+
+# ``row_embeddings=None`` turns embeddings off, so "not passed" needs its own value.
+_UNSET: Any = object()
 
 
 def _unwrap(res: Any) -> Any:
@@ -56,6 +61,32 @@ def _history_put_body(enabled: bool) -> dict[str, Any]:
     # The PUT merges storage_indexing_preferences per key; it refuses
     # (409 iceberg_required) when the product has no Iceberg.
     return {"metadata": {"storage_indexing_preferences": {"history_enabled": enabled}}}
+
+
+def _indexes_body(
+    analytics_indexes_enabled: Optional[bool],
+    bloom_filter_columns: Optional[list[str]],
+    row_embeddings: Any,
+) -> dict[str, Any]:
+    patch: dict[str, Any] = {}
+    if analytics_indexes_enabled is not None:
+        patch["analytics_indexes_enabled"] = analytics_indexes_enabled
+    if bloom_filter_columns is not None:
+        if len(bloom_filter_columns) > _MAX_BLOOM_FILTER_COLUMNS:
+            raise ValidationError(
+                f"bloom_filter_columns allows at most {_MAX_BLOOM_FILTER_COLUMNS} columns",
+                [{"field": "bloom_filter_columns", "message": f"max {_MAX_BLOOM_FILTER_COLUMNS}"}],
+            )
+        patch["bloom_filter_columns"] = list(bloom_filter_columns)
+    if row_embeddings is not _UNSET:
+        patch["row_embeddings"] = None if row_embeddings is None else dict(row_embeddings)
+    if not patch:
+        raise ValidationError(
+            "Pass at least one of analytics_indexes_enabled, bloom_filter_columns, row_embeddings",
+            [{"field": "input", "message": "empty"}],
+        )
+    # The PUT merges storage_indexing_preferences per key and validates each change.
+    return patch
 
 
 def _trace_path(
@@ -117,6 +148,19 @@ class IcebergApi:
         self._http.put(_base(data_product_id), _history_put_body(enabled))
         return {"data_product_id": data_product_id, "history_enabled": enabled}
 
+    def set_indexes(
+        self,
+        data_product_id: str,
+        *,
+        analytics_indexes_enabled: Optional[bool] = None,
+        bloom_filter_columns: Optional[list[str]] = None,
+        row_embeddings: Any = _UNSET,
+    ) -> dict[str, Any]:
+        """Set Iceberg index preferences; pass only what changes. ``row_embeddings=None`` turns them off."""
+        patch = _indexes_body(analytics_indexes_enabled, bloom_filter_columns, row_embeddings)
+        self._http.put(_base(data_product_id), {"metadata": {"storage_indexing_preferences": patch}})
+        return {"data_product_id": data_product_id, **patch}
+
     def trace(
         self,
         data_product_id: str,
@@ -167,6 +211,18 @@ class AsyncIcebergApi:
         _check_history_off(enabled, confirm)
         await self._http.put(_base(data_product_id), _history_put_body(enabled))
         return {"data_product_id": data_product_id, "history_enabled": enabled}
+
+    async def set_indexes(
+        self,
+        data_product_id: str,
+        *,
+        analytics_indexes_enabled: Optional[bool] = None,
+        bloom_filter_columns: Optional[list[str]] = None,
+        row_embeddings: Any = _UNSET,
+    ) -> dict[str, Any]:
+        patch = _indexes_body(analytics_indexes_enabled, bloom_filter_columns, row_embeddings)
+        await self._http.put(_base(data_product_id), {"metadata": {"storage_indexing_preferences": patch}})
+        return {"data_product_id": data_product_id, **patch}
 
     async def trace(
         self,

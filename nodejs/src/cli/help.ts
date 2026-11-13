@@ -103,6 +103,10 @@ Build & deploy
   data-products iceberg history <id> [on|off] [--confirm] [--json]
                      No mode prints health.history. on/off sets the <name>.history
                      table; off needs --confirm (events while off are never recorded).
+  data-products iceberg indexes <id> [--analytics on|off] [--bloom col1,col2|none]
+                     [--embeddings-fields f1,f2 [--embeddings-dimensions 256|512|1024]
+                     [--embeddings-mode live|batch|hybrid] | --embeddings-off] [--json]
+                     No flags prints the current index settings. Sends only what changes.
   data-products iceberg trace <id> --eid <z/eid> [--max-hops 1-10] [--max-rows 1-200] [--json]
                      Walks one event upstream over history tables (steps + stops).
   data-products export <id> --start <eid> | --from-beginning [--end <eid>]

@@ -174,7 +174,7 @@ Grouped by customer area; kind labels: **Resource** (full CRUD), **Reference**
 | --- | --- | --- |
 | **build.data_products** | Resource + Runtime | `get`, `get_lexicon`, `list`, `create`, `readiness`, `promote`, `get_usage_map`, `invalidate_cache`, `search`, `query`, `list_tables`, `get_queue_info`, `get_reader_checkpoint`, `stream`, `replay` |
 | **build.data_products.consumption_suggestions** | Async review | `request`, `get`, `decide` (suggested access methods; accept publishes the method) |
-| **build.data_products.iceberg** | Control + Runtime | `rebuild`, `health`, `status`, `cancel`, `enable`, `put_config`, `files`, `snapshots`, `set_history`, `trace` |
+| **build.data_products.iceberg** | Control + Runtime | `rebuild`, `health`, `status`, `cancel`, `enable`, `put_config`, `files`, `snapshots`, `set_history`, `set_indexes`, `trace` |
 | **define.schemas** | Reference | `get`, `list`, `tag_pii_fields` |
 | **define.quality** | Resource | `list`, `get`, `create` |
 | **define.quality_rules** | Resource | `list`, `get`, `create`, `update`, `delete` |
@@ -313,6 +313,7 @@ Delivery sink bindings — how a data product delivers data to external systems
 | `enable(id, body)` / `put_config(id, body)` | Enable Iceberg / update its config |
 | `rebuild(id, {"confirm": True, "backfill_from": "z/…"})` / `cancel(id)` | Permanent delete + recreate + backfill / cancel |
 | `set_history(id, enabled, *, confirm=False)` | Turn the `<name>.history` table on or off (off needs `confirm=True`; Iceberg must be on) |
+| `set_indexes(id, *, analytics_indexes_enabled=None, bloom_filter_columns=None, row_embeddings=...)` | Column stats, bloom columns (max 20, `[]` clears), row embeddings (`None` turns off); pass only what changes |
 | `trace(id, eid, *, max_hops=None, max_rows=None)` | Walk one event upstream over history tables (`steps`, `stops`) |
 
 > **Writer/reader transport:** when the client is configured with stream-bus

@@ -37,6 +37,7 @@ function client(overrides: {
   enable?: jest.Mock;
   put_config?: jest.Mock;
   set_history?: jest.Mock;
+  set_indexes?: jest.Mock;
   trace?: jest.Mock;
   export_events?: jest.Mock;
   get?: jest.Mock;
@@ -73,6 +74,7 @@ function client(overrides: {
           files: jest.fn(),
           snapshots: jest.fn(),
           set_history: overrides.set_history ?? jest.fn(),
+          set_indexes: overrides.set_indexes ?? jest.fn(async (id: string, p: object) => ({ data_product_id: id, ...p })),
           trace: overrides.trace ?? jest.fn(),
         },
       },
@@ -494,6 +496,60 @@ describe('executeIceberg history and trace', () => {
       'eid_required',
       'invalid_bound',
       'invalid_bound',
+    ]);
+  });
+});
+
+describe('executeIceberg indexes', () => {
+  it('with no flags prints the stored index settings', async () => {
+    const get = jest.fn(async () => ({
+      metadata: { storage_indexing_preferences: { bloom_filter_columns: ['id'], history_enabled: true } },
+    }));
+    const { io, logs } = capture();
+    expect(await executeIceberg(client({ get }), ['indexes', 'dp-1', '--json'], io)).toBe(0);
+    expect(parse(logs)).toEqual({
+      data_product_id: 'dp-1',
+      analytics_indexes_enabled: false,
+      bloom_filter_columns: ['id'],
+      row_embeddings: null,
+      history_enabled: true,
+    });
+  });
+
+  it('sends only the flags given', async () => {
+    const set_indexes = jest.fn(async (id: string, p: object) => ({ data_product_id: id, ...p }));
+    const { io } = capture();
+    await executeIceberg(client({ set_indexes }), ['indexes', 'dp-1', '--analytics', 'on', '--bloom', 'a, b', '--json'], io);
+    await executeIceberg(client({ set_indexes }), ['indexes', 'dp-1', '--bloom', 'none', '--embeddings-off', '--json'], io);
+    await executeIceberg(
+      client({ set_indexes }),
+      ['indexes', 'dp-1', '--embeddings-fields', 'title,body', '--embeddings-dimensions', '512', '--json'],
+      io
+    );
+    expect(set_indexes.mock.calls).toEqual([
+      ['dp-1', { analytics_indexes_enabled: true, bloom_filter_columns: ['a', 'b'] }],
+      ['dp-1', { bloom_filter_columns: [], row_embeddings: null }],
+      ['dp-1', { row_embeddings: { fields: ['title', 'body'], dimensions: 512 } }],
+    ]);
+  });
+
+  it('rejects bad flag values without calling set_indexes', async () => {
+    const set_indexes = jest.fn();
+    const { io, errors } = capture();
+    for (const extra of [
+      ['--analytics', 'yes'],
+      ['--bloom'],
+      ['--embeddings-fields', 'a', '--embeddings-mode', 'fast'],
+      ['--embeddings-fields', 'a', '--embeddings-off'],
+    ]) {
+      expect(await executeIceberg(client({ set_indexes }), ['indexes', 'dp-1', ...extra, '--json'], io)).toBe(1);
+    }
+    expect(set_indexes).not.toHaveBeenCalled();
+    expect(errors.map(line => JSON.parse(line).code)).toEqual([
+      'invalid_analytics',
+      'invalid_bloom',
+      'invalid_embeddings',
+      'usage',
     ]);
   });
 });

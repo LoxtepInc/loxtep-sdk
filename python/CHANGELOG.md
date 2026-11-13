@@ -10,6 +10,7 @@ and this project adheres to
 
 ### Added
 
+- `iceberg.set_indexes(id, *, analytics_indexes_enabled, bloom_filter_columns, row_embeddings)` sets Iceberg column statistics, bloom-filter columns and row embeddings (`row_embeddings=None` turns them off).
 - `client.build.data_products.iceberg`, matching the Node SDK: `rebuild`, `health`, `status`, `cancel`, `enable`, `put_config`, `files`, `snapshots`.
 - `iceberg.set_history(id, enabled, *, confirm=False)` turns a data product's event history table on or off, keeping its other storage settings. Turning history off needs `confirm=True`.
 - `iceberg.trace(id, eid, *, max_hops=None, max_rows=None)` follows one event upstream through the queues and data products that produced it.
