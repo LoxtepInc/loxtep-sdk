@@ -31,6 +31,7 @@ const DP: DataProduct = {
 function mockHttp(handlers: {
   get?: (path: string) => unknown;
   post?: (path: string, body: unknown) => unknown;
+  put?: (path: string, body: unknown) => unknown;
 }): LoxtepHttpClient {
   return {
     get: jest.fn(async (path: string) => {
@@ -41,7 +42,10 @@ function mockHttp(handlers: {
       if (!handlers.post) throw new Error(`unexpected POST ${path}`);
       return handlers.post(path, body);
     }),
-    put: jest.fn(),
+    put: jest.fn(async (path: string, body: unknown) => {
+      if (!handlers.put) throw new Error(`unexpected PUT ${path}`);
+      return handlers.put(path, body);
+    }),
     patch: jest.fn(),
     delete: jest.fn(),
   } as unknown as LoxtepHttpClient;
@@ -260,6 +264,96 @@ describe('createDataProductsApi HTTP methods', () => {
       dry_run: true,
     });
     expect(result.job_id).toBe('job-1');
+  });
+
+  it('iceberg.set_history PUTs only history_enabled (the server merges the rest)', async () => {
+    const http = mockHttp({
+      put: (path, body) => {
+        expect(path).toBe('/dataproducts/dp-1');
+        expect(body).toEqual({
+          metadata: { storage_indexing_preferences: { history_enabled: true } },
+        });
+        return { data: {} };
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.set_history('dp-1', true)).resolves.toEqual({
+      data_product_id: 'dp-1',
+      history_enabled: true,
+    });
+    expect(http.get).not.toHaveBeenCalled();
+  });
+
+  it('iceberg.set_history refuses off without confirm before any request', async () => {
+    const http = mockHttp({});
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.set_history('dp-1', false)).rejects.toThrow(/confirm/);
+    expect(http.put).not.toHaveBeenCalled();
+  });
+
+  it('iceberg.set_history off with confirm sends history_enabled: false', async () => {
+    const http = mockHttp({
+      put: (_path, body) => {
+        expect(body).toEqual({
+          metadata: { storage_indexing_preferences: { history_enabled: false } },
+        });
+        return {};
+      },
+    });
+    const api = createDataProductsApi(http);
+    await api.iceberg.set_history('dp-1', false, { confirm: true });
+    expect(http.put).toHaveBeenCalledTimes(1);
+  });
+
+  it('iceberg.set_indexes PUTs only the settings passed', async () => {
+    const http = mockHttp({
+      put: (path, body) => {
+        expect(path).toBe('/dataproducts/dp-1');
+        expect(body).toEqual({
+          metadata: {
+            storage_indexing_preferences: { analytics_indexes_enabled: true, row_embeddings: null },
+          },
+        });
+        return { data: {} };
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(
+      api.iceberg.set_indexes('dp-1', { analytics_indexes_enabled: true, row_embeddings: null }),
+    ).resolves.toEqual({ data_product_id: 'dp-1', analytics_indexes_enabled: true, row_embeddings: null });
+  });
+
+  it('iceberg.set_indexes rejects an empty change and too many bloom columns', async () => {
+    const http = mockHttp({});
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.set_indexes('dp-1', {})).rejects.toThrow(/at least one/);
+    await expect(
+      api.iceberg.set_indexes('dp-1', {
+        bloom_filter_columns: Array.from({ length: 21 }, (_, i) => `c${i}`),
+      }),
+    ).rejects.toThrow(/at most 20/);
+    expect(http.put).not.toHaveBeenCalled();
+  });
+
+  it('iceberg.trace builds the query and unwraps data', async () => {
+    const trace = { data_product_id: 'dp-1', eid: 'z/2026/11/13/1-1', steps: [], stops: [{ depth: 0, reason: 'no_upstream' }] };
+    const http = mockHttp({
+      get: path => {
+        expect(path).toBe('/dataproducts/dp-1/iceberg/trace?eid=z%2F2026%2F11%2F13%2F1-1&max_rows=10');
+        return { success: true, data: trace };
+      },
+    });
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.trace('dp-1', 'z/2026/11/13/1-1', { max_rows: 10 })).resolves.toEqual(trace);
+  });
+
+  it('iceberg.trace rejects a non z/ eid before any request', async () => {
+    const http = mockHttp({});
+    const api = createDataProductsApi(http);
+    await expect(api.iceberg.trace('dp-1', "z/1' OR 1=1")).rejects.toThrow(/z\//);
+    await expect(api.iceberg.trace('dp-1', 'z/1', { max_hops: 11 })).rejects.toThrow(/max_hops/);
+    await expect(api.iceberg.trace('dp-1', 'z/1', { max_rows: 1.5 })).rejects.toThrow(/max_rows/);
+    expect(http.get).not.toHaveBeenCalled();
   });
 
   it('list_tables filters to data product id', async () => {

@@ -5,6 +5,7 @@
 
 import { readFile } from 'fs/promises';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
+import type { IcebergIndexesInput } from '../../client/data-products-types.js';
 import { requireCliClient, type CreateCliClientOptions } from '../create-cli-client.js';
 
 const ENABLE_WINDOWS = new Set(['now', '1h', '6h', '1d', '7d', '30d', 'all']);
@@ -328,7 +329,7 @@ export async function executeIceberg(
       io,
       json,
       'usage',
-      'loxtep data-products iceberg rebuild|status|cancel|enable|config|health|files|snapshots|schema <product-id>'
+      'loxtep data-products iceberg rebuild|status|cancel|enable|config|health|files|snapshots|schema|history|indexes|trace <product-id>'
     );
   }
 
@@ -538,6 +539,111 @@ export async function executeIceberg(
         },
         inspection: inspectionOf(health),
       });
+      return 0;
+    }
+    if (action === 'history') {
+      const mode = args[2];
+      if (mode === undefined || mode.startsWith('--')) {
+        const health = await client.build.data_products.iceberg.health(productId);
+        emit(io, json, health.history ?? { status: 'not_applicable' });
+        return 0;
+      }
+      if (mode !== 'on' && mode !== 'off') {
+        return fail(io, json, 'usage', 'loxtep data-products iceberg history <product-id> [on|off] [--confirm]');
+      }
+      if (mode === 'off' && !hasFlag(args, '--confirm')) {
+        return fail(
+          io,
+          json,
+          'confirm_required',
+          'Turning history off stops appends; events while off are never recorded. Rows already written stay. Re-run with --confirm.'
+        );
+      }
+      const result = await client.build.data_products.iceberg.set_history(productId, mode === 'on', {
+        confirm: mode === 'off',
+      });
+      emit(io, json, result);
+      return 0;
+    }
+
+    if (action === 'indexes') {
+      const patch: IcebergIndexesInput = {};
+      const analytics = argValue(args, '--analytics');
+      if (args.includes('--analytics')) {
+        if (analytics !== 'on' && analytics !== 'off') {
+          return fail(io, json, 'invalid_analytics', '--analytics expects on or off');
+        }
+        patch.analytics_indexes_enabled = analytics === 'on';
+      }
+      if (args.includes('--bloom')) {
+        const bloom = argValue(args, '--bloom');
+        if (!bloom) return fail(io, json, 'invalid_bloom', '--bloom expects col1,col2 or none');
+        patch.bloom_filter_columns =
+          bloom === 'none' ? [] : bloom.split(',').map(c => c.trim()).filter(Boolean);
+      }
+      const embeddingFields = argValue(args, '--embeddings-fields');
+      if (hasFlag(args, '--embeddings-off')) {
+        if (embeddingFields) {
+          return fail(io, json, 'usage', 'Use --embeddings-off or --embeddings-fields, not both');
+        }
+        patch.row_embeddings = null;
+      } else if (args.includes('--embeddings-fields')) {
+        const fields = (embeddingFields ?? '').split(',').map(f => f.trim()).filter(Boolean);
+        if (fields.length === 0) {
+          return fail(io, json, 'invalid_embeddings', '--embeddings-fields expects field1,field2');
+        }
+        const dims = argValue(args, '--embeddings-dimensions');
+        if (dims !== undefined && !['256', '512', '1024'].includes(dims)) {
+          return fail(io, json, 'invalid_embeddings', '--embeddings-dimensions expects 256, 512 or 1024');
+        }
+        const mode = argValue(args, '--embeddings-mode');
+        if (mode !== undefined && !['live', 'batch', 'hybrid'].includes(mode)) {
+          return fail(io, json, 'invalid_embeddings', '--embeddings-mode expects live, batch or hybrid');
+        }
+        patch.row_embeddings = {
+          fields,
+          ...(dims ? { dimensions: Number(dims) as 256 | 512 | 1024 } : {}),
+          ...(mode ? { mode: mode as 'live' | 'batch' | 'hybrid' } : {}),
+        };
+      }
+      if (Object.keys(patch).length === 0) {
+        const product = (await client.build.data_products.get(productId)) as {
+          metadata?: Record<string, unknown>;
+        };
+        const prefs = (product.metadata?.storage_indexing_preferences ??
+          product.metadata?.storageIndexingPreferences ??
+          {}) as Record<string, unknown>;
+        emit(io, json, {
+          data_product_id: productId,
+          analytics_indexes_enabled:
+            prefs.analytics_indexes_enabled ?? prefs.analyticsIndexesEnabled ?? false,
+          bloom_filter_columns: prefs.bloom_filter_columns ?? prefs.bloomFilterColumns ?? [],
+          row_embeddings: prefs.row_embeddings ?? prefs.rowEmbeddings ?? null,
+          history_enabled: prefs.history_enabled ?? prefs.historyEnabled ?? false,
+        });
+        return 0;
+      }
+      emit(io, json, await client.build.data_products.iceberg.set_indexes(productId, patch));
+      return 0;
+    }
+
+    if (action === 'trace') {
+      const eid = argValue(args, '--eid');
+      if (!eid) return fail(io, json, 'eid_required', 'trace requires --eid <z/… queue eid>');
+      const bounds: { max_hops?: number; max_rows?: number } = {};
+      for (const [flag, key, max] of [
+        ['--max-hops', 'max_hops', 10],
+        ['--max-rows', 'max_rows', 200],
+      ] as const) {
+        if (!args.includes(flag)) continue;
+        const raw = argValue(args, flag);
+        const n = raw === undefined ? Number.NaN : Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > max) {
+          return fail(io, json, 'invalid_bound', `${flag} must be an integer from 1 to ${max}`);
+        }
+        bounds[key] = n;
+      }
+      emit(io, json, await client.build.data_products.iceberg.trace(productId, eid, bounds));
       return 0;
     }
     return fail(io, json, 'usage', `Unknown iceberg action ${action}`);

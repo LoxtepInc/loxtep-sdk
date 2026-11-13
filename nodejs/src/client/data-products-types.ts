@@ -230,6 +230,108 @@ export interface IcebergRebuildRequest {
   dry_run?: boolean;
 }
 
+/** `history` block of GET /dataproducts/{id}/iceberg/health. */
+export interface IcebergHistoryHealth {
+  enabled: boolean;
+  status: "not_enabled" | "waiting_for_first_write" | "ok" | "unknown";
+  /** S3 Tables name of the history table. */
+  table: string;
+  snapshot_id: string | number | null;
+  snapshot_time: string | null;
+  /** Highest eid appended to history; compare with data_sync.queue_lag.checkpoint_eid. */
+  max_eid: string | null;
+  row_count: number | null;
+  /** History was turned off and on again: events after this eid, up to the re-enable, are missing. */
+  gap_after_eid: string | null;
+  /** Accepted events that had no eid and were never appended (cumulative). */
+  events_without_eid: number;
+  /** Why a value is missing; empty when status is `ok`. */
+  reason: string;
+}
+
+/** GET /dataproducts/{id}/iceberg/health `data`. Other fields pass through untyped. */
+export interface IcebergHealthResult extends Record<string, unknown> {
+  assessment?: { status?: string; [key: string]: unknown };
+  /** Present for managed Iceberg products; absent on not-applicable responses. */
+  history?: IcebergHistoryHealth;
+}
+
+export interface IcebergSetHistoryOptions {
+  /** Required to turn history off: events while off are never recorded. */
+  confirm?: boolean;
+}
+
+export interface IcebergSetHistoryResult {
+  data_product_id: string;
+  history_enabled: boolean;
+}
+
+/** Row embeddings for semantic_search (`null` turns them off). */
+export interface IcebergRowEmbeddings {
+  /** Existing string-typed, non-PII schema fields. */
+  fields: string[];
+  dimensions?: 256 | 512 | 1024;
+  mode?: "live" | "batch" | "hybrid";
+}
+
+/** Iceberg index preferences; pass only what changes (at least one). */
+export interface IcebergIndexesInput {
+  /** Column statistics in Iceberg manifests for DuckDB file pruning. */
+  analytics_indexes_enabled?: boolean;
+  /** Up to 20 scalar schema fields with bloom-filter sidecars; `[]` clears. */
+  bloom_filter_columns?: string[];
+  row_embeddings?: IcebergRowEmbeddings | null;
+}
+
+export type IcebergSetIndexesResult = { data_product_id: string } & IcebergIndexesInput;
+
+export interface IcebergTraceOptions {
+  /** Upstream hops to follow, 1–10 (default 5). */
+  max_hops?: number;
+  /** Events kept per hop, 1–200 (default 50). */
+  max_rows?: number;
+}
+
+export type IcebergTraceStopReason =
+  | "no_upstream"
+  | "source_not_a_data_product"
+  | "source_history_not_enabled"
+  | "source_events_not_found"
+  | "already_traced"
+  | "source_ambiguous"
+  | "source_unreadable"
+  | "source_access_denied"
+  | "invalid_correlation"
+  | "max_hops"
+  | "query_budget"
+  | "event_budget"
+  | "time_budget";
+
+export interface IcebergTraceStep {
+  depth: number;
+  data_product_id: string;
+  data_product_name: string;
+  queue_name: string | null;
+  events: Array<{ eid: string; row: Record<string, unknown> }>;
+  /** More events matched than max_rows, or more ranges than one query takes. */
+  truncated: boolean;
+}
+
+export interface IcebergTraceStop {
+  depth: number;
+  reason: IcebergTraceStopReason;
+  queue_name?: string;
+  data_product_id?: string;
+}
+
+/** GET /dataproducts/{id}/iceberg/trace `data`. */
+export interface IcebergTraceResult {
+  data_product_id: string;
+  eid: string;
+  steps: IcebergTraceStep[];
+  stops: IcebergTraceStop[];
+}
+
 /** Read-only retained-event export. Does not commit a reader checkpoint. */
 export interface DataProductExportOptions {
   start?: string;

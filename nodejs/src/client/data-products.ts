@@ -20,6 +20,13 @@ import type {
   DataProductExportOptions,
   DataProductExportResult,
   IcebergRebuildRequest,
+  IcebergHealthResult,
+  IcebergSetHistoryOptions,
+  IcebergSetHistoryResult,
+  IcebergIndexesInput,
+  IcebergSetIndexesResult,
+  IcebergTraceOptions,
+  IcebergTraceResult,
   DataProductListTablesResult,
   DataProductLexicon,
   DataProductCreateInput,
@@ -38,6 +45,7 @@ import {
 } from "../rstreams/event-bridge.js";
 import { NotFoundError } from "../errors/resource.js";
 import { AuthorizationError } from "../errors/auth.js";
+import { ValidationError } from "../errors/validation.js";
 import { StreamingError } from "../errors/streaming.js";
 import { DataProductResolver } from "./data-product-resolver.js";
 import { resolveStreamsConfiguration } from "../rstreams/configuration.js";
@@ -117,6 +125,12 @@ function unwrapRecord(res: unknown): Record<string, unknown> {
   return record;
 }
 
+/** A leo queue eid (`z/…`); same pattern as the trace route. */
+const TRACE_EID = /^z\/[0-9/-]{1,120}$/;
+const TRACE_MAX_HOPS = 10;
+const TRACE_MAX_ROWS = 200;
+const MAX_BLOOM_FILTER_COLUMNS = 20;
+
 function unwrapData<T>(res: unknown): T {
   return ((res as { data?: T }).data ?? res) as T;
 }
@@ -176,7 +190,7 @@ export function createDataProductsApi(
       id: string,
       body: IcebergRebuildRequest,
     ) => Promise<Record<string, unknown>>;
-    health: (id: string) => Promise<Record<string, unknown>>;
+    health: (id: string) => Promise<IcebergHealthResult>;
     status: (id: string) => Promise<Record<string, unknown>>;
     cancel: (id: string) => Promise<Record<string, unknown>>;
     enable: (
@@ -189,6 +203,29 @@ export function createDataProductsApi(
     ) => Promise<Record<string, unknown>>;
     files: (id: string) => Promise<Record<string, unknown>>;
     snapshots: (id: string) => Promise<Record<string, unknown>>;
+    /**
+     * Turn the append-only event history table (`<name>.history`) on or off.
+     * Iceberg must be enabled. Turning it off requires `{ confirm: true }`.
+     */
+    set_history: (
+      id: string,
+      enabled: boolean,
+      options?: IcebergSetHistoryOptions,
+    ) => Promise<IcebergSetHistoryResult>;
+    /**
+     * Set Iceberg index preferences (column stats, bloom columns, row
+     * embeddings). Pass only what changes; the platform validates each value.
+     */
+    set_indexes: (
+      id: string,
+      input: IcebergIndexesInput,
+    ) => Promise<IcebergSetIndexesResult>;
+    /** Walk one event (`z/…` eid) upstream over Iceberg history tables. */
+    trace: (
+      id: string,
+      eid: string,
+      options?: IcebergTraceOptions,
+    ) => Promise<IcebergTraceResult>;
   };
   list_tables: (id: string) => Promise<DataProductListTablesResult>;
   get_queue_info: (id: string) => Promise<QueueMetadata>;
@@ -526,11 +563,11 @@ export function createDataProductsApi(
         );
         return unwrapRecord(res);
       },
-      async health(id: string): Promise<Record<string, unknown>> {
+      async health(id: string): Promise<IcebergHealthResult> {
         const res = await http.get(
           `/dataproducts/${encodeURIComponent(id)}/iceberg/health`,
         );
-        return unwrapRecord(res);
+        return unwrapRecord(res) as IcebergHealthResult;
       },
       async status(id: string): Promise<Record<string, unknown>> {
         const res = await http.get(
@@ -576,6 +613,92 @@ export function createDataProductsApi(
           `/dataproducts/${encodeURIComponent(id)}/iceberg/snapshots`,
         );
         return unwrapRecord(res);
+      },
+      async set_history(
+        id: string,
+        enabled: boolean,
+        options?: IcebergSetHistoryOptions,
+      ): Promise<IcebergSetHistoryResult> {
+        if (!enabled && options?.confirm !== true) {
+          throw new ValidationError(
+            "Turning event history off stops appends; events while off are never recorded. Pass { confirm: true }.",
+            [{ field: "confirm", message: "required to turn history off" }],
+          );
+        }
+        // The PUT merges storage_indexing_preferences per key; it refuses
+        // (409 iceberg_required) when the product has no Iceberg.
+        await http.put(`/dataproducts/${encodeURIComponent(id)}`, {
+          metadata: { storage_indexing_preferences: { history_enabled: enabled } },
+        });
+        return { data_product_id: id, history_enabled: enabled };
+      },
+      async set_indexes(
+        id: string,
+        input: IcebergIndexesInput,
+      ): Promise<IcebergSetIndexesResult> {
+        const patch: IcebergIndexesInput = {};
+        if (input.analytics_indexes_enabled !== undefined)
+          patch.analytics_indexes_enabled = input.analytics_indexes_enabled;
+        if (input.bloom_filter_columns !== undefined)
+          patch.bloom_filter_columns = input.bloom_filter_columns;
+        if (input.row_embeddings !== undefined)
+          patch.row_embeddings = input.row_embeddings;
+        if (Object.keys(patch).length === 0) {
+          throw new ValidationError(
+            "Pass at least one of analytics_indexes_enabled, bloom_filter_columns, row_embeddings",
+            [{ field: "input", message: "empty" }],
+          );
+        }
+        if (
+          patch.bloom_filter_columns !== undefined &&
+          patch.bloom_filter_columns.length > MAX_BLOOM_FILTER_COLUMNS
+        ) {
+          throw new ValidationError(
+            `bloom_filter_columns allows at most ${MAX_BLOOM_FILTER_COLUMNS} columns`,
+            [{ field: "bloom_filter_columns", message: `max ${MAX_BLOOM_FILTER_COLUMNS}` }],
+          );
+        }
+        // The PUT merges storage_indexing_preferences per key and validates
+        // each changed value against the product schema.
+        await http.put(`/dataproducts/${encodeURIComponent(id)}`, {
+          metadata: { storage_indexing_preferences: patch },
+        });
+        return { data_product_id: id, ...patch };
+      },
+      async trace(
+        id: string,
+        eid: string,
+        options?: IcebergTraceOptions,
+      ): Promise<IcebergTraceResult> {
+        if (!TRACE_EID.test(eid)) {
+          throw new ValidationError("eid must be a z/… queue eid", [
+            { field: "eid", message: "must match z/…" },
+          ]);
+        }
+        for (const [field, max] of [
+          ["max_hops", TRACE_MAX_HOPS],
+          ["max_rows", TRACE_MAX_ROWS],
+        ] as const) {
+          const value = options?.[field];
+          if (
+            value !== undefined &&
+            (!Number.isInteger(value) || value < 1 || value > max)
+          ) {
+            throw new ValidationError(
+              `${field} must be an integer from 1 to ${max}`,
+              [{ field, message: `1–${max}` }],
+            );
+          }
+        }
+        const qs = buildQueryString({
+          eid,
+          max_hops: options?.max_hops,
+          max_rows: options?.max_rows,
+        });
+        const res = await http.get(
+          `/dataproducts/${encodeURIComponent(id)}/iceberg/trace${qs}`,
+        );
+        return unwrapRecord(res) as unknown as IcebergTraceResult;
       },
     },
 
