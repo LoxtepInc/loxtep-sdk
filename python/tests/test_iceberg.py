@@ -1,32 +1,15 @@
 """data_products.iceberg — parity with nodejs/src/client/data-products.ts iceberg namespace."""
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from loxtep import AsyncLoxtepClient, LoxtepClient
 from loxtep.errors import ValidationError
-from loxtep.iceberg import build_history_preference_patch
 
 DP = "63dc54dc-6bac-4b0d-ab94-9bca45322f9b"
 BASE = f"/dataproducts/{DP}"
 EID = "z/2026/11/13/08/30/1731486600000-0000001"
-
-
-def _product(**overrides):
-    data = {
-        "storage": {"iceberg_enabled": True},
-        "metadata": {
-            "tags": ["a"],
-            "storage_indexing_preferences": {
-                "row_embeddings": {"enabled": True},
-                "bloom_filter_columns": ["id"],
-            },
-        },
-    }
-    data.update(overrides)
-    return {"success": True, "data": data}
 
 
 def test_namespace_exposes_the_node_methods():
@@ -78,52 +61,34 @@ def test_rebuild_requires_confirm_and_backfill_from():
     client.close()
 
 
-def test_set_history_puts_merged_preferences():
+def test_set_history_puts_only_history_enabled():
     client = LoxtepClient(api_url="https://api.example.com")
-    with patch.object(client._http, "get", return_value=_product()) as get, patch.object(
+    with patch.object(client._http, "get") as get, patch.object(
         client._http, "put", return_value={"data": {}}
     ) as put:
         result = client.build.data_products.iceberg.set_history(DP, True)
-    get.assert_called_once_with(BASE)
+    get.assert_not_called()
     put.assert_called_once_with(
-        BASE,
-        {
-            "metadata": {
-                "storage_indexing_preferences": {
-                    "row_embeddings": {"enabled": True},
-                    "bloom_filter_columns": ["id"],
-                    "history_enabled": True,
-                }
-            }
-        },
+        BASE, {"metadata": {"storage_indexing_preferences": {"history_enabled": True}}}
     )
     assert result == {"data_product_id": DP, "history_enabled": True}
     client.close()
 
 
-def test_set_history_off_needs_confirm_and_iceberg_must_be_on():
+def test_set_history_off_needs_confirm_true():
     client = LoxtepClient(api_url="https://api.example.com")
     api = client.build.data_products.iceberg
-    with patch.object(
-        client._http, "get", return_value=_product(storage={"iceberg_enabled": False})
-    ) as get, patch.object(client._http, "put") as put:
+    with patch.object(client._http, "put", return_value={}) as put:
         with pytest.raises(ValidationError, match="confirm=True"):
             api.set_history(DP, False)
-        get.assert_not_called()
-        with pytest.raises(ValidationError, match="Iceberg is not enabled"):
-            api.set_history(DP, True)
+        with pytest.raises(ValidationError, match="confirm=True"):
+            api.set_history(DP, False, confirm="yes")
         put.assert_not_called()
+        api.set_history(DP, False, confirm=True)
+        put.assert_called_once_with(
+            BASE, {"metadata": {"storage_indexing_preferences": {"history_enabled": False}}}
+        )
     client.close()
-
-
-def test_history_patch_keeps_legacy_camel_key():
-    raw = json.dumps({"storageIndexingPreferences": {"bloomFilterColumns": ["a"], "historyEnabled": True}})
-    assert build_history_preference_patch(raw, False) == {
-        "storageIndexingPreferences": {"bloomFilterColumns": ["a"], "history_enabled": False}
-    }
-    assert build_history_preference_patch(None, True) == {
-        "storage_indexing_preferences": {"history_enabled": True}
-    }
 
 
 def test_trace_builds_query_and_validates():
@@ -139,6 +104,8 @@ def test_trace_builds_query_and_validates():
         get.reset_mock()
         with pytest.raises(ValidationError, match="z/"):
             api.trace(DP, "z/1' OR 1=1")
+        with pytest.raises(ValidationError, match="z/"):
+            api.trace(DP, "z/1\n")
         with pytest.raises(ValidationError, match="max_rows"):
             api.trace(DP, EID, max_rows=500)
         with pytest.raises(ValidationError, match="max_hops"):
@@ -151,15 +118,14 @@ def test_trace_builds_query_and_validates():
 async def test_async_set_history_and_trace():
     client = AsyncLoxtepClient(api_url="https://api.example.com", organization_id="org1")
     api = client.build.data_products.iceberg
-    with patch.object(client._http, "get", new=AsyncMock(return_value=_product())) as get, patch.object(
-        client._http, "put", new=AsyncMock(return_value={"data": {}})
-    ) as put:
+    with patch.object(client._http, "put", new=AsyncMock(return_value={"data": {}})) as put:
         assert await api.set_history(DP, False, confirm=True) == {
             "data_product_id": DP,
             "history_enabled": False,
         }
-        get.assert_awaited_with(BASE)
-        assert put.await_args.args[1]["metadata"]["storage_indexing_preferences"]["history_enabled"] is False
+        put.assert_awaited_once_with(
+            BASE, {"metadata": {"storage_indexing_preferences": {"history_enabled": False}}}
+        )
     with patch.object(
         client._http, "get", new=AsyncMock(return_value={"data": {"steps": [], "stops": []}})
     ) as get:

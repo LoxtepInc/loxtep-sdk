@@ -119,11 +119,11 @@ loxtep data-products iceberg trace <product-id> --eid <z/eid> \
 (compare it with `data_sync.queue_lag.checkpoint_eid`), `row_count`, and
 `gap_after_eid` when history was turned off and on again.
 
-`on` / `off` set `metadata.storage_indexing_preferences.history_enabled`. The
-command reads the product first and sends the stored preferences with only
-`history_enabled` changed, because the PUT replaces that object whole. Iceberg
-must be enabled. `off` needs `--confirm`: events while history is off are never
-recorded. Rows already written stay queryable as `"<name>.history"`.
+`on` / `off` send only `metadata.storage_indexing_preferences.history_enabled`;
+the platform merges that object per key, so the product's other storage settings
+stay. Iceberg must be enabled (409 `iceberg_required` otherwise). `off` needs
+`--confirm`: events while history is off are never recorded. Rows already
+written stay queryable as `"<name>.history"`.
 
 `trace` walks one event upstream over history tables (`GET .../iceberg/trace`).
 The product must keep history (409 `history_not_enabled` otherwise). The result

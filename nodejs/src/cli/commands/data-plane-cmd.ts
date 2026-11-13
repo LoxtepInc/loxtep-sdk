@@ -573,9 +573,9 @@ export async function executeIceberg(
         ['--max-hops', 'max_hops', 10],
         ['--max-rows', 'max_rows', 200],
       ] as const) {
+        if (!args.includes(flag)) continue;
         const raw = argValue(args, flag);
-        if (raw === undefined) continue;
-        const n = Number(raw);
+        const n = raw === undefined ? Number.NaN : Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > max) {
           return fail(io, json, 'invalid_bound', `${flag} must be an integer from 1 to ${max}`);
         }

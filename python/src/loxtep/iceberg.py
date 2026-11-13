@@ -7,7 +7,6 @@ status, cancel, enable, put_config, files, snapshots, set_history, trace.
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any, Mapping, Optional
 from urllib.parse import quote, urlencode
@@ -15,7 +14,7 @@ from urllib.parse import quote, urlencode
 from .errors import ValidationError
 
 # A leo queue eid (``z/…``); same pattern as GET …/iceberg/trace.
-_TRACE_EID_RE = re.compile(r"^z/[0-9/-]{1,120}$")
+_TRACE_EID_RE = re.compile(r"z/[0-9/-]{1,120}")
 _TRACE_BOUNDS = {"max_hops": 10, "max_rows": 200}
 
 
@@ -29,34 +28,6 @@ def _base(data_product_id: str) -> str:
     if not data_product_id:
         raise ValueError("id is required")
     return f"/dataproducts/{quote(str(data_product_id), safe='')}"
-
-
-def _json_record(value: Any) -> dict[str, Any]:
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except ValueError:
-            return {}
-    return value if isinstance(value, dict) else {}
-
-
-def build_history_preference_patch(metadata_raw: Any, enabled: bool) -> dict[str, Any]:
-    """
-    The data product PUT merges ``metadata`` one level deep, so
-    ``storage_indexing_preferences`` is replaced whole. Return the stored
-    preferences with only ``history_enabled`` changed, under the key the
-    product already uses (snake_case by default).
-    """
-    metadata = _json_record(metadata_raw)
-    key = (
-        "storageIndexingPreferences"
-        if "storage_indexing_preferences" not in metadata
-        and "storageIndexingPreferences" in metadata
-        else "storage_indexing_preferences"
-    )
-    prefs = {k: v for k, v in _json_record(metadata.get(key)).items() if k != "historyEnabled"}
-    prefs["history_enabled"] = enabled
-    return {key: prefs}
 
 
 def _rebuild_body(body: Mapping[str, Any]) -> dict[str, Any]:
@@ -74,27 +45,23 @@ def _rebuild_body(body: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _check_history_off(enabled: bool, confirm: bool) -> None:
-    if not enabled and not confirm:
+    if not enabled and confirm is not True:
         raise ValidationError(
             "Turning event history off stops appends; events while off are never recorded. Pass confirm=True.",
             [{"field": "confirm", "message": "required to turn history off"}],
         )
 
 
-def _history_put_body(product: Any, enabled: bool) -> dict[str, Any]:
-    record = product if isinstance(product, dict) else {}
-    if _json_record(record.get("storage")).get("iceberg_enabled") is not True:
-        raise ValidationError(
-            "Iceberg is not enabled for this data product. Enable Iceberg first, then set history.",
-            [{"field": "data_product_id", "message": "iceberg not enabled"}],
-        )
-    return {"metadata": build_history_preference_patch(record.get("metadata"), enabled)}
+def _history_put_body(enabled: bool) -> dict[str, Any]:
+    # The PUT merges storage_indexing_preferences per key; it refuses
+    # (409 iceberg_required) when the product has no Iceberg.
+    return {"metadata": {"storage_indexing_preferences": {"history_enabled": enabled}}}
 
 
 def _trace_path(
     data_product_id: str, eid: str, max_hops: Optional[int], max_rows: Optional[int]
 ) -> str:
-    if not isinstance(eid, str) or not _TRACE_EID_RE.match(eid):
+    if not isinstance(eid, str) or not _TRACE_EID_RE.fullmatch(eid):
         raise ValidationError("eid must be a z/… queue eid", [{"field": "eid", "message": "must match z/…"}])
     params: dict[str, Any] = {"eid": eid}
     for name, value in (("max_hops", max_hops), ("max_rows", max_rows)):
@@ -147,9 +114,7 @@ class IcebergApi:
     ) -> dict[str, Any]:
         """Turn the ``<name>.history`` table on or off. Off requires ``confirm=True``."""
         _check_history_off(enabled, confirm)
-        path = _base(data_product_id)
-        body = _history_put_body(_unwrap(self._http.get(path)), enabled)
-        self._http.put(path, body)
+        self._http.put(_base(data_product_id), _history_put_body(enabled))
         return {"data_product_id": data_product_id, "history_enabled": enabled}
 
     def trace(
@@ -200,9 +165,7 @@ class AsyncIcebergApi:
         self, data_product_id: str, enabled: bool, *, confirm: bool = False
     ) -> dict[str, Any]:
         _check_history_off(enabled, confirm)
-        path = _base(data_product_id)
-        body = _history_put_body(_unwrap(await self._http.get(path)), enabled)
-        await self._http.put(path, body)
+        await self._http.put(_base(data_product_id), _history_put_body(enabled))
         return {"data_product_id": data_product_id, "history_enabled": enabled}
 
     async def trace(

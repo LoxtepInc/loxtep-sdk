@@ -266,30 +266,12 @@ describe('createDataProductsApi HTTP methods', () => {
     expect(result.job_id).toBe('job-1');
   });
 
-  it('iceberg.set_history PUTs the stored preferences with only history_enabled changed', async () => {
+  it('iceberg.set_history PUTs only history_enabled (the server merges the rest)', async () => {
     const http = mockHttp({
-      get: path => {
-        expect(path).toBe('/dataproducts/dp-1');
-        return {
-          data: {
-            storage: { iceberg_enabled: true },
-            metadata: {
-              tags: ['x'],
-              storage_indexing_preferences: { row_embeddings: { enabled: true }, bloom_filter_columns: ['id'] },
-            },
-          },
-        };
-      },
       put: (path, body) => {
         expect(path).toBe('/dataproducts/dp-1');
         expect(body).toEqual({
-          metadata: {
-            storage_indexing_preferences: {
-              row_embeddings: { enabled: true },
-              bloom_filter_columns: ['id'],
-              history_enabled: true,
-            },
-          },
+          metadata: { storage_indexing_preferences: { history_enabled: true } },
         });
         return { data: {} };
       },
@@ -299,30 +281,21 @@ describe('createDataProductsApi HTTP methods', () => {
       data_product_id: 'dp-1',
       history_enabled: true,
     });
+    expect(http.get).not.toHaveBeenCalled();
   });
 
-  it('iceberg.set_history refuses off without confirm, and when Iceberg is off, without a PUT', async () => {
-    const http = mockHttp({
-      get: () => ({ data: { storage: { iceberg_enabled: false }, metadata: {} } }),
-    });
+  it('iceberg.set_history refuses off without confirm before any request', async () => {
+    const http = mockHttp({});
     const api = createDataProductsApi(http);
     await expect(api.iceberg.set_history('dp-1', false)).rejects.toThrow(/confirm/);
-    expect(http.get).not.toHaveBeenCalled();
-    await expect(api.iceberg.set_history('dp-1', true)).rejects.toThrow(/Iceberg is not enabled/);
     expect(http.put).not.toHaveBeenCalled();
   });
 
-  it('iceberg.set_history keeps the legacy camelCase key when that is what is stored', async () => {
+  it('iceberg.set_history off with confirm sends history_enabled: false', async () => {
     const http = mockHttp({
-      get: () => ({
-        data: {
-          storage: JSON.stringify({ iceberg_enabled: true }),
-          metadata: JSON.stringify({ storageIndexingPreferences: { bloomFilterColumns: ['a'], historyEnabled: true } }),
-        },
-      }),
       put: (_path, body) => {
         expect(body).toEqual({
-          metadata: { storageIndexingPreferences: { bloomFilterColumns: ['a'], history_enabled: false } },
+          metadata: { storage_indexing_preferences: { history_enabled: false } },
         });
         return {};
       },
@@ -348,6 +321,8 @@ describe('createDataProductsApi HTTP methods', () => {
     const http = mockHttp({});
     const api = createDataProductsApi(http);
     await expect(api.iceberg.trace('dp-1', "z/1' OR 1=1")).rejects.toThrow(/z\//);
+    await expect(api.iceberg.trace('dp-1', 'z/1', { max_hops: 11 })).rejects.toThrow(/max_hops/);
+    await expect(api.iceberg.trace('dp-1', 'z/1', { max_rows: 1.5 })).rejects.toThrow(/max_rows/);
     expect(http.get).not.toHaveBeenCalled();
   });
 

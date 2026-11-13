@@ -486,8 +486,15 @@ describe('executeIceberg history and trace', () => {
     expect(
       await executeIceberg(client({ trace }), ['trace', 'dp-1', '--eid', 'z/1', '--max-rows', '500', '--json'], io)
     ).toBe(1);
+    expect(
+      await executeIceberg(client({ trace }), ['trace', 'dp-1', '--eid', 'z/1', '--max-hops', '--json'], io)
+    ).toBe(1);
     expect(trace).not.toHaveBeenCalled();
-    expect(errors.map(line => JSON.parse(line).code)).toEqual(['eid_required', 'invalid_bound']);
+    expect(errors.map(line => JSON.parse(line).code)).toEqual([
+      'eid_required',
+      'invalid_bound',
+      'invalid_bound',
+    ]);
   });
 });
 

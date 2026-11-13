@@ -125,42 +125,8 @@ function unwrapRecord(res: unknown): Record<string, unknown> {
 
 /** A leo queue eid (`z/…`); same pattern as the trace route. */
 const TRACE_EID = /^z\/[0-9/-]{1,120}$/;
-
-function parseJsonRecord(value: unknown): Record<string, unknown> {
-  if (typeof value === "string") {
-    try {
-      const parsed: unknown = JSON.parse(value);
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : {};
-    } catch {
-      return {};
-    }
-  }
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-/**
- * The data product PUT merges `metadata` one level deep, so
- * `storage_indexing_preferences` is replaced whole. Send the stored
- * preferences with only `history_enabled` changed, under the key the product
- * already uses (snake_case by default).
- */
-export function buildHistoryPreferencePatch(
-  metadataRaw: unknown,
-  enabled: boolean,
-): Record<string, unknown> {
-  const metadata = parseJsonRecord(metadataRaw);
-  const key =
-    metadata.storage_indexing_preferences === undefined &&
-    metadata.storageIndexingPreferences !== undefined
-      ? "storageIndexingPreferences"
-      : "storage_indexing_preferences";
-  const { historyEnabled: _legacy, ...rest } = parseJsonRecord(metadata[key]);
-  return { [key]: { ...rest, history_enabled: enabled } };
-}
+const TRACE_MAX_HOPS = 10;
+const TRACE_MAX_ROWS = 200;
 
 function unwrapData<T>(res: unknown): T {
   return ((res as { data?: T }).data ?? res) as T;
@@ -648,17 +614,10 @@ export function createDataProductsApi(
             [{ field: "confirm", message: "required to turn history off" }],
           );
         }
-        const path = `/dataproducts/${encodeURIComponent(id)}`;
-        const product = unwrapRecord(await http.get(path));
-        const storage = parseJsonRecord(product.storage);
-        if (storage.iceberg_enabled !== true) {
-          throw new ValidationError(
-            "Iceberg is not enabled for this data product. Enable Iceberg first, then set history.",
-            [{ field: "data_product_id", message: "iceberg not enabled" }],
-          );
-        }
-        await http.put(path, {
-          metadata: buildHistoryPreferencePatch(product.metadata, enabled),
+        // The PUT merges storage_indexing_preferences per key; it refuses
+        // (409 iceberg_required) when the product has no Iceberg.
+        await http.put(`/dataproducts/${encodeURIComponent(id)}`, {
+          metadata: { storage_indexing_preferences: { history_enabled: enabled } },
         });
         return { data_product_id: id, history_enabled: enabled };
       },
@@ -671,6 +630,21 @@ export function createDataProductsApi(
           throw new ValidationError("eid must be a z/… queue eid", [
             { field: "eid", message: "must match z/…" },
           ]);
+        }
+        for (const [field, max] of [
+          ["max_hops", TRACE_MAX_HOPS],
+          ["max_rows", TRACE_MAX_ROWS],
+        ] as const) {
+          const value = options?.[field];
+          if (
+            value !== undefined &&
+            (!Number.isInteger(value) || value < 1 || value > max)
+          ) {
+            throw new ValidationError(
+              `${field} must be an integer from 1 to ${max}`,
+              [{ field, message: `1–${max}` }],
+            );
+          }
         }
         const qs = buildQueryString({
           eid,
