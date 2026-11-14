@@ -2,9 +2,21 @@
  * Schemas API types (data product schema). snake_case per backend conventions.
  */
 
+/** One data-product schema field. Requiredness and nullability are independent. */
+export interface SchemaField {
+  name: string;
+  type: string;
+  required: boolean;
+  /** Whether a present field may contain null. Omitted values are treated as false. */
+  nullable?: boolean;
+  description?: string;
+  constraints?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface DataProductSchema {
   version?: string;
-  fields?: unknown[];
+  fields?: SchemaField[];
   raw_schema?: string;
   [key: string]: unknown;
 }
@@ -17,7 +29,7 @@ export interface SchemaVersion {
   version_number?: number;
   status?: string;
   format?: string;
-  fields?: unknown[];
+  fields?: SchemaField[];
   is_backwards_compatible?: boolean;
   created_at?: string;
   created_by?: string;

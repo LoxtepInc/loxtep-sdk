@@ -4,7 +4,7 @@ Schemas API (data product schema). get, list, tag_pii_fields.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, NotRequired, Optional, TypedDict, cast
 
 from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 
@@ -13,18 +13,35 @@ def _unwrap(res: Any) -> Any:
     return res.get("data", res) if isinstance(res, dict) else res
 
 
+class SchemaField(TypedDict):
+    """One schema field; key presence and a present null value are independent."""
+
+    name: str
+    type: str
+    required: bool
+    nullable: NotRequired[bool]
+    description: NotRequired[str]
+    constraints: NotRequired[dict[str, Any]]
+
+
+class DataProductSchema(TypedDict, total=False):
+    version: str
+    fields: list[SchemaField]
+    raw_schema: str
+
+
 class SchemasApi:
     """Sync schemas surface."""
 
     def __init__(self, http: LoxtepHttpClient) -> None:
         self._http = http
 
-    def get(self, data_product_id: str, *, version: Optional[str] = None) -> dict[str, Any]:
+    def get(self, data_product_id: str, *, version: Optional[str] = None) -> DataProductSchema:
         path = f"/dataproducts/{data_product_id}/schema"
         if version is not None:
             path += f"?version={version}"
         res = self._http.get(path)
-        return _unwrap(res)
+        return cast(DataProductSchema, _unwrap(res))
 
     def list(self, data_product_id: str) -> dict[str, Any]:
         """List schema versions for a data product. Returns {'items': [...]}."""
@@ -46,12 +63,12 @@ class AsyncSchemasApi:
     def __init__(self, http: AsyncLoxtepHttpClient) -> None:
         self._http = http
 
-    async def get(self, data_product_id: str, *, version: Optional[str] = None) -> dict[str, Any]:
+    async def get(self, data_product_id: str, *, version: Optional[str] = None) -> DataProductSchema:
         path = f"/dataproducts/{data_product_id}/schema"
         if version is not None:
             path += f"?version={version}"
         res = await self._http.get(path)
-        return _unwrap(res)
+        return cast(DataProductSchema, _unwrap(res))
 
     async def list(self, data_product_id: str) -> dict[str, Any]:
         res = await self._http.get(f"/dataproducts/{data_product_id}?include_schema=true")
