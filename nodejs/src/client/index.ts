@@ -283,6 +283,7 @@ export type {
   RunDiscoveryResponse,
 } from "./discovery-types.js";
 export type {
+  SchemaField,
   DataProductSchema,
   SchemaVersion,
   SchemaListResponse,
