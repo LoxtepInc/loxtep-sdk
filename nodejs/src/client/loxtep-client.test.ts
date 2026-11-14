@@ -1063,10 +1063,21 @@ describe('LoxtepClient', () => {
       credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
       fetch_fn: async (url: string) => {
         if (url.includes(`/dataproducts/${dpId}`)) {
-          return new Response(JSON.stringify({ schema: { version: '1.0', fields: [] } }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return new Response(
+            JSON.stringify({
+              schema: {
+                version: '1.0',
+                fields: [
+                  { name: 'customer_id', type: 'string', required: true, nullable: false },
+                  { name: 'middle_name', type: 'string', required: false, nullable: true },
+                ],
+              },
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
         }
         return new Response(JSON.stringify({}), { status: 404 });
       },
@@ -1074,6 +1085,10 @@ describe('LoxtepClient', () => {
     const result = await client.define.schemas.get(dpId);
     expect(result).not.toBeNull();
     expect(result!.version).toBe('1.0');
+    expect(result!.fields).toEqual([
+      { name: 'customer_id', type: 'string', required: true, nullable: false },
+      { name: 'middle_name', type: 'string', required: false, nullable: true },
+    ]);
   });
 
   it('schemas.list returns schema versions when fetch mocked', async () => {

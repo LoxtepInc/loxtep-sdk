@@ -27,6 +27,7 @@ from .sdk_ingest_bundle import (
     build_sdk_ingest_local_package,
     to_local_connector_entity,
 )
+from .schemas import DataProductSchema, SchemaField
 from .models import (
     DataProduct,
     DataProductKind,
@@ -57,6 +58,8 @@ __all__ = [
     "RateLimitInfo",
     "DataProduct",
     "DataProductKind",
+    "DataProductSchema",
+    "SchemaField",
     "Target",
     "Trigger",
     "TargetsApi",
