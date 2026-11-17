@@ -25,17 +25,16 @@ retained queues, checkpoints, or namespace exclusions.
 
 ```bash
 loxtep data-products iceberg rebuild <product-id> \
-  --backfill-from <z/eid|checkpoint|start_of_queue> \
-  [--start-checkpoint <z/eid>] \
+  --backfill-from <z/|z/…eid> \
   [--end-checkpoint <z/eid>] \
   [--dry-run] [--confirm] [--wait 30s] [--interval 5s] [--json]
 ```
 
-Scope is required. The CLI rejects a missing `--backfill-from`, and it rejects
-`start`, `all`, `now`, and the enable windows `1h`, `6h`, `1d`, `7d`, `30d`.
-`checkpoint` needs `--start-checkpoint` beginning with `z/`. `start_of_queue` is
-sent only when that token is typed. Omitting `--end-checkpoint` is evergreen
-and the receipt says `end_bound: evergreen`.
+Scope is required. `--backfill-from` is a queue eid: `z/` is the start of the
+queue, and a longer `z/…` eid starts at that event. The CLI rejects a missing
+value. It also rejects `start`, `all`, `now`, `checkpoint`, `start_of_queue`,
+and the enable windows `1h`, `6h`, `1d`, `7d`, `30d`. Omitting
+`--end-checkpoint` is evergreen and the receipt says `end_bound: evergreen`.
 
 `--confirm` is required for a real rebuild. `--dry-run` does not require it.
 The HTTP body still sends `confirm: true` because the API schema requires that
