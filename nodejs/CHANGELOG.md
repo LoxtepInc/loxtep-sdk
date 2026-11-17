@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.4] - 2026-11-16
+
+### Fixed
+
+- Node dependencies: `zod` is `^4.6.7`, and `markdown-it` is pinned to `^14.3.3` so the high-severity advisory is not installed.
+
 All notable changes to `@loxtep/sdk` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),

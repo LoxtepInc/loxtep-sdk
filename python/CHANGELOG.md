@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.4] — 2026-11-16
+
+### Fixed
+
+- `certifi` is 2026.10.23, which closes GHSA-6q48-6c7w-9gw2.
+
 All notable changes to `loxtep` (Python SDK) will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
