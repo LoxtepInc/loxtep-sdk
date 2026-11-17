@@ -88,7 +88,7 @@ export LOXTEP_ACTOR="$GITHUB_SHA"        # optional, for audit
 loxtep deploy                            # exchanges, signs, deploys — no human
 ```
 
-Under the hood the exchange (`POST /organizations/auth/deploy-token`) returns a
+The CLI performs the exchange for you. It returns a
 project-scoped JWT **and** short-lived AWS credentials, so the SDK signs the
 IAM-gated data plane exactly as an interactive session does. A revoked deploy
 token, or one whose owner left the org, fails the next exchange.
