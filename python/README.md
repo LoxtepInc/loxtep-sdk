@@ -371,7 +371,7 @@ Org / domain canonical schemas (distinct from `client.define.schemas` data-produ
 | --- | --- |
 | `list()` | List runtime instances for the organization |
 | `get(instance_id)` | Get a single instance by ID |
-| `get_stream_config(instance_id)` | Bus resource names (`LeoCron`, `LeoS3`, …) via JWT `GET /organizations/instances/{id}/stream-config`. Not an MCP operation. |
+| `get_stream_config(instance_id)` | Bus resource names (`LeoCron`, `LeoS3`, …) for an instance. MCP equivalent: `loxtep_observe` → `get_stream_config`. |
 
 Python has no `loxtep instances stream-config` verb — use this method, or the Node CLI (`npx loxtep instances stream-config`).
 
@@ -385,7 +385,7 @@ Python has no `loxtep instances stream-config` verb — use this method, or the 
 
 | Method | Description |
 | --- | --- |
-| `status()` | GET /observe/bots — bot/queue observability summary |
+| `status()` | Bot/queue observability summary (MCP: `loxtep_observe` → `list_observe_bots`) |
 
 ### `client.metrics`
 
