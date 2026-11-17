@@ -23,8 +23,9 @@ product is **deployed** on your attached instance.
 
 **Node.js 22+** is the supported runtime (`engines` in `package.json`). Live
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
-resources (`streams` on `LoxtepClient` and instance env from your stack) and AWS
-credentials for SigV4 on both REST and the bus.
+resources (`streams` on `LoxtepClient` and instance env from your stack). The
+SDK signs its own platform and bus calls with the session credentials that
+`loxtep login` stores; you never sign requests yourself.
 
 ## Ways to get started
 
