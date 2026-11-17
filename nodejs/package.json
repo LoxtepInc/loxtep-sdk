@@ -76,7 +76,8 @@
     "js-yaml@^3": "^3.15.2",
     "linkify-it": "^5.0.2",
     "browserslist": "^4.28.7",
-    "fast-uri": "^3.1.8"
+    "fast-uri": "^3.1.8",
+    "markdown-it": "^14.3.3"
   },
   "pnpm": {
     "overrides": {
@@ -91,7 +92,8 @@
       "linkify-it": "^5.0.2",
       "browserslist": "^4.28.7",
       "fast-uri": "^3.1.8",
-      "js-yaml": "^4.3.2"
+      "js-yaml": "^4.3.2",
+      "markdown-it": "^14.3.3"
     }
   },
   "dependencies": {
@@ -110,7 +112,7 @@
     "js-yaml": "^4.3.2",
     "leo-sdk": "7.1.21",
     "tsx": "^4.22.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
