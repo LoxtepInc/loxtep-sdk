@@ -178,10 +178,10 @@ pnpm exec loxtep instances stream-config   # optional: Leo/S3/Kinesis names for 
 ```
 
 `attach` writes `instance_id` and `api_url` into `.loxtep/project.json`.
-Required before `generate`, `test`, and `deploy`. Bus physical names come from the CLI
-or SDK only (`instances stream-config` or
-`client.workspace.instances.get_stream_config`); they are not returned from MCP `list_instances`
-or `get_sdk_config`.
+Required before `generate`, `test`, and `deploy`. Bus physical names come from
+`instances stream-config`, `client.workspace.instances.get_stream_config`, or
+MCP `loxtep_observe` → `get_stream_config`; they are not returned from MCP
+`list_instances` or `get_sdk_config`.
 
 ---
 
