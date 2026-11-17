@@ -109,7 +109,7 @@ Refresh with `refresh(apiUrl, tokens.refresh_token)`. Prefer `loxtep login` +
    ```
 
    Writes `instance_id` and `api_url` into `.loxtep/project.json`. Required
-   before `generate`, `test`, and `deploy`. Bus physical names are CLI/REST
+   before `generate`, `test`, and `deploy`. Bus physical names come from the CLI or SDK
    (`instances stream-config` or `client.workspace.instances.get_stream_config`);
    MCP `list_instances` / `get_sdk_config` do not return them.
 
