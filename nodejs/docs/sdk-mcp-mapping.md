@@ -153,8 +153,6 @@ MCP `loxtep_meaning` semantic-layer read ops map to `client.meaning.semantic`:
 | `get_semantic_artifact` | `client.meaning.semantic.get_artifact({ artifact_type, id })` (alias `get_semantic_artifact`; `artifact_id` accepted) |
 | `get_semantic_completeness` | `client.meaning.semantic.get_completeness({ domain_id? })` (alias `get_semantic_completeness`) |
 
-Artifact path segments (MCP parity): `entity`→`entities`, `glossary_term`→`glossary`, `process_map`→`process-maps`; other types use the raw `artifact_type` string.
-
 Notes:
 
 - Requires `catalog:read` (platform RBAC).
