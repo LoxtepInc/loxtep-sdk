@@ -55,7 +55,7 @@ Exit 0 means the dry run was accepted, or a real rebuild was accepted with
 `get_iceberg_health`) for the same
 `job_id` (or `backfill_job_id` on that overlay). Exit 0 from `--wait` means that
 job reached `completed`. Exit 2 is a timeout: the JSON still has `job_id` and
-the last status, and the command does not POST again and does not cancel.
+the last status, and the command does not resubmit and does not cancel.
 A different current job is `job_not_current` (exit 1). A completed status with
 no matching job id is not treated as success.
 
@@ -179,7 +179,7 @@ includes `query_id` when the body has one.
 `execution_time_ms`, `error`, `error_code`, `tables_referenced`, `recovery`,
 `iceberg_health_status`, and `completion_evidence` (`native` or `missing`).
 Failed and unfinished queries exit 1. Warehouse execute is synchronous. There
-is no second poll URL.
+is no separate poll step.
 
 SDK:
 
