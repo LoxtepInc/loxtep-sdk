@@ -212,7 +212,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 `LoxtepClient` exposes **10 facades** that mirror hosted MCP tools, plus
 `client.governance` and `client.entities`. See
 [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
-`emit_semantic_gap_candidate` stays MCP-only (no HTTP).
+`emit_semantic_gap_candidate` stays MCP-only (no SDK method).
 
 | Facade              | Nested APIs                                                                                      | Purpose                                                                                                                                                                                           |
 | ------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
