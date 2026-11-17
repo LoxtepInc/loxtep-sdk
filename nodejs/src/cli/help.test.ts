@@ -37,6 +37,9 @@ describe('CLI help', () => {
     expect(CLI_HELP).toContain('workflows list');
     expect(CLI_HELP).toContain('data-products list');
     expect(CLI_HELP).toContain('data-products iceberg rebuild <id>');
+    expect(CLI_HELP).toContain('--backfill-from <z/|z/…eid>');
+    expect(CLI_HELP).not.toContain('checkpoint|start_of_queue');
+    expect(CLI_HELP).not.toContain('start_of_queue');
     expect(CLI_HELP).toContain('data-products export <id>');
     expect(CLI_HELP).toContain('quality-rules list|get <id>');
     expect(CLI_HELP).toContain('define apply-glossary <data_product_id>');

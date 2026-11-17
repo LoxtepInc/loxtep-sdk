@@ -9,7 +9,18 @@ import type { IcebergIndexesInput } from '../../client/data-products-types.js';
 import { requireCliClient, type CreateCliClientOptions } from '../create-cli-client.js';
 
 const ENABLE_WINDOWS = new Set(['now', '1h', '6h', '1d', '7d', '30d', 'all']);
-const REJECTED_REBUILD_SCOPES = new Set(['start', 'all', 'now', '1h', '6h', '1d', '7d', '30d']);
+const REJECTED_REBUILD_SCOPES = new Set([
+  'start',
+  'all',
+  'now',
+  'checkpoint',
+  'start_of_queue',
+  '1h',
+  '6h',
+  '1d',
+  '7d',
+  '30d',
+]);
 
 export interface CliIo {
   log: (line: string) => void;
@@ -70,7 +81,6 @@ function isQueueEid(value: string): boolean {
 export interface RebuildRequestBody {
   confirm: true;
   backfill_from: string;
-  start_checkpoint?: string;
   end_checkpoint?: string;
   dry_run: boolean;
 }
@@ -84,14 +94,14 @@ export function validateRebuildArgs(
       ok: false,
       code: 'scope_required',
       message:
-        'Rebuild requires --backfill-from <z/eid>, --backfill-from checkpoint --start-checkpoint <z/eid>, or --backfill-from start_of_queue',
+        'Rebuild requires --backfill-from <z/|z/…eid>. z/ is the start of the queue.',
     };
   }
   if (REJECTED_REBUILD_SCOPES.has(mode)) {
     return {
       ok: false,
       code: 'unsupported_scope',
-      message: `Rebuild does not accept backfill_from ${mode}. Pass a z/ event id, checkpoint, or start_of_queue.`,
+      message: `Rebuild does not accept backfill_from ${mode}. Pass a z/ queue eid (z/ is the start of the queue).`,
     };
   }
   const dryRun = hasFlag(args, '--dry-run');
@@ -107,19 +117,7 @@ export function validateRebuildArgs(
     return { ok: false, code: 'invalid_end_checkpoint', message: '--end-checkpoint must be a z/ event id' };
   }
   const body: RebuildRequestBody = { confirm: true, backfill_from: mode, dry_run: dryRun };
-  if (mode === 'checkpoint') {
-    const start = argValue(args, '--start-checkpoint');
-    if (!start || !isQueueEid(start)) {
-      return {
-        ok: false,
-        code: 'start_checkpoint_required',
-        message: '--backfill-from checkpoint requires --start-checkpoint <z/eid>',
-      };
-    }
-    body.start_checkpoint = start;
-  } else if (mode === 'start_of_queue') {
-    body.backfill_from = 'start_of_queue';
-  } else if (isQueueEid(mode)) {
+  if (isQueueEid(mode)) {
     body.backfill_from = mode;
   } else {
     return {
@@ -347,7 +345,6 @@ export async function executeIceberg(
         status: validated.body.dry_run ? 'dry_run' : accepted.status ?? 'queued',
         completed: false,
         backfill_from: validated.body.backfill_from,
-        start_checkpoint: validated.body.start_checkpoint,
         end_checkpoint: validated.body.end_checkpoint ?? null,
         end_bound: validated.end_bound,
         dry_run: validated.body.dry_run,

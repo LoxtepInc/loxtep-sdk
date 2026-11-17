@@ -86,8 +86,8 @@ Build & deploy
                      [--rebaseline-config-hash] [--instance-id]. CDC and lookup stay.
   data-products list | get <id> | create … | readiness <id> | promote <id> --target …
                      Data product CRUD and medallion promotion
-  data-products iceberg rebuild <id> --backfill-from <z/eid|checkpoint|start_of_queue>
-                     [--start-checkpoint <z/eid>] [--end-checkpoint <z/eid>]
+  data-products iceberg rebuild <id> --backfill-from <z/|z/…eid>
+                     [--end-checkpoint <z/eid>]
                      [--dry-run] [--confirm] [--wait 30s] [--interval 5s] [--json]
                      Dry run is read-only. A queued job is not completion.
                      Timeout keeps the job id and does not resubmit or cancel.

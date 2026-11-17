@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- `loxtep data-products iceberg rebuild --backfill-from` takes a `z/` queue eid. `z/` is the start of the queue. `checkpoint` and `start_of_queue` are refused.
+
 ## [0.14.4] - 2026-11-16
 
 ### Fixed

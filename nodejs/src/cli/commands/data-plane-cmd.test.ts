@@ -105,7 +105,7 @@ describe('validateRebuildArgs', () => {
     const missing = validateRebuildArgs(['rebuild', 'dp']);
     expect(missing.ok).toBe(false);
     if (!missing.ok) expect(missing.code).toBe('scope_required');
-    for (const mode of ['start', 'all', 'now', '1h', '30d']) {
+    for (const mode of ['start', 'all', 'now', '1h', '30d', 'checkpoint', 'start_of_queue']) {
       const rejected = validateRebuildArgs(['--backfill-from', mode, '--confirm']);
       expect(rejected.ok).toBe(false);
       if (!rejected.ok) expect(rejected.code).toBe('unsupported_scope');
@@ -115,7 +115,7 @@ describe('validateRebuildArgs', () => {
     if (!unconfirmed.ok) expect(unconfirmed.code).toBe('confirm_required');
   });
 
-  it('accepts an explicit z/ point, checkpoint, or start_of_queue', () => {
+  it('accepts z/ and a longer z/ eid, and keeps an end checkpoint', () => {
     const direct = validateRebuildArgs(['--backfill-from', 'z/2026/10/10/1', '--confirm']);
     expect(direct.ok && direct.body).toMatchObject({
       confirm: true,
@@ -124,31 +124,27 @@ describe('validateRebuildArgs', () => {
     });
     expect(direct.ok && direct.end_bound).toBe('evergreen');
 
-    const checkpoint = validateRebuildArgs([
+    const start = validateRebuildArgs(['--backfill-from', 'z/', '--confirm']);
+    expect(start.ok && start.body.backfill_from).toBe('z/');
+
+    const bounded = validateRebuildArgs([
       '--backfill-from',
-      'checkpoint',
-      '--start-checkpoint',
-      'z/2',
+      'z/',
       '--end-checkpoint',
       'z/9',
       '--dry-run',
     ]);
-    expect(checkpoint.ok && checkpoint.body).toEqual({
+    expect(bounded.ok && bounded.body).toEqual({
       confirm: true,
-      backfill_from: 'checkpoint',
-      start_checkpoint: 'z/2',
+      backfill_from: 'z/',
       end_checkpoint: 'z/9',
       dry_run: true,
     });
+    expect(bounded.ok && bounded.end_bound).toBe('checkpoint');
 
-    const missingStart = validateRebuildArgs(['--backfill-from', 'checkpoint', '--dry-run']);
-    expect(missingStart.ok).toBe(false);
-    if (!missingStart.ok) expect(missingStart.code).toBe('start_checkpoint_required');
     const badEnd = validateRebuildArgs(['--backfill-from', 'z/1', '--end-checkpoint', 'latest', '--confirm']);
     expect(badEnd.ok).toBe(false);
     if (!badEnd.ok) expect(badEnd.code).toBe('invalid_end_checkpoint');
-    const start = validateRebuildArgs(['--backfill-from', 'start_of_queue', '--confirm']);
-    expect(start.ok && start.body.backfill_from).toBe('start_of_queue');
   });
 });
 
@@ -217,7 +213,7 @@ describe('executeIceberg', () => {
     const { io, errors } = capture();
     const code = await executeIceberg(
       client({ rebuild }),
-      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--dry-run'],
+      ['rebuild', 'dp-1', '--backfill-from', 'z/1', '--dry-run'],
       io
     );
     expect(code).toBe(1);
@@ -228,7 +224,7 @@ describe('executeIceberg', () => {
     const json = capture();
     await executeIceberg(
       client({ rebuild }),
-      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--dry-run', '--json'],
+      ['rebuild', 'dp-1', '--backfill-from', 'z/1', '--dry-run', '--json'],
       json.io
     );
     const payload = parse(json.errors);
@@ -247,7 +243,7 @@ describe('executeIceberg', () => {
     const { io, errors } = capture();
     await executeIceberg(
       client({ rebuild }),
-      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--dry-run'],
+      ['rebuild', 'dp-1', '--backfill-from', 'z/1', '--dry-run'],
       io
     );
     expect(errors[0].match(/downstream 409 busy/g)).toHaveLength(1);
@@ -289,7 +285,7 @@ describe('executeIceberg', () => {
     const { io, logs } = capture();
     const code = await executeIceberg(
       client({ rebuild, health, cancel }),
-      ['rebuild', 'dp-1', '--backfill-from', 'start_of_queue', '--confirm', '--wait', '0s', '--json'],
+      ['rebuild', 'dp-1', '--backfill-from', 'z/1', '--confirm', '--wait', '0s', '--json'],
       io,
       { now: () => 0, sleep: async () => undefined }
     );
