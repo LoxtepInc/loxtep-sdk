@@ -338,4 +338,3 @@ attribution and eval scoring. It is optional and ignored for tool logic.
 | `docs/sdk-mcp-mapping.md`              | How MCP tools map to SDK methods            |
 | `docs/event-replay-cookbook.md`        | Replaying historical events                 |
 | Docs site `llms.txt` / `llms-full.txt` | Machine-readable doc index + full reference |
-| Docs site `/docs/api` + OpenAPI        | HTTP API reference                          |
