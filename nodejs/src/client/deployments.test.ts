@@ -53,4 +53,51 @@ describe('createDeploymentsApi', () => {
     expect(capturedPath).toBe('/workflows/deployments/dep-1?include_versions=true');
     expect(result).toEqual(deployment);
   });
+
+  it('get sends an explicit project_id with include_versions', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: deployment };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createDeploymentsApi(http, { project_id: 'from-client' });
+    await api.get('dep-1', { include_versions: true, project_id: 'proj-1' });
+
+    expect(capturedPath).toContain('include_versions=true');
+    expect(capturedPath).toContain('project_id=proj-1');
+    expect(capturedPath).not.toContain('from-client');
+  });
+
+  it('get falls back to the client project when project_id is omitted', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: deployment };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createDeploymentsApi(http, { project_id: 'token-proj' });
+    await api.get('dep-1');
+
+    expect(capturedPath).toBe('/workflows/deployments/dep-1?project_id=token-proj');
+  });
+
+  it('get omits project_id when neither the caller nor the client has one', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: deployment };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createDeploymentsApi(http);
+    await api.get('dep-1');
+
+    expect(capturedPath).toBe('/workflows/deployments/dep-1');
+  });
 });

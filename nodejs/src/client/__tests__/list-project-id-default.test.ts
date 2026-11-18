@@ -62,4 +62,25 @@ describe('list() defaults filters.project_id to the client project_id', () => {
     await client.build.triggers.list({ project_id: 'explicit-proj' });
     expect(urls[0]).toContain('/workflows/projects/explicit-proj/entities');
   });
+
+  it('deployments.get() with no project_id uses client.project_id', async () => {
+    const { urls, client } = captureUrls();
+    await client.workspace.deployments.get('dep-1');
+    expect(urls[0]).toContain('/workflows/deployments/dep-1');
+    expect(urls[0]).toContain('project_id=client-proj');
+  });
+
+  it('deployments.get() keeps an explicit project_id', async () => {
+    const { urls, client } = captureUrls();
+    await client.observe.get_deployment('dep-1', { project_id: 'explicit-proj' });
+    expect(urls[0]).toContain('project_id=explicit-proj');
+    expect(urls[0]).not.toContain('project_id=client-proj');
+  });
+
+  it('workflows.get() with no args uses client.project_id', async () => {
+    const { urls, client } = captureUrls();
+    await client.build.workflows.get('flow-1');
+    expect(urls[0]).toContain('/workflows/workflows/flow-1?project_id=client-proj');
+    expect(urls[1]).toContain('/workflows/workflows/flow-1/nodes?project_id=client-proj');
+  });
 });

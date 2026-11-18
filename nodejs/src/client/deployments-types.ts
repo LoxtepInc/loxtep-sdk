@@ -64,4 +64,10 @@ export interface DeploymentsListResponse {
 
 export interface GetDeploymentOptions {
   include_versions?: boolean;
+  /**
+   * Project the deployment belongs to. Sent as `?project_id=`.
+   * Deploy tokens must name their project on every request. When omitted,
+   * `get()` uses the client's configured project. User JWTs may omit both.
+   */
+  project_id?: string;
 }

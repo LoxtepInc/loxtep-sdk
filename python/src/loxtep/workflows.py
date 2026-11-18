@@ -32,6 +32,18 @@ def _query_string(params: dict[str, Any]) -> str:
     return "?" + "&".join(parts) if parts else ""
 
 
+def _named_project_id(explicit: Optional[str], fallback: Optional[str]) -> Optional[str]:
+    chosen = explicit if explicit and explicit.strip() else fallback
+    value = (chosen or "").strip()
+    return value or None
+
+
+def _with_project(path: str, project_id: Optional[str]) -> str:
+    if not project_id:
+        return path
+    return f"{path}{_query_string({'project_id': project_id})}"
+
+
 def _data(res: Any) -> Any:
     return res.get("data", res) if isinstance(res, dict) else res
 
@@ -103,12 +115,15 @@ class WorkflowsApi:
         res = self._http.get(f"{WORKFLOWS_BASE}{qs}")
         return _data(res)
 
-    def get(self, id: str) -> dict[str, Any]:
-        flow_res = self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}")
+    def get(self, id: str, *, project_id: Optional[str] = None) -> dict[str, Any]:
+        resolved = _named_project_id(project_id, self._project_id)
+        flow_res = self._http.get(_with_project(f"{WORKFLOWS_BASE}/{quote(id)}", resolved))
         flow = _data(flow_res)
         nodes: list[dict[str, Any]] = []
         try:
-            nodes_res = self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}/nodes")
+            nodes_res = self._http.get(
+                _with_project(f"{WORKFLOWS_BASE}/{quote(id)}/nodes", resolved)
+            )
             data = _data(nodes_res)
             nodes = data.get("items", []) if isinstance(data, dict) else []
         except Exception:
@@ -299,12 +314,15 @@ class AsyncWorkflowsApi:
         res = await self._http.get(f"{WORKFLOWS_BASE}{qs}")
         return _data(res)
 
-    async def get(self, id: str) -> dict[str, Any]:
-        flow_res = await self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}")
+    async def get(self, id: str, *, project_id: Optional[str] = None) -> dict[str, Any]:
+        resolved = _named_project_id(project_id, self._project_id)
+        flow_res = await self._http.get(_with_project(f"{WORKFLOWS_BASE}/{quote(id)}", resolved))
         flow = _data(flow_res)
         nodes: list[dict[str, Any]] = []
         try:
-            nodes_res = await self._http.get(f"{WORKFLOWS_BASE}/{quote(id)}/nodes")
+            nodes_res = await self._http.get(
+                _with_project(f"{WORKFLOWS_BASE}/{quote(id)}/nodes", resolved)
+            )
             data = _data(nodes_res)
             nodes = data.get("items", []) if isinstance(data, dict) else []
         except Exception:

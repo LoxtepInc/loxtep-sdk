@@ -1401,6 +1401,7 @@ export async function runCli(argv: string[]): Promise<void> {
             args[2],
             {
               include_versions: args.includes("--include-versions"),
+              project_id: getArg("--project-id"),
             },
           );
         for (const line of result.stdout) console.log(line);
@@ -1409,7 +1410,7 @@ export async function runCli(argv: string[]): Promise<void> {
       } else {
         console.error(
             "Usage: loxtep deployments list [--project-id <id>] [--instance-id <id>] [--workflow-id <id>] [--status pending|in_progress|deployed|failed|rolled_back|archived]\n" +
-              "       loxtep deployments get <deployment_id> [--include-versions]",
+              "       loxtep deployments get <deployment_id> [--project-id <id>] [--include-versions]",
         );
         process.exitCode = 1;
       }

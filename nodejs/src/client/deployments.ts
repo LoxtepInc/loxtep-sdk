@@ -19,6 +19,13 @@ import type {
 
 const DEPLOYMENTS_BASE = '/workflows/deployments';
 
+/** Caller's id wins. A blank string is unset, so the client project is used. Neither set means omit it. */
+function namedProjectId(explicit?: string, fallback?: string): string | undefined {
+  const chosen = explicit?.trim() ? explicit : fallback;
+  const value = chosen?.trim();
+  return value ? value : undefined;
+}
+
 function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -41,10 +48,18 @@ export type DeploymentsApi = {
   get: (deployment_id: string, options?: GetDeploymentOptions) => Promise<Deployment>;
 };
 
+export interface DeploymentsApiDeps {
+  /** Client / workspace project. `get()` sends it when the caller omits `project_id`. */
+  project_id?: string;
+}
+
 /**
  * Create the deployments read API (SDK parity with MCP list_deployments / get_deployment).
  */
-export function createDeploymentsApi(http: LoxtepHttpClient): DeploymentsApi {
+export function createDeploymentsApi(
+  http: LoxtepHttpClient,
+  deps?: DeploymentsApiDeps
+): DeploymentsApi {
   return {
     async list(filters: DeploymentsListFilters = {}): Promise<DeploymentsListResponse> {
       const qs = buildQueryString({
@@ -70,6 +85,7 @@ export function createDeploymentsApi(http: LoxtepHttpClient): DeploymentsApi {
     async get(deployment_id: string, options?: GetDeploymentOptions): Promise<Deployment> {
       const qs = buildQueryString({
         include_versions: options?.include_versions === true ? true : undefined,
+        project_id: namedProjectId(options?.project_id, deps?.project_id),
       });
       const res = await http.get<unknown>(
         `${DEPLOYMENTS_BASE}/${encodeURIComponent(deployment_id)}${qs}`
