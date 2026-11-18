@@ -35,7 +35,21 @@ function shapesBase(): string {
   return SHAPES_BASE;
 }
 
-export function createShapesApi(http: LoxtepHttpClient): {
+export interface ShapesApiOptions {
+  /**
+   * When set, `get` sends `project_id` so a deploy token can name its project.
+   * List and write calls stay unscoped.
+   */
+  project_id?: string;
+}
+
+function shapeGetPath(schema_id: string, project_id?: string): string {
+  const path = `${shapesBase()}/${encodeURIComponent(schema_id)}`;
+  if (!project_id) return path;
+  return `${path}?project_id=${encodeURIComponent(project_id)}`;
+}
+
+export function createShapesApi(http: LoxtepHttpClient, options?: ShapesApiOptions): {
   create: (input: CreateDomainShapeInput) => Promise<DomainShapeVersion | DomainShapeSummary>;
   list: (filters?: ListDomainShapesFilters) => Promise<ListDomainShapesResult>;
   get: (schema_id: string) => Promise<DomainShapeDetail>;
@@ -103,7 +117,7 @@ export function createShapesApi(http: LoxtepHttpClient): {
 
     async get(schema_id: string): Promise<DomainShapeDetail> {
       if (!schema_id) throw new Error('schema_id is required');
-      const res = await http.get(`${shapesBase()}/${encodeURIComponent(schema_id)}`);
+      const res = await http.get(shapeGetPath(schema_id, options?.project_id));
       const data = unwrapData<{ schema?: DomainShapeSummary; versions?: DomainShapeVersion[] }>(
         res
       );

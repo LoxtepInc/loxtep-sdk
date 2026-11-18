@@ -27,6 +27,11 @@ export interface LoxtepClientOptions {
   organization_id?: string;
   /** Default project ID (optional). */
   project_id?: string;
+  /**
+   * Project id sent on Shape and data-contract reads. Deploy-token clients set
+   * this to the token's project. Interactive sessions leave it unset.
+   */
+  deploy_read_project_id?: string;
   /** Default instance ID (deploy / instance-scoped APIs). */
   instance_id?: string;
   /**
