@@ -65,11 +65,15 @@ export async function runDeploymentsListCommand(
 export async function runDeploymentsGetCommand(
   client: LoxtepClient,
   deployment_id: string,
-  options?: { include_versions?: boolean }
+  options?: { include_versions?: boolean; project_id?: string }
 ): Promise<CliResult> {
   try {
+    // Flag wins. Otherwise the workspace / deploy-token project on the client.
+    // get() also applies that default, so a caller that omits it still names the project.
+    const project_id = options?.project_id ?? client.project_id;
     const result = await client.observe.get_deployment(deployment_id, {
-      include_versions: options?.include_versions,
+      ...(options?.include_versions ? { include_versions: true } : {}),
+      ...(project_id ? { project_id } : {}),
     });
     return {
       exitCode: 0,

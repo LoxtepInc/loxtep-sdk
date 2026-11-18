@@ -248,7 +248,7 @@ export type WorkflowsApi = {
   list: (
     filters?: WorkflowsListFilters,
   ) => Promise<WorkflowsListResponse["data"]>;
-  get: (id: string) => Promise<FlowWithNodes>;
+  get: (id: string, options?: { project_id?: string }) => Promise<FlowWithNodes>;
   create: (input: CreateWorkflowInput) => Promise<Flow>;
   get_graph: (
     workflow_id: string,
@@ -302,9 +302,14 @@ export function createWorkflowsApi(
       return res.data;
     },
 
-    async get(id: string): Promise<FlowWithNodes> {
+    async get(id: string, options?: { project_id?: string }): Promise<FlowWithNodes> {
+      // Same rule as deployments.get: name the client project so a deploy token
+      // is not rejected. Omit the query when neither side has a project.
+      const qs = buildQueryString({
+        project_id: options?.project_id?.trim() || deps?.project_id?.trim() || undefined,
+      });
       const flowRes = await http.get<{ success: true; data: Flow }>(
-        `${WORKFLOWS_BASE}/${encodeURIComponent(id)}`,
+        `${WORKFLOWS_BASE}/${encodeURIComponent(id)}${qs}`,
       );
       const flow = flowRes.data;
       let nodes: FlowNode[] = [];
@@ -312,7 +317,7 @@ export function createWorkflowsApi(
         const nodesRes = await http.get<{
           success: true;
           data: { items: FlowNode[] };
-        }>(`${WORKFLOWS_BASE}/${encodeURIComponent(id)}/nodes`);
+        }>(`${WORKFLOWS_BASE}/${encodeURIComponent(id)}/nodes${qs}`);
         const payload =
           (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
         nodes = (payload as { items?: FlowNode[] }).items ?? [];
@@ -453,8 +458,11 @@ export function createWorkflowsApi(
 
       let queueName = options?.output_queue_name;
       if (!queueName && options?.environment_prefix && options?.project_id) {
+        const projectQs = buildQueryString({
+          project_id: options.project_id.trim() || deps?.project_id?.trim() || undefined,
+        });
         const flowRes = await http.get<{ success: true; data: Flow } | Flow>(
-          `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}`,
+          `${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}${projectQs}`,
         );
         const flowData =
           flowRes && typeof flowRes === "object" && "data" in flowRes
@@ -465,7 +473,7 @@ export function createWorkflowsApi(
           const nodesRes = await http.get<{
             success: true;
             data: { items: FlowNode[] };
-          }>(`${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/nodes`);
+          }>(`${WORKFLOWS_BASE}/${encodeURIComponent(workflow_id)}/nodes${projectQs}`);
           const payload =
             (nodesRes as { data?: { items?: FlowNode[] } }).data ?? nodesRes;
           nodes = (payload as { items?: FlowNode[] }).items ?? [];

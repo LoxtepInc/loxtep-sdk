@@ -228,7 +228,9 @@ export class LoxtepClient {
     const projectsApi = createProjectsApi(this._http);
     const templatesApi = createTemplatesApi(this._http);
     const observeApi = createObserveApi(this._http);
-    const deploymentsApi = createDeploymentsApi(this._http);
+    const deploymentsApi = createDeploymentsApi(this._http, {
+      project_id: options.project_id,
+    });
     this._dataProductsApi = createDataProductsApi(this._http, {
       get_queue_metadata: name => queuesApi.get_queue_metadata(name),
       get_reader_checkpoint: (name, bot_id) => queuesApi.get_reader_checkpoint(name, bot_id),

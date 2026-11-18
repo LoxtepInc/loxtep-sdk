@@ -157,7 +157,7 @@ class LoxtepClient:
         projects = ProjectsApi(self._http)
         templates = TemplatesApi(self._http)
         observe = ObserveApi(self._http)
-        deployments = DeploymentsApi(self._http)
+        deployments = DeploymentsApi(self._http, project_id=project_id)
         data_products = DataProductsApi(
             self._http,
             get_queue_metadata=lambda name: queues.get_queue_metadata(name),
@@ -331,7 +331,7 @@ class AsyncLoxtepClient:
         projects = AsyncProjectsApi(self._http)
         templates = AsyncTemplatesApi(self._http)
         observe = AsyncObserveApi(self._http)
-        deployments = AsyncDeploymentsApi(self._http)
+        deployments = AsyncDeploymentsApi(self._http, project_id=project_id)
         data_products = AsyncDataProductsApi(
             self._http,
             get_queue_metadata=None,
