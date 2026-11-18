@@ -26,6 +26,28 @@ def _query_string(params: dict[str, Any]) -> str:
     return "?" + urlencode(clean) if clean else ""
 
 
+def _named_project_id(explicit: Optional[str], fallback: Optional[str]) -> Optional[str]:
+    """Caller's id wins. A blank string is unset, so the client project is used."""
+    chosen = explicit if explicit and explicit.strip() else fallback
+    value = (chosen or "").strip()
+    return value or None
+
+
+def _get_query(
+    *,
+    include_versions: bool,
+    project_id: Optional[str],
+    default_project_id: Optional[str],
+) -> str:
+    resolved = _named_project_id(project_id, default_project_id)
+    params: dict[str, Any] = {}
+    if include_versions:
+        params["include_versions"] = True
+    if resolved:
+        params["project_id"] = resolved
+    return _query_string(params)
+
+
 def pick_latest_deployment(items: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
     """Pick the best "latest" deployment for status (prefer status=deployed)."""
     if not items:
@@ -48,8 +70,9 @@ def pick_latest_deployment(items: list[dict[str, Any]]) -> Optional[dict[str, An
 class DeploymentsApi:
     """Sync deployments surface."""
 
-    def __init__(self, http: LoxtepHttpClient) -> None:
+    def __init__(self, http: LoxtepHttpClient, project_id: Optional[str] = None) -> None:
         self._http = http
+        self._project_id = project_id
 
     def list(
         self,
@@ -92,16 +115,22 @@ class DeploymentsApi:
         deployment_id: str,
         *,
         include_versions: bool = False,
+        project_id: Optional[str] = None,
     ) -> dict[str, Any]:
-        qs = _query_string({"include_versions": True} if include_versions else {})
+        qs = _get_query(
+            include_versions=include_versions,
+            project_id=project_id,
+            default_project_id=self._project_id,
+        )
         return _unwrap(self._http.get(f"{DEPLOYMENTS_BASE}/{deployment_id}{qs}"))
 
 
 class AsyncDeploymentsApi:
     """Async deployments surface."""
 
-    def __init__(self, http: AsyncLoxtepHttpClient) -> None:
+    def __init__(self, http: AsyncLoxtepHttpClient, project_id: Optional[str] = None) -> None:
         self._http = http
+        self._project_id = project_id
 
     async def list(
         self,
@@ -144,6 +173,11 @@ class AsyncDeploymentsApi:
         deployment_id: str,
         *,
         include_versions: bool = False,
+        project_id: Optional[str] = None,
     ) -> dict[str, Any]:
-        qs = _query_string({"include_versions": True} if include_versions else {})
+        qs = _get_query(
+            include_versions=include_versions,
+            project_id=project_id,
+            default_project_id=self._project_id,
+        )
         return _unwrap(await self._http.get(f"{DEPLOYMENTS_BASE}/{deployment_id}{qs}"))

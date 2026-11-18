@@ -178,7 +178,8 @@ Analytics
 Observe
   observe status                         Platform / instance health snapshot
   deployments list [--project-id …] [--instance-id …] [--workflow-id …] [--status …]
-  deployments get <deployment_id>        Poll async deploy status (after loxtep deploy)
+  deployments get <deployment_id> [--project-id …] [--include-versions]
+                     Poll async deploy status (after loxtep deploy). Names the client project.
   queue info <data-product-id> | --queue <name>
   queue checkpoint <id> --bot <bot-id>   Reader checkpoint for a bot
   metrics rate-limits | log --id <id> --value <n>

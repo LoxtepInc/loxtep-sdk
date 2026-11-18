@@ -55,6 +55,33 @@ def test_deployments_get_include_versions():
     assert result["deployment_id"] == "dep-1"
 
 
+def test_deployments_get_sends_explicit_project_id():
+    http = MagicMock()
+    http.get.return_value = {"success": True, "data": _deployment()}
+    api = DeploymentsApi(http, project_id="from-client")
+    api.get("dep-1", include_versions=True, project_id="proj-1")
+    path = http.get.call_args[0][0]
+    assert "include_versions=true" in path
+    assert "project_id=proj-1" in path
+    assert "from-client" not in path
+
+
+def test_deployments_get_falls_back_to_client_project():
+    http = MagicMock()
+    http.get.return_value = {"success": True, "data": _deployment()}
+    api = DeploymentsApi(http, project_id="token-proj")
+    api.get("dep-1")
+    assert http.get.call_args[0][0] == "/workflows/deployments/dep-1?project_id=token-proj"
+
+
+def test_deployments_get_omits_project_id_for_unscoped_callers():
+    http = MagicMock()
+    http.get.return_value = {"success": True, "data": _deployment()}
+    api = DeploymentsApi(http)
+    api.get("dep-1")
+    assert http.get.call_args[0][0] == "/workflows/deployments/dep-1"
+
+
 def test_pick_latest_deployment_prefers_deployed():
     items = [
         _deployment(deployment_id="old", status="pending", updated_at="2026-08-07T00:00:00Z"),

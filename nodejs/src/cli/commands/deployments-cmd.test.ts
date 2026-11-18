@@ -44,4 +44,13 @@ describe('deployments-cmd', () => {
     expect(get).toHaveBeenCalledWith('dep-1', { include_versions: true });
     expect(result.stdout[0]).toContain('deployed');
   });
+
+  it('gets a deployment with the client project when no flag is passed', async () => {
+    const get = jest.fn(async () => ({ deployment_id: 'dep-1', status: 'deployed' }));
+    const client = mockClient({ get });
+    (client as { project_id?: string }).project_id = 'token-proj';
+    const result = await runDeploymentsGetCommand(client, 'dep-1');
+    expect(result.exitCode).toBe(0);
+    expect(get).toHaveBeenCalledWith('dep-1', { project_id: 'token-proj' });
+  });
 });

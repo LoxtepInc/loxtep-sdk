@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.5] — 2026-11-17
+
+### Fixed
+
+- `deployments.get` and `workflows.get` send `project_id` on the query. Pass it on the call, or the client uses its configured project (the deploy token's project). A user JWT with no project still omits it.
+
 ## [0.11.4] — 2026-11-16
 
 ### Fixed
