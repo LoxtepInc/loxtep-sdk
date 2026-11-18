@@ -18,7 +18,15 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
   return qs ? `?${qs}` : '';
 }
 
-export function createPromisesApi(http: LoxtepHttpClient): {
+export interface PromisesApiOptions {
+  /**
+   * When set, `get` sends `project_id` so a deploy token can name its project.
+   * List and write calls stay unscoped.
+   */
+  project_id?: string;
+}
+
+export function createPromisesApi(http: LoxtepHttpClient, options?: PromisesApiOptions): {
   get: (contract_id: string) => Promise<Promise_>;
   list: (filters?: PromisesListFilters) => Promise<PromisesListResponse['data']>;
   create: (payload: {
@@ -50,9 +58,11 @@ export function createPromisesApi(http: LoxtepHttpClient): {
     },
 
     async get(contract_id: string): Promise<Promise_> {
-      const res = await http.get<{ success: true; data: Promise_ }>(
-        `${PROMISES_BASE}/${encodeURIComponent(contract_id)}`
-      );
+      const path = `${PROMISES_BASE}/${encodeURIComponent(contract_id)}`;
+      const qs = options?.project_id
+        ? `?project_id=${encodeURIComponent(options.project_id)}`
+        : '';
+      const res = await http.get<{ success: true; data: Promise_ }>(`${path}${qs}`);
       return res.data;
     },
 

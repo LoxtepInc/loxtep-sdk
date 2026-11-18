@@ -250,7 +250,9 @@ export class LoxtepClient {
     const catalogApi = createCatalogApi(this._http);
     const discoveryApi = createDiscoveryApi(this._http);
     const schemasApi = createSchemasApi(this._http);
-    const shapesApi = createShapesApi(this._http);
+    const shapesApi = createShapesApi(this._http, {
+      project_id: options.deploy_read_project_id,
+    });
     const thesaurusApi = createThesaurusApi(this._http, options.organization_id);
     const ontologyApi = createOntologyApi(this._http, {
       organization_id: options.organization_id,
@@ -277,7 +279,9 @@ export class LoxtepClient {
     const activityApi = createActivityApi(this._http);
     const domainsApi = createDomainsApi(this._http);
     const standardsApi = createStandardsApi(this._http);
-    const dataContractsApi = createPromisesApi(this._http);
+    const dataContractsApi = createPromisesApi(this._http, {
+      project_id: options.deploy_read_project_id,
+    });
 
     this.session = createSessionApi(this._http);
     this.connect = createConnectFacade({ connectors: connectorsApi, templates: templatesApi });

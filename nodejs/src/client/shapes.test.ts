@@ -57,17 +57,40 @@ describe('createShapesApi', () => {
   });
 
   it('get returns schema + versions', async () => {
+    let capturedPath: string | null = null;
     const http = {
-      get: async () => ({
-        success: true as const,
-        data: { schema: SHAPE, versions: [{ schema_id: 's1', schema_version_id: 'v1', version: '1.0.0', format: 'json-schema' }] },
-      }),
+      get: async (path: string) => {
+        capturedPath = path;
+        return {
+          success: true as const,
+          data: { schema: SHAPE, versions: [{ schema_id: 's1', schema_version_id: 'v1', version: '1.0.0', format: 'json-schema' }] },
+        };
+      },
     } as unknown as LoxtepHttpClient;
 
     const api = createShapesApi(http);
     const detail = await api.get('s1');
+    expect(capturedPath).toBe('/semantic-layer/schemas/s1');
     expect(detail.schema).toEqual(SHAPE);
     expect(detail.versions).toHaveLength(1);
+  });
+
+  it('get appends project_id only when the api is pinned to a project', async () => {
+    let capturedPath: string | null = null;
+    const http = {
+      get: async (path: string) => {
+        capturedPath = path;
+        return { success: true as const, data: { schema: SHAPE, versions: [] } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createShapesApi(http, {
+      project_id: '33333333-3333-4333-8333-333333333333',
+    });
+    await api.get('s1');
+    expect(capturedPath).toBe(
+      '/semantic-layer/schemas/s1?project_id=33333333-3333-4333-8333-333333333333'
+    );
   });
 
   it('apply POSTs applications', async () => {

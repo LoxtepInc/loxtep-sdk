@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Deploy-token clients send `project_id` on Shape and data-contract reads. Interactive sessions do not.
+
 ## [0.14.5] - 2026-11-17
 
 ### Fixed

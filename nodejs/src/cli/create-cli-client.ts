@@ -68,6 +68,8 @@ export interface CliAuthContext {
   api_url: string;
   get_token: () => Promise<string | null>;
   refresh_auth: () => Promise<boolean>;
+  /** Set only on the deploy-token path. Shape and contract reads send this project id. */
+  deploy_read_project_id?: string;
 }
 
 export type CliSigV4Credentials = {
@@ -242,7 +244,7 @@ async function createDeployTokenAuthContext(
     }
   };
 
-  return { api_url, get_token, refresh_auth };
+  return { api_url, get_token, refresh_auth, deploy_read_project_id: inputs.project_id };
 }
 
 /**
@@ -366,6 +368,7 @@ export async function createCliClient(options: CreateCliClientOptions = {}): Pro
     region: config.region,
     organization_id: config.organization_id,
     project_id: config.project_id,
+    deploy_read_project_id: authCtx.deploy_read_project_id,
     instance_id: config.instance_id,
     client_surface: 'cli',
     ...(config.streams
