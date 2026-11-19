@@ -23,8 +23,9 @@ product is **deployed** on your attached instance.
 
 **Node.js 22+** is the supported runtime (`engines` in `package.json`). Live
 queue/flow writes use the **Loxtep stream** data plane; configure stream bus
-resources (`streams` on `LoxtepClient` and instance env from your stack) and AWS
-credentials for SigV4 on both REST and the bus.
+resources (`streams` on `LoxtepClient` and instance env from your stack). The
+SDK signs its own platform and bus calls with the session credentials that
+`loxtep login` stores; you never sign requests yourself.
 
 ## Ways to get started
 
@@ -108,9 +109,10 @@ Refresh with `refresh(apiUrl, tokens.refresh_token)`. Prefer `loxtep login` +
    ```
 
    Writes `instance_id` and `api_url` into `.loxtep/project.json`. Required
-   before `generate`, `test`, and `deploy`. Bus physical names are CLI/REST
-   (`instances stream-config` or `client.workspace.instances.get_stream_config`);
-   MCP `list_instances` / `get_sdk_config` do not return them.
+   before `generate`, `test`, and `deploy`. Bus physical names come from
+   `instances stream-config`, `client.workspace.instances.get_stream_config`, or
+   MCP `loxtep_observe` → `get_stream_config`; MCP `list_instances` /
+   `get_sdk_config` do not return them.
 
 5. **Generate typed workspace constants**
 

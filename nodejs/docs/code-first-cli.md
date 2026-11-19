@@ -25,8 +25,8 @@ Use [SDK-first ingest](./sdk-first-ingest.md) instead of this guide.
 
 `loxtep init` creates **`.loxtep/project.json`** and the on-disk project layout.
 `loxtep projects clone` materializes Cloud → Local: **git clone** when the project
-is GitHub-bound; authenticated **workspace export** (`POST /workflows/projects/{id}/export`)
-when unbound. Both paths write `.loxtep/project.json` and upsert
+is GitHub-bound; authenticated **workspace export**
+(`client.workspace.projects.export_workspace`) when unbound. Both paths write `.loxtep/project.json` and upsert
 `~/.loxtep/workspaces.json` so `loxtep status` works immediately.
 `loxtep projects link` (alias `loxtep link`) binds metadata only when you already
 have a local tree. Prefer `clone` for "get it from the cloud"; use `link` when
@@ -34,7 +34,8 @@ the files are already on disk.
 
 **GitHub sync vs package push:** top-level `loxtep push` uploads unbound local
 packages (Local → Cloud S3). When GitHub-bound, use `loxtep projects pull` /
-`loxtep projects push` to wrap `/projects/{id}/github/pull|push`. Never pretend
+`loxtep projects push` (SDK `client.workspace.projects.github_pull` /
+`github_push`). Never pretend
 Git exists for unbound projects.
 
 **`link` ≠ `attach`:** `link`/`clone` bind the **project**; `attach` binds a runtime
@@ -190,7 +191,8 @@ pnpm exec loxtep deploy
   itself is not executed on the platform.
 - **`deploy`** — creates or updates the workflow on the attached instance.
   When the module declares `nodes` of `kind: 'approval'`, deploy writes those
-  approval nodes with `PUT /workflows/{id}/graph`. Trigger connections and the
+  approval nodes with `client.build.workflows.patch_graph` (MCP
+  `loxtep_build` → `patch_workflow_graph`). Trigger connections and the
   handler are not uploaded. `upstream` and `approved` are kept only when both
   ends are platform UUIDs. Compiler ids such as `handler` and `trigger_0` are
   omitted.

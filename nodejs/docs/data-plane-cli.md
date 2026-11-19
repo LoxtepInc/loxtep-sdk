@@ -1,9 +1,9 @@
 # Data plane CLI
 
-Commands added in `@loxtep/sdk` 0.9.25. They call the existing Loxtep REST API
-through the workspace client. Organization, project, and instance come from
-`loxtep attach` and `~/.loxtep`. `--instance <uuid>` overrides
-`x-loxtep-instance-id` for that command.
+Commands added in `@loxtep/sdk` 0.9.25. They run through the SDK workspace client
+(`client.build.data_products.*`, `client.define.*`, `client.meaning.*`).
+Organization, project, and instance come from `loxtep attach` and `~/.loxtep`.
+`--instance <uuid>` overrides the attached instance for that command.
 
 Source in this checkout is 0.9.25. The published npm package and the deployed
 data-products service are separate. A queued rebuild is acceptance of a job,
@@ -37,22 +37,24 @@ and the enable windows `1h`, `6h`, `1d`, `7d`, `30d`. Omitting
 `--end-checkpoint` is evergreen and the receipt says `end_bound: evergreen`.
 
 `--confirm` is required for a real rebuild. `--dry-run` does not require it.
-The HTTP body still sends `confirm: true` because the API schema requires that
+The request still sends `confirm: true` because the platform requires that
 literal. The receipt says `confirm_sent_for_api_gate: true` and
 `destructive: false` for a dry run.
 
 A dry run in the data-products service skips schema-stamp persistence, the
-partition write, and `POST /api/iceberg/config`. It still asks the instance
+partition write, and the Iceberg config write. It still asks the instance
 worker to plan. The response includes `pending_mutations` for the writes a real
 rebuild would make. That read-only control plane is in source. It is live only
 after the data-products service that contains it is deployed.
 
 Exit 0 means the dry run was accepted, or a real rebuild was accepted with
-`completed: false`. Exit 1 is validation, HTTP failure, `already_running`, or
-`endpoint_missing`. `--wait` polls `GET .../iceberg/health` for the same
+`completed: false`. Exit 1 is validation, request failure, `already_running`, or
+`endpoint_missing`. `--wait` polls Iceberg health
+(`client.build.data_products.iceberg.health`; MCP `loxtep_observe` →
+`get_iceberg_health`) for the same
 `job_id` (or `backfill_job_id` on that overlay). Exit 0 from `--wait` means that
 job reached `completed`. Exit 2 is a timeout: the JSON still has `job_id` and
-the last status, and the command does not POST again and does not cancel.
+the last status, and the command does not resubmit and does not cancel.
 A different current job is `job_not_current` (exit 1). A completed status with
 no matching job id is not treated as success.
 
@@ -67,8 +69,9 @@ loxtep data-products iceberg status b1b6b3ab-43d8-580a-a1ec-9e2113e19016 \
 loxtep data-products iceberg cancel b1b6b3ab-43d8-580a-a1ec-9e2113e19016 --json
 ```
 
-Cancel calls `POST .../iceberg/rebuild/cancel`. When the instance has no cancel
-route, the error code stays `endpoint_missing`. That is not a cancelled job.
+Cancel calls `client.build.data_products.iceberg.cancel(id)`. When the instance
+does not support cancel yet, the error code stays `endpoint_missing`. That is
+not a cancelled job.
 
 ## Enable, config, and inspection
 
@@ -90,9 +93,9 @@ Omitting the window sends no history. A `z/` event id is not accepted on enable.
 The command does not invent a partition; `--config` or `--file` supplies
 `iceberg_config`.
 
-There is no `GET /iceberg/config`. `config` without `--put` reads
-`GET /dataproducts/{id}/iceberg` and prints `iceberg_config`. `--put` writes
-`PUT /dataproducts/{id}/iceberg/config`.
+`config` without `--put` reads `client.build.data_products.iceberg.status(id)`
+and prints its `iceberg_config`. `--put` writes through
+`client.build.data_products.iceberg.put_config(id, config)`.
 
 `schema` prints four blocks:
 
@@ -113,7 +116,8 @@ loxtep data-products iceberg trace <product-id> --eid <z/eid> \
   [--max-hops 1-10] [--max-rows 1-200] [--json]
 ```
 
-`history` with no mode prints the `history` block of `GET .../iceberg/health`:
+`history` with no mode prints the `history` block of the Iceberg health result
+(`iceberg.health(id)`; MCP `loxtep_observe` → `get_iceberg_health`):
 `status` (`not_enabled`, `waiting_for_first_write`, `ok`, `unknown`), `max_eid`
 (compare it with `data_sync.queue_lag.checkpoint_eid`), `row_count`, and
 `gap_after_eid` when history was turned off and on again.
@@ -124,7 +128,8 @@ stay. Iceberg must be enabled (409 `iceberg_required` otherwise). `off` needs
 `--confirm`: events while history is off are never recorded. Rows already
 written stay queryable as `"<name>.history"`.
 
-`trace` walks one event upstream over history tables (`GET .../iceberg/trace`).
+`trace` walks one event upstream over history tables (`iceberg.trace(id, eid)`;
+MCP `loxtep_observe` → `trace_iceberg_event`).
 The product must keep history (409 `history_not_enabled` otherwise). The result
 has `steps` (one per hop: product, queue, events with their rows, `truncated`)
 and `stops` with a reason such as `no_upstream` (the start of the pipeline) or
@@ -173,7 +178,7 @@ includes `query_id` when the body has one.
 `execution_time_ms`, `error`, `error_code`, `tables_referenced`, `recovery`,
 `iceberg_health_status`, and `completion_evidence` (`native` or `missing`).
 Failed and unfinished queries exit 1. Warehouse execute is synchronous. There
-is no second poll URL.
+is no separate poll step.
 
 SDK:
 
@@ -194,10 +199,13 @@ loxtep data-products export <product-id> \
   [--instance <uuid>] [--json]
 ```
 
-This pages `GET /observe/trace/{queue}/events`. It does not open a reader, commit
-a checkpoint, or trigger a workflow. The result says `read_only: true` and
-`checkpoint_committed: false`. The trace API has no limit or cursor of its own,
-so the client slices the page. `truncated` is true when the page is longer than
+This pages the product's queue with
+`client.build.data_products.export_events(id, { start, end, limit, max_pages })`.
+For agents, MCP `loxtep_observe` → `read_queue_events` reads the same queue
+forward from an `eid` (no end bound; page with `next_cursor`). It does not open a
+reader, commit a checkpoint, or trigger a workflow. The result says
+`read_only: true` and `checkpoint_committed: false`. The underlying queue read
+has no limit or cursor of its own, so the client slices the page. `truncated` is true when the page is longer than
 `--limit` or `--max-pages` stops the loop. `next_start` may repeat the last
 included event id because trace start is inclusive. If the server sends `next`
 or `next_start`, that cursor is preferred.
@@ -225,13 +233,17 @@ loxtep define apply-glossary <product-id> [--mapping-revision N]
 loxtep data-products primary-entity <product-id>
 ```
 
-Contract update is `PUT /dataproducts/datacontracts/{id}` with
-`schema_version_id`. Quality rules use `/dataproducts/quality-rules`. There is
-no GET-by-id route, so `get` scans the list and returns `not_in_list` when the
-id is absent. Create allows `uniqueness`. The list filter enum on the service
+Contract update is `client.define.data_contracts.update(id, { schema_version_id })`.
+MCP `loxtep_build` → `update_data_contract` does not accept `schema_version_id`;
+use the CLI or SDK for that change. Quality rules use `client.define.quality_rules`
+(MCP `loxtep_define` → `list_quality_rules`, `get_quality_rule`,
+`create_quality_rule`, `update_quality_rule`, `delete_quality_rule`). The service
+has no single-rule read, so `quality_rules.get` and CLI `get` scan the list and return
+`not_in_list` when the id is absent. Create allows `uniqueness`. The list filter enum on the service
 may omit it.
 
-Glossary apply posts `/semantic-layer/glossary/bindings` with
+Glossary apply calls `client.meaning.semantic.apply_glossary_bindings` (MCP
+`loxtep_meaning` → `apply_glossary_bindings`) with
 `{ data_product_id, mapping_revision? }`. `define glossary` reads the product
 lexicon. Primary entity is read from `schema.entities`. Changing it goes through
 `define submit-shape`, then approve and apply. The command does not write a key.
@@ -251,4 +263,4 @@ A source trigger or delivery id is not treated as a unique lookup key.
    older copy after install.
 4. Stage checks of EventLog and EventDataLog come after the package is installed
    and the data-products deploy is confirmed. Cancel may still return
-   `endpoint_missing` until the instance cancel route exists.
+   `endpoint_missing` until the instance supports cancel.

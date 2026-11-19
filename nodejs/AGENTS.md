@@ -88,7 +88,7 @@ export LOXTEP_ACTOR="$GITHUB_SHA"        # optional, for audit
 loxtep deploy                            # exchanges, signs, deploys — no human
 ```
 
-Under the hood the exchange (`POST /organizations/auth/deploy-token`) returns a
+The CLI performs the exchange for you. It returns a
 project-scoped JWT **and** short-lived AWS credentials, so the SDK signs the
 IAM-gated data plane exactly as an interactive session does. A revoked deploy
 token, or one whose owner left the org, fails the next exchange.
@@ -212,7 +212,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 `LoxtepClient` exposes **10 facades** that mirror hosted MCP tools, plus
 `client.governance` and `client.entities`. See
 [`docs/sdk-mcp-mapping.md`](./docs/sdk-mcp-mapping.md).
-`emit_semantic_gap_candidate` stays MCP-only (no HTTP).
+`emit_semantic_gap_candidate` stays MCP-only (no SDK method).
 
 | Facade              | Nested APIs                                                                                      | Purpose                                                                                                                                                                                           |
 | ------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -338,4 +338,3 @@ attribution and eval scoring. It is optional and ignored for tool logic.
 | `docs/sdk-mcp-mapping.md`              | How MCP tools map to SDK methods            |
 | `docs/event-replay-cookbook.md`        | Replaying historical events                 |
 | Docs site `llms.txt` / `llms-full.txt` | Machine-readable doc index + full reference |
-| Docs site `/docs/api` + OpenAPI        | HTTP API reference                          |

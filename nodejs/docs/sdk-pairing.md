@@ -4,7 +4,7 @@
 
 Use one base URL everywhere:
 
-- **REST / SDK:** `LOXTEP_API_URL` or `config.json` → `api_url`
+- **SDK / CLI:** `LOXTEP_API_URL` or `config.json` → `api_url`
 - **Loxtep MCP:** hosted only — connect with a URL and OAuth 2.1 (PKCE), not a local login
 
 The CLI and SDK resolve tokens in this order: **`LOXTEP_AUTH_TOKEN`** →
@@ -17,10 +17,10 @@ authenticates via its own OAuth flow in the MCP client, not this file.
 | Job | Tool |
 | --- | ---- |
 | Provision org resources, run catalog/dataproduct MCP tools, IDE agent calls | **Loxtep MCP** (hosted; connect via URL + OAuth) |
-| Typed REST from Node services, scripts, CI | **`@loxtep/sdk`** (`LoxtepClient`) |
+| Typed calls from Node services, scripts, CI | **`@loxtep/sdk`** (`LoxtepClient`) |
 | Quick operator commands, token bootstrap | **`loxtep` CLI** (ships with the SDK) |
 | **Live** queue produce/consume | **SDK** with stream config |
-| **Historical** replay / trace-style reads | **SDK** `client.build.data_products.replay()` (REST API) |
+| **Historical** replay / trace-style reads | **SDK** `client.build.data_products.replay()` |
 
 There is **no** required joint package install of MCP and SDK; pair them by
 **config + docs**, not a metapackage.
