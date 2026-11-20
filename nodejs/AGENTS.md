@@ -155,6 +155,7 @@ loxtep approval add --workflow <id> --after <entity-id> --name <n> --channel <c>
 loxtep triggers list | get <id> | create --name <n> --type <type> --key <k> | test <id> | reset-backfill <connection_id>
 loxtep connect discover [--json]
 loxtep connect discover --apply [--include-stdio] [--json]
+loxtep team directory discover --csv <path> | --connector-id <uuid> [--json]
 loxtep connectors list [--type sdk]
 loxtep connectors test <connector_id>
 loxtep connectors list-entities <connector_id>
@@ -220,6 +221,7 @@ const fromWs = LoxtepClient.fromWorkspace();
 | ------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `client.session`    | —                                                                                                | Current user/org, logout                                                                                                                                                                          |
 | `client.connect`    | `.connectors`, `.templates`, `.discovery`                                                        | Connect external systems, templates, local IDE tool-server discovery                                                                                                                              |
+| `client.team`       | `.directory`                                                                                     | Directory invite discovery (`discoverDirectoryPeople` / `proposeInvitees` / `inviteFromDirectory`; gate always human_pick)                                                                       |
 | `client.workspace`  | `.projects`, `.instances`                                                                        | Projects, runtime instances                                                                                                                                                                       |
 | `client.build`      | `.workflows`, `.triggers`, `.data_products`, `.targets`                                          | Authoring, deploy, CRUD, stream/replay                                                                                                                                                            |
 | `client.define`     | `.schemas`, `.shapes`, `.quality`, `.standards`, `.data_contracts`, `.domains`                   | Data-product schemas + domain shapes + quality + governance                                                                                                                                       |

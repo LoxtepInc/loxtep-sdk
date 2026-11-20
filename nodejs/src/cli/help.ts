@@ -48,6 +48,9 @@ Build & deploy
                      Discover local IDE tool servers and propose Loxtep connectors (dry-run)
   connect discover --apply [--include-stdio] [--json]
                      Create pending_auth connectors + human auth issues (deduped)
+  team directory discover --csv <path> | --connector-id <uuid> [--json]
+                     Propose invitees from CSV or a directory connector (dry-run;
+                     never auto-invites — use SDK inviteFromDirectory with selection)
   connectors list [--type sdk]
                      List org connectors (reuse SDK connector before create)
   connectors test <connector_id>

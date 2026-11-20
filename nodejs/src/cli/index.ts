@@ -66,6 +66,7 @@ import {
   runConnectorsListEntities,
 } from "./commands/connectors-cmd.js";
 import { runConnectDiscover } from "./commands/connect-discover-cmd.js";
+import { runTeamDirectoryDiscover } from "./commands/team-directory-cmd.js";
 import { runObserveStatus } from "./commands/observe-cmd.js";
 import {
   runTriggersList,
@@ -841,6 +842,28 @@ export async function runCli(argv: string[]): Promise<void> {
               "Usage:",
               "  loxtep connect discover [--json]",
               "  loxtep connect discover --apply [--include-stdio] [--json]",
+            ].join("\n"),
+          );
+          process.exitCode = 1;
+        }
+        break;
+      case "team":
+        if (sub === "directory" && args[2] === "discover") {
+          await runTeamDirectoryDiscover(
+            {
+              csv: getArg("--csv"),
+              connector_id: getArg("--connector-id"),
+              org_email_domain: getArg("--org-email-domain"),
+              json: args.includes("--json"),
+            },
+            { debug: args.includes("--debug") },
+          );
+        } else {
+          console.error(
+            [
+              "Usage:",
+              "  loxtep team directory discover --csv <path> [--json]",
+              "  loxtep team directory discover --connector-id <uuid> [--json]",
             ].join("\n"),
           );
           process.exitCode = 1;

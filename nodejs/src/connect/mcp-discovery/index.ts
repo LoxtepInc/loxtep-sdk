@@ -1,5 +1,6 @@
 /**
  * Local MCP discovery → propose connectors → optional apply (loxtep#4801).
+ * Imports shared `connect/discovery` core — do not fork fingerprint / auth-issue.
  */
 
 export type {

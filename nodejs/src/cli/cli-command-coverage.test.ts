@@ -198,6 +198,12 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
     ],
     notes: 'connect discover — local MCP → propose/apply pending_auth + auth issues (#4801)',
   },
+  team: {
+    kind: 'unit',
+    tests: ['../team/directory-discovery/directory-discovery.test.ts'],
+    notes:
+      'team directory discover — CSV/connector propose invitees; gate always human_pick (#4807)',
+  },
   bus: { kind: 'none', tests: [], notes: 'placeholder command' },
   promises: { kind: 'none', tests: [], notes: 'deprecated alias for data-contracts' },
 };
@@ -240,6 +246,7 @@ describe('CLI command coverage registry', () => {
       'activity',
       'config',
       'connect',
+      'team',
       'bus',
     ];
     for (const cmd of helpCommands) {

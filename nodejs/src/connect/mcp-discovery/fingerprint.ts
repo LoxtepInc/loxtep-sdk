@@ -2,7 +2,7 @@
  * Stable fingerprint for discovered MCP servers (no secrets).
  */
 
-import { createHash } from 'node:crypto';
+import { hashFingerprintMaterial } from '../discovery/fingerprint.js';
 import type { McpTransport } from './types.js';
 
 function canonicalizeHttpUrl(raw: string): string {
@@ -32,6 +32,5 @@ export function fingerprintMcpServer(input: {
     const args = (input.args ?? []).map((a) => a.trim()).filter(Boolean);
     endpoint = [cmd, ...args].join('\0');
   }
-  const material = `${input.transport}:${endpoint}`;
-  return createHash('sha256').update(material).digest('hex').slice(0, 32);
+  return hashFingerprintMaterial(`${input.transport}:${endpoint}`);
 }
