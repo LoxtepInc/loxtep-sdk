@@ -89,12 +89,16 @@ const workspaceContextArb = fc.record({
 
 /**
  * Extracts all resource IDs present in the emitted artifact source by
- * matching quoted id strings. Returns a Set of all IDs found.
+ * matching quoted `id` field values only. Returns a Set of all IDs found.
+ *
+ * Names and object keys are intentionally ignored: a resource named `f_aaaa`
+ * emits `name: "f_aaaa"`, which must not be treated as a flow id.
  */
 function extractIdsFromArtifact(artifact: string): Set<string> {
   const ids = new Set<string>();
-  // Match quoted resource IDs (prefix + at least 4 chars), not short name slugs like "q_a".
-  const idPattern = /['"]((dp|cn|dm|q|f|wf)_[a-z0-9]{4,12})['"]/g;
+  // Match `id: "..."` only (prefix + at least 4 chars). Do not scan bare quoted
+  // strings — resource names can collide with the id shape (e.g. "f_aaaa").
+  const idPattern = /\bid:\s*['"]((dp|cn|dm|q|f|wf)_[a-z0-9]{4,12})['"]/g;
   let match: RegExpExecArray | null;
   while ((match = idPattern.exec(artifact)) !== null) {
     ids.add(match[1]);
@@ -136,6 +140,31 @@ const mutationArb = (maxIndex: number): fc.Arbitrary<Mutation> =>
 // ─── Property Test ────────────────────────────────────────────────────────────
 
 describe('Feature: ai-first-platform-surface, Property 7: Regeneration resource-set equality', () => {
+  it('does not treat id-shaped resource names as stale resource ids (CI counterexample)', () => {
+    // Regression: name "f_aaaa" used to make extractIdsFromArtifact report a
+    // phantom flow id and fail the no-stale-ids assertion (seed -1260248086).
+    const initialCtx: WorkspaceContext = {
+      dataProducts: [{ name: 'f_aaaa', id: 'dp_aaaa', domain: null, schema: null }],
+      connectors: [],
+      domains: [],
+      queues: [],
+      flows: [],
+      workflows: [],
+    };
+    const mutatedCtx: WorkspaceContext = {
+      ...initialCtx,
+      dataProducts: [
+        ...initialCtx.dataProducts,
+        { name: 'a', id: 'q_0aa0', domain: null, schema: null },
+      ],
+    };
+    const artifact = emitArtifact(normalizeContext(mutatedCtx));
+    const artifactIds = extractIdsFromArtifact(artifact);
+    expect(artifactIds.has('dp_aaaa')).toBe(true);
+    expect(artifactIds.has('q_0aa0')).toBe(true);
+    expect(artifactIds.has('f_aaaa')).toBe(false);
+  });
+
   it(
     'regenerated artifact contains exactly the current resource set after any mutation ' +
       '(add, remove, or rename) — no stale references, no missing resources',
