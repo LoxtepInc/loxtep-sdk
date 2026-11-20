@@ -1,6 +1,6 @@
 /**
  * Heuristic name/url → first-party Loxtep connector type (P0/P1).
- * P2 mcp-http is out of scope — HTTP MCPs map to rest-api.
+ * Unmatched hosted HTTP/SSE MCPs use `mcp-http` (platform relay) — never rest-api.
  */
 
 export interface KnownConnectorMatch {
@@ -93,7 +93,19 @@ export function scoreIngestFit(toolNames?: string[]): 'high' | 'medium' | 'low' 
 }
 
 /**
- * Label for hosted HTTP/SSE MCP when no first-party match.
- * P2 platform type — propose-only; never apply as rest-api.
+ * Platform relay type for hosted HTTP/SSE MCP when no first-party match.
+ * Never map generic MCP → rest-api.
  */
 export const GENERIC_HTTP_CONNECTOR_TYPE = 'mcp-http';
+
+/**
+ * When false, discovery still proposes `mcp-http` but `--apply` skips creating it.
+ * Default: enabled (platform provider shipped in loxtep#4813). Set
+ * `LOXTEP_MCP_HTTP_APPLY=0` to disable.
+ */
+export function isMcpHttpApplyEnabled(
+  env: NodeJS.ProcessEnv = process.env
+): boolean {
+  const raw = (env.LOXTEP_MCP_HTTP_APPLY ?? '1').trim().toLowerCase();
+  return raw !== '0' && raw !== 'false' && raw !== 'off' && raw !== 'no';
+}

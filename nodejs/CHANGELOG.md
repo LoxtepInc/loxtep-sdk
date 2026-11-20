@@ -18,9 +18,9 @@
   Claude / Codex / VS Code / mcporter MCP configs, proposes connectors, and on
   `--apply` creates `pending_auth` connectors plus human auth issues
   (`Authenticate {name}`, dedupe `connector-auth:{org}:{connector_id}`) for
-  **first-party connector maps only**. Never copies IDE vault tokens. Generic
-  HTTP/SSE MCPs are propose-only until platform `mcp-http` (P2) — never
-  applied as `rest-api`.
+  **first-party connector maps** and platform **`mcp-http`** for generic hosted
+  HTTP/SSE MCPs (loxtep#4813). Never copies IDE vault tokens. Never maps MCP →
+  `rest-api`. Disable mcp-http apply with `LOXTEP_MCP_HTTP_APPLY=0`.
 - `client.context.issues.create` / `create_issue` (MCP `create_issue`) with
   client-side `dedupe_key` matching.
 

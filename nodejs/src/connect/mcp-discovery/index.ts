@@ -52,4 +52,5 @@ export {
   matchKnownConnector,
   scoreIngestFit,
   GENERIC_HTTP_CONNECTOR_TYPE,
+  isMcpHttpApplyEnabled,
 } from './known-connector-map.js';

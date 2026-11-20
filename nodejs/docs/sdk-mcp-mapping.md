@@ -393,8 +393,8 @@ Not an MCP facade op — local IDE config import on the agent/CLI host:
 
 CLI: `loxtep connect discover` (dry-run), `loxtep connect discover --apply`.
 `--apply` creates connectors only for **first-party** type maps (Shopify, GitHub,
-…). Generic HTTP/SSE MCPs stay propose-only until platform `mcp-http` (P2) — never
-applied as `rest-api`. Never copies IDE vault tokens.
+…). Generic HTTP/SSE MCPs apply as platform `mcp-http` (never `rest-api`).
+Disable with `LOXTEP_MCP_HTTP_APPLY=0`. Never copies IDE vault tokens.
 
 Notes:
 

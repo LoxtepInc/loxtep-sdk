@@ -4,6 +4,7 @@
 
 import {
   GENERIC_HTTP_CONNECTOR_TYPE,
+  isMcpHttpApplyEnabled,
   matchKnownConnector,
   scoreIngestFit,
 } from './known-connector-map.js';
@@ -102,16 +103,32 @@ export function classifyDiscoveredServer(
     };
   }
 
-  // Non–first-party HTTP/SSE: propose-only until platform mcp-http (P2).
-  // Never map generic MCP → rest-api (would create dead pending_auth rows).
+  // Non–first-party HTTP/SSE → platform mcp-http relay (never rest-api).
   if (!known || !known.first_party) {
+    const connector_type = GENERIC_HTTP_CONNECTOR_TYPE;
+    const existing_connector_id = findExisting(
+      server,
+      connector_type,
+      opts.existing_connectors
+    );
+    if (existing_connector_id) {
+      return {
+        discovered: server,
+        disposition: 'map_existing',
+        connector_type,
+        display_name: name,
+        reason: `Org already has mcp-http connector ${existing_connector_id} for this fingerprint/name`,
+        existing_connector_id,
+        ingest_fit,
+      };
+    }
     return {
       discovered: server,
-      disposition: 'skip',
-      connector_type: GENERIC_HTTP_CONNECTOR_TYPE,
+      disposition: 'create_connector',
+      connector_type,
       display_name: name,
       reason:
-        'Hosted HTTP/SSE MCP has no first-party Loxtep type yet; mcp-http is P2 — propose only, no apply',
+        'Hosted HTTP/SSE MCP → mcp-http relay (org credentials; never rest-api / never IDE vault copy)',
       ingest_fit,
     };
   }
@@ -152,8 +169,9 @@ export function proposeConnectors(
 
 /**
  * Whether apply should create a connector for this proposal.
- * Only first-party connector maps are auto-created (Chet / #4801 constraints).
- * Medium/high ingest_fit alone is not enough; generic HTTP MCP is never applied.
+ * First-party maps: always eligible (high/medium ingest_fit).
+ * Generic HTTP/SSE (`mcp-http`): eligible when platform apply flag is on
+ * (`LOXTEP_MCP_HTTP_APPLY`, default on after #4813).
  */
 export function shouldAutoCreate(
   proposal: ConnectorProposal,
@@ -162,14 +180,22 @@ export function shouldAutoCreate(
   if (auto_create_when === 'never') return false;
   if (proposal.disposition !== 'create_connector') return false;
   if (proposal.discovered.transport === 'stdio') return false;
+
   const known = matchKnownConnector({
     name: proposal.discovered.name,
     url: proposal.discovered.url,
   });
-  if (!known?.first_party) return false;
+
+  if (proposal.connector_type === GENERIC_HTTP_CONNECTOR_TYPE || !known?.first_party) {
+    if (!isMcpHttpApplyEnabled()) return false;
+    if (auto_create_when === 'all_ingest') {
+      return proposal.ingest_fit !== 'none';
+    }
+    return proposal.ingest_fit === 'high' || proposal.ingest_fit === 'medium';
+  }
+
   if (auto_create_when === 'all_ingest') {
     return proposal.ingest_fit !== 'none';
   }
-  // high_confidence — first-party only (already gated)
   return proposal.ingest_fit === 'high' || proposal.ingest_fit === 'medium';
 }

@@ -209,7 +209,7 @@ describe('proposeConnectors classify', () => {
     expect(proposals[0].existing_connector_id).toBe('conn-1');
   });
 
-  it('labels generic HTTP MCP as mcp-http propose-only (never rest-api / never apply)', () => {
+  it('labels generic HTTP MCP as mcp-http create (never rest-api)', () => {
     const p = classifyDiscoveredServer(
       server({
         name: 'custom-http',
@@ -218,12 +218,13 @@ describe('proposeConnectors classify', () => {
         tool_names: ['list_items', 'get_item'],
       })
     );
-    expect(p.disposition).toBe('skip');
+    expect(p.disposition).toBe('create_connector');
     expect(p.connector_type).toBe('mcp-http');
-    expect(p.reason).toMatch(/P2/);
+    expect(p.connector_type).not.toBe('rest-api');
+    expect(p.reason).toMatch(/mcp-http relay/i);
   });
 
-  it('auto-creates first-party names only; generic HTTP is not auto-created', () => {
+  it('auto-creates first-party and mcp-http (flag on); mcp-http off when flag disabled', () => {
     const shopify = classifyDiscoveredServer(
       server({
         name: 'shopify-store',
@@ -241,8 +242,18 @@ describe('proposeConnectors classify', () => {
     );
     expect(shopify.disposition).toBe('create_connector');
     expect(shouldAutoCreate(shopify)).toBe(true);
-    expect(generic.disposition).toBe('skip');
-    expect(shouldAutoCreate(generic)).toBe(false);
+    expect(generic.disposition).toBe('create_connector');
+    expect(generic.connector_type).toBe('mcp-http');
+    const prev = process.env.LOXTEP_MCP_HTTP_APPLY;
+    try {
+      delete process.env.LOXTEP_MCP_HTTP_APPLY;
+      expect(shouldAutoCreate(generic)).toBe(true);
+      process.env.LOXTEP_MCP_HTTP_APPLY = '0';
+      expect(shouldAutoCreate(generic)).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.LOXTEP_MCP_HTTP_APPLY;
+      else process.env.LOXTEP_MCP_HTTP_APPLY = prev;
+    }
   });
 });
 

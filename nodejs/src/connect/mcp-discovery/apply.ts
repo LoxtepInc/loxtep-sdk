@@ -60,7 +60,7 @@ export interface DiscoverAndProposeDeps {
 
 function buildDiscoveryMetadata(
   proposal: ConnectorProposal
-): DiscoveryConnectorMetadata {
+): DiscoveryConnectorMetadata & { custom_settings?: Record<string, unknown> } {
   const discovery = buildDiscoveryMetadataStamp({
     source: proposal.discovered.origin,
     fingerprint: proposal.discovered.fingerprint,
@@ -74,11 +74,27 @@ function buildDiscoveryMetadata(
         : {}),
     },
   });
-  return {
+  const meta: DiscoveryConnectorMetadata & {
+    custom_settings?: Record<string, unknown>;
+  } = {
     name: proposal.display_name,
     status: 'pending_auth',
     discovery: discovery as DiscoveryConnectorMetadata['discovery'],
   };
+  // Platform mcp-http provider reads custom_settings.mcp_url (+ transport).
+  if (proposal.connector_type === 'mcp-http' && proposal.discovered.url) {
+    meta.custom_settings = {
+      mcp_url: proposal.discovered.url,
+      transport:
+        proposal.discovered.transport === 'sse'
+          ? 'sse'
+          : proposal.discovered.transport === 'http'
+            ? 'http'
+            : 'auto',
+      auth_type: 'none',
+    };
+  }
+  return meta;
 }
 
 /** @deprecated Prefer importing from `connect/discovery` — re-exported for MCP callers. */
