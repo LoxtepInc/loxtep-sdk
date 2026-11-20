@@ -94,6 +94,14 @@ describe('LoxtepClient', () => {
     expect(typeof connectDiscovery.proposeConnectors).toBe('function');
     expect(typeof connectDiscovery.discoverAndPropose).toBe('function');
 
+    const teamDirectory = (client.team as Record<string, unknown>).directory as Record<
+      string,
+      unknown
+    >;
+    expect(typeof teamDirectory.discoverDirectoryPeople).toBe('function');
+    expect(typeof teamDirectory.proposeInvitees).toBe('function');
+    expect(typeof teamDirectory.inviteFromDirectory).toBe('function');
+
     const contextIssues = (client.context as Record<string, unknown>).issues as Record<
       string,
       unknown

@@ -487,6 +487,51 @@ export type {
   ProposeDisposition,
 } from "../connect/mcp-discovery/index.js";
 export type {
+  DiscoverySourceKind,
+  DiscoveryAuthState,
+  DiscoveryCandidate,
+  DiscoveryProposal,
+  DiscoveryGate,
+  DiscoveryApplyResult,
+  DiscoveryMetadataStamp,
+} from "../connect/discovery/index.js";
+export {
+  hashFingerprintMaterial,
+  authDedupeKey,
+  buildAuthIssueTitle,
+  buildAuthIssueDescription,
+  buildAuthIssueCreatePayload,
+  buildDiscoveryMetadataStamp,
+} from "../connect/discovery/index.js";
+export type { TeamDirectoryApi, TeamDirectoryApiDeps } from "./team-directory.js";
+export type { TeamFacade } from "./team.js";
+export type {
+  InviteDisposition,
+  DirectoryPersonStatus,
+  DirectorySourceType,
+  DirectoryPerson,
+  InviteProposal,
+  DirectoryOrgContext,
+  DirectoryDiscoverResult,
+  DiscoverDirectoryPeopleOptions,
+  ProposeInviteesOptions,
+  InviteFromDirectoryOptions,
+  BulkInviteSuccess,
+  BulkInviteFailure,
+  BulkInviteResponse,
+} from "../team/directory-discovery/index.js";
+export {
+  directoryPersonFingerprint,
+  parseDirectoryCsv,
+  proposeInvitees,
+  emptyHumanPickGate,
+  selectProposalsForInvite,
+  emailsForSelectedInvites,
+  discoverDirectoryPeople,
+  inviteFromDirectory,
+  DIRECTORY_CONNECTOR_TYPE_GOOGLE_WORKSPACE,
+} from "../team/directory-discovery/index.js";
+export type {
   Improvement,
   ImprovementStatus,
   ImprovementsListFilters,

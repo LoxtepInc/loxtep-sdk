@@ -3,6 +3,12 @@
  * Never copies IDE/vault tokens into create payloads.
  */
 
+import {
+  authDedupeKey,
+  buildAuthIssueDescription,
+  buildAuthIssueTitle,
+  buildDiscoveryMetadataStamp,
+} from '../discovery/index.js';
 import { discoverLocalMcps } from './discover.js';
 import { proposeConnectors, shouldAutoCreate } from './propose.js';
 import type {
@@ -55,28 +61,28 @@ export interface DiscoverAndProposeDeps {
 function buildDiscoveryMetadata(
   proposal: ConnectorProposal
 ): DiscoveryConnectorMetadata {
-  return {
-    name: proposal.display_name,
-    status: 'pending_auth',
-    discovery: {
-      source: proposal.discovered.origin,
-      fingerprint: proposal.discovered.fingerprint,
+  const discovery = buildDiscoveryMetadataStamp({
+    source: proposal.discovered.origin,
+    fingerprint: proposal.discovered.fingerprint,
+    source_kind: 'mcp_local',
+    extras: {
       mcp_name: proposal.discovered.name,
       transport: proposal.discovered.transport,
       ...(proposal.discovered.url ? { url: proposal.discovered.url } : {}),
       ...(proposal.discovered.tool_names?.length
         ? { tool_sample: proposal.discovered.tool_names.slice(0, 10) }
         : {}),
-      proposed_at: new Date().toISOString(),
     },
+  });
+  return {
+    name: proposal.display_name,
+    status: 'pending_auth',
+    discovery: discovery as DiscoveryConnectorMetadata['discovery'],
   };
 }
 
-function authDedupeKey(organizationId: string, connectorId: string): string {
-  return `connector-auth:${organizationId}:${connectorId}`;
-}
-
-function buildAuthIssueDescription(input: {
+/** @deprecated Prefer importing from `connect/discovery` — re-exported for MCP callers. */
+function buildAuthIssueDescriptionCompat(input: {
   display_name: string;
   connector_id: string;
   connector_type: string;
@@ -85,25 +91,16 @@ function buildAuthIssueDescription(input: {
   ingest_fit: string;
   dedupe_key: string;
 }): string {
-  const steps = [
-    `Authenticate the Loxtep connector "${input.display_name}".`,
-    '',
-    'Steps:',
-    '1. Open Connect in Loxtep and select this connector.',
-    '2. Complete OAuth or paste the required API key into Loxtep secrets.',
-    '3. Run a connector test; do not start ingest until verified.',
-    '',
-    'Local IDE/MCP vault tokens are never copied automatically.',
-  ];
-  const context = {
+  return buildAuthIssueDescription({
+    display_name: input.display_name,
     connector_id: input.connector_id,
     connector_type: input.connector_type,
-    discovery_fingerprint: input.fingerprint,
-    ingest_fit: input.ingest_fit,
+    oauth_url: input.oauth_url,
+    fingerprint: input.fingerprint,
     dedupe_key: input.dedupe_key,
-    ...(input.oauth_url ? { oauth_url: input.oauth_url } : {}),
-  };
-  return `${steps.join('\n')}\n\n---\nContext (JSON): ${JSON.stringify(context, null, 2)}`;
+    source_kind: 'mcp_local',
+    extra_context: { ingest_fit: input.ingest_fit },
+  });
 }
 
 async function listAllConnectors(
@@ -252,8 +249,8 @@ export async function discoverAndPropose(
       }
 
       const issue = await deps.issues.create({
-        title: `Authenticate ${proposal.display_name}`,
-        description: buildAuthIssueDescription({
+        title: buildAuthIssueTitle(proposal.display_name),
+        description: buildAuthIssueDescriptionCompat({
           display_name: proposal.display_name,
           connector_id: connector.connector_id,
           connector_type: proposal.connector_type,
@@ -270,6 +267,7 @@ export async function discoverAndPropose(
           connector_id: connector.connector_id,
           connector_type: proposal.connector_type,
           discovery_fingerprint: proposal.discovered.fingerprint,
+          source_kind: 'mcp_local',
           ingest_fit: proposal.ingest_fit,
           ...(oauth_url ? { oauth_url } : {}),
         },
@@ -287,4 +285,8 @@ export async function discoverAndPropose(
   return { proposals, created, skipped };
 }
 
-export { buildDiscoveryMetadata, authDedupeKey, buildAuthIssueDescription };
+export {
+  buildDiscoveryMetadata,
+  authDedupeKey,
+  buildAuthIssueDescriptionCompat as buildAuthIssueDescription,
+};

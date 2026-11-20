@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Shared discovery core + directory invite (loxtep#4807):**
+  `connect/discovery/{types,fingerprint,auth-issue,metadata}` shared by MCP and
+  directory adapters. `client.team.directory` —
+  `discoverDirectoryPeople`, `proposeInvitees`, `inviteFromDirectory`. Gate is
+  always `human_pick`; `inviteFromDirectory` refuses empty selection (never
+  auto-invite all). CLI: `loxtep team directory discover --csv <path> |
+  --connector-id <uuid> [--json]` (dry-run propose only). Complements MCP
+  discovery (#4801 / loxtep-sdk#114) and Studio directory picker (#4805).
 - **MCP discovery (loxtep#4801 P0+P1):** `client.connect.discovery` —
   `discoverLocalMcps`, `proposeConnectors`, `discoverAndPropose`. CLI:
   `loxtep connect discover [--apply] [--include-stdio] [--json]`. Reads Cursor /

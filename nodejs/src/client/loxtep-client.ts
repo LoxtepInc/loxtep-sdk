@@ -44,6 +44,7 @@ import { createImprovementsApi } from './improvements.js';
 import { createActivityApi } from './activity.js';
 import { createSessionApi } from './session.js';
 import { createMcpDiscoveryApi } from './mcp-discovery.js';
+import { createTeamDirectoryApi } from './team-directory.js';
 import { createConnectFacade } from './connect.js';
 import { createWorkspaceFacade } from './workspace.js';
 import { createBuildFacade } from './build.js';
@@ -54,6 +55,7 @@ import { createReviewFacade } from './review.js';
 import { createQueryFacade } from './query.js';
 import { createObserveFacade } from './observe-facade.js';
 import { createContextFacade } from './context.js';
+import { createTeamFacade } from './team.js';
 import { resolveStreamsConfiguration } from '../rstreams/configuration.js';
 import { createRStreamsSdk } from '../rstreams/leo-runtime.js';
 import type { ConfigurationResources, RStreamsSdk } from '../rstreams/leo-runtime.js';
@@ -151,6 +153,12 @@ export class LoxtepClient {
 
   /** Process intelligence, procedures, activity (MCP: loxtep_context). */
   readonly context: ReturnType<typeof createContextFacade>;
+
+  /**
+   * Team / org membership helpers (directory invite discovery — loxtep#4807).
+   * Gate is always human_pick; inviteFromDirectory never auto-invites all.
+   */
+  readonly team: ReturnType<typeof createTeamFacade>;
 
   /** Metrics: log, get_reporter (stub until metrics wiring is added). */
   readonly metrics: MetricsSurface;
@@ -359,6 +367,13 @@ export class LoxtepClient {
       issues: agentWorkspaceApi.issues,
       goals: agentWorkspaceApi.goals,
       workstreams: agentWorkspaceApi.workstreams,
+    });
+    const teamDirectoryApi = createTeamDirectoryApi({
+      http: this._http,
+      organization_id: options.organization_id,
+    });
+    this.team = createTeamFacade({
+      directory: teamDirectoryApi,
     });
     this.metrics = this.createMetricsSurface(options.metrics);
     this.governance = createGovernanceApi(this._http, {

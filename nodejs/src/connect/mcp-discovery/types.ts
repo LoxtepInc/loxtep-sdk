@@ -104,6 +104,7 @@ export interface DiscoveryConnectorMetadata {
   discovery: {
     source: string;
     fingerprint: string;
+    source_kind: 'mcp_local';
     mcp_name: string;
     transport: McpTransport;
     url?: string;
