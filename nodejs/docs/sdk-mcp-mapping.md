@@ -391,7 +391,10 @@ Not an MCP facade op — local IDE config import on the agent/CLI host:
 | `client.connect.discovery.proposeConnectors(discovered?)` | dispositions: create / map_existing / action_only / skip |
 | `client.connect.discovery.discoverAndPropose({ apply?, open_auth_issues?, … })` | Library default `apply: false`; `--apply` creates `pending_auth` + auth issues |
 
-CLI: `loxtep connect discover` (dry-run), `loxtep connect discover --apply`. Never copies IDE vault tokens. Platform `mcp-http` connector type is P2 (out of scope).
+CLI: `loxtep connect discover` (dry-run), `loxtep connect discover --apply`.
+`--apply` creates connectors only for **first-party** type maps (Shopify, GitHub,
+…). Generic HTTP/SSE MCPs stay propose-only until platform `mcp-http` (P2) — never
+applied as `rest-api`. Never copies IDE vault tokens.
 
 Notes:
 

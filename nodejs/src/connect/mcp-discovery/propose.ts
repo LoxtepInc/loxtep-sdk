@@ -102,7 +102,21 @@ export function classifyDiscoveredServer(
     };
   }
 
-  const connector_type = known?.connector_type ?? GENERIC_HTTP_CONNECTOR_TYPE;
+  // Non–first-party HTTP/SSE: propose-only until platform mcp-http (P2).
+  // Never map generic MCP → rest-api (would create dead pending_auth rows).
+  if (!known || !known.first_party) {
+    return {
+      discovered: server,
+      disposition: 'skip',
+      connector_type: GENERIC_HTTP_CONNECTOR_TYPE,
+      display_name: name,
+      reason:
+        'Hosted HTTP/SSE MCP has no first-party Loxtep type yet; mcp-http is P2 — propose only, no apply',
+      ingest_fit,
+    };
+  }
+
+  const connector_type = known.connector_type;
   const existing_connector_id = findExisting(server, connector_type, opts.existing_connectors);
   if (existing_connector_id) {
     return {
@@ -116,16 +130,12 @@ export function classifyDiscoveredServer(
     };
   }
 
-  const reason = known
-    ? known.reason
-    : `HTTP/SSE MCP → ${GENERIC_HTTP_CONNECTOR_TYPE} (pending_auth; mcp-http type is P2)`;
-
   return {
     discovered: server,
     disposition: 'create_connector',
     connector_type,
     display_name: name,
-    reason,
+    reason: known.reason,
     ingest_fit,
   };
 }
@@ -142,6 +152,8 @@ export function proposeConnectors(
 
 /**
  * Whether apply should create a connector for this proposal.
+ * Only first-party connector maps are auto-created (Chet / #4801 constraints).
+ * Medium/high ingest_fit alone is not enough; generic HTTP MCP is never applied.
  */
 export function shouldAutoCreate(
   proposal: ConnectorProposal,
@@ -150,16 +162,14 @@ export function shouldAutoCreate(
   if (auto_create_when === 'never') return false;
   if (proposal.disposition !== 'create_connector') return false;
   if (proposal.discovered.transport === 'stdio') return false;
+  const known = matchKnownConnector({
+    name: proposal.discovered.name,
+    url: proposal.discovered.url,
+  });
+  if (!known?.first_party) return false;
   if (auto_create_when === 'all_ingest') {
     return proposal.ingest_fit !== 'none';
   }
-  // high_confidence
-  return (
-    proposal.ingest_fit === 'high' ||
-    proposal.ingest_fit === 'medium' ||
-    matchKnownConnector({
-      name: proposal.discovered.name,
-      url: proposal.discovered.url,
-    }) != null
-  );
+  // high_confidence — first-party only (already gated)
+  return proposal.ingest_fit === 'high' || proposal.ingest_fit === 'medium';
 }

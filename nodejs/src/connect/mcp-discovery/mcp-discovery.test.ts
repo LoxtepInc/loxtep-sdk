@@ -9,7 +9,11 @@ import {
   extractServersFromToml,
   parseConfigFile,
 } from './parse-config.js';
-import { proposeConnectors, classifyDiscoveredServer } from './propose.js';
+import {
+  proposeConnectors,
+  classifyDiscoveredServer,
+  shouldAutoCreate,
+} from './propose.js';
 import type { DiscoveredMcpServer } from './types.js';
 
 const FIXTURES = join(__dirname, '__fixtures__');
@@ -205,7 +209,7 @@ describe('proposeConnectors classify', () => {
     expect(proposals[0].existing_connector_id).toBe('conn-1');
   });
 
-  it('uses rest-api for generic HTTP MCP (no mcp-http in P0/P1)', () => {
+  it('labels generic HTTP MCP as mcp-http propose-only (never rest-api / never apply)', () => {
     const p = classifyDiscoveredServer(
       server({
         name: 'custom-http',
@@ -214,8 +218,31 @@ describe('proposeConnectors classify', () => {
         tool_names: ['list_items', 'get_item'],
       })
     );
-    expect(p.disposition).toBe('create_connector');
-    expect(p.connector_type).toBe('rest-api');
+    expect(p.disposition).toBe('skip');
+    expect(p.connector_type).toBe('mcp-http');
+    expect(p.reason).toMatch(/P2/);
+  });
+
+  it('auto-creates first-party names only; generic HTTP is not auto-created', () => {
+    const shopify = classifyDiscoveredServer(
+      server({
+        name: 'shopify-store',
+        transport: 'http',
+        url: 'https://mcp.shopify.com/x',
+      })
+    );
+    const generic = classifyDiscoveredServer(
+      server({
+        name: 'custom-http',
+        transport: 'http',
+        url: 'https://example.com/mcp',
+        tool_names: ['list_items'],
+      })
+    );
+    expect(shopify.disposition).toBe('create_connector');
+    expect(shouldAutoCreate(shopify)).toBe(true);
+    expect(generic.disposition).toBe('skip');
+    expect(shouldAutoCreate(generic)).toBe(false);
   });
 });
 

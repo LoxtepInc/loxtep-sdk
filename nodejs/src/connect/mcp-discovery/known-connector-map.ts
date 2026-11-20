@@ -92,5 +92,8 @@ export function scoreIngestFit(toolNames?: string[]): 'high' | 'medium' | 'low' 
   return 'medium';
 }
 
-/** Default type for hosted HTTP/SSE MCP when no first-party match (P2 mcp-http deferred). */
-export const GENERIC_HTTP_CONNECTOR_TYPE = 'rest-api';
+/**
+ * Label for hosted HTTP/SSE MCP when no first-party match.
+ * P2 platform type — propose-only; never apply as rest-api.
+ */
+export const GENERIC_HTTP_CONNECTOR_TYPE = 'mcp-http';
