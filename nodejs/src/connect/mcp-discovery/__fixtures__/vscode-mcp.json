@@ -1,0 +1,17 @@
+{
+  "servers": {
+    "loxtep": {
+      "type": "http",
+      "url": "https://mcp.loxtep.io/ai/mcp/stream"
+    },
+    "stripe-mcp": {
+      "type": "sse",
+      "url": "https://mcp.stripe.com/sse"
+    },
+    "local-fs": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    }
+  }
+}

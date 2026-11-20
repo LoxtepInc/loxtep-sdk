@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "loxtep": {
+      "url": "https://mcp.loxtep.io/ai/mcp/stream"
+    },
+    "shopify-store": {
+      "url": "https://mcp.shopify.com/stores/demo"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "secret-should-never-appear"
+      }
+    },
+    "action-writer": {
+      "url": "https://actions.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer secret-token"
+      }
+    }
+  }
+}

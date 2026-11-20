@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **MCP discovery (loxtep#4801 P0+P1):** `client.connect.discovery` —
+  `discoverLocalMcps`, `proposeConnectors`, `discoverAndPropose`. CLI:
+  `loxtep connect discover [--apply] [--include-stdio] [--json]`. Reads Cursor /
+  Claude / Codex / VS Code / mcporter MCP configs, proposes connectors, and on
+  `--apply` creates `pending_auth` connectors plus human auth issues
+  (`Authenticate {name}`, dedupe `connector-auth:{org}:{connector_id}`). Never
+  copies IDE vault tokens. Generic HTTP MCPs map to `rest-api` (platform
+  `mcp-http` is P2).
+- `client.context.issues.create` / `create_issue` (MCP `create_issue`) with
+  client-side `dedupe_key` matching.
+
 ## [0.14.7] - 2026-11-17
 
 ### Added

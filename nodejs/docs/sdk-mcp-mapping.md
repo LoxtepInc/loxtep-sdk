@@ -371,14 +371,27 @@ MCP `loxtep_context` agent-orchestration **reads** map to
 | --- | --- | --- |
 | `list_issues` | `client.context.issues.list({ … })` (alias `list_issues`) | shipped |
 | `get_issue` | `.get(issue_id)` (alias `get_issue`) | shipped |
+| `create_issue` | `.create({ … })` (alias `create_issue`); client-side `dedupe_key` | shipped |
 | `list_goals` | `client.context.goals.list({ … })` (alias `list_goals`) | shipped |
 | `get_goal` | `.get(goal_id)` (alias `get_goal`) | shipped |
 | `list_workstreams` | `client.context.workstreams.list({ … })` (alias `list_workstreams`) | shipped |
 | `get_workstream` | `.get(workstream_id)` (alias `get_workstream`) | shipped |
 
-**Writes deferred** (still MCP-only): `create_issue`, `update_issue`,
+**Writes deferred** (still MCP-only): `update_issue`,
 `add_issue_comment`, `create_goal`, `create_workstream`, `update_workstream`.
 Also out of this ticket: `list_agents` / `get_agent`.
+
+### Connect: local MCP discovery (loxtep#4801)
+
+Not an MCP facade op — local IDE config import on the agent/CLI host:
+
+| SDK | Notes |
+| --- | --- |
+| `client.connect.discovery.discoverLocalMcps({ sources?, include_stdio? })` | Cursor / Claude / Codex / VS Code / mcporter configs |
+| `client.connect.discovery.proposeConnectors(discovered?)` | dispositions: create / map_existing / action_only / skip |
+| `client.connect.discovery.discoverAndPropose({ apply?, open_auth_issues?, … })` | Library default `apply: false`; `--apply` creates `pending_auth` + auth issues |
+
+CLI: `loxtep connect discover` (dry-run), `loxtep connect discover --apply`. Never copies IDE vault tokens. Platform `mcp-http` connector type is P2 (out of scope).
 
 Notes:
 

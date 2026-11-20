@@ -126,4 +126,62 @@ describe('createAgentWorkspaceApi LOX-1250', () => {
     await expect(api.goals.list()).rejects.toThrow(/organization_id/);
     await expect(api.workstreams.list()).rejects.toThrow(/organization_id/);
   });
+
+  it('issues.create POSTs org issues and embeds context', async () => {
+    let capturedPath: string | null = null;
+    let capturedBody: Record<string, unknown> | null = null;
+    const http = {
+      get: async () => ({ success: true as const, data: { items: [] } }),
+      post: async (path: string, body: Record<string, unknown>) => {
+        capturedPath = path;
+        capturedBody = body;
+        return {
+          success: true as const,
+          data: { issue_id: 'iss-new', title: body.title, status: 'open' },
+        };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createAgentWorkspaceApi(http, { organization_id: 'org1' });
+    const created = await api.issues.create({
+      title: 'Authenticate Shopify',
+      description: 'Complete OAuth',
+      dedupe_key: 'connector-auth:org1:conn-1',
+      context: { connector_id: 'conn-1', oauth_url: 'https://oauth.example' },
+      assignee_user_id: 'user-1',
+    });
+
+    expect(capturedPath).toBe('/agent-orchestration/organizations/org1/issues');
+    expect(capturedBody?.title).toBe('Authenticate Shopify');
+    expect(capturedBody?.assignee_user_id).toBe('user-1');
+    expect(String(capturedBody?.description)).toContain('connector-auth:org1:conn-1');
+    expect(String(capturedBody?.description)).toContain('oauth_url');
+    expect(created.issue_id).toBe('iss-new');
+  });
+
+  it('issues.create dedupes open issues by dedupe_key', async () => {
+    const existing = {
+      issue_id: 'iss-existing',
+      title: 'Authenticate Shopify',
+      status: 'open',
+      description:
+        '...\n\n---\nContext (JSON): {"dedupe_key":"connector-auth:org1:conn-1"}',
+    };
+    let posts = 0;
+    const http = {
+      get: async () => ({ success: true as const, data: { items: [existing] } }),
+      post: async () => {
+        posts += 1;
+        return { success: true as const, data: { issue_id: 'iss-new' } };
+      },
+    } as unknown as LoxtepHttpClient;
+
+    const api = createAgentWorkspaceApi(http, { organization_id: 'org1' });
+    const result = await api.issues.create_issue({
+      title: 'Authenticate Shopify',
+      dedupe_key: 'connector-auth:org1:conn-1',
+    });
+    expect(result.issue_id).toBe('iss-existing');
+    expect(posts).toBe(0);
+  });
 });
