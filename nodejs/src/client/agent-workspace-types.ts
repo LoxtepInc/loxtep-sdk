@@ -1,7 +1,7 @@
 /**
- * Agent workspace types (LOX-1250).
- * MCP: loxtep_context list/get issues, goals, workstreams.
- * REST: /agent-orchestration/... (reads only — writes deferred).
+ * Agent workspace types (LOX-1250 / loxtep#4801).
+ * MCP: loxtep_context list/get/create issues, goals, workstreams.
+ * REST: /agent-orchestration/...
  */
 
 export interface AgentWorkspaceApiDeps {
@@ -48,10 +48,35 @@ export interface AgentWorkspaceIssue {
   goal_id?: string | null;
   workstream_id?: string | null;
   assignee_agent_id?: string | null;
+  assignee_user_id?: string | null;
   organization_id?: string;
+  dedupe_key?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
+}
+
+/** Input for POST /agent-orchestration/organizations/:org/issues (MCP create_issue). */
+export interface CreateIssueInput {
+  title: string;
+  description?: string | null;
+  workstream_id?: string | null;
+  goal_id?: string | null;
+  parent_issue_id?: string | null;
+  status?: string;
+  priority?: string | null;
+  assignee_agent_id?: string | null;
+  assignee_user_id?: string | null;
+  label_ids?: string[];
+  organization_id?: string;
+  /**
+   * Client-side + description-embedded dedupe key (e.g. connector-auth:org:connector).
+   * Platform REST schema currently strips unknown fields; SDK lists open issues and
+   * reuses a match when description/context contains this key.
+   */
+  dedupe_key?: string;
+  /** Merged into description as Context (JSON) when provided. */
+  context?: Record<string, unknown>;
 }
 
 export interface AgentWorkspaceGoal {

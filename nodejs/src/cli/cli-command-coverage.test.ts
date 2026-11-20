@@ -190,6 +190,14 @@ export const CLI_COMMAND_COVERAGE: Record<string, CommandCoverage> = {
   observe: { kind: 'integration', tests: ['cli-integration.test.ts'], notes: 'status only' },
   queue: { kind: 'integration', tests: ['cli-integration.test.ts'], notes: 'info/checkpoint' },
   metrics: { kind: 'integration', tests: ['cli-integration.test.ts'], notes: 'rate-limits/log' },
+  connect: {
+    kind: 'unit',
+    tests: [
+      '../connect/mcp-discovery/mcp-discovery.test.ts',
+      '../connect/mcp-discovery/apply.test.ts',
+    ],
+    notes: 'connect discover — local MCP → propose/apply pending_auth + auth issues (#4801)',
+  },
   bus: { kind: 'none', tests: [], notes: 'placeholder command' },
   promises: { kind: 'none', tests: [], notes: 'deprecated alias for data-contracts' },
 };
@@ -231,6 +239,7 @@ describe('CLI command coverage registry', () => {
       'metrics',
       'activity',
       'config',
+      'connect',
       'bus',
     ];
     for (const cmd of helpCommands) {

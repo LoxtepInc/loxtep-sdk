@@ -1,16 +1,14 @@
 /**
- * Agent workspace read API (LOX-1250).
- * Thin wraps for MCP loxtep_context list/get issues, goals, workstreams.
+ * Agent workspace API (LOX-1250 / loxtep#4801).
+ * Thin wraps for MCP loxtep_context issues, goals, workstreams.
  *
- *   GET /agent-orchestration/organizations/{org}/issues
- *   GET /agent-orchestration/issues/{issue_id}
- *   GET /agent-orchestration/organizations/{org}/goals
- *   GET /agent-orchestration/goals/{goal_id}
- *   GET /agent-orchestration/organizations/{org}/workstreams
- *   GET /agent-orchestration/workstreams/{workstream_id}
- *
- * Writes (create/update issue, create goal, create/update workstream,
- * add_issue_comment) are deferred — use MCP `loxtep_context` until shipped.
+ *   GET  /agent-orchestration/organizations/{org}/issues
+ *   POST /agent-orchestration/organizations/{org}/issues
+ *   GET  /agent-orchestration/issues/{issue_id}
+ *   GET  /agent-orchestration/organizations/{org}/goals
+ *   GET  /agent-orchestration/goals/{goal_id}
+ *   GET  /agent-orchestration/organizations/{org}/workstreams
+ *   GET  /agent-orchestration/workstreams/{workstream_id}
  */
 
 import type { LoxtepHttpClient } from '../http/client.js';
@@ -20,6 +18,7 @@ import type {
   AgentWorkspaceIssue,
   AgentWorkspaceListResponse,
   AgentWorkspaceWorkstream,
+  CreateIssueInput,
   GoalsListFilters,
   IssuesListFilters,
   WorkstreamsListFilters,
@@ -81,6 +80,44 @@ function normalizeList<T>(
   return out;
 }
 
+function issueMatchesDedupeKey(
+  issue: AgentWorkspaceIssue,
+  dedupeKey: string
+): boolean {
+  if (issue.dedupe_key === dedupeKey) return true;
+  const desc = issue.description ?? '';
+  if (desc.includes(dedupeKey)) return true;
+  try {
+    const marker = 'Context (JSON):';
+    const idx = desc.indexOf(marker);
+    if (idx >= 0) {
+      const json = JSON.parse(desc.slice(idx + marker.length).trim()) as {
+        dedupe_key?: string;
+      };
+      if (json.dedupe_key === dedupeKey) return true;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return false;
+}
+
+function buildCreateDescription(input: CreateIssueInput): string | null | undefined {
+  let description = input.description;
+  if (input.context || input.dedupe_key) {
+    const context = {
+      ...(input.context ?? {}),
+      ...(input.dedupe_key ? { dedupe_key: input.dedupe_key } : {}),
+    };
+    const block = `\n\n---\nContext (JSON): ${JSON.stringify(context, null, 2)}`;
+    if (description && description.includes('Context (JSON):')) {
+      return description;
+    }
+    description = `${description ?? ''}${block}`.trim();
+  }
+  return description;
+}
+
 export type IssuesApi = {
   list: (filters?: IssuesListFilters) => Promise<AgentWorkspaceListResponse<AgentWorkspaceIssue>>;
   /** MCP op name alias for list. */
@@ -89,6 +126,9 @@ export type IssuesApi = {
   ) => Promise<AgentWorkspaceListResponse<AgentWorkspaceIssue>>;
   get: (issue_id: string) => Promise<AgentWorkspaceIssue>;
   get_issue: (issue_id: string) => Promise<AgentWorkspaceIssue>;
+  create: (input: CreateIssueInput) => Promise<AgentWorkspaceIssue>;
+  /** MCP op name alias for create. */
+  create_issue: (input: CreateIssueInput) => Promise<AgentWorkspaceIssue>;
 };
 
 export type GoalsApi = {
@@ -118,7 +158,7 @@ export type AgentWorkspaceApi = {
 };
 
 /**
- * Create agent-workspace read surfaces (issues / goals / workstreams).
+ * Create agent-workspace surfaces (issues / goals / workstreams).
  */
 export function createAgentWorkspaceApi(
   http: LoxtepHttpClient,
@@ -152,6 +192,53 @@ export function createAgentWorkspaceApi(
     },
     get_issue(issue_id: string) {
       return this.get(issue_id);
+    },
+    async create(input: CreateIssueInput) {
+      if (!input?.title?.trim()) throw new Error('title is required');
+      const org = requireOrg(deps, input.organization_id);
+
+      if (input.dedupe_key) {
+        const open = await this.list({
+          organization_id: org,
+          status: 'open',
+          page_size: 100,
+        });
+        const existing = open.items.find((issue) =>
+          issueMatchesDedupeKey(issue, input.dedupe_key!)
+        );
+        if (existing) return existing;
+      }
+
+      const body: Record<string, unknown> = {
+        title: input.title.trim(),
+        status: input.status ?? 'open',
+      };
+      const description = buildCreateDescription(input);
+      if (description !== undefined) body.description = description;
+      if (input.workstream_id !== undefined) body.workstream_id = input.workstream_id;
+      if (input.goal_id !== undefined) body.goal_id = input.goal_id;
+      if (input.parent_issue_id !== undefined) {
+        body.parent_issue_id = input.parent_issue_id;
+      }
+      if (input.priority !== undefined) body.priority = input.priority;
+      if (input.assignee_agent_id !== undefined) {
+        body.assignee_agent_id = input.assignee_agent_id;
+      }
+      if (input.assignee_user_id !== undefined) {
+        body.assignee_user_id = input.assignee_user_id;
+      }
+      if (input.label_ids !== undefined) body.label_ids = input.label_ids;
+      // Forward-compat if platform starts accepting dedupe_key on REST
+      if (input.dedupe_key) body.dedupe_key = input.dedupe_key;
+
+      const res = await http.post(
+        `${AO_PREFIX}/organizations/${encodeURIComponent(org)}/issues`,
+        body
+      );
+      return unwrapData<AgentWorkspaceIssue>(res);
+    },
+    create_issue(input: CreateIssueInput) {
+      return this.create(input);
     },
   };
 

@@ -459,6 +459,7 @@ export type {
   AgentWorkspaceIssue,
   AgentWorkspaceListResponse,
   AgentWorkspaceWorkstream,
+  CreateIssueInput,
   GoalsListFilters,
   IssuesListFilters,
   WorkstreamsListFilters,
@@ -469,6 +470,22 @@ export type {
   IssuesApi,
   WorkstreamsApi,
 } from "./agent-workspace.js";
+export type { McpDiscoveryApi, McpDiscoveryApiDeps } from "./mcp-discovery.js";
+export type {
+  AutoCreateWhen,
+  ConnectorProposal,
+  DiscoverAndProposeOptions,
+  DiscoverLocalMcpsOptions,
+  DiscoverResult,
+  DiscoverResultCreated,
+  DiscoveredMcpServer,
+  IngestFit,
+  McpAuthState,
+  McpDiscoverySource,
+  McpTransport,
+  ProposeConnectorsOptions,
+  ProposeDisposition,
+} from "../connect/mcp-discovery/index.js";
 export type {
   Improvement,
   ImprovementStatus,

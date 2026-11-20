@@ -86,6 +86,21 @@ describe('LoxtepClient', () => {
     const connectors = (client.connect as Record<string, unknown>).connectors as Record<string, unknown>;
     expect(typeof connectors.get_oauth_url).toBe('function');
 
+    const connectDiscovery = (client.connect as Record<string, unknown>).discovery as Record<
+      string,
+      unknown
+    >;
+    expect(typeof connectDiscovery.discoverLocalMcps).toBe('function');
+    expect(typeof connectDiscovery.proposeConnectors).toBe('function');
+    expect(typeof connectDiscovery.discoverAndPropose).toBe('function');
+
+    const contextIssues = (client.context as Record<string, unknown>).issues as Record<
+      string,
+      unknown
+    >;
+    expect(typeof contextIssues.create).toBe('function');
+    expect(typeof contextIssues.create_issue).toBe('function');
+
     const projects = (client.workspace as Record<string, unknown>).projects as Record<string, unknown>;
     expect(typeof projects.apply_template).toBe('function');
 

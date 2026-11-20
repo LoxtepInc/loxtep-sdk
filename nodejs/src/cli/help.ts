@@ -44,6 +44,10 @@ Workspace
                      BYOL: register a customer Lambda with LeoCron (dedicated instances)
 
 Build & deploy
+  connect discover [--json]
+                     Discover local IDE tool servers and propose Loxtep connectors (dry-run)
+  connect discover --apply [--include-stdio] [--json]
+                     Create pending_auth connectors + human auth issues (deduped)
   connectors list [--type sdk]
                      List org connectors (reuse SDK connector before create)
   connectors test <connector_id>

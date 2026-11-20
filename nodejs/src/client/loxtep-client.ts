@@ -43,6 +43,7 @@ import { createPromisesApi } from './promises.js';
 import { createImprovementsApi } from './improvements.js';
 import { createActivityApi } from './activity.js';
 import { createSessionApi } from './session.js';
+import { createMcpDiscoveryApi } from './mcp-discovery.js';
 import { createConnectFacade } from './connect.js';
 import { createWorkspaceFacade } from './workspace.js';
 import { createBuildFacade } from './build.js';
@@ -286,7 +287,24 @@ export class LoxtepClient {
     });
 
     this.session = createSessionApi(this._http);
-    this.connect = createConnectFacade({ connectors: connectorsApi, templates: templatesApi });
+    const mcpDiscoveryApi = createMcpDiscoveryApi({
+      connectors: connectorsApi,
+      issues: agentWorkspaceApi.issues,
+      organization_id: options.organization_id,
+      resolve_human_user_id: async () => {
+        try {
+          const user = await this.session.get_current_user();
+          return user.user_id;
+        } catch {
+          return undefined;
+        }
+      },
+    });
+    this.connect = createConnectFacade({
+      connectors: connectorsApi,
+      templates: templatesApi,
+      discovery: mcpDiscoveryApi,
+    });
     this.workspace = createWorkspaceFacade({
       projects: projectsApi,
       instances: instancesApi,

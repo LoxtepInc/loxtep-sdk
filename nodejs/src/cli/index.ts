@@ -65,6 +65,7 @@ import {
   runConnectorsCaptureSamples,
   runConnectorsListEntities,
 } from "./commands/connectors-cmd.js";
+import { runConnectDiscover } from "./commands/connect-discover-cmd.js";
 import { runObserveStatus } from "./commands/observe-cmd.js";
 import {
   runTriggersList,
@@ -822,6 +823,29 @@ export async function runCli(argv: string[]): Promise<void> {
           skip_reindex: args.includes("--skip-reindex"),
       });
       break;
+      case "connect":
+        if (sub === "discover") {
+          await runConnectDiscover(
+            {
+              apply: args.includes("--apply"),
+              include_stdio:
+                args.includes("--include-stdio") ||
+                args.includes("--include_stdio"),
+              json: args.includes("--json"),
+            },
+            { debug: args.includes("--debug") },
+          );
+        } else {
+          console.error(
+            [
+              "Usage:",
+              "  loxtep connect discover [--json]",
+              "  loxtep connect discover --apply [--include-stdio] [--json]",
+            ].join("\n"),
+          );
+          process.exitCode = 1;
+        }
+        break;
       case "connectors":
         if (sub === "list") {
           await runConnectorsList(
