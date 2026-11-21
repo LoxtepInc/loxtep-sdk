@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.14.8] - 2026-11-20
+
 ### Added
 
 - **Shared discovery core + directory invite (loxtep#4807):**
