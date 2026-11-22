@@ -90,16 +90,19 @@ export async function runWorkflowsDeploy(
   params: {
     project_id: string;
     instance_id?: string;
+    expected_environment_key?: string;
     version_id?: string;
     force_redeploy?: boolean;
   },
   options: WorkflowsCmdOptions = {}
 ): Promise<void> {
   const { client, config } = await requireCliClient(options);
+  // Explicit instance for this deploy (#4867). Attached project instance_id
+  // counts as explicit; never invent a soft prefer across orgs.
   const instanceId = (params.instance_id && params.instance_id.trim()) || config.instance_id;
   if (!instanceId) {
     console.error(
-      'Missing instance_id. Pass --instance-id <id> or loxtep config set instance_id <id>'
+      'Missing instance_id. Pass --instance-id <id> (required for the environment you are deploying to) or attach a project with instance_id. Soft prefer is not supported.'
     );
     process.exitCode = 1;
     return;
@@ -109,6 +112,9 @@ export async function runWorkflowsDeploy(
     instance_id: instanceId,
     version_id: params.version_id,
     force_redeploy: params.force_redeploy ?? false,
+    ...(params.expected_environment_key
+      ? { expected_environment_key: params.expected_environment_key }
+      : {}),
   });
   console.log(JSON.stringify(result, null, 2));
 }

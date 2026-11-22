@@ -641,17 +641,19 @@ export async function runCli(argv: string[]): Promise<void> {
         } else if (sub === "deploy") {
           const projectId = getArg("--project-id");
           const instanceId = getArg("--instance-id");
+          const expectedEnvironmentKey = getArg("--expected-environment-key");
           const versionId = getArg("--version-id");
           const force = args.includes("--force");
         if (!projectId) {
           console.error(
-              "Usage: loxtep workflows deploy --project-id <id> [--instance-id <id>] [--version-id <id>] [--force]",
+              "Usage: loxtep workflows deploy --project-id <id> --instance-id <id> [--expected-environment-key stage|prod|…] [--version-id <id>] [--force]",
           );
           process.exitCode = 1;
         } else {
           await runWorkflowsDeploy({
             project_id: projectId,
             instance_id: instanceId,
+            expected_environment_key: expectedEnvironmentKey,
             version_id: versionId,
             force_redeploy: force,
           });
