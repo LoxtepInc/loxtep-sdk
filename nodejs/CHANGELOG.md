@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## [0.14.9] - 2026-11-22
+
+### Added
+
+- **Workflows deploy fail-closed (loxtep#4867):** `client.build.workflows.deploy` and
+  `loxtep workflows deploy` require an explicit `instance_id` (throws or exits when
+  blank; no soft-prefer fallback). Optional `expected_environment_key` is forwarded to
+  the platform deploy POST; a mismatch returns 409 `environment_key_mismatch`. CLI:
+  `--instance-id` and `--expected-environment-key`.
+- **Declared connection bindings lint (loxtep#4876):** `workspace-lint` validates
+  per-connection `bindings[]` and project `.loxtep/connection-bindings.json`;
+  multi-environment projects must declare a `prod` binding (fail closed). Entity JSON
+  schemas re-synced from platform.
+
+### Fixed
+
+- Entity JSON schema pin updated to loxtep platform commit `21ceadce` (loxtep#4881).
+
 ## [0.14.8] - 2026-11-20
 
 ### Added
