@@ -1,11 +1,11 @@
 {
   "repository": "LoxtepInc/loxtep",
   "path": "platform-backend/_core/src/workspace/entity-json-schemas",
-  "commit": "3046abfeb8e41a2d846a82c4f98c875cc0b98713",
+  "commit": "662b3a4850e52e39574c9da99e67e0f6d24fcf74",
   "files": {
     "agent.json": "894158338a8bd3b08b7a042006be0d669aa0fe56",
     "approval.json": "37cad8aff6e250be2bc8ccb966d97018d48f0663",
-    "connection.json": "00c6fedc5a574d02a27655d8f584c8b6a0a91bd5",
+    "connection.json": "2ee40403ad86f9078c8ca0fa053856535046e71b985735102480a0e0a480fb0b",
     "connector.json": "712b7f7abb0c06aecd29a76b667950a0eda070d7",
     "container.json": "3b5b3a51d4f27645e3db2e8e2992aeee984de5ee",
     "contract.json": "04fec0f7f4c26890e8163d88770a5613316b245d",
@@ -20,6 +20,8 @@
     "transformation.json": "75e773049944417892c31f17da15fe393446e6ff",
     "validation.json": "056452196c622c7bac0bdd496db623ee2e22f083",
     "workflow-graph.json": "9715eea18965bea97fc5546edb4b37629c77315b",
-    "workflow.json": "afe25e55833ac957bdcd62d32e6c9df83779c54b"
-  }
+    "workflow.json": "afe25e55833ac957bdcd62d32e6c9df83779c54b",
+    "connection-bindings-manifest.json": "c3d3dfacbb8794f6e8fb26036c293cf4a1d77255d2efdffdc44ae671d8ca4650"
+  },
+  "note": "Synced from loxtep #4876 (connection bindings declaration)"
 }

@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/project/connection-bindings-manifest.json",
+  "title": "Project Connection Bindings Manifest",
+  "description": "Optional project-level declared connection bindings (.loxtep/connection-bindings.json). Prefer per-connection bindings[] on connection entities; use this manifest to declare or override bindings without editing every connection file. Prefer environment_key over instance UUIDs.",
+  "type": "object",
+  "required": ["connections"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Manifest schema version"
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["bindings"],
+        "properties": {
+          "connection_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Design-time connection UUID"
+          },
+          "connection_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^[a-z0-9-_]+$",
+            "description": "Stable connection key when connection_id is omitted or for readability"
+          },
+          "bindings": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["connector_id"],
+              "properties": {
+                "environment_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "instance_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "connector_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "delivery_config": {
+                  "type": ["object", "null"],
+                  "additionalProperties": true
+                },
+                "connector_vpc_id": {
+                  "type": ["string", "null"],
+                  "minLength": 1,
+                  "maxLength": 255
+                }
+              },
+              "additionalProperties": false,
+              "anyOf": [
+                { "required": ["environment_key"] },
+                { "required": ["instance_id"] }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          { "required": ["connection_id"] },
+          { "required": ["connection_key"] }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}
