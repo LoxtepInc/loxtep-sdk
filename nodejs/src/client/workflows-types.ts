@@ -42,7 +42,13 @@ export interface GetWorkflowGraphResponse {
 
 export interface DeployInput {
   project_id: string;
+  /** Required — runtime instance for this deploy (no soft prefer). */
   instance_id: string;
+  /**
+   * When set, the platform fails closed if the instance metadata.environment_key
+   * disagrees (HTTP 409 environment_key_mismatch).
+   */
+  expected_environment_key?: string;
   version_id?: string;
   force_redeploy?: boolean;
 }

@@ -363,10 +363,28 @@ export function createWorkflowsApi(
     },
 
     async deploy(input: DeployInput): Promise<DeployResponse["data"]> {
-      const { project_id, instance_id, version_id, force_redeploy } = input;
+      const {
+        project_id,
+        instance_id,
+        version_id,
+        force_redeploy,
+        expected_environment_key,
+      } = input;
+      if (!instance_id || !String(instance_id).trim()) {
+        throw new Error(
+          'instance_id is required for deploy. Pass the instance for the environment you are targeting (no soft prefer).'
+        );
+      }
       const res = await http.post<unknown>(
         `${PROJECTS_BASE}/${encodeURIComponent(project_id)}/deploy`,
-        { instance_id, version_id, force_redeploy: force_redeploy ?? false },
+        {
+          instance_id,
+          version_id,
+          force_redeploy: force_redeploy ?? false,
+          ...(expected_environment_key
+            ? { expected_environment_key }
+            : {}),
+        },
       );
       return normalizeDeployResponse(res);
     },
