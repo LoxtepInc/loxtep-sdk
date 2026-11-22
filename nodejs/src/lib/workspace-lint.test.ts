@@ -295,6 +295,64 @@ describe('lintLocalPackage trigger + upstream regressions', () => {
     expect(result.issues.some(i => i.message.includes('missing connector_id'))).toBe(true);
   });
 
+  it('accepts declared bindings[] without scalar connector_id', () => {
+    writeJson(dir, `workflows/${WF}/workflow.json`, {
+      ...baseWorkflow(),
+      workflow_type: 'ingestion',
+      name: 'Bound ingest',
+    });
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, {
+      connection_id: CONN,
+      organization_id: ORG,
+      project_id: PROJECT,
+      workflow_id: WF,
+      key: 'orders-mongo',
+      name: 'Orders Mongo',
+      type: 'mongodb',
+      status: 'active',
+      bindings: [
+        { environment_key: 'stage', connector_id: CONNECTOR },
+        { environment_key: 'prod', connector_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01' },
+      ],
+      created_at: NOW,
+      updated_at: NOW,
+    });
+    writeJson(dir, `workflows/${WF}/data-products/${DP}.json`, dataProduct(CONN, 'connections'));
+    const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });
+    expect(result.issues.filter(i => i.message.includes('missing connector_id'))).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('fails multi-env bindings missing prod', () => {
+    writeJson(dir, `workflows/${WF}/workflow.json`, {
+      ...baseWorkflow(),
+      workflow_type: 'ingestion',
+      name: 'Stage only',
+    });
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, {
+      connection_id: CONN,
+      organization_id: ORG,
+      project_id: PROJECT,
+      workflow_id: WF,
+      key: 'orders-mongo',
+      name: 'Orders Mongo',
+      type: 'mongodb',
+      status: 'active',
+      bindings: [
+        { environment_key: 'stage', connector_id: CONNECTOR },
+        { environment_key: 'dev', connector_id: CONNECTOR },
+      ],
+      created_at: NOW,
+      updated_at: NOW,
+    });
+    writeJson(dir, `workflows/${WF}/data-products/${DP}.json`, dataProduct(CONN, 'connections'));
+    const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some(i => i.message.includes('missing environment_key "prod"'))).toBe(
+      true
+    );
+  });
+
   it('passes for type sdk without connector_id', () => {
     writeJson(dir, `workflows/${WF}/workflow.json`, {
       ...baseWorkflow(),

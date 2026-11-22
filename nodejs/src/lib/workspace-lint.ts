@@ -137,10 +137,145 @@ export const RECOGNISED_PACKAGE_PATHS: readonly string[] = [
   'domains/<file>.json',
   'schemas/<file>.json',
   'contracts/<file>.json',
+  '.loxtep/connection-bindings.json',
   'workflows/<id>/workflow.json',
   'workflows/<id>/_graph.json',
   ...WORKFLOW_SCOPED_SEGMENTS.map(([segment]) => `workflows/<id>/${segment}/<file>.json`),
 ];
+
+/** Project-level declared connection bindings manifest (#4876). */
+export const CONNECTION_BINDINGS_MANIFEST_REL_PATH = '.loxtep/connection-bindings.json';
+
+function normalizeEnvironmentKey(raw: string): string {
+  const t = raw.trim().toLowerCase();
+  if (t === 'staging') return 'stage';
+  if (t === 'production') return 'prod';
+  return t;
+}
+
+interface DeclaredBindingLite {
+  environment_key?: string | null;
+  instance_id?: string | null;
+  connector_id: string;
+}
+
+function parseDeclaredBindingsLite(
+  raw: unknown,
+  path: string,
+  issues: LintIssue[]
+): DeclaredBindingLite[] {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) {
+    issues.push({
+      path,
+      severity: 'error',
+      message: 'bindings must be an array of { environment_key|instance_id, connector_id }',
+    });
+    return [];
+  }
+  const out: DeclaredBindingLite[] = [];
+  raw.forEach((item, i) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      issues.push({
+        path: `${path}[${i}]`,
+        severity: 'error',
+        message: 'binding entry must be an object',
+      });
+      return;
+    }
+    const obj = item as Record<string, unknown>;
+    const connectorId =
+      typeof obj.connector_id === 'string' && obj.connector_id.trim()
+        ? obj.connector_id.trim()
+        : '';
+    const environmentKey =
+      typeof obj.environment_key === 'string' && obj.environment_key.trim()
+        ? normalizeEnvironmentKey(obj.environment_key)
+        : null;
+    const instanceId =
+      typeof obj.instance_id === 'string' && obj.instance_id.trim()
+        ? obj.instance_id.trim()
+        : null;
+    if (!connectorId) {
+      issues.push({
+        path: `${path}[${i}]`,
+        severity: 'error',
+        message: 'binding requires connector_id',
+      });
+      return;
+    }
+    if (!environmentKey && !instanceId) {
+      issues.push({
+        path: `${path}[${i}]`,
+        severity: 'error',
+        message: 'binding requires environment_key and/or instance_id',
+      });
+      return;
+    }
+    out.push({
+      environment_key: environmentKey,
+      instance_id: instanceId,
+      connector_id: connectorId,
+    });
+  });
+  return out;
+}
+
+function loadConnectionBindingsManifest(
+  projectDir: string,
+  issues: LintIssue[]
+): DeclaredBindingLite[] {
+  const full = join(projectDir, CONNECTION_BINDINGS_MANIFEST_REL_PATH);
+  if (!existsSync(full)) return [];
+  const data = readJsonObject(full);
+  if (!data) {
+    issues.push({
+      path: CONNECTION_BINDINGS_MANIFEST_REL_PATH,
+      severity: 'error',
+      message: 'Invalid or unreadable JSON object',
+    });
+    return [];
+  }
+  const connections = data.connections;
+  if (connections == null) return [];
+  if (!Array.isArray(connections)) {
+    issues.push({
+      path: CONNECTION_BINDINGS_MANIFEST_REL_PATH,
+      severity: 'error',
+      message: 'connections must be an array',
+    });
+    return [];
+  }
+  const all: DeclaredBindingLite[] = [];
+  connections.forEach((entry, i) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      issues.push({
+        path: `${CONNECTION_BINDINGS_MANIFEST_REL_PATH} connections[${i}]`,
+        severity: 'error',
+        message: 'expected object with connection_id|connection_key and bindings',
+      });
+      return;
+    }
+    const e = entry as Record<string, unknown>;
+    const idOk = typeof e.connection_id === 'string' && e.connection_id.trim();
+    const keyOk = typeof e.connection_key === 'string' && e.connection_key.trim();
+    if (!idOk && !keyOk) {
+      issues.push({
+        path: `${CONNECTION_BINDINGS_MANIFEST_REL_PATH} connections[${i}]`,
+        severity: 'error',
+        message: 'connection_id or connection_key required',
+      });
+    }
+    all.push(
+      ...parseDeclaredBindingsLite(
+        e.bindings,
+        `${CONNECTION_BINDINGS_MANIFEST_REL_PATH} connections[${i}].bindings`,
+        issues
+      )
+    );
+  });
+  return all;
+}
 
 /**
  * Map a package-relative path to the entity type whose shipped schema validates it.
@@ -195,9 +330,20 @@ function discoverEntities(
     roots.push(join(projectDir, 'workflows'));
   }
 
+  // Also scan .loxtep/ so connection-bindings.json is classified (not "unrecognised").
+  roots.push(join(projectDir, '.loxtep'));
+
   for (const root of roots) {
     for (const filePath of listJsonFiles(root)) {
       const rel = relative(projectDir, filePath).replace(/\\/g, '/');
+      if (rel === CONNECTION_BINDINGS_MANIFEST_REL_PATH) {
+        // Handled separately in lintLocalPackage (not an entity schema).
+        continue;
+      }
+      // Ignore other .loxtep files (e.g. project.json) — not entity packages.
+      if (rel.startsWith('.loxtep/')) {
+        continue;
+      }
       const entityType = classifyPackagePath(rel);
       if (!entityType) {
         unrecognised.push(rel);
@@ -490,6 +636,29 @@ export function lintLocalPackage(options: LintOptions): LintResult {
     }
   }
 
+  // Declared connection bindings (#4876): per-connection bindings[] + optional
+  // project .loxtep/connection-bindings.json. Multi-env packages must declare prod.
+  const manifestBindings = loadConnectionBindingsManifest(projectDir, issues);
+  const bindingsByConnectionPath = new Map<string, DeclaredBindingLite[]>();
+  const allDeclaredBindings: DeclaredBindingLite[] = [...manifestBindings];
+  for (const entity of entities) {
+    if (entity.entityType !== EntityType.CONNECTION) continue;
+    const parsed = parseDeclaredBindingsLite(
+      entity.data.bindings,
+      `${entity.path}#/bindings`,
+      issues
+    );
+    bindingsByConnectionPath.set(entity.path, parsed);
+    allDeclaredBindings.push(...parsed);
+  }
+  const declaredEnvs = new Set(
+    allDeclaredBindings
+      .map(b => b.environment_key)
+      .filter((k): k is string => typeof k === 'string' && k.length > 0)
+  );
+  const projectIsMultiEnv = declaredEnvs.size > 1;
+  const manifestPresent = existsSync(join(projectDir, CONNECTION_BINDINGS_MANIFEST_REL_PATH));
+
   // Relationship checks
   for (const entity of entities) {
     if (entity.entityType === EntityType.CONNECTION) {
@@ -510,26 +679,61 @@ export function lintLocalPackage(options: LintOptions): LintResult {
         continue;
       }
       const connectorId = entity.data.connector_id;
-      if (typeof connectorId === 'string' && connectorId.length > 0) {
-        // connector may exist only remotely; warn only if local connectors/ is present
-        // and does not contain this id — keep as error when local connector file expected.
-        const localConnectors = entities.filter(e => e.entityType === EntityType.CONNECTOR);
-        if (
-          localConnectors.length > 0 &&
-          !localConnectors.some(c => c.data.connector_id === connectorId)
-        ) {
+      const hasLegacyConnector = typeof connectorId === 'string' && connectorId.length > 0;
+      const entityBindings = bindingsByConnectionPath.get(entity.path) ?? [];
+      const localConnectors = entities.filter(e => e.entityType === EntityType.CONNECTOR);
+      const localIds = localConnectors
+        .map(c => c.data.connector_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+      if (hasLegacyConnector) {
+        if (localIds.length > 0 && !localIds.includes(connectorId as string)) {
           issues.push({
             path: entity.path,
             severity: 'error',
             message: `connector_id "${connectorId}" not found under connectors/`,
           });
         }
-      } else if (!isSdkInputConnection(entity.data)) {
+      } else if (entityBindings.length === 0 && !isSdkInputConnection(entity.data)) {
         issues.push({
           path: entity.path,
           severity: 'error',
-          message: 'connection is missing connector_id',
+          message:
+            'connection is missing connector_id and bindings[] ' +
+            '(declare per-environment bindings or a legacy home connector_id)',
         });
+      }
+
+      if (projectIsMultiEnv && entityBindings.length > 0) {
+        const envs = new Set(
+          entityBindings
+            .map(b => b.environment_key)
+            .filter((k): k is string => typeof k === 'string' && k.length > 0)
+        );
+        if (!envs.has('prod')) {
+          issues.push({
+            path: entity.path,
+            severity: 'error',
+            message:
+              'multi-env project declares connection bindings but is missing environment_key "prod" ' +
+              '(fail closed — no silent stage copy). Add { "environment_key": "prod", "connector_id": "…" }.',
+          });
+        }
+      }
+
+      if (localIds.length > 0) {
+        for (const b of entityBindings) {
+          if (!localIds.includes(b.connector_id)) {
+            const label = b.environment_key
+              ? `environment_key "${b.environment_key}"`
+              : `instance_id "${b.instance_id}"`;
+            issues.push({
+              path: entity.path,
+              severity: 'error',
+              message: `bindings ${label} connector_id "${b.connector_id}" not found under connectors/`,
+            });
+          }
+        }
       }
     }
   }
@@ -545,7 +749,7 @@ export function lintLocalPackage(options: LintOptions): LintResult {
   return {
     ok: issues.length === 0,
     issues,
-    files_checked: entities.length + unrecognised.length,
+    files_checked: entities.length + unrecognised.length + (manifestPresent ? 1 : 0),
   };
 }
 

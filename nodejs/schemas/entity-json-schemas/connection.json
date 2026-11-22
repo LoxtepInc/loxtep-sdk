@@ -37,7 +37,49 @@
     "connector_id": {
       "type": ["string", "null"],
       "format": "uuid",
-      "description": "Reference to the connector definition this connection uses; null for project-level/draft connections"
+      "description": "Legacy home/stage default connector for the project's home instance only. Prefer bindings[] for multi-env; do not put two connectors in this scalar field."
+    },
+    "bindings": {
+      "type": "array",
+      "description": "Declared per-environment (or per-instance) connector bindings for this connection slot. Prefer environment_key; use instance_id for same-env geo. Deploy upserts connection_instance_bindings from these declarations.",
+      "items": {
+        "type": "object",
+        "required": ["connector_id"],
+        "properties": {
+          "environment_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Logical environment (stage, prod, dev, …). Preferred over hard-coded instance UUIDs in git."
+          },
+          "instance_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional explicit instance pin (same-env geo). When set, matches that instance before environment_key."
+          },
+          "connector_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Org connector used for this environment/instance"
+          },
+          "delivery_config": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "Optional per-binding delivery overlay"
+          },
+          "connector_vpc_id": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Optional customer-VPC attachment id for this binding"
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          { "required": ["environment_key"] },
+          { "required": ["instance_id"] }
+        ]
+      }
     },
     "sync_entity": {
       "type": ["string", "null"],
@@ -207,10 +249,11 @@
           }
         },
         "runtime_memory_mb": {
-          "description": "Off-VPC shared runtimes tier for trigger registration (256, 512, 1024, 2048). Unset runtime_memory_mb does not by itself route to connectors-private: when a shared runtimes Lambda cannot be named, unset stays on the legacy connection-handler. A customer-VPC connection that is already routing to connectors-private accepts an explicit runtime_memory_mb of 512 only (any other explicit tier fails the deploy); unset memory on that path stays 512. LeoCron `lambdaName`: `w-{org4}-{inst4}-bot-connectors-{mb}-rtime`; bot id: `w-{org4}-{inst4}-{workflow4}-bot-connectors-{mb}-{container_id}`. Instance `connection_details.runtimes_stack_identifier` may override the org/instance middle segment (CDK `microserviceIdentifier` = `w-{that middle}`).",
+          "description": "Memory for this step. Standard sizes are 256, 512, 1024, and 2048. Unset keeps the current size. \"custom\" uses the instance's custom size for that runtime.",
           "oneOf": [
             { "type": "null" },
-            { "type": "integer", "enum": [256, 512, 1024, 2048] }
+            { "type": "integer", "enum": [256, 512, 1024, 2048] },
+            { "type": "string", "enum": ["custom"] }
           ]
         },
         "fetch_action_key": {
@@ -397,7 +440,10 @@
         },
         "insert_batch_size": {
           "type": ["integer", "null"],
-          "description": "Rows per multi-value INSERT statement."
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 1000,
+          "description": "Rows per multi-value INSERT. Integer from 1 to 10000. When unset, the documented default is 1000, written at save and applied by the shared resolver. Not the stream-read batch_size. An out-of-range or non-integer value, including 0, is refused at save (invalid_insert_batch_size) and throws at delivery."
         },
         "conflict_update": {
           "type": ["object", "null"],
@@ -507,9 +553,15 @@
         "transformations",
         "validations",
         "data-products",
+        "approvals",
         null
       ],
       "description": "Entity type of the upstream entity."
+    },
+    "upstream_label": {
+      "type": ["string", "null"],
+      "enum": ["approved", "rejected", "error", null],
+      "description": "Labeled edge when the upstream node is an approval (approved or rejected)."
     },
     "output_queue_display_name": {
       "type": ["string", "null"],
