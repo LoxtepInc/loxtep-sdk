@@ -1,7 +1,7 @@
 {
   "repository": "LoxtepInc/loxtep",
   "path": "platform-backend/_core/src/workspace/entity-json-schemas",
-  "commit": "662b3a4850e52e39574c9da99e67e0f6d24fcf74",
+  "commit": "21ceadcecfd5cc531da998edbb6d1d7fc3336fc6",
   "files": {
     "agent.json": "894158338a8bd3b08b7a042006be0d669aa0fe56",
     "approval.json": "37cad8aff6e250be2bc8ccb966d97018d48f0663",
