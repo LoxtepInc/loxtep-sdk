@@ -49,9 +49,15 @@
         "transformations",
         "validations",
         "data-products",
+        "approvals",
         null
       ],
       "description": "Entity type of the upstream entity"
+    },
+    "upstream_label": {
+      "type": ["string", "null"],
+      "enum": ["approved", "rejected", "error", null],
+      "description": "Labeled edge when the upstream node is an approval (approved or rejected)."
     },
     "name": {
       "type": "string",
@@ -129,10 +135,11 @@
       "description": "Runtime tuning: events per handler call (rstreams offload batch). Does not cap events read per run; that is bounded by the Lambda timeout and memory thresholds. Unset: 300. Out-of-range values fail deploy."
     },
     "runtime_memory_mb": {
-      "description": "Runtime tuning: shared runtimes Lambda memory tier (connectors-{mb}). Unset: 256. Any other value fails deploy.",
+      "description": "Memory for this step. Standard sizes are 256, 512, 1024, and 2048. Unset keeps the current size. \"custom\" uses the instance's custom size for that runtime.",
       "oneOf": [
         { "type": "null" },
-        { "type": "integer", "enum": [256, 512, 1024, 2048] }
+        { "type": "integer", "enum": [256, 512, 1024, 2048] },
+        { "type": "string", "enum": ["custom"] }
       ]
     },
     "metadata": {

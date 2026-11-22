@@ -73,14 +73,7 @@
     },
     "access_method": {
       "type": "string",
-      "enum": [
-        "sql",
-        "api_endpoint",
-        "event_stream",
-        "webhook",
-        "export",
-        "bi_connect"
-      ],
+      "enum": ["sql", "api_endpoint", "event_stream", "webhook", "export"],
       "description": "Access dialect / delivery method this grant authorizes"
     },
     "connection_id": {

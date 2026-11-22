@@ -43,7 +43,7 @@
     "name": {
       "type": "string",
       "minLength": 1,
-      "description": "Display name of the projection node (written by ProjectionWorkflowNode.activate)"
+      "description": "Display name of the projection node"
     },
     "source_data_product_ids": {
       "type": "array",
