@@ -34,7 +34,32 @@ describe('instance list summary', () => {
       region: 'us-east-1',
       status: 'active',
       instance_type: 'self-hosted',
+      environment_key: null,
     });
+  });
+
+  it('surfaces metadata.environment_key when set', () => {
+    expect(
+      toInstanceListSummary({
+        ...full,
+        metadata: { environment_key: 'stage' },
+      }).environment_key
+    ).toBe('stage');
+  });
+
+  it('trims blank environment_key to null and never invents prod', () => {
+    expect(
+      toInstanceListSummary({
+        ...full,
+        metadata: { environment_key: '   ' },
+      }).environment_key
+    ).toBeNull();
+    expect(
+      toInstanceListSummary({
+        ...full,
+        metadata: {},
+      }).environment_key
+    ).toBeNull();
   });
 
   it('prefers metadata.instance_type over connection_details', () => {

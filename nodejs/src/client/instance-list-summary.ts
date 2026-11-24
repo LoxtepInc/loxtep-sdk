@@ -14,6 +14,11 @@ export interface InstanceListSummary {
   status: string;
   /** shared | managed | self-hosted (backend may emit `customer` for self-hosted). */
   instance_type: string;
+  /**
+   * Stage/prod segregator from `metadata.environment_key`.
+   * Null when unset or blank — never invent `prod`.
+   */
+  environment_key: string | null;
 }
 
 /** Resolve deployment/connect instance type from metadata or connection_details. */
@@ -26,6 +31,14 @@ export function resolveInstanceType(instance: Instance): string {
   return raw;
 }
 
+/** Read environment_key from metadata; trim empty → null (never default to prod). */
+export function resolveEnvironmentKey(instance: Instance): string | null {
+  const raw = instance.metadata?.environment_key;
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 /** Map a full API instance row to the CLI list summary shape. */
 export function toInstanceListSummary(instance: Instance): InstanceListSummary {
   return {
@@ -35,6 +48,7 @@ export function toInstanceListSummary(instance: Instance): InstanceListSummary {
     region: instance.region,
     status: instance.status,
     instance_type: resolveInstanceType(instance),
+    environment_key: resolveEnvironmentKey(instance),
   };
 }
 

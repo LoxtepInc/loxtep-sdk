@@ -293,12 +293,19 @@ export async function runProjectsClone(
 }
 
 export async function runProjectsGithubPullCmd(
-  options: ProjectsCmdOptions & { commitSha?: string; projectId?: string } = {}
+  options: ProjectsCmdOptions & {
+    commitSha?: string;
+    projectId?: string;
+    instanceId?: string;
+    branch?: string;
+  } = {}
 ): Promise<void> {
   const { client } = await requireCliClient(options);
   const result = await runProjectsGithubPull(client, {
     projectId: options.projectId,
+    instanceId: options.instanceId,
     commitSha: options.commitSha,
+    branch: options.branch,
     cwd: options.cwd,
   });
   for (const line of result.stdout) console.log(line);

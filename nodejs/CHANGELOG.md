@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+
+- **GitHub pull fail-closed (loxtep-sdk#123):** `client.workspace.projects.github_pull`
+  and `loxtep projects pull` require an explicit `instance_id` (throws / exit 1 when
+  missing; accepts attach `.loxtep/project.json`). Optional `branch` and `commit_sha`
+  are forwarded; platform resolves per-instance Pull branch from
+  `metadata.repository_branch` when `branch` is omitted.
+- **`instances list` summaries** include `environment_key` from
+  `metadata.environment_key` (null when unset/blank; never invents `prod`).
+- **Project default branch SoT:** `repository()` / workspace status / attach / clone
+  prefer `repository_branch` over legacy `github_branch`.
+
 ## [0.14.9] - 2026-11-22
 
 ### Added

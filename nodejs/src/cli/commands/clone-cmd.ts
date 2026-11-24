@@ -155,7 +155,8 @@ async function bindLocalWorkspace(
     config.repository = {
       url: cloud.github_repo_url,
       name: cloud.github_repo_name,
-      branch: cloud.github_branch || 'main',
+      // Project default branch SoT: repository_branch; github_branch is legacy alias.
+      branch: cloud.repository_branch || cloud.github_branch || 'main',
       ...(cloud.github_repo_path ? { subpath: cloud.github_repo_path } : {}),
     };
   }
@@ -176,7 +177,7 @@ async function cloneGithubBound(
   options: CloneOptions
 ): Promise<CliResult> {
   const url = cloud.github_repo_url!.trim();
-  const branch = cloud.github_branch || undefined;
+  const branch = cloud.repository_branch || cloud.github_branch || undefined;
   const gitClone = options.gitClone ?? defaultGitClone;
 
   if (existsSync(targetDir)) {

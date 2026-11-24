@@ -408,7 +408,9 @@ export async function runCli(argv: string[]): Promise<void> {
         await runProjectsGithubPullCmd({
             debug: args.includes("--debug"),
             projectId: getArg("--project-id"),
+            instanceId: getArg("--instance-id"),
             commitSha: getArg("--commit-sha"),
+            branch: getArg("--branch"),
         });
         } else if (sub === "push") {
         await runProjectsGithubPushCmd({
@@ -419,7 +421,7 @@ export async function runCli(argv: string[]): Promise<void> {
         });
       } else {
         console.error(
-            "Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects changes [--json] | projects clone <id|name> [dir] | projects pull | projects push",
+            "Usage: loxtep projects list [--source local|remote|all] | projects get <id> | projects link <id|name> [--path <dir>] | projects changes [--json] | projects clone <id|name> [dir] | projects pull --instance-id <uuid> [--commit-sha] [--branch] | projects push",
         );
         process.exitCode = 1;
       }

@@ -35,8 +35,9 @@ the files are already on disk.
 **GitHub sync vs package push:** top-level `loxtep push` uploads unbound local
 packages (Local → Cloud S3). When GitHub-bound, use `loxtep projects pull` /
 `loxtep projects push` (SDK `client.workspace.projects.github_pull` /
-`github_push`). Never pretend
-Git exists for unbound projects.
+`github_push`). Pull requires `--instance-id <uuid>` (or an attached
+`.loxtep/project.json` with `instance_id`); optional `--branch` /
+`--commit-sha`. Never pretend Git exists for unbound projects.
 
 **`link` ≠ `attach`:** `link`/`clone` bind the **project**; `attach` binds a runtime
 **Instance** (`instance_id` + `api_url`).

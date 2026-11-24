@@ -11,6 +11,11 @@ from .http_client import AsyncLoxtepHttpClient, LoxtepHttpClient
 
 PROJECTS_BASE = "/workflows/projects"
 
+# SSM key for the GitHub pull Function URL. CDK replaces `{`/`}` in the route
+# template, so `{project_id}` is stored as `_project_id_`.
+_GITHUB_PULL_STREAM = "workflows/projects/_project_id_/github/pull"
+_GITHUB_PUSH_STREAM = "workflows/projects/_project_id_/github/push"
+
 
 def _query_string(params: dict[str, Any]) -> str:
     parts = [f"{k}={quote(str(v))}" for k, v in params.items() if v is not None]
@@ -19,6 +24,71 @@ def _query_string(params: dict[str, Any]) -> str:
 
 def _data(res: Any) -> Any:
     return res.get("data", res) if isinstance(res, dict) else res
+
+
+def _project_default_branch(project: dict[str, Any]) -> str:
+    """Project default branch SoT: repository_branch, then legacy github_branch."""
+    return (
+        project.get("repository_branch")
+        or project.get("github_branch")
+        or "main"
+    )
+
+
+def _github_pull_payload(
+    *,
+    instance_id: str,
+    commit_sha: Optional[str] = None,
+    branch: Optional[str] = None,
+) -> dict[str, str]:
+    trimmed = (instance_id or "").strip()
+    if not trimmed:
+        raise ValueError(
+            "instance_id is required for github_pull. Pass the instance for the "
+            "environment you are pulling into (no soft prefer)."
+        )
+    payload: dict[str, str] = {"instance_id": trimmed}
+    if commit_sha is not None and str(commit_sha).strip():
+        payload["commit_sha"] = str(commit_sha).strip()
+    if branch is not None and str(branch).strip():
+        payload["branch"] = str(branch).strip()
+    return payload
+
+
+def _resolve_github_stream_url_sync(
+    http: LoxtepHttpClient,
+    stream: str,
+    project_id: str,
+    action: str,
+) -> str:
+    gateway_path = f"{PROJECTS_BASE}/{quote(project_id)}/github/{action}"
+    try:
+        lookup = http.get(f"/app/stream-url?stream={quote(stream)}")
+        data = lookup.get("data", lookup) if isinstance(lookup, dict) else {}
+        template = data.get("stream_url") if isinstance(data, dict) else None
+        if not template or "{project_id}" not in str(template):
+            return gateway_path
+        return str(template).replace("{project_id}", quote(project_id))
+    except Exception:
+        return gateway_path
+
+
+async def _resolve_github_stream_url_async(
+    http: AsyncLoxtepHttpClient,
+    stream: str,
+    project_id: str,
+    action: str,
+) -> str:
+    gateway_path = f"{PROJECTS_BASE}/{quote(project_id)}/github/{action}"
+    try:
+        lookup = await http.get(f"/app/stream-url?stream={quote(stream)}")
+        data = lookup.get("data", lookup) if isinstance(lookup, dict) else {}
+        template = data.get("stream_url") if isinstance(data, dict) else None
+        if not template or "{project_id}" not in str(template):
+            return gateway_path
+        return str(template).replace("{project_id}", quote(project_id))
+    except Exception:
+        return gateway_path
 
 
 class ProjectsApi:
@@ -167,7 +237,7 @@ class ProjectsApi:
             "url": p.get("github_repo_url"),
             "name": p.get("github_repo_name"),
             "subpath": p.get("github_repo_path", ""),
-            "branch": p.get("github_branch", "main"),
+            "branch": _project_default_branch(p),
             "last_commit_sha": p.get("github_last_commit_sha", ""),
             "last_sync_at": p.get("github_last_sync_at", ""),
         }
@@ -181,6 +251,46 @@ class ProjectsApi:
         """
         path = f"{PROJECTS_BASE}/{quote(project_id)}/reindex"
         res = self._http.post(path, {})
+        return _data(res)
+
+    def github_pull(
+        self,
+        project_id: str,
+        *,
+        instance_id: str,
+        commit_sha: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """POST /workflows/projects/:id/github/pull — Cloud S3 ← GitHub (bound only).
+
+        ``instance_id`` is required (fail closed; no soft prefer).
+        """
+        payload = _github_pull_payload(
+            instance_id=instance_id, commit_sha=commit_sha, branch=branch
+        )
+        path = _resolve_github_stream_url_sync(
+            self._http, _GITHUB_PULL_STREAM, project_id, "pull"
+        )
+        res = self._http.post(path, payload)
+        return _data(res)
+
+    def github_push(
+        self,
+        project_id: str,
+        *,
+        commit_message: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """POST /workflows/projects/:id/github/push — Cloud S3 → GitHub (bound only)."""
+        body: dict[str, Any] = {}
+        if commit_message is not None:
+            body["commit_message"] = commit_message
+        if branch is not None:
+            body["branch"] = branch
+        path = _resolve_github_stream_url_sync(
+            self._http, _GITHUB_PUSH_STREAM, project_id, "push"
+        )
+        res = self._http.post(path, body)
         return _data(res)
 
 
@@ -329,7 +439,7 @@ class AsyncProjectsApi:
             "url": p.get("github_repo_url"),
             "name": p.get("github_repo_name"),
             "subpath": p.get("github_repo_path", ""),
-            "branch": p.get("github_branch", "main"),
+            "branch": _project_default_branch(p),
             "last_commit_sha": p.get("github_last_commit_sha", ""),
             "last_sync_at": p.get("github_last_sync_at", ""),
         }
@@ -341,4 +451,44 @@ class AsyncProjectsApi:
         """
         path = f"{PROJECTS_BASE}/{quote(project_id)}/reindex"
         res = await self._http.post(path, {})
+        return _data(res)
+
+    async def github_pull(
+        self,
+        project_id: str,
+        *,
+        instance_id: str,
+        commit_sha: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """POST /workflows/projects/:id/github/pull — Cloud S3 ← GitHub (bound only).
+
+        ``instance_id`` is required (fail closed; no soft prefer).
+        """
+        payload = _github_pull_payload(
+            instance_id=instance_id, commit_sha=commit_sha, branch=branch
+        )
+        path = await _resolve_github_stream_url_async(
+            self._http, _GITHUB_PULL_STREAM, project_id, "pull"
+        )
+        res = await self._http.post(path, payload)
+        return _data(res)
+
+    async def github_push(
+        self,
+        project_id: str,
+        *,
+        commit_message: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """POST /workflows/projects/:id/github/push — Cloud S3 → GitHub (bound only)."""
+        body: dict[str, Any] = {}
+        if commit_message is not None:
+            body["commit_message"] = commit_message
+        if branch is not None:
+            body["branch"] = branch
+        path = await _resolve_github_stream_url_async(
+            self._http, _GITHUB_PUSH_STREAM, project_id, "push"
+        )
+        res = await self._http.post(path, body)
         return _data(res)

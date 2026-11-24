@@ -316,7 +316,7 @@ describe('loxtep attach', () => {
     expect(written.repository).toBeUndefined();
   });
 
-  it('defaults branch to "main" when github_branch is absent', async () => {
+  it('defaults branch to "main" when repository_branch and github_branch are absent', async () => {
     const dir = makeTmpDir();
     tmpDirs.push(dir);
     const filePath = scaffoldProject(dir, { project_id: 'proj_test1' });
@@ -324,6 +324,7 @@ describe('loxtep attach', () => {
     const project = makeProject({
       github_repo_url: 'https://github.com/acme/repo',
       github_repo_name: 'acme/repo',
+      repository_branch: undefined,
       github_branch: undefined,
     });
     const client = mockClient({ project });
@@ -333,6 +334,26 @@ describe('loxtep attach', () => {
 
     const written = JSON.parse(readFileSync(filePath, 'utf-8'));
     expect(written.repository.branch).toBe('main');
+  });
+
+  it('prefers repository_branch over github_branch for project default branch', async () => {
+    const dir = makeTmpDir();
+    tmpDirs.push(dir);
+    const filePath = scaffoldProject(dir, { project_id: 'proj_test1' });
+
+    const project = makeProject({
+      github_repo_url: 'https://github.com/acme/repo',
+      github_repo_name: 'acme/repo',
+      repository_branch: 'release',
+      github_branch: 'legacy',
+    });
+    const client = mockClient({ project });
+
+    const result = await runAttach(client, { cwd: dir, instanceId: 'inst_abc123' });
+    expect(result.exitCode).toBe(0);
+
+    const written = JSON.parse(readFileSync(filePath, 'utf-8'));
+    expect(written.repository.branch).toBe('release');
   });
 
   it('does not include subpath when github_repo_path is empty', async () => {
@@ -366,7 +387,7 @@ describe('projectToRepository', () => {
       github_repo_url: 'https://github.com/org/repo',
       github_repo_name: 'org/repo',
       github_repo_path: 'sub/path',
-      github_branch: 'feature',
+      repository_branch: 'feature',
     });
     const repo = projectToRepository(project);
     expect(repo).toEqual({

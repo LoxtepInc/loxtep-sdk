@@ -6,6 +6,9 @@
  *
  * Unbound packages keep using top-level `loxtep push` (save_workflow_bundle).
  * These commands refuse when the cloud project has no github_repo_url.
+ *
+ * Pull requires an explicit `instance_id` (flag or `.loxtep/project.json` from
+ * attach) — fail closed; no soft prefer to a project default instance.
  */
 
 import type { LoxtepClient } from '../../client/loxtep-client.js';
@@ -16,9 +19,11 @@ export interface GithubSyncOptions {
   /** Override project id (else `.loxtep/project.json`). */
   projectId?: string;
   cwd?: string;
+  /** pull: required unless present in `.loxtep/project.json` (attach). */
+  instanceId?: string;
   /** pull only */
   commitSha?: string;
-  /** push only */
+  /** push only (and optional pull override) */
   commitMessage?: string;
   branch?: string;
 }
@@ -65,6 +70,16 @@ async function resolveBoundProjectId(
   return { project_id: cloud.project_id, name: cloud.name };
 }
 
+/** Resolve instance_id from flag or attached project.json; blank → null. */
+export function resolvePullInstanceId(options: GithubSyncOptions): string | null {
+  const fromFlag = options.instanceId?.trim();
+  if (fromFlag) return fromFlag;
+  const cwd = options.cwd ?? process.cwd();
+  const loaded = tryLoadProjectConfig(cwd);
+  const fromConfig = loaded?.project.instance_id?.trim();
+  return fromConfig || null;
+}
+
 export async function runProjectsGithubPull(
   client: LoxtepClient,
   options: GithubSyncOptions = {}
@@ -72,13 +87,27 @@ export async function runProjectsGithubPull(
   const resolved = await resolveBoundProjectId(client, options);
   if ('exitCode' in resolved) return resolved;
 
+  const instanceId = resolvePullInstanceId(options);
+  if (!instanceId) {
+    return {
+      exitCode: 1,
+      stdout: [],
+      stderr: [
+        'Missing instance_id. Pass --instance-id <uuid> or attach a project (writes instance_id to .loxtep/project.json). Soft prefer is not supported.',
+      ],
+    };
+  }
+
   try {
     const result = await client.workspace.projects.github_pull(resolved.project_id, {
+      instance_id: instanceId,
       commit_sha: options.commitSha,
+      branch: options.branch,
     });
     const ok = result.success !== false;
     const lines = [
       `GitHub pull for "${resolved.name}" (${resolved.project_id}): ${ok ? 'ok' : 'failed'}`,
+      `  instance_id: ${instanceId}`,
       result.commit_sha ? `  commit_sha: ${result.commit_sha}` : '',
       result.file_count != null ? `  file_count: ${result.file_count}` : '',
       result.message ? `  ${result.message}` : '',

@@ -348,7 +348,7 @@ export function buildProjectWorkspaceStatus(
         state: github_state,
         url: cloud?.github_repo_url ?? null,
         name: cloud?.github_repo_name ?? null,
-        branch: cloud?.github_branch ?? cloud?.repository_branch ?? null,
+        branch: cloud?.repository_branch ?? cloud?.github_branch ?? null,
         last_sync_at: cloud?.github_last_sync_at ?? null,
       },
       workspace_revision: cloud?.github_last_commit_sha ?? null,

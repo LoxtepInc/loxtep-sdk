@@ -122,12 +122,16 @@ describe('Feature: ai-first-platform-surface, Property 41: Attach projects the b
           expect(result!.url).toBe(project.github_repo_url);
           expect(result!.name).toBe(project.github_repo_name);
 
-          // Branch defaults to 'main' when github_branch is absent/empty
-          if (project.github_branch && project.github_branch.length > 0) {
-            expect(result!.branch).toBe(project.github_branch);
-          } else {
-            expect(result!.branch).toBe('main');
-          }
+          // Branch SoT: repository_branch, then github_branch, else 'main'
+          const expectedBranch =
+            (project.repository_branch && project.repository_branch.length > 0
+              ? project.repository_branch
+              : undefined) ||
+            (project.github_branch && project.github_branch.length > 0
+              ? project.github_branch
+              : undefined) ||
+            'main';
+          expect(result!.branch).toBe(expectedBranch);
 
           // Subpath is included only when github_repo_path is non-empty
           if (project.github_repo_path && project.github_repo_path.length > 0) {
