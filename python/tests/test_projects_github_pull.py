@@ -1,6 +1,6 @@
 """github_pull fail-closed + repository_branch SoT (loxtep-sdk#123)."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
