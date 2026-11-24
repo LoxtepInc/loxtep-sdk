@@ -43,7 +43,9 @@ Workspace
                      (bound only). Unbound Local→Cloud stays "loxtep push".
   instances list | get <id> | stream-config [<id>] | create … | update <id> … | redeploy-runtimes <id> | deployment-urls | register … | registration
                      Provision instances (list includes environment_key when set; never
-                     invents prod). stream-config prints bus resource names for SDK attach
+                     invents prod). update --environment-key <slug> sets/clears the open
+                     segregation key (empty clears; not a stage/prod/dev enum).
+                     stream-config prints bus resource names for SDK attach
   bots register|list|get|update|deregister|reconcile --instance <id> …
                      BYOL: register a customer Lambda with LeoCron (dedicated instances)
 
