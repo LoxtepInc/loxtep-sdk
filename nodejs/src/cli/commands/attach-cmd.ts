@@ -16,6 +16,7 @@
  */
 
 import type { LoxtepClient } from '../../client/loxtep-client.js';
+import { toInstanceListSummary } from '../../client/instance-list-summary.js';
 import type { Instance } from '../../client/instances-types.js';
 import type { Project } from '../../client/projects-types.js';
 import {
@@ -231,9 +232,21 @@ async function resolveInstance(client: LoxtepClient, instanceId?: string): Promi
     );
   }
   if (items.length > 1) {
-    const ids = items.map(i => `  ${i.instance_id} — ${i.name}`).join('\n');
+    const ids = items
+      .map(i => {
+        const summary = toInstanceListSummary(i);
+        const env =
+          summary.environment_key != null
+            ? `environment_key=${summary.environment_key}`
+            : 'environment_key=(unset)';
+        return `  ${i.instance_id} — ${i.name} (${env})`;
+      })
+      .join('\n');
     throw new Error(
-      `Multiple instances found. Specify one with --instance <id>:\n${ids}`
+      'Multiple Instances found in your organization. Pin the same Instance Studio uses for this project:\n' +
+        '  loxtep attach --instance <id>\n' +
+        'Instances:\n' +
+        ids
     );
   }
   return items[0];

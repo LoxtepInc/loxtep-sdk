@@ -7,7 +7,11 @@ import {
 import { decodeJwtClaims } from '../../auth/jwt.js';
 import { buildPlatformRequestUrl } from '../../config/platform-request-url.js';
 import type { LoxtepHttpClient } from '../../http/client.js';
-import { createCliHttpClient } from '../create-cli-client.js';
+import { createCliClient, createCliHttpClient } from '../create-cli-client.js';
+import {
+  formatWorkspaceScopePinLines,
+  resolveWorkspaceScopePin,
+} from '../workspace-scope-pin.js';
 
 /** Flattened user context from GET /organizations/users/me. */
 export type UserMeResponse = ParsedCurrentUser;
@@ -33,6 +37,25 @@ export interface WhoamiOptions {
 
 function isDebugEnabled(options: WhoamiOptions): boolean {
   return options.debug === true || process.env.LOXTEP_DEBUG === '1';
+}
+
+async function printWorkspaceScopePin(options: WhoamiOptions): Promise<void> {
+  const pinClient = await createCliClient({
+    configFilePath: options.configFilePath,
+    credentialsPath: options.credentialsPath,
+    customerMcpPath: options.customerMcpPath,
+    cwd: options.cwd,
+    fetch_fn: options.fetch_fn ?? options.fetchFn,
+  });
+  if (!pinClient) return;
+  const pin = await resolveWorkspaceScopePin(
+    pinClient.client,
+    options.cwd ?? process.cwd()
+  );
+  if (!pin) return;
+  for (const line of formatWorkspaceScopePinLines(pin)) {
+    console.log(line);
+  }
 }
 
 function isPlaceholderIdentity(data: ParsedCurrentUser): boolean {
@@ -110,6 +133,7 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
               console.log('Project scope:', project);
               console.log('Token owner (user_id):', owner);
               if (actor) console.log('Actor:', actor);
+              await printWorkspaceScopePin(options);
               return null;
             }
           }
@@ -146,6 +170,12 @@ export async function runWhoami(options: WhoamiOptions = {}): Promise<void> {
     console.log('User:', email);
     console.log('Name:', name);
     console.log('Organization:', org);
+    if (data.organization_id) {
+      console.log('Organization id:', data.organization_id);
+    }
+    if (!options.fetchUser) {
+      await printWorkspaceScopePin(options);
+    }
     if (isPlaceholderIdentity(data)) {
       console.error(
         'Could not read your profile from the API. Run `loxtep login` again, or `LOXTEP_DEBUG=1 loxtep whoami` to inspect the raw response.'

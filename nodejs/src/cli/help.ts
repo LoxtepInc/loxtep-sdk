@@ -17,7 +17,7 @@ Authentication
   login              Log in (browser by default; --console for email/password/TOTP)
                      Saves to ./.loxtep/credentials.json by default (--global for ~/.loxtep)
   logout             Remove stored credentials (--local / --global to force scope)
-  whoami             Print current user and organization
+  whoami             Print user, organization, and workspace scope (project + Instance pin)
 
 Workspace
   init [--template <slug>] [--project-id <uuid>] [--create-repo | --from-repo <url>]
@@ -26,7 +26,7 @@ Workspace
                      Bind a cloud project to a local directory (writes .loxtep/project.json;
                      upserts ~/.loxtep/workspaces.json). Alias: projects link. Not attach.
   attach [--instance <id>]
-                     Bind workspace to a runtime Instance (writes instance_id + api_url)
+                     Bind workspace to the same Instance Studio uses (writes instance_id + api_url)
   status [--json]    Cwd-first project workspace status (local / cloud / deployed)
                      Distinct from observe status (runtime bots/queues)
   generate           Emit typed workspace artifact (.loxtep/generated/index.ts)
@@ -86,9 +86,10 @@ Build & deploy
   test <module> --event <file>
                      Run a workflow module locally with live instance I/O (action trace;
                      requireApproval ops prompt; nonzero exit on failure/skip)
-  deploy [--dry-run] Compile workflow modules and deploy (lint preflight first)
+  deploy [--dry-run] Compile workflow modules and deploy to the attached Instance (lint preflight first)
   workflows list | get <id> | create … | deploy …
-                     List/create/deploy workflows (--project-id; create also --workflow-type, --domain-id)
+                     List/create/deploy workflows (--project-id, --instance-id; deploy also
+                     --expected-environment-key to fail closed on Instance environment_key mismatch)
   workflows preview-query-trigger --workflow-id <uuid> [--project-id] [--query] [--limit] [--primary-key]
                      Dry-run SELECT sample for enrichment query_trigger
   workflows run-query-trigger --workflow-id <uuid> [--project-id] [--sink-data-product-id]

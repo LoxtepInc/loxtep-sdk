@@ -372,7 +372,7 @@ export function createWorkflowsApi(
       } = input;
       if (!instance_id || !String(instance_id).trim()) {
         throw new Error(
-          'instance_id is required for deploy. Pass the instance for the environment you are targeting (no soft prefer).'
+          'Instance id is required for deploy. Pass the target Instance (no soft prefer). CLI: --instance-id or `loxtep attach`. Optional --expected-environment-key fails closed on metadata.environment_key mismatch.'
         );
       }
       const res = await http.post<unknown>(
