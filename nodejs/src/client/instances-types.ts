@@ -96,6 +96,18 @@ export interface InstanceUpdateInput {
     connector_vpc?: ConnectorVpc | null;
   };
   force_runtimes_redeploy?: boolean;
+  /**
+   * Open segregation key written to `metadata.environment_key`.
+   * Trim+lowercase; empty or null clears (env missing). Not a closed
+   * stage/prod/dev enum — franchise/location slugs are allowed.
+   * Aliases: staging→stage, production→prod.
+   */
+  environment_key?: string | null;
+  /**
+   * Merged into instance metadata. Prefer top-level `environment_key` for that
+   * field; `metadata.environment_key` is also accepted and normalized the same way.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 /** POST /organizations/instances response (async queued). */

@@ -8,6 +8,7 @@
 
 import type { LoxtepHttpClient } from "../http/client.js";
 import { parseInstanceDetailResponse } from "./instance-detail-response.js";
+import { buildInstanceUpdateBody } from "./instance-update-body.js";
 import { parseInstancesListResponse } from "./instances-list-response.js";
 import type {
   Instance,
@@ -157,8 +158,9 @@ export function createInstancesApi(
 
     /**
      * PUT /organizations/instances/{id}. Set connection_details.connector_vpc
-     * (two subnet IDs + security group) and/or force_runtimes_redeploy to
-     * reapply connectors-private-512.
+     * (two subnet IDs + security group), force_runtimes_redeploy to reapply
+     * connectors-private-512, and/or environment_key (open slug →
+     * metadata.environment_key; empty/null clears).
      */
     async update(
       instance_id: string,
@@ -166,7 +168,7 @@ export function createInstancesApi(
     ): Promise<Instance> {
       const res = await http.put<unknown>(
         `${INSTANCES_BASE}/${encodeURIComponent(instance_id)}`,
-        input,
+        buildInstanceUpdateBody(input),
       );
       return parseInstanceDetailResponse(res);
     },

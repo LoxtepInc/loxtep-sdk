@@ -252,4 +252,30 @@ describe("parseUpdateInstanceArgs", () => {
     ]);
     expect(input.connection_details?.connector_vpc).toBeNull();
   });
+
+  it("parses --environment-key open slug", () => {
+    const { input } = parseUpdateInstanceArgs([
+      "550e8400-e29b-41d4-a716-446655440010",
+      "--environment-key",
+      "denver-franchise",
+    ]);
+    expect(input.environment_key).toBe("denver-franchise");
+  });
+
+  it("parses empty --environment-key as clear", () => {
+    const { input } = parseUpdateInstanceArgs([
+      "550e8400-e29b-41d4-a716-446655440010",
+      "--environment-key",
+      "",
+    ]);
+    expect(input.environment_key).toBeNull();
+  });
+
+  it("parses bare --environment-key (no value) as clear", () => {
+    const { input } = parseUpdateInstanceArgs([
+      "550e8400-e29b-41d4-a716-446655440010",
+      "--environment-key",
+    ]);
+    expect(input.environment_key).toBeNull();
+  });
 });

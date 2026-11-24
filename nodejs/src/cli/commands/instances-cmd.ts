@@ -335,7 +335,8 @@ export function parseUpdateInstanceArgs(args: string[]): {
   const instanceId = args[0] && !args[0].startsWith("-") ? args[0] : undefined;
   if (!instanceId) {
     throw new Error(
-      "Usage: loxtep instances update <instance_id> [--name <n>] [--subnet-id <id> --subnet-id-2 <id> --security-group-id <id>] [--clear-connector-vpc] [--redeploy-runtimes]",
+      "Usage: loxtep instances update <instance_id> [--name <n>] [--environment-key <slug>] [--subnet-id <id> --subnet-id-2 <id> --security-group-id <id>] [--clear-connector-vpc] [--redeploy-runtimes]\n" +
+        "--environment-key is an open slug (not stage/prod/dev enum); empty value clears (env missing).",
     );
   }
   const rest = args.slice(1);
@@ -352,6 +353,19 @@ export function parseUpdateInstanceArgs(args: string[]): {
       "Use either --clear-connector-vpc or subnet/SG flags, not both",
     );
   }
+
+  // --environment-key present: next token is the slug, or empty/missing/next-flag clears.
+  const envIdx = rest.indexOf("--environment-key");
+  let environmentKey: string | null | undefined;
+  if (envIdx >= 0) {
+    const next = rest[envIdx + 1];
+    if (next === undefined || next.startsWith("--") || next.trim() === "") {
+      environmentKey = null;
+    } else {
+      environmentKey = next;
+    }
+  }
+
   const input: InstanceUpdateInput = {
     ...(name ? { name } : {}),
     ...(connectorVpc
@@ -360,14 +374,16 @@ export function parseUpdateInstanceArgs(args: string[]): {
         ? { connection_details: { connector_vpc: null } }
         : {}),
     ...(forceRedeploy ? { force_runtimes_redeploy: true } : {}),
+    ...(environmentKey !== undefined ? { environment_key: environmentKey } : {}),
   };
   if (
     input.name === undefined &&
     input.connection_details === undefined &&
-    input.force_runtimes_redeploy !== true
+    input.force_runtimes_redeploy !== true &&
+    input.environment_key === undefined
   ) {
     throw new Error(
-      "Provide --name, subnet/SG flags, --clear-connector-vpc, and/or --redeploy-runtimes",
+      "Provide --name, --environment-key, subnet/SG flags, --clear-connector-vpc, and/or --redeploy-runtimes",
     );
   }
   return { instanceId, input };

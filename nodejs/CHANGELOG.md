@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- **`instances.update` / `loxtep instances update --environment-key`** (loxtep#5068):
+  first-class open segregation key → PUT `metadata.environment_key`. Empty/null
+  clears (env missing). Not a stage/prod/dev enum; franchise/location slugs
+  allowed. Also accepts `metadata.environment_key`.
+
 ## [0.14.10] - 2026-11-24
 
 ### Changed

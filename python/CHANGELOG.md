@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- **`instances.update` `environment_key`** (loxtep#5068): first-class open
+  segregation key → PUT `metadata.environment_key`. Empty/None clears. Not a
+  stage/prod/dev enum. Also accepts `metadata.environment_key`.
+
 ## [0.11.6] — 2026-11-24
 
 ### Changed
