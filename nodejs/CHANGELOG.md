@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Phase 5 scope pin visibility (loxtep#5161, #5166):** `loxtep whoami` and `loxtep status`
+  print workspace scope (`project_id`, attached Instance id, `environment_key` from the API
+  when resolvable) and the matching `loxtep://workspace_context` URI. `loxtep attach` lists
+  `environment_key` when multiple Instances require `--instance`. Deploy help/errors use
+  Instance language and document `--expected-environment-key`.
+
 - **`instances.update` / `loxtep instances update --environment-key`** (loxtep#5068):
   first-class open segregation key → PUT `metadata.environment_key`. Empty/null
   clears (env missing). Not a stage/prod/dev enum; franchise/location slugs

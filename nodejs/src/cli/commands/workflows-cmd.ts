@@ -5,6 +5,20 @@
 import { toWorkflowListSummary } from '../../client/list-summaries.js';
 import { mapListSummaries, printCliListOutput } from '../cli-list-output.js';
 import { requireCliClient } from '../create-cli-client.js';
+import { ConflictError } from '../../errors/resource.js';
+
+function formatDeployFailure(err: unknown): string {
+  const base = err instanceof Error ? err.message : String(err);
+  if (err instanceof ConflictError && /environment_key/i.test(base)) {
+    return (
+      `${base}\n` +
+      'Hint: the target Instance metadata.environment_key disagrees with --expected-environment-key. ' +
+      'Run `loxtep instances list` or `loxtep whoami` (attached workspace) to confirm the Instance pin, ' +
+      'then retry with a matching --expected-environment-key or attach the correct Instance.'
+    );
+  }
+  return base;
+}
 
 export interface WorkflowsCmdOptions {
   configFilePath?: string;
@@ -102,21 +116,26 @@ export async function runWorkflowsDeploy(
   const instanceId = (params.instance_id && params.instance_id.trim()) || config.instance_id;
   if (!instanceId) {
     console.error(
-      'Missing instance_id. Pass --instance-id <id> (required for the environment you are deploying to) or attach a project with instance_id. Soft prefer is not supported.'
+      'Missing Instance id. Pass --instance-id <id> for the Instance you are deploying to, or run `loxtep attach` so .loxtep/project.json pins the same Instance as Studio. Soft prefer is not supported.'
     );
     process.exitCode = 1;
     return;
   }
-  const result = await client.build.workflows.deploy({
-    project_id: params.project_id,
-    instance_id: instanceId,
-    version_id: params.version_id,
-    force_redeploy: params.force_redeploy ?? false,
-    ...(params.expected_environment_key
-      ? { expected_environment_key: params.expected_environment_key }
-      : {}),
-  });
-  console.log(JSON.stringify(result, null, 2));
+  try {
+    const result = await client.build.workflows.deploy({
+      project_id: params.project_id,
+      instance_id: instanceId,
+      version_id: params.version_id,
+      force_redeploy: params.force_redeploy ?? false,
+      ...(params.expected_environment_key
+        ? { expected_environment_key: params.expected_environment_key }
+        : {}),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  } catch (err) {
+    console.error(`Deploy failed: ${formatDeployFailure(err)}`);
+    process.exitCode = 1;
+  }
 }
 
 export async function runWorkflowsPreviewQueryTrigger(

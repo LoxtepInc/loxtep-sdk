@@ -32,6 +32,8 @@ export interface LocalProjectSnapshot {
   project_file: string;
   instance_id: string | null;
   api_url: string | null;
+  /** From Instance metadata when resolvable (status / whoami). */
+  instance_environment_key?: string | null;
 }
 
 export interface BuildProjectWorkspaceStatusInput {
@@ -442,7 +444,12 @@ export function formatProjectWorkspaceStatusLines(status: ProjectWorkspaceStatus
   const name = status.display_name ?? '(unnamed)';
   const attach = status.local.attach_state;
   const host = status.local.api_url ?? '(no api_url)';
-  const instance = status.local.instance_id ?? '(none)';
+  const instance =
+    status.local.instance_id != null
+      ? status.local.instance_environment_key !== undefined
+        ? `${status.local.instance_id} (environment_key=${status.local.instance_environment_key ?? '(unset)'})`
+        : status.local.instance_id
+      : '(none)';
   const github = status.cloud.github.state;
   const deployLabel =
     status.deployed.state === 'never_deployed'

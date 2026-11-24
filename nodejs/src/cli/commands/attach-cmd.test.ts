@@ -177,6 +177,7 @@ describe('loxtep attach', () => {
     const result = await runAttach(client, { cwd: dir });
     expect(result.exitCode).toBe(1);
     expect(result.stderr[0]).toContain('--instance');
+    expect(result.stderr[0]).toMatch(/Multiple Instances|environment_key/);
   });
 
   it('fails when no instances exist', async () => {

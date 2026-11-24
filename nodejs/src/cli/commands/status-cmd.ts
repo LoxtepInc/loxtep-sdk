@@ -13,6 +13,7 @@ import {
 import type { Deployment } from '../../client/deployments-types.js';
 import { requireCliClient, type CreateCliClientOptions } from '../create-cli-client.js';
 import { tryLoadProjectConfig } from '../project-context.js';
+import { resolveEnvironmentKey } from '../../client/instance-list-summary.js';
 import type { CliResult } from '../project-context.js';
 
 export interface StatusCmdOptions extends CreateCliClientOptions {
@@ -74,6 +75,15 @@ export async function runStatusCommand(options: StatusCmdOptions = {}): Promise<
   }
 
   const { client } = await requireCliClient(options);
+
+  if (local.instance_id) {
+    try {
+      const instance = await client.workspace.instances.get(local.instance_id);
+      local.instance_environment_key = resolveEnvironmentKey(instance);
+    } catch {
+      local.instance_environment_key = undefined;
+    }
+  }
 
   let cloud = null;
   try {

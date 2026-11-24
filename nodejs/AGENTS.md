@@ -33,8 +33,9 @@ everything you need to build on Loxtep is here.
 1. `loxtep login` — authenticate once (browser or console).
 2. `loxtep init` — scaffold a workspace (`.loxtep/project.json` + `domains/`,
    `connectors/`, `workflows/`, `data-products/`).
-3. `loxtep attach` — link the workspace to a Loxtep **Instance** (the same
-   connection mechanism the web UI uses).
+3. `loxtep attach` — link the workspace to a Loxtep **Instance** (the **same**
+   Instance Studio uses for the project — also reflected in MCP
+   `loxtep://workspace_context?project_id=…&instance_id=…`).
 4. `loxtep generate` — compile every connected resource (data products,
    connectors, domains, queues, flows, workflows) into a single **typed** SDK
    artifact at `.loxtep/generated/index.ts`.
@@ -108,7 +109,7 @@ internal to the SDK and are not shown in CLI help.
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | `loxtep login [--console]`                                       | Authenticate. Browser by default; `--console` for email/password/TOTP.                                                                                      | n/a                 |
 | `loxtep logout`                                                  | Remove stored credentials.                                                                                                                                  | required            |
-| `loxtep whoami`                                                  | Print the current user and organization.                                                                                                                    | required            |
+| `loxtep whoami`                                                  | Print the current user, organization, and workspace scope pin (`project_id`, attached Instance id, `environment_key` when resolvable).                     | required            |
 | `loxtep init [--template <slug>]`                                | Scaffold a workspace; with `--template`, materialize the full template incl. `AGENTS.md` + a default skill. Prints Getting Started + Quick Reference links. | optional            |
 | `loxtep attach [--instance <id>]`                                | Link the workspace to an Instance; writes `instance_id` + `api_url` into `.loxtep/project.json`.                                                            | required            |
 | `loxtep generate`                                                | Compile workspace context → `.loxtep/generated/index.ts`; validate skills; print per-type counts.                                                           | required + attached |
@@ -290,6 +291,21 @@ Add the server to any MCP client:
 ```json
 { "mcpServers": { "loxtep": { "url": "https://mcp.loxtep.io/ai/mcp/stream" } } }
 ```
+
+### MCP resource — `loxtep://workspace_context`
+
+Hosted MCP `resources/list` includes **`loxtep://workspace_context`**. Read it as:
+
+`loxtep://workspace_context?project_id=<uuid>&instance_id=<uuid>` (both query params required).
+
+It returns the design-time project inventory for that **project + Instance** pair
+(data products, connections, workflows, domains, repository binding). Tool calls still
+require explicit `project_id` / `instance_id` on each operation — the resource is the
+read-first projection, not a substitute for scope on writes.
+
+**CLI parity:** `loxtep attach` and `loxtep whoami` should show the same Instance pin
+Studio uses. Deploy with `--expected-environment-key` when you need fail-closed checks
+against `metadata.environment_key` on that Instance.
 
 Example (call tool **`loxtep_connect`**, not `loxtep_connectors`):
 
