@@ -109,6 +109,20 @@ describe('buildProjectWorkspaceStatus', () => {
     expect(status.next_action).toBe('push');
     expect(status.unpublished.local_to_cloud.dirty).toBe(true);
   });
+
+  it('prefers repository_branch over github_branch for cloud.github.branch', () => {
+    const status = buildProjectWorkspaceStatus({
+      population_depth: 'status',
+      local: sampleLocal(),
+      cloud: sampleProject({
+        repository_branch: 'release',
+        github_branch: 'legacy',
+      }),
+      deployments: [],
+      local_git_dirty: false,
+    });
+    expect(status.cloud.github.branch).toBe('release');
+  });
 });
 
 describe('enrichProjectListSummary', () => {

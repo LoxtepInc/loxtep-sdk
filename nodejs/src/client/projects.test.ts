@@ -117,7 +117,8 @@ describe('createProjectsApi', () => {
         github_repo_url: 'https://github.com/acme/orders-mesh',
         github_repo_name: 'acme/orders-mesh',
         github_repo_path: 'packages/data',
-        github_branch: 'develop',
+        repository_branch: 'develop',
+        github_branch: 'legacy-ignored',
         github_last_commit_sha: 'abc123def456',
         github_last_sync_at: '2025-06-01T12:00:00Z',
       };
@@ -136,6 +137,27 @@ describe('createProjectsApi', () => {
         last_commit_sha: 'abc123def456',
         last_sync_at: '2025-06-01T12:00:00Z',
       });
+    });
+
+    it('falls back to github_branch when repository_branch is absent', async () => {
+      const project = {
+        project_id: 'p1',
+        organization_id: 'org1',
+        name: 'P1',
+        status: 'active' as const,
+        is_active: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        github_repo_url: 'https://github.com/acme/orders-mesh',
+        github_repo_name: 'acme/orders-mesh',
+        github_branch: 'develop',
+      };
+      const http = {
+        get: async () => ({ success: true as const, data: project }),
+      } as unknown as LoxtepHttpClient;
+
+      const api = createProjectsApi(http);
+      expect((await api.repository('p1')).branch).toBe('develop');
     });
 
     it('returns empty last-synced values when project has never been synced', async () => {
@@ -221,6 +243,53 @@ describe('createProjectsApi', () => {
       await api.repository('proj-xyz');
 
       expect(capturedPath).toBe('/workflows/projects/proj-xyz');
+    });
+  });
+
+  describe('github_pull', () => {
+    it('posts instance_id and optional commit_sha/branch', async () => {
+      let capturedPath: string | null = null;
+      let capturedBody: unknown = null;
+      const http = {
+        get: async () => {
+          throw new Error('no stream-url');
+        },
+        post: async (path: string, body: unknown) => {
+          capturedPath = path;
+          capturedBody = body;
+          return { success: true, data: { success: true, commit_sha: 'abc' } };
+        },
+      } as unknown as LoxtepHttpClient;
+
+      const api = createProjectsApi(http);
+      const result = await api.github_pull('p1', {
+        instance_id: 'inst-1',
+        commit_sha: 'deadbeef',
+        branch: 'main',
+      });
+
+      expect(capturedPath).toBe('/workflows/projects/p1/github/pull');
+      expect(capturedBody).toEqual({
+        instance_id: 'inst-1',
+        commit_sha: 'deadbeef',
+        branch: 'main',
+      });
+      expect(result.commit_sha).toBe('abc');
+    });
+
+    it('throws when instance_id is missing or blank', async () => {
+      const http = {
+        get: async () => ({}),
+        post: async () => ({ success: true }),
+      } as unknown as LoxtepHttpClient;
+      const api = createProjectsApi(http);
+
+      await expect(api.github_pull('p1', { instance_id: '' })).rejects.toThrow(
+        /instance_id is required/
+      );
+      await expect(
+        api.github_pull('p1', { instance_id: '   ' } as { instance_id: string })
+      ).rejects.toThrow(/instance_id is required/);
     });
   });
 });

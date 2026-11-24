@@ -56,7 +56,8 @@ export function projectToRepository(project: Project): ProjectRepository | undef
   const repo: ProjectRepository = {
     url,
     name,
-    branch: project.github_branch || 'main',
+    // Project default branch SoT: repository_branch; github_branch is legacy alias.
+    branch: project.repository_branch || project.github_branch || 'main',
   };
 
   // Only include subpath when it's a non-empty string.

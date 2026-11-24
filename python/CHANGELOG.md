@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **GitHub pull fail-closed (loxtep-sdk#123):** `ProjectsApi.github_pull` /
+  `AsyncProjectsApi.github_pull` require `instance_id` (raises when blank). Optional
+  `commit_sha` / `branch`. Also adds `github_push` for parity with Node.
+- **`repository()` / workspace status** prefer `repository_branch` over legacy
+  `github_branch`.
+- **`instance_list_summary`:** new helper surfaces `environment_key` from metadata
+  (null when unset; never invents `prod`).
+
 ## [0.11.5] — 2026-11-17
 
 ### Fixed

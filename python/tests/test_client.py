@@ -97,6 +97,8 @@ def test_nested_apis_and_snake_case_methods():
     assert hasattr(client.define.schemas, "list")
     assert hasattr(client.define.quality, "create")
     assert hasattr(client.workspace.projects, "repository")
+    assert hasattr(client.workspace.projects, "github_pull")
+    assert hasattr(client.workspace.projects, "github_push")
     assert hasattr(client.workspace.instances, "get_stream_config")
     for m in (
         "list_terms",

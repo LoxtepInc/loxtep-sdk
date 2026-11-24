@@ -268,8 +268,8 @@ def build_project_workspace_status(input: dict[str, Any]) -> dict[str, Any]:
                 "state": github_state,
                 "url": (cloud or {}).get("github_repo_url"),
                 "name": (cloud or {}).get("github_repo_name"),
-                "branch": (cloud or {}).get("github_branch")
-                or (cloud or {}).get("repository_branch"),
+                "branch": (cloud or {}).get("repository_branch")
+                or (cloud or {}).get("github_branch"),
                 "last_sync_at": (cloud or {}).get("github_last_sync_at"),
             },
             "workspace_revision": (cloud or {}).get("github_last_commit_sha"),

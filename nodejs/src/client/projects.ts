@@ -77,6 +77,15 @@ export interface ProjectWorkspaceExportResult {
   expires_at?: string;
 }
 
+/** Body for POST /workflows/projects/:id/github/pull (Studio fail-closed on instance). */
+export interface GitHubPullBody {
+  /** Required — workspace/instance bucket for this Pull (no soft prefer). */
+  instance_id: string;
+  commit_sha?: string;
+  /** Optional override; platform defaults to instance metadata.repository_branch. */
+  branch?: string;
+}
+
 export interface GitHubPullResult {
   success: boolean;
   commit_sha?: string;
@@ -116,7 +125,7 @@ export function createProjectsApi(http: LoxtepHttpClient): {
     }
   ) => Promise<ProjectWorkspaceExportResult>;
   /** POST /workflows/projects/:id/github/pull — Cloud S3 ← GitHub (bound only). */
-  github_pull: (project_id: string, body?: { commit_sha?: string }) => Promise<GitHubPullResult>;
+  github_pull: (project_id: string, body: GitHubPullBody) => Promise<GitHubPullResult>;
   /** POST /workflows/projects/:id/github/push — Cloud S3 → GitHub (bound only). */
   github_push: (
     project_id: string,
@@ -189,7 +198,8 @@ export function createProjectsApi(http: LoxtepHttpClient): {
         url: project.github_repo_url ?? null,
         name: project.github_repo_name ?? null,
         subpath: project.github_repo_path ?? '',
-        branch: project.github_branch ?? 'main',
+        // Project default branch SoT: repository_branch; github_branch is legacy alias.
+        branch: project.repository_branch ?? project.github_branch ?? 'main',
         last_commit_sha: project.github_last_commit_sha ?? '',
         last_sync_at: project.github_last_sync_at ?? '',
       };
@@ -219,13 +229,23 @@ export function createProjectsApi(http: LoxtepHttpClient): {
       return res.data;
     },
 
-    async github_pull(
-      project_id: string,
-      body?: { commit_sha?: string }
-    ): Promise<GitHubPullResult> {
+    async github_pull(project_id: string, body: GitHubPullBody): Promise<GitHubPullResult> {
+      const instanceId = body?.instance_id != null ? String(body.instance_id).trim() : '';
+      if (!instanceId) {
+        throw new Error(
+          'instance_id is required for github_pull. Pass the instance for the environment you are pulling into (no soft prefer).'
+        );
+      }
+      const payload: Record<string, string> = { instance_id: instanceId };
+      if (body.commit_sha != null && String(body.commit_sha).trim()) {
+        payload.commit_sha = String(body.commit_sha).trim();
+      }
+      if (body.branch != null && String(body.branch).trim()) {
+        payload.branch = String(body.branch).trim();
+      }
       const res = await http.post<{ success: true; data?: GitHubPullResult } | GitHubPullResult>(
         await resolveGithubStreamUrl(http, GITHUB_PULL_STREAM, project_id, 'pull'),
-        body ?? {}
+        payload
       );
       if (res && typeof res === 'object' && 'data' in res && res.data) {
         return res.data;

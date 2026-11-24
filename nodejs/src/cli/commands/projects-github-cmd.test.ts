@@ -33,20 +33,28 @@ function mockClient(overrides: {
   } as unknown as LoxtepClient;
 }
 
+function writeProjectJson(
+  dir: string,
+  extra: Record<string, unknown> = {}
+): void {
+  mkdirSync(join(dir, '.loxtep'), { recursive: true });
+  writeFileSync(
+    join(dir, '.loxtep', 'project.json'),
+    JSON.stringify({
+      project_id: MOCK_IDS.project_id,
+      organization_id: MOCK_IDS.organization_id,
+      ...extra,
+    }),
+    'utf-8'
+  );
+}
+
 describe('runProjectsGithubPull / runProjectsGithubPush', () => {
   let projectDir: string;
 
   beforeEach(() => {
     projectDir = mkdtempSync(join(tmpdir(), 'loxtep-gh-sync-'));
-    mkdirSync(join(projectDir, '.loxtep'), { recursive: true });
-    writeFileSync(
-      join(projectDir, '.loxtep', 'project.json'),
-      JSON.stringify({
-        project_id: MOCK_IDS.project_id,
-        organization_id: MOCK_IDS.organization_id,
-      }),
-      'utf-8'
-    );
+    writeProjectJson(projectDir, { instance_id: MOCK_IDS.instance_id });
   });
 
   afterEach(() => {
@@ -66,19 +74,51 @@ describe('runProjectsGithubPull / runProjectsGithubPush', () => {
     expect(result.stdout.join('\n')).toContain('GitHub pull');
     expect(result.stdout.join('\n')).toContain('abc123');
     expect(github_pull).toHaveBeenCalledWith(MOCK_IDS.project_id, {
+      instance_id: MOCK_IDS.instance_id,
       commit_sha: undefined,
+      branch: undefined,
     });
   });
 
-  it('pull passes commit_sha option', async () => {
+  it('pull passes commit_sha and branch options', async () => {
     const github_pull = jest.fn().mockResolvedValue({ success: true, commit_sha: 'deadbeef' });
     const client = mockClient({ github_pull });
     const result = await runProjectsGithubPull(client, {
       cwd: projectDir,
       commitSha: 'deadbeef',
+      branch: 'release',
     });
     expect(result.exitCode).toBe(0);
-    expect(github_pull).toHaveBeenCalledWith(MOCK_IDS.project_id, { commit_sha: 'deadbeef' });
+    expect(github_pull).toHaveBeenCalledWith(MOCK_IDS.project_id, {
+      instance_id: MOCK_IDS.instance_id,
+      commit_sha: 'deadbeef',
+      branch: 'release',
+    });
+  });
+
+  it('pull prefers --instance-id over project.json', async () => {
+    const github_pull = jest.fn().mockResolvedValue({ success: true });
+    const client = mockClient({ github_pull });
+    const override = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const result = await runProjectsGithubPull(client, {
+      cwd: projectDir,
+      instanceId: override,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(github_pull).toHaveBeenCalledWith(
+      MOCK_IDS.project_id,
+      expect.objectContaining({ instance_id: override })
+    );
+  });
+
+  it('pull fails closed when instance_id is missing from flag and config', async () => {
+    writeProjectJson(projectDir); // no instance_id
+    const github_pull = jest.fn();
+    const client = mockClient({ github_pull });
+    const result = await runProjectsGithubPull(client, { cwd: projectDir });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toContain('Missing instance_id');
+    expect(github_pull).not.toHaveBeenCalled();
   });
 
   it('push succeeds with commit message and branch', async () => {
@@ -129,7 +169,7 @@ describe('runProjectsGithubPull / runProjectsGithubPush', () => {
     }
   });
 
-  it('accepts explicit --project-id without local project.json', async () => {
+  it('accepts explicit --project-id and --instance-id without local project.json', async () => {
     const empty = mkdtempSync(join(tmpdir(), 'loxtep-gh-id-'));
     try {
       const github_pull = jest.fn().mockResolvedValue({ success: true, commit_sha: 'zzz' });
@@ -137,9 +177,14 @@ describe('runProjectsGithubPull / runProjectsGithubPush', () => {
       const result = await runProjectsGithubPull(client, {
         cwd: empty,
         projectId: MOCK_IDS.project_id,
+        instanceId: MOCK_IDS.instance_id,
       });
       expect(result.exitCode).toBe(0);
-      expect(github_pull).toHaveBeenCalled();
+      expect(github_pull).toHaveBeenCalledWith(MOCK_IDS.project_id, {
+        instance_id: MOCK_IDS.instance_id,
+        commit_sha: undefined,
+        branch: undefined,
+      });
     } finally {
       rmSync(empty, { recursive: true, force: true });
     }

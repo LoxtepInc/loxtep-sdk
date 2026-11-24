@@ -28,7 +28,7 @@ describe('CLI help', () => {
       'projects list [--source local|remote|all] | get <id> | link <id|name> [--path <dir>]'
     );
     expect(CLI_HELP).toContain(
-      '| changes [--json] | clone <id|name> [dir] | pull | push'
+      '| pull --instance-id <uuid> [--commit-sha] [--branch] | push'
     );
     expect(CLI_HELP).toContain('link <project_id|name> [--path <dir>]');
     expect(CLI_HELP).toContain('generate');

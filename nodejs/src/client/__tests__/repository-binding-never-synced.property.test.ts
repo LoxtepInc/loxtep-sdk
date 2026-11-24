@@ -114,7 +114,9 @@ describe('Feature: ai-first-platform-surface, Property 42: Binding query returns
         expect(binding.url).toBe(project.github_repo_url ?? null);
         expect(binding.name).toBe(project.github_repo_name ?? null);
         expect(binding.subpath).toBe(project.github_repo_path ?? '');
-        expect(binding.branch).toBe(project.github_branch ?? 'main');
+        expect(binding.branch).toBe(
+          project.repository_branch ?? project.github_branch ?? 'main'
+        );
       }),
       { numRuns: 100 },
     );
