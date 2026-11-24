@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.14.10] - 2026-11-24
+
 ### Changed
 
 - **GitHub pull fail-closed (loxtep-sdk#123):** `client.workspace.projects.github_pull`

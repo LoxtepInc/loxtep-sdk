@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.11.6] — 2026-11-24
+
 ### Changed
 
 - **GitHub pull fail-closed (loxtep-sdk#123):** `ProjectsApi.github_pull` /
