@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.11.7] — 2026-11-24
+
 ### Added
 
 - **`instances.update` `environment_key`** (loxtep#5068): first-class open

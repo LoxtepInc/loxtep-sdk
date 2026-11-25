@@ -97,6 +97,8 @@ export const LocalWorkspaceLayerSchema = z.object({
   attach_state: AttachStateSchema,
   instance_id: z.string().nullable(),
   api_url: z.string().nullable(),
+  /** From Instance metadata when resolvable (status / whoami). */
+  instance_environment_key: z.string().nullable().optional(),
   /** Local project_id from `.loxtep/project.json` when present. */
   project_id: z.string().nullable(),
 });

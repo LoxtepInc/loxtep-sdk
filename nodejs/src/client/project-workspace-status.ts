@@ -338,6 +338,9 @@ export function buildProjectWorkspaceStatus(
       attach_state,
       instance_id: local?.instance_id ?? null,
       api_url: local?.api_url ?? null,
+      ...(local?.instance_environment_key !== undefined
+        ? { instance_environment_key: local.instance_environment_key }
+        : {}),
       project_id: local?.project_id ?? null,
     },
     cloud: {

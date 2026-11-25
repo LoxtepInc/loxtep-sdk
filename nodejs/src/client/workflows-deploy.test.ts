@@ -8,7 +8,7 @@ describe('createWorkflowsApi deploy (#4867)', () => {
 
     await expect(
       api.deploy({ project_id: 'proj-1', instance_id: '' }),
-    ).rejects.toThrow(/instance_id is required/);
+    ).rejects.toThrow(/Instance id is required for deploy/);
     expect(http.post).not.toHaveBeenCalled();
   });
 
