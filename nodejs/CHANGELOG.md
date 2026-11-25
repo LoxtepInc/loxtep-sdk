@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.14.11] - 2026-11-24
+
 ### Added
 
 - **Phase 5 scope pin visibility (loxtep#5161, #5166):** `loxtep whoami` and `loxtep status`
