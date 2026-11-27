@@ -17,6 +17,10 @@ module.exports = {
     // stub so suites that import the client graph never evaluate it under ts-jest.
     '[/\\\\]rstreams[/\\\\]leo-runtime(\\.js)?$':
       '<rootDir>/src/rstreams/leo-runtime.jest-stub.ts',
+    // Same for CLI module-dir helper used by templates-materialize.
+    // Match relative `./esm-module-dir.js` and absolute `/cli/esm-module-dir` forms.
+    'esm-module-dir(\\.(js|ts))?$':
+      '<rootDir>/src/cli/esm-module-dir.jest-stub.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   // Same reason as the mapper: keep import.meta out of ts-jest's CJS coverage
@@ -41,6 +45,8 @@ module.exports = {
     '!src/lib/entity-json-schemas/index.ts',
     '!src/rstreams/leo-runtime.ts',
     '!src/rstreams/leo-runtime.jest-stub.ts',
+    '!src/cli/esm-module-dir.ts',
+    '!src/cli/esm-module-dir.jest-stub.ts',
   ],
   coverageDirectory: 'coverage',
   verbose: true,

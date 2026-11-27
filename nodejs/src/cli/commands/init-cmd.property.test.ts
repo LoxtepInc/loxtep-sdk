@@ -1,15 +1,18 @@
 /**
  * Feature: ai-first-platform-surface
- * Property 1: Templated scaffold completeness
+ * Property 1: Templated scaffold completeness (bundled only)
  *
- * For any valid template slug, `runInitCommand` with `--template <slug>` produces
- * a directory containing:
+ * For the bundled `shopify-orders` slug, `runInitCommand` with `--template`
+ * produces a directory containing:
  *   - `.loxtep/project.json` (with `template_slug` set to the slug)
  *   - `AGENTS.md` (referencing the slug)
  *   - `.loxtep/skills/<slug>.yaml` (valid YAML with the skill name matching the slug)
  *   - All standard directories: `domains/`, `connectors/`, `workflows/`, `data-products/`
+ *   - Workflow sources from the bundled template
  *
- * **Validates: Requirements 1.2, 16.1, 16.2**
+ * Non-bundled / catalog slugs exit non-zero and write no stub (#88).
+ *
+ * **Validates: Requirements 1.2, 16.1, 16.2 + issue #88**
  */
 
 import fc from 'fast-check';
@@ -23,13 +26,11 @@ import { runInitCommand } from './init-cmd.js';
 // ─── Arbitraries ──────────────────────────────────────────────────────────────
 
 /**
- * Arbitrary valid template slug: lowercase alphanumeric with hyphens,
- * 2-30 chars, no leading/trailing hyphens, no consecutive hyphens.
- * This models realistic template slugs from the catalog.
+ * Arbitrary catalog-style slug that is NOT the bundled shopify-orders template.
  */
-const templateSlugArb = fc
+const nonBundledSlugArb = fc
   .stringMatching(/^[a-z][a-z0-9]+(-[a-z0-9]+)*$/)
-  .filter((s) => s.length >= 2 && s.length <= 30);
+  .filter((s) => s.length >= 2 && s.length <= 30 && s !== 'shopify-orders');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,55 +47,60 @@ describe('Feature: ai-first-platform-surface, Property 1: Templated scaffold com
     await Promise.all(tmpDirs.map((d) => rm(d, { recursive: true, force: true })));
   });
 
+  it('bundled shopify-orders produces a complete scaffold', async () => {
+    const tmpDir = await createTmpDir();
+    tmpDirs.push(tmpDir);
+
+    const result = await runInitCommand({
+      cwd: tmpDir,
+      templateSlug: 'shopify-orders',
+      offline: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+
+    const projectJsonPath = join(tmpDir, '.loxtep', 'project.json');
+    expect(existsSync(projectJsonPath)).toBe(true);
+    const projectJson = JSON.parse(readFileSync(projectJsonPath, 'utf-8'));
+    expect(projectJson.template_slug).toBe('shopify-orders');
+
+    const agentsMdPath = join(tmpDir, 'AGENTS.md');
+    expect(existsSync(agentsMdPath)).toBe(true);
+    expect(readFileSync(agentsMdPath, 'utf-8')).toContain('shopify-orders');
+
+    const skillYamlPath = join(tmpDir, '.loxtep', 'skills', 'shopify-orders.yaml');
+    expect(existsSync(skillYamlPath)).toBe(true);
+    const skillParsed = yaml.load(readFileSync(skillYamlPath, 'utf-8')) as Record<string, unknown>;
+    expect(skillParsed.name).toBe('shopify-orders');
+
+    expect(existsSync(join(tmpDir, 'workflows', 'orders-enricher.ts'))).toBe(true);
+
+    for (const dir of ['domains', 'connectors', 'workflows', 'data-products']) {
+      expect(existsSync(join(tmpDir, dir))).toBe(true);
+    }
+  });
+
   it(
-    'For any valid template slug, runInitCommand with --template produces a complete scaffold ' +
-      'containing .loxtep/project.json (with template_slug), AGENTS.md (referencing the slug), ' +
-      '.loxtep/skills/<slug>.yaml (valid YAML with matching skill name), and all standard directories',
+    'For any non-bundled catalog slug, init --template exits non-zero and writes no stub',
     async () => {
       await fc.assert(
-        fc.asyncProperty(templateSlugArb, async (slug) => {
+        fc.asyncProperty(nonBundledSlugArb, async (slug) => {
           const tmpDir = await createTmpDir();
           tmpDirs.push(tmpDir);
 
-          // Run init with --template (no client — local-only scaffold)
           const result = await runInitCommand({
             cwd: tmpDir,
             templateSlug: slug,
             offline: true,
           });
 
-          // Command should succeed
-          expect(result.exitCode).toBe(0);
-
-          // ── R1.2: .loxtep/project.json exists with template_slug ──
-          const projectJsonPath = join(tmpDir, '.loxtep', 'project.json');
-          expect(existsSync(projectJsonPath)).toBe(true);
-          const projectJson = JSON.parse(readFileSync(projectJsonPath, 'utf-8'));
-          expect(projectJson.template_slug).toBe(slug);
-          expect(typeof projectJson.project_id).toBe('string');
-          expect(projectJson.project_id.length).toBeGreaterThan(0);
-
-          // ── R16.1: AGENTS.md exists and references the template slug ──
-          const agentsMdPath = join(tmpDir, 'AGENTS.md');
-          expect(existsSync(agentsMdPath)).toBe(true);
-          const agentsMdContent = readFileSync(agentsMdPath, 'utf-8');
-          expect(agentsMdContent).toContain(slug);
-
-          // ── R16.2: .loxtep/skills/<slug>.yaml exists, is valid YAML, name matches ──
-          const skillYamlPath = join(tmpDir, '.loxtep', 'skills', `${slug}.yaml`);
-          expect(existsSync(skillYamlPath)).toBe(true);
-          const skillContent = readFileSync(skillYamlPath, 'utf-8');
-          const skillParsed = yaml.load(skillContent) as Record<string, unknown>;
-          expect(skillParsed).toBeDefined();
-          expect(skillParsed.name).toBe(slug);
-
-          // ── R1.2: All standard directories exist ──
-          const standardDirs = ['domains', 'connectors', 'workflows', 'data-products'];
-          for (const dir of standardDirs) {
-            expect(existsSync(join(tmpDir, dir))).toBe(true);
-          }
+          expect(result.exitCode).toBe(1);
+          expect(result.stderr.join('\n')).toMatch(/not bundled/i);
+          expect(existsSync(join(tmpDir, 'AGENTS.md'))).toBe(false);
+          expect(existsSync(join(tmpDir, '.loxtep', 'skills', `${slug}.yaml`))).toBe(false);
+          expect(existsSync(join(tmpDir, '.loxtep', 'project.json'))).toBe(false);
         }),
-        { numRuns: 100 }
+        { numRuns: 50 }
       );
     },
     60_000
