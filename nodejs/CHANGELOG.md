@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## [0.14.12] - 2026-11-26
+
+### Fixed
+
+- **CLI `init --template` (loxtep-sdk#88):** Resolve `@loxtep/sdk` package root from
+  the CLI module location and via `realpathSync(process.argv[1])` so npm/npx `.bin`
+  shims load bundled templates. Non-bundled / catalog-only slugs exit non-zero instead
+  of silently writing AGENTS.md + skill stubs without workflows.
+
 ## [0.14.11] - 2026-11-24
 
 ### Added
