@@ -7,8 +7,9 @@
  *     `proj_local_*` ids that break API commands later.
  *   - `--project-id <uuid>` binds an existing org project instead of creating one.
  *   - Re-running `init` after login upgrades a stale local-only `project_id`.
- *   - With `--template <slug>`: resolves from the catalog and materializes full
- *     structure incl. `AGENTS.md` + default `.loxtep/skills/<slug>.yaml`.
+ *   - With `--template <slug>`: materializes a **bundled** runnable template
+ *     (e.g. `shopify-orders`). Non-bundled / catalog-only slugs exit non-zero —
+ *     no silent AGENTS.md/skill stub without workflows (#88).
  *   - Repo flags → `github_action` on `create_project`:
  *     `--create-repo` → `create_new` (private default),
  *     `--from-repo <url>` → `import_existing`,
@@ -24,7 +25,7 @@
 
 import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import type { CliResult } from '../project-context.js';
 import {
   PROJECT_DIR_NAME,
@@ -37,11 +38,12 @@ import {
 } from '../project-context.js';
 import { upsertKnownLocal } from '../known-locals-registry.js';
 import type { LoxtepClient } from '../../client/loxtep-client.js';
-import type { TemplateSummary } from '../../client/templates-types.js';
 import type { CreateProjectInput } from '../../client/projects-types.js';
 import {
   ensureTemplatePackageJson,
+  listBundledTemplateSlugs,
   materializeBundledTemplate,
+  resolveBundledTemplateDir,
 } from '../templates-materialize.js';
 
 /* ------------------------------------------------------------------ */
@@ -281,59 +283,6 @@ async function resolvePlatformProject(options: {
   }
 }
 
-function buildDefaultAgentsMd(templateSlug: string, template: TemplateSummary): string {
-  return `# AGENTS.md — ${template.name || templateSlug}
-
-This project was scaffolded from the \`${templateSlug}\` template.
-
-## MCP tools
-
-Connect to the Loxtep MCP server for full platform access:
-
-\`\`\`json
-{ "mcpServers": { "loxtep": { "url": "https://mcp.loxtep.io/ai/mcp/stream" } } }
-\`\`\`
-
-## SDK methods
-
-- \`LoxtepClient.fromWorkspace()\` — auto-configure from \`.loxtep/project.json\`
-- \`defineDataWorkflow({ name, triggers, handler })\` — code-first workflow authoring
-- \`workspace.dataProducts.*\` / \`workspace.connectors.*\` — typed constants (after \`loxtep generate\`)
-
-## Skill scope
-
-Default skill: \`.loxtep/skills/${templateSlug}.yaml\`
-`;
-}
-
-function buildDefaultSkillYaml(templateSlug: string): string {
-  return `# Default skill for the ${templateSlug} template.
-# Edit scope and permissions to match your project's resources.
-name: ${templateSlug}
-description: Default skill scope for the ${templateSlug} template
-scope:
-  data_products: []
-  connectors: []
-  workflows: []
-  domains: []
-  queues: []
-permissions:
-  data_products:
-    - read
-    - write
-  connectors:
-    - read
-  workflows:
-    - read
-    - write
-    - create
-  domains:
-    - read
-  queues:
-    - read
-`;
-}
-
 /* ------------------------------------------------------------------ */
 /*  Main init logic                                                    */
 /* ------------------------------------------------------------------ */
@@ -349,6 +298,35 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
     return { exitCode: 1, stdout: [], stderr: [repoResult.error] };
   }
 
+  // --- Fail closed on non-bundled --template slugs (#88) ---
+  // Catalog/industry slugs must not silently write AGENTS.md + skill with no workflows.
+  if (templateSlug) {
+    let bundledDir: string | null;
+    try {
+      bundledDir = resolveBundledTemplateDir(templateSlug);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { exitCode: 1, stdout: [], stderr: [msg] };
+    }
+    if (!bundledDir) {
+      let available: string[] = [];
+      try {
+        available = await listBundledTemplateSlugs();
+      } catch {
+        // Package-root resolution already succeeded for resolveBundledTemplateDir(null path);
+        // listing failure should not mask the primary error.
+      }
+      return {
+        exitCode: 1,
+        stdout: [],
+        stderr: [
+          `Template "${templateSlug}" is not bundled in this SDK; refusing to scaffold a stub without workflows.`,
+          `Bundled templates: ${available.length > 0 ? available.join(', ') : '(none)'}.`,
+        ],
+      };
+    }
+  }
+
   // --- Scaffold standard directories first (always) ---
   for (const dir of STANDARD_DIRS) {
     await ensureDir(join(cwd, dir));
@@ -358,31 +336,6 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
   await ensureDir(loxtepDir);
 
   const existing = readExistingProjectConfig(cwd);
-
-  // --- Resolve template when requested (R1.2, R16.1, R16.2) ---
-  let template: TemplateSummary | undefined;
-  if (templateSlug && client) {
-    try {
-      // Try to find by slug search first; the catalog may return by id or name
-      const templates = await client.connect.templates.list({ search: templateSlug });
-      template = templates.items.find(
-        (t) =>
-          t.name === templateSlug ||
-          t.template_id === templateSlug ||
-          (t.metadata as Record<string, unknown>)?.slug === templateSlug
-      );
-      if (!template) {
-        // Fallback: try direct get
-        try {
-          template = await client.connect.templates.get(templateSlug);
-        } catch {
-          // Could not resolve — proceed without template data but record the slug
-        }
-      }
-    } catch {
-      // Template lookup failed — proceed without template metadata; scaffold still happens
-    }
-  }
 
   const platform = await resolvePlatformProject({
     cwd,
@@ -430,47 +383,25 @@ export async function runInitCommand(options: InitOptions): Promise<CliResult> {
     }
   }
 
-  // --- Template-specific scaffolding (R16.1, R16.2) ---
+  // --- Template-specific scaffolding (R16.1, R16.2) — bundled only (#88) ---
   if (templateSlug) {
-    // Prefer bundled runnable templates (shopify-orders) over catalog metadata alone.
     const materialized = await materializeBundledTemplate(cwd, templateSlug);
-    if (materialized && materialized.written.length > 0) {
-      stdout.push(`✓ Scaffolded template files from bundled "${templateSlug}"`);
-      for (const rel of materialized.written) {
-        stdout.push(`  ✓ ${rel}`);
-      }
-      const pkgUpdated = await ensureTemplatePackageJson(cwd);
-      if (pkgUpdated) {
-        stdout.push(`  ✓ ${pkgUpdated} (type=module, @loxtep/sdk dependency)`);
-      }
-    } else {
-      // Catalog / unknown slug: AGENTS.md + default skill only (legacy path)
-      const agentsMdContent = template
-        ? buildDefaultAgentsMd(templateSlug, template)
-        : buildDefaultAgentsMd(templateSlug, {
-            template_id: templateSlug,
-            name: templateSlug,
-            description: null,
-            category: '',
-            version: '1.0.0',
-            configuration: {},
-            validation_rules: {},
-            metadata: {},
-            is_public: true,
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-      await writeFile(join(cwd, 'AGENTS.md'), agentsMdContent, 'utf-8');
-
-      const skillsDir = join(loxtepDir, 'skills');
-      await ensureDir(skillsDir);
-      await writeFile(
-        join(skillsDir, `${templateSlug}.yaml`),
-        buildDefaultSkillYaml(templateSlug),
-        'utf-8'
-      );
-      stdout.push(`✓ Wrote AGENTS.md and .loxtep/skills/${templateSlug}.yaml`);
+    if (!materialized || materialized.written.length === 0) {
+      return {
+        exitCode: 1,
+        stdout,
+        stderr: [
+          `Template "${templateSlug}" is bundled but produced no files; refusing to continue with an empty scaffold.`,
+        ],
+      };
+    }
+    stdout.push(`✓ Scaffolded template files from bundled "${templateSlug}"`);
+    for (const rel of materialized.written) {
+      stdout.push(`  ✓ ${rel}`);
+    }
+    const pkgUpdated = await ensureTemplatePackageJson(cwd);
+    if (pkgUpdated) {
+      stdout.push(`  ✓ ${pkgUpdated} (type=module, @loxtep/sdk dependency)`);
     }
   }
 

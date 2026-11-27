@@ -5,36 +5,74 @@
  * the npm package (see package.json `files`).
  *
  * Package-root resolution uses a small CJS helper (`resolve-package-root.cjs`)
- * so Jest/ts-jest never has to parse `import.meta`.
+ * so Jest/ts-jest never has to parse `import.meta` in this file. Module-dir
+ * for ESM comes from `esm-module-dir.ts` (Jest-mapped stub).
  */
 
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { esmModuleDir } from './esm-module-dir.js';
 
 type RootHelper = { resolveSdkPackageRoot: () => string };
 
-function loadRootHelper(): RootHelper {
+/**
+ * Candidate paths for `resolve-package-root.cjs`.
+ * Exported for unit tests (npm `.bin` shim / realpath coverage).
+ */
+export function rootHelperCandidates(input: {
+  filename?: string;
+  argv1?: string;
+  cwd: string;
+  moduleDir?: string;
+}): string[] {
   const candidates: string[] = [];
 
-  // ts-jest CJS: __filename is this module under src/cli or dist/cli
-  if (typeof __filename !== 'undefined') {
-    candidates.push(join(dirname(__filename), 'resolve-package-root.cjs'));
+  if (input.moduleDir) {
+    candidates.push(join(input.moduleDir, 'resolve-package-root.cjs'));
   }
 
-  // ESM CLI entry: process.argv[1] is dist/cli/index.js (helper sits beside it)
-  if (typeof process !== 'undefined' && process.argv[1]) {
-    candidates.push(join(dirname(process.argv[1]), 'resolve-package-root.cjs'));
+  // ts-jest CJS: __filename is this module under src/cli or dist/cli
+  if (input.filename) {
+    candidates.push(join(dirname(input.filename), 'resolve-package-root.cjs'));
+  }
+
+  if (input.argv1) {
+    // npm/npx/pnpm `.bin` shims are often symlinks; resolve before dirname.
+    try {
+      candidates.push(join(dirname(realpathSync(input.argv1)), 'resolve-package-root.cjs'));
+    } catch {
+      // argv path missing or unreadable — keep looking
+    }
+    candidates.push(join(dirname(input.argv1), 'resolve-package-root.cjs'));
   }
 
   // Dev / test cwd = nodejs package root
   candidates.push(
-    join(process.cwd(), 'src/cli/resolve-package-root.cjs'),
-    join(process.cwd(), 'dist/cli/resolve-package-root.cjs'),
-    join(process.cwd(), 'nodejs/src/cli/resolve-package-root.cjs'),
-    join(process.cwd(), 'nodejs/dist/cli/resolve-package-root.cjs')
+    join(input.cwd, 'src/cli/resolve-package-root.cjs'),
+    join(input.cwd, 'dist/cli/resolve-package-root.cjs'),
+    join(input.cwd, 'nodejs/src/cli/resolve-package-root.cjs'),
+    join(input.cwd, 'nodejs/dist/cli/resolve-package-root.cjs')
   );
+
+  return candidates;
+}
+
+function loadRootHelper(): RootHelper {
+  let moduleDir: string | undefined;
+  try {
+    moduleDir = esmModuleDir();
+  } catch {
+    // Stub/runtime without a usable module dir
+  }
+
+  const candidates = rootHelperCandidates({
+    moduleDir,
+    filename: typeof __filename !== 'undefined' ? __filename : undefined,
+    argv1: typeof process !== 'undefined' ? process.argv[1] : undefined,
+    cwd: process.cwd(),
+  });
 
   for (const candidate of candidates) {
     if (!existsSync(candidate)) continue;

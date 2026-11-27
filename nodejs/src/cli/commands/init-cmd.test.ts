@@ -3,7 +3,7 @@
  *
  * Covers:
  * - Bare scaffold (R1.1)
- * - Template scaffold with AGENTS.md + skill (R16.1, R16.2)
+ * - Bundled template scaffold (R16.1, R16.2); non-bundled slugs fail closed (#88)
  * - Repo flag mapping (R17.4, R17.5, R17.6)
  * - Doc link printing (R11.7)
  * - Generate auto-run and failure (R16.3, R16.4, R16.5)
@@ -188,31 +188,37 @@ describe('runInitCommand', () => {
     expect(allOutput).toContain('https://app.loxtep.io/docs/quick-reference.md');
   });
 
-  it('scaffolds template with AGENTS.md and skill YAML (R16.1, R16.2)', async () => {
+  it('fails closed for non-bundled catalog slugs without writing a stub (#88)', async () => {
     const result = await runInitCommand({
       cwd: tmpDir,
-      templateSlug: 'commerce-mesh',
+      templateSlug: 'technology',
+      client: mockAuthedClient(),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.join('\n')).toMatch(/not bundled/i);
+    expect(result.stderr.join('\n')).toMatch(/shopify-orders/);
+    expect(existsSync(join(tmpDir, 'AGENTS.md'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.loxtep', 'skills', 'technology.yaml'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.loxtep', 'project.json'))).toBe(false);
+  });
+
+  it('scaffolds bundled shopify-orders template (R16.1, R16.2)', async () => {
+    const result = await runInitCommand({
+      cwd: tmpDir,
+      templateSlug: 'shopify-orders',
       client: mockAuthedClient(),
     });
 
     expect(result.exitCode).toBe(0);
-
-    // AGENTS.md created
     expect(existsSync(join(tmpDir, 'AGENTS.md'))).toBe(true);
-    const agentsMd = readFileSync(join(tmpDir, 'AGENTS.md'), 'utf-8');
-    expect(agentsMd).toContain('commerce-mesh');
+    expect(existsSync(join(tmpDir, 'workflows', 'orders-enricher.ts'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.loxtep', 'skills', 'shopify-orders.yaml'))).toBe(true);
 
-    // Default skill YAML created
-    const skillPath = join(tmpDir, '.loxtep', 'skills', 'commerce-mesh.yaml');
-    expect(existsSync(skillPath)).toBe(true);
-    const skillContent = readFileSync(skillPath, 'utf-8');
-    expect(skillContent).toContain('name: commerce-mesh');
-
-    // project.json records template slug
     const projectJson = JSON.parse(
       readFileSync(join(tmpDir, '.loxtep', 'project.json'), 'utf-8')
     );
-    expect(projectJson.template_slug).toBe('commerce-mesh');
+    expect(projectJson.template_slug).toBe('shopify-orders');
   });
 
   it('prints login guidance when init succeeds without client on existing project', async () => {
