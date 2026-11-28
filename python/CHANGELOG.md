@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [0.12.0] — 2026-11-28
+
+### Added
+
+- **Semantic grounding (#135):** `client.context` exposes `query`, `check_readiness`, and
+  `check_answerability` via `SemanticGroundingApi` / `AsyncSemanticGroundingApi`. Preflight is
+  read-only and never grants execution.
+
 ## [0.11.7] — 2026-11-24
 
 ### Added

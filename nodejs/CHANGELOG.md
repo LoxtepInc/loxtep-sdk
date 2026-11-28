@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## [0.15.0] - 2026-11-28
+
+### Added
+
+- **Semantic grounding (#135):** `client.context` exposes `query`, `checkReadiness`, and
+  `checkAnswerability` for grounded context queries and preflight (read-only; preflight never
+  grants execution). Types: `GroundedContextQueryInput`, `SemanticPreflightResult`,
+  `SemanticGroundingAnswerability`, `GroundingReceipt`.
+
+- **Node execution configuration (#134):** `NodeExecutionConfig` type (`single`, `fanout`,
+  `partitioning`) on connection/trigger workspace entities; forwarded through source create and
+  partial update. Entity JSON schemas synced for connection, transformation, data product, grant,
+  and related manifests.
+
 ## [0.14.12] - 2026-11-26
 
 ### Fixed
