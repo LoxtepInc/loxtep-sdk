@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/project/data-product-runtime-slots-manifest.json",
+  "title": "Project Data Product Runtime Slots Manifest",
+  "description": "Optional project-level declared data-product runtime slots (.loxtep/data-product-runtime-slots.json). Prefer per-product runtime_slots[] on data-product entities; use this manifest to declare or override slots without editing every product file. Prefer environment_key over instance UUIDs. Deploy applies matching slots into data_product_runtime_bindings (fail closed — no silent stage→prod copy).",
+  "type": "object",
+  "required": ["data_products"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Manifest schema version"
+    },
+    "data_products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["runtime_slots"],
+        "properties": {
+          "data_product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Design-time data product UUID"
+          },
+          "logical_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Stable logical key when data_product_id is omitted or for readability"
+          },
+          "runtime_slots": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "environment_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "instance_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "queue_name": {
+                  "type": ["string", "null"],
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "bot_id": {
+                  "type": ["string", "null"],
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "microservice_id": {
+                  "type": ["string", "null"],
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "storage": {
+                  "type": ["object", "null"],
+                  "additionalProperties": true
+                },
+                "role": {
+                  "type": ["string", "null"],
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              },
+              "additionalProperties": false,
+              "anyOf": [
+                { "required": ["environment_key"] },
+                { "required": ["instance_id"] }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          { "required": ["data_product_id"] },
+          { "required": ["logical_key"] }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

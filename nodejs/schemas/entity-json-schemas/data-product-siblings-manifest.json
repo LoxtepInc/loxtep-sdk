@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/project/data-product-siblings-manifest.json",
+  "title": "Project Data Product Sibling Environments Manifest",
+  "description": "Optional project-level declared catalog sibling environments (.loxtep/data-product-siblings.json). Prefer per-product sibling_environments[] on data-product entities; use this manifest to declare which logical products exist in which environments without editing every product file. Prefer environment_key. Same logical_key + different environment_key are sibling catalog products (new UUIDs). Deploy applies a matching declaration into data_products and fails closed when a declaring product omits the target env (no silent catalog sibling, no stage runtime-row copy).",
+  "type": "object",
+  "required": ["data_products"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Manifest schema version"
+    },
+    "data_products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sibling_environments"],
+        "properties": {
+          "data_product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Design-time data product UUID"
+          },
+          "logical_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Stable logical key when data_product_id is omitted or for readability"
+          },
+          "sibling_environments": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Environments in which this logical product exists as its own catalog row.",
+            "items": {
+              "type": "object",
+              "required": ["environment_key"],
+              "properties": {
+                "environment_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Logical environment (stage, prod, dev, franchise slug, …). Preferred over hard-coded instance UUIDs."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          { "required": ["data_product_id"] },
+          { "required": ["logical_key"] }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

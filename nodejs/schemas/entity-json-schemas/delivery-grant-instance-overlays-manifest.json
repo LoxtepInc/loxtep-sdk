@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/project/delivery-grant-instance-overlays-manifest.json",
+  "title": "Project Delivery Grant Instance Overlays Manifest",
+  "description": "Optional project-level declared delivery-grant destination overlays (.loxtep/delivery-grant-instance-overlays.json). Prefer destination_overlays[] on grant entities; use this manifest to declare or override destinations without editing every grant file. Prefer environment_key over instance UUIDs. grant_id is the subscriber id. Deploy upserts delivery_grant_instance_overlays from the matching declaration (fail closed — no silent stage→prod copy).",
+  "type": "object",
+  "required": ["grants"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Manifest schema version"
+    },
+    "grants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["grant_id", "destination_overlays"],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Delivery grant id. Deploy upserts this as data_product_subscriber_id."
+          },
+          "data_product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional extra identity. Does not replace grant_id."
+          },
+          "connection_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional extra identity. Does not replace grant_id."
+          },
+          "destination_overlays": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["destination_config"],
+              "properties": {
+                "environment_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Logical environment (stage, prod, dev, …). Preferred over hard-coded instance UUIDs in git."
+                },
+                "instance_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Optional explicit instance pin (same-env geo). When set, matches that instance before environment_key."
+                },
+                "destination_config": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "minProperties": 1,
+                  "description": "Non-empty destination applied for this env or instance. An empty object is refused."
+                }
+              },
+              "additionalProperties": false,
+              "anyOf": [
+                { "required": ["environment_key"] },
+                { "required": ["instance_id"] }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
