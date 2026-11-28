@@ -361,6 +361,7 @@ export class LoxtepClient {
       deployments: deploymentsApi,
     });
     this.context = createContextFacade({
+      http: this._http,
       process_intelligence: processIntelligenceApi,
       procedures: proceduresApi,
       activity: activityApi,

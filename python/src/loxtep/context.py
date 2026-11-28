@@ -12,6 +12,7 @@ from .process_intelligence import ProcessIntelligenceApi
 
 @dataclass(frozen=True)
 class ContextFacade:
+    _grounding: Any
     process_intelligence: ProcessIntelligenceApi
     procedures: ProceduresApi
     activity: ActivityApi
@@ -19,3 +20,12 @@ class ContextFacade:
     issues: Any
     goals: Any
     workstreams: Any
+
+    def query(self, **kwargs: Any) -> Any:
+        return self._grounding.query(**kwargs)
+
+    def check_readiness(self, **kwargs: Any) -> Any:
+        return self._grounding.check_readiness(**kwargs)
+
+    def check_answerability(self, **kwargs: Any) -> Any:
+        return self._grounding.check_answerability(**kwargs)

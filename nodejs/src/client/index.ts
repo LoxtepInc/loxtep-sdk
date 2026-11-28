@@ -619,3 +619,6 @@ export type {
   ResolvedStreamConfig,
   FullResolution,
 } from "./data-product-resolver.js";
+
+export * from './semantic-grounding-types.js';
+export type {SemanticScope, SemanticPreflightResult, GroundedContextQueryInput, GroundedContextQueryResult} from './semantic-grounding.js';
