@@ -191,6 +191,18 @@ describe('lintLocalPackage trigger + upstream regressions', () => {
     expect(result.issues).toEqual([]);
   });
 
+  it.each([
+    { mode: 'fanout', instances: 2, key: 'mongodb_document_id' },
+    { mode: 'partitioning', partition_count: 2, key: 'mongodb_document_id' },
+  ])('CLI lint accepts canonical execution configuration and rejects internal indexes: %j', execution => {
+    writeEnrichmentPackage('data-product-trigger');
+    const connection = { ...triggerConnection('mongodb-source'), connector_id: CONNECTOR, configuration: { cdc_stage: 'lookup', lookup_batch_size: 1600 }, ingestion_config: { runtime_memory_mb: 2048 }, execution };
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, connection);
+    expect(lintLocalPackage({ projectDir: dir, workflow_id: WF }).issues).toEqual([]);
+    writeJson(dir, `workflows/${WF}/connections/${CONN}.json`, { ...connection, execution: { ...execution, worker_index: 0 } });
+    expect(lintLocalPackage({ projectDir: dir, workflow_id: WF }).ok).toBe(false);
+  });
+
   it('fails for legacy data_product_trigger spelling', () => {
     writeEnrichmentPackage('data_product_trigger');
     const result = lintLocalPackage({ projectDir: dir, workflow_id: WF });

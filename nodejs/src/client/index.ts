@@ -162,6 +162,7 @@ export type {
   TriggerTestResult,
 } from "./trigger-types.js";
 export { TRIGGER_TYPES, TRIGGER_STATUSES } from "./trigger-types.js";
+export type { NodeExecutionConfig } from "./execution-types.js";
 export type {
   Flow,
   FlowWithNodes,

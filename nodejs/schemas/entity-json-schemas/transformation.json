@@ -182,9 +182,17 @@
     "runtime_memory_mb": {
       "description": "Memory for this step. Standard sizes are 256, 512, 1024, and 2048. Unset keeps the current size. \"custom\" uses the instance's custom size for that runtime.",
       "oneOf": [
-        { "type": "null" },
-        { "type": "integer", "enum": [256, 512, 1024, 2048] },
-        { "type": "string", "enum": ["custom"] }
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer",
+          "enum": [256, 512, 1024, 2048]
+        },
+        {
+          "type": "string",
+          "enum": ["custom"]
+        }
       ]
     },
     "metadata": {
@@ -229,7 +237,124 @@
       "minLength": 1,
       "maxLength": 255,
       "description": "Observe label for this transformation's error queue. Deploy writes it onto the existing queue id and leaves bindings, checkpoints, and bot pause unchanged. Unset: the generated label stays the fallback and is not overwritten."
+    },
+    "execution": {
+      "description": "Native execution parallelism. Omitted keeps the existing single worker. Memory, read batch size and query concurrency are separate per-invocation settings. Layout changes require an explicit native transition; save/deploy never rewrites checkpoints.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["mode"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "single"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["mode", "instances", "key"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "fanout"
+            },
+            "instances": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "description": "Total native fanout invocations, INCLUDING the parent processing work. Two means parent plus one child. One converged checkpoint."
+            },
+            "key": {
+              "oneOf": [
+                {
+                  "enum": ["event_id", "mongodb_document_id"]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["fields"],
+                  "properties": {
+                    "fields": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 16,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*$"
+                      },
+                      "description": "Dot paths rooted at the event payload. Selected values must be strings or finite numbers; the native fanout hash receives the selected tuple."
+                    }
+                  }
+                }
+              ],
+              "description": "Native eventPartition callback selector. Lookup requires mongodb_document_id; transformations can select event_id or payload fields."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["mode", "partition_count", "key"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "partitioning"
+            },
+            "partition_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 256,
+              "description": "Fixed native MongoDB lookup workers. Each owns its own checkpoint and scans the input stream; scans are not unique processed input."
+            },
+            "key": {
+              "const": "mongodb_document_id",
+              "description": "Existing SHA-256 database + collection + _id ownership. No custom partition algorithm."
+            }
+          }
+        }
+      ]
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": ["execution"],
+        "properties": {
+          "execution": {
+            "required": ["mode"],
+            "properties": {
+              "mode": {
+                "enum": ["fanout", "partitioning"]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "mode": {
+                "const": "fanout"
+              },
+              "key": {
+                "not": {
+                  "const": "mongodb_document_id"
+                }
+              }
+            }
+          },
+          "transform_type": {
+            "not": {
+              "enum": ["route", "batch", "delay", "drop_duplicates"]
+            }
+          }
+        }
+      }
+    }
+  ]
 }
