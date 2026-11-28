@@ -156,3 +156,7 @@ See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities privately.
 ## License
 
 [MIT](./LICENSE)
+
+For reviewed business questions, advisory preflight and execution receipts, see
+[Grounded context queries](docs/semantic-grounding.md). These methods require the
+matching server release and server-controlled organization rollout.

@@ -24,6 +24,7 @@ from .catalog import AsyncCatalogApi, CatalogApi
 from .connect import ConnectFacade
 from .cdlc import AsyncCdlcApi, CdlcApi
 from .connectors import AsyncConnectorsApi, ConnectorsApi
+from .semantic_grounding import SemanticGroundingApi, AsyncSemanticGroundingApi
 from .context import ContextFacade
 from .data_contracts import AsyncDataContractsApi, DataContractsApi
 from .data_products import AsyncDataProductsApi, DataProductsApi
@@ -224,6 +225,7 @@ class LoxtepClient:
             deployments=deployments,
         )
         self.context = ContextFacade(
+            _grounding=SemanticGroundingApi(self._http),
             process_intelligence=ProcessIntelligenceApi(self._http),
             procedures=ProceduresApi(self._http),
             activity=ActivityApi(self._http),
@@ -398,6 +400,7 @@ class AsyncLoxtepClient:
             deployments=deployments,
         )
         self.context = ContextFacade(
+            _grounding=AsyncSemanticGroundingApi(self._http),
             process_intelligence=AsyncProcessIntelligenceApi(self._http),
             procedures=AsyncProceduresApi(self._http),
             activity=AsyncActivityApi(self._http),
