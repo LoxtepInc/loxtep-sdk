@@ -200,6 +200,7 @@ export function createTriggersApi(http: LoxtepHttpClient, deps: TriggersApiDeps 
         status: config.status ?? 'active',
         data: config.data ?? '{}',
         configuration: config.configuration ?? {},
+        ...(config.execution !== undefined ? { execution: config.execution } : {}),
         metadata: config.metadata ?? {},
         verified: config.verified ?? false,
         draft: config.draft ?? true,

@@ -78,6 +78,78 @@
       "maxLength": 64,
       "description": "Environment segregation key (stage|prod|dev|…). Usually stamped from the target instance on materialization; optional on the design-time entity."
     },
+    "sibling_environments": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Declared catalog environments for this logical product (ADR 0013 / #4878). Same logical_key + different environment_key are sibling products (new UUIDs on cross-env deploy). Prefer environment_key. Deploy applies a matching declaration and fails closed when the target env is omitted (no silent catalog sibling, no copy of stage runtime binding rows). Omit the field to keep the legacy single-catalog path. Same-env geo belongs on runtime_slots, not here.",
+      "items": {
+        "type": "object",
+        "required": ["environment_key"],
+        "properties": {
+          "environment_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Logical environment (stage, prod, dev, franchise slug, …). Preferred over hard-coded instance UUIDs in git."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "runtime_slots": {
+      "type": "array",
+      "description": "Declared per-environment (or per-instance) runtime slots for this data product (queues/bots/storage). Prefer environment_key; use instance_id for same-env geo. Deploy upserts data_product_runtime_bindings from these declarations (fail closed — no silent stage→prod copy). Optional queue_name/bot_id/storage pin external or known handles; omit them when deploy resolves from topology.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "environment_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Logical environment (stage, prod, dev, …). Preferred over hard-coded instance UUIDs in git."
+          },
+          "instance_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional explicit instance pin (same-env geo). When set, matches that instance before environment_key."
+          },
+          "queue_name": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Optional pinned rstreams queue for this env/instance. When omitted, deploy fills from topology."
+          },
+          "bot_id": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Optional pinned bot id for this env/instance"
+          },
+          "microservice_id": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Optional pinned microservice id for this env/instance"
+          },
+          "storage": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "Optional instance-local storage / Iceberg fragment overlay"
+          },
+          "role": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Optional binding role hint (primary | runtime)"
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          { "required": ["environment_key"] },
+          { "required": ["instance_id"] }
+        ]
+      }
+    },
     "name": {
       "type": "string",
       "minLength": 1,

@@ -90,7 +90,39 @@
       "type": "object",
       "additionalProperties": true,
       "default": {},
-      "description": "Per-consumer destination settings"
+      "description": "Per-consumer destination settings. Legacy home/stage default. Per-env destinations belong in destination_overlays."
+    },
+    "destination_overlays": {
+      "type": "array",
+      "description": "Declared per-environment (or per-instance) destination overlays for this grant. Prefer environment_key; use instance_id for same-env geo. Deploy upserts delivery_grant_instance_overlays from the matching declaration (fail closed — no silent stage→prod copy). Omit the field when the grant has no package declaration.",
+      "items": {
+        "type": "object",
+        "required": ["destination_config"],
+        "properties": {
+          "environment_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Logical environment (stage, prod, dev, …). Preferred over hard-coded instance UUIDs in git."
+          },
+          "instance_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional explicit instance pin (same-env geo). When set, matches that instance before environment_key."
+          },
+          "destination_config": {
+            "type": "object",
+            "additionalProperties": true,
+            "minProperties": 1,
+            "description": "Non-empty destination applied for this env or instance. An empty object is refused."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          { "required": ["environment_key"] },
+          { "required": ["instance_id"] }
+        ]
+      }
     },
     "status": {
       "type": "string",

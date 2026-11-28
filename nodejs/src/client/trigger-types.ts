@@ -4,6 +4,8 @@
  * ("connections" is the backend term; the SDK surface names these `triggers`.)
  */
 
+import type { NodeExecutionConfig } from './execution-types.js';
+
 /** Pagination metadata from list APIs. */
 export interface TriggerPaginationMeta {
   page: number;
@@ -31,6 +33,7 @@ export const TRIGGER_STATUSES = {
 
 /** Single trigger (ingest source binding). */
 export interface Trigger {
+  execution?: NodeExecutionConfig;
   connection_id: string;
   organization_id?: string | null;
   project_id?: string;
@@ -55,6 +58,7 @@ export interface Trigger {
 
 /** Input for triggers.create(). */
 export interface TriggerCreateInput {
+  execution?: NodeExecutionConfig;
   /** Required — connections live under a project workspace. */
   project_id: string;
   /** Required — connection nodes are workflow-scoped. */
@@ -72,6 +76,7 @@ export interface TriggerCreateInput {
 
 /** Input for triggers.update(). */
 export interface TriggerUpdateInput {
+  execution?: NodeExecutionConfig;
   project_id?: string;
   workflow_id?: string;
   key?: string;

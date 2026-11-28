@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loxtep.io/schemas/project/webhook-ingress-bindings-manifest.json",
+  "title": "Project Webhook Ingress Bindings Manifest",
+  "description": "Optional project-level declared webhook ingress bindings (.loxtep/webhook-ingress-bindings.json). Prefer webhook_ingress_bindings[] on connection entities; use this manifest to declare or override pins without editing every connection file. Prefer environment_key over hard-coded instance UUIDs. connection_id identifies the connection slot. Deploy upserts webhook_ingress_bindings from the matching declaration for connections in the workflow being deployed (fail closed — no silent stage→prod copy). Optional bot_id, output_queue, and container_id pins overlay topology; omit them when deploy fills the handles.",
+  "type": "object",
+  "required": ["connections"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Manifest schema version"
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["connection_id", "webhook_ingress_bindings"],
+        "properties": {
+          "connection_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Connection slot this declaration applies to."
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional display key. Does not replace connection_id."
+          },
+          "connector_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional connector pin. When set, must equal the connector registered for this connection."
+          },
+          "webhook_ingress_bindings": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "environment_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Logical environment (stage, prod, dev, …). Preferred over hard-coded instance UUIDs in git."
+                },
+                "instance_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Optional explicit instance pin (same-env geo). When set, matches that instance before environment_key."
+                },
+                "bot_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional bot id pin. Omit to let deploy fill the registered webhook-catch bot."
+                },
+                "output_queue": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional output queue pin. Omit to let deploy fill the connection output queue."
+                },
+                "container_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional container id pin. Omit to let deploy fill the connection container."
+                },
+                "workflow_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Optional workflow id pin."
+                },
+                "microservice_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional microservice id pin."
+                },
+                "connector_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Optional connector pin. When set, must equal the connector being registered."
+                }
+              },
+              "additionalProperties": false,
+              "anyOf": [
+                { "required": ["environment_key"] },
+                { "required": ["instance_id"] }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
